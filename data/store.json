@@ -5,7 +5,7 @@
       "qwen_session_id": "94ed4980-8230-4377-985a-d613af889bc4",
       "title": "我想用python寫一個泡沫排序",
       "created_at": "2026-06-27T07:05:35.569268+00:00",
-      "updated_at": "2026-06-27T08:38:41.242136+00:00",
+      "updated_at": "2026-06-27T10:37:58.663984+00:00",
       "project_path": "C:\\Users\\kevin\\sort"
     }
   ],
@@ -289,15 +289,292 @@
       "role": "assistant",
       "content": "Qwen asks:\n\n## Short topic\n\nDo you have any other requirements or clarifications regarding the Python implementation of bubble sort?",
       "created_at": "2026-06-27T08:38:41.239208+00:00"
+    },
+    {
+      "id": "b44c6129-abf0-4570-9d90-927f64cd873e",
+      "session_id": "94ed4980-8230-4377-985a-d613af889bc4",
+      "role": "user",
+      "content": "你好",
+      "created_at": "2026-06-27T10:30:23.279411+00:00"
+    },
+    {
+      "id": "3d03a749-e563-4721-8f70-2bdc2350dcfe",
+      "session_id": "94ed4980-8230-4377-985a-d613af889bc4",
+      "role": "user",
+      "content": "我想用python寫一個泡沫排序",
+      "created_at": "2026-06-27T10:30:53.076271+00:00"
+    },
+    {
+      "id": "28e929da-4a53-47b9-a446-4ecc80e3fa9e",
+      "session_id": "94ed4980-8230-4377-985a-d613af889bc4",
+      "role": "assistant",
+      "content": "Qwen asks:\n\n## Short topic\n\nHow would you like to use the completed Python script?",
+      "created_at": "2026-06-27T10:31:00.261896+00:00"
+    },
+    {
+      "id": "6de05b17-e5b0-4a22-80ed-6588190523f9",
+      "session_id": "94ed4980-8230-4377-985a-d613af889bc4",
+      "role": "user",
+      "content": "直接完成",
+      "created_at": "2026-06-27T10:32:00.859656+00:00"
+    },
+    {
+      "id": "14086f70-1c09-4f91-a9bd-628be3f790b2",
+      "session_id": "94ed4980-8230-4377-985a-d613af889bc4",
+      "role": "assistant",
+      "content": "Qwen asks:\n\n## Short topic\n\nWhat do you need from the user?",
+      "created_at": "2026-06-27T10:32:17.536084+00:00"
+    },
+    {
+      "id": "1f231a90-9d5d-4d8d-9712-ca6cae75669b",
+      "session_id": "94ed4980-8230-4377-985a-d613af889bc4",
+      "role": "assistant",
+      "content": "Qwen asks:\n\n## Short topic\n\nWhat kind of spec do you want to generate?",
+      "created_at": "2026-06-27T10:37:58.660079+00:00"
     }
   ],
   "runs": [
     {
-      "id": "6144a7d2-709e-49a7-8a63-1b450592ef1a",
+      "id": "d35511ca-5714-45cf-8f47-fa83371764ec",
       "session_id": "94ed4980-8230-4377-985a-d613af889bc4",
       "qwen_session_id": "94ed4980-8230-4377-985a-d613af889bc4",
       "status": "waiting_input",
-      "error": "generate_spec: Qwen needs more user input. See input/questions.md.",
+      "error": "repair_spec: Qwen needs more user input. See input/questions.md.",
+      "workspace": "C:\\Users\\kevin\\sort\\.qwen-workflow\\runs\\session-94ed4980-8230-4377-985a-d613af889bc4\\run-d35511ca-5714-45cf-8f47-fa83371764ec",
+      "project_path": "C:\\Users\\kevin\\sort",
+      "test_command": null,
+      "steps": [
+        {
+          "key": "prepare_project",
+          "title": "Prepare Project",
+          "kind": "qwen",
+          "status": "passed",
+          "started_at": "2026-06-27T10:30:53.219816+00:00",
+          "ended_at": "2026-06-27T10:30:53.309654+00:00",
+          "error": null,
+          "retry_count": 0
+        },
+        {
+          "key": "generate_spec",
+          "title": "Generate Spec",
+          "kind": "qwen",
+          "status": "passed",
+          "started_at": "2026-06-27T10:32:00.985624+00:00",
+          "ended_at": "2026-06-27T10:32:10.596601+00:00",
+          "error": null,
+          "retry_count": 0
+        },
+        {
+          "key": "validate_spec",
+          "title": "Validate Spec",
+          "kind": "validator",
+          "status": "waiting_input",
+          "started_at": "2026-06-27T10:37:50.192664+00:00",
+          "ended_at": "2026-06-27T10:37:58.712809+00:00",
+          "error": "repair_spec: Qwen needs more user input. See input/questions.md.",
+          "retry_count": 0
+        },
+        {
+          "key": "review_spec",
+          "title": "Review Spec",
+          "kind": "qwen",
+          "status": "pending",
+          "started_at": null,
+          "ended_at": null,
+          "error": null,
+          "retry_count": 0
+        },
+        {
+          "key": "spec_gate",
+          "title": "Spec Gate",
+          "kind": "gate",
+          "status": "pending",
+          "started_at": null,
+          "ended_at": null,
+          "error": null,
+          "retry_count": 0
+        },
+        {
+          "key": "generate_todo",
+          "title": "Generate Todo",
+          "kind": "qwen",
+          "status": "pending",
+          "started_at": null,
+          "ended_at": null,
+          "error": null,
+          "retry_count": 0
+        },
+        {
+          "key": "validate_todo",
+          "title": "Validate Todo",
+          "kind": "validator",
+          "status": "pending",
+          "started_at": null,
+          "ended_at": null,
+          "error": null,
+          "retry_count": 0
+        },
+        {
+          "key": "review_todo",
+          "title": "Review Todo",
+          "kind": "qwen",
+          "status": "pending",
+          "started_at": null,
+          "ended_at": null,
+          "error": null,
+          "retry_count": 0
+        },
+        {
+          "key": "todo_gate",
+          "title": "Todo Gate",
+          "kind": "gate",
+          "status": "pending",
+          "started_at": null,
+          "ended_at": null,
+          "error": null,
+          "retry_count": 0
+        },
+        {
+          "key": "generate_tests",
+          "title": "Generate Tests",
+          "kind": "qwen",
+          "status": "pending",
+          "started_at": null,
+          "ended_at": null,
+          "error": null,
+          "retry_count": 0
+        },
+        {
+          "key": "build",
+          "title": "Build",
+          "kind": "qwen",
+          "status": "pending",
+          "started_at": null,
+          "ended_at": null,
+          "error": null,
+          "retry_count": 0
+        },
+        {
+          "key": "run_test",
+          "title": "Run Test",
+          "kind": "test",
+          "status": "pending",
+          "started_at": null,
+          "ended_at": null,
+          "error": null,
+          "retry_count": 0
+        },
+        {
+          "key": "final_review",
+          "title": "Final Review",
+          "kind": "qwen",
+          "status": "pending",
+          "started_at": null,
+          "ended_at": null,
+          "error": null,
+          "retry_count": 0
+        },
+        {
+          "key": "final_gate",
+          "title": "Final Gate",
+          "kind": "gate",
+          "status": "pending",
+          "started_at": null,
+          "ended_at": null,
+          "error": null,
+          "retry_count": 0
+        }
+      ],
+      "artifacts": [
+        {
+          "id": "d35511ca-5714-45cf-8f47-fa83371764ec:requirement.md",
+          "name": "requirement.md",
+          "path": "requirement.md",
+          "size": 36,
+          "updated_at": "2026-06-27T10:37:58.766516+00:00"
+        },
+        {
+          "id": "d35511ca-5714-45cf-8f47-fa83371764ec:input|questions.md",
+          "name": "questions.md",
+          "path": "input/questions.md",
+          "size": 62,
+          "updated_at": "2026-06-27T10:37:58.767493+00:00"
+        },
+        {
+          "id": "d35511ca-5714-45cf-8f47-fa83371764ec:input|answers.md",
+          "name": "answers.md",
+          "path": "input/answers.md",
+          "size": 96,
+          "updated_at": "2026-06-27T10:37:58.767493+00:00"
+        },
+        {
+          "id": "d35511ca-5714-45cf-8f47-fa83371764ec:prompts|skill-context.md",
+          "name": "skill-context.md",
+          "path": "prompts/skill-context.md",
+          "size": 8582,
+          "updated_at": "2026-06-27T10:37:58.767493+00:00"
+        },
+        {
+          "id": "d35511ca-5714-45cf-8f47-fa83371764ec:prompts|generate_spec.md",
+          "name": "generate_spec.md",
+          "path": "prompts/generate_spec.md",
+          "size": 2535,
+          "updated_at": "2026-06-27T10:37:58.767493+00:00"
+        },
+        {
+          "id": "d35511ca-5714-45cf-8f47-fa83371764ec:prompts|repair_spec.md",
+          "name": "repair_spec.md",
+          "path": "prompts/repair_spec.md",
+          "size": 2572,
+          "updated_at": "2026-06-27T10:37:58.767493+00:00"
+        },
+        {
+          "id": "d35511ca-5714-45cf-8f47-fa83371764ec:output|architecture.md",
+          "name": "architecture.md",
+          "path": "output/architecture.md",
+          "size": 43,
+          "updated_at": "2026-06-27T10:37:58.768510+00:00"
+        },
+        {
+          "id": "d35511ca-5714-45cf-8f47-fa83371764ec:output|spec.raw.md",
+          "name": "spec.raw.md",
+          "path": "output/spec.raw.md",
+          "size": 209,
+          "updated_at": "2026-06-27T10:37:58.768510+00:00"
+        },
+        {
+          "id": "d35511ca-5714-45cf-8f47-fa83371764ec:output|spec.md",
+          "name": "spec.md",
+          "path": "output/spec.md",
+          "size": 153,
+          "updated_at": "2026-06-27T10:37:58.768510+00:00"
+        },
+        {
+          "id": "d35511ca-5714-45cf-8f47-fa83371764ec:.workflow|run-log.md",
+          "name": "run-log.md",
+          "path": ".workflow/run-log.md",
+          "size": 3556,
+          "updated_at": "2026-06-27T10:37:58.768510+00:00"
+        },
+        {
+          "id": "d35511ca-5714-45cf-8f47-fa83371764ec:.workflow|state.json",
+          "name": "state.json",
+          "path": ".workflow/state.json",
+          "size": 6724,
+          "updated_at": "2026-06-27T10:37:58.768510+00:00"
+        }
+      ],
+      "created_at": "2026-06-27T10:30:53.134862+00:00",
+      "updated_at": "2026-06-27T10:37:58.768510+00:00",
+      "started_at": "2026-06-27T10:30:53.194427+00:00",
+      "ended_at": "2026-06-27T10:37:58.742104+00:00"
+    },
+    {
+      "id": "6144a7d2-709e-49a7-8a63-1b450592ef1a",
+      "session_id": "94ed4980-8230-4377-985a-d613af889bc4",
+      "qwen_session_id": "94ed4980-8230-4377-985a-d613af889bc4",
+      "status": "failed",
+      "error": "generate_spec: Qwen returned tool-call JSON instead of artifact content.",
       "workspace": "C:\\Users\\kevin\\sort\\.qwen-workflow\\runs\\session-94ed4980-8230-4377-985a-d613af889bc4\\run-6144a7d2-709e-49a7-8a63-1b450592ef1a",
       "project_path": "C:\\Users\\kevin\\sort",
       "test_command": null,
@@ -316,10 +593,10 @@
           "key": "generate_spec",
           "title": "Generate Spec",
           "kind": "qwen",
-          "status": "waiting_input",
-          "started_at": "2026-06-27T08:38:34.926449+00:00",
-          "ended_at": "2026-06-27T08:38:41.275336+00:00",
-          "error": "generate_spec: Qwen needs more user input. See input/questions.md.",
+          "status": "failed",
+          "started_at": "2026-06-27T10:30:23.407333+00:00",
+          "ended_at": "2026-06-27T10:30:35.448356+00:00",
+          "error": "generate_spec: Qwen returned tool-call JSON instead of artifact content.",
           "retry_count": 1
         },
         {
@@ -449,83 +726,83 @@
           "name": "requirement.md",
           "path": "requirement.md",
           "size": 36,
-          "updated_at": "2026-06-27T08:38:41.312443+00:00"
+          "updated_at": "2026-06-27T10:30:35.503040+00:00"
         },
         {
           "id": "6144a7d2-709e-49a7-8a63-1b450592ef1a:input|questions.md",
           "name": "questions.md",
           "path": "input/questions.md",
           "size": 124,
-          "updated_at": "2026-06-27T08:38:41.312443+00:00"
+          "updated_at": "2026-06-27T10:30:35.503040+00:00"
         },
         {
           "id": "6144a7d2-709e-49a7-8a63-1b450592ef1a:input|answers.md",
           "name": "answers.md",
           "path": "input/answers.md",
-          "size": 828,
-          "updated_at": "2026-06-27T08:38:41.312443+00:00"
+          "size": 920,
+          "updated_at": "2026-06-27T10:30:35.503040+00:00"
         },
         {
           "id": "6144a7d2-709e-49a7-8a63-1b450592ef1a:prompts|skill-context.md",
           "name": "skill-context.md",
           "path": "prompts/skill-context.md",
           "size": 8582,
-          "updated_at": "2026-06-27T08:38:41.312443+00:00"
+          "updated_at": "2026-06-27T10:30:35.504017+00:00"
         },
         {
           "id": "6144a7d2-709e-49a7-8a63-1b450592ef1a:prompts|generate_spec.md",
           "name": "generate_spec.md",
           "path": "prompts/generate_spec.md",
-          "size": 3267,
-          "updated_at": "2026-06-27T08:38:41.312443+00:00"
+          "size": 3359,
+          "updated_at": "2026-06-27T10:30:35.504017+00:00"
         },
         {
           "id": "6144a7d2-709e-49a7-8a63-1b450592ef1a:prompts|repair_spec.md",
           "name": "repair_spec.md",
           "path": "prompts/repair_spec.md",
           "size": 3269,
-          "updated_at": "2026-06-27T08:38:41.312443+00:00"
+          "updated_at": "2026-06-27T10:30:35.504017+00:00"
         },
         {
           "id": "6144a7d2-709e-49a7-8a63-1b450592ef1a:output|architecture.md",
           "name": "architecture.md",
           "path": "output/architecture.md",
           "size": 43,
-          "updated_at": "2026-06-27T08:38:41.313419+00:00"
+          "updated_at": "2026-06-27T10:30:35.504017+00:00"
         },
         {
           "id": "6144a7d2-709e-49a7-8a63-1b450592ef1a:output|spec.raw.md",
           "name": "spec.raw.md",
           "path": "output/spec.raw.md",
           "size": 266,
-          "updated_at": "2026-06-27T08:38:41.313419+00:00"
+          "updated_at": "2026-06-27T10:30:35.504017+00:00"
         },
         {
           "id": "6144a7d2-709e-49a7-8a63-1b450592ef1a:output|spec.md",
           "name": "spec.md",
           "path": "output/spec.md",
           "size": 282,
-          "updated_at": "2026-06-27T08:38:41.313419+00:00"
+          "updated_at": "2026-06-27T10:30:35.504993+00:00"
         },
         {
           "id": "6144a7d2-709e-49a7-8a63-1b450592ef1a:.workflow|run-log.md",
           "name": "run-log.md",
           "path": ".workflow/run-log.md",
-          "size": 10702,
-          "updated_at": "2026-06-27T08:38:41.313419+00:00"
+          "size": 11512,
+          "updated_at": "2026-06-27T10:30:35.504993+00:00"
         },
         {
           "id": "6144a7d2-709e-49a7-8a63-1b450592ef1a:.workflow|state.json",
           "name": "state.json",
           "path": ".workflow/state.json",
-          "size": 6672,
-          "updated_at": "2026-06-27T08:38:41.313419+00:00"
+          "size": 6670,
+          "updated_at": "2026-06-27T10:30:35.504993+00:00"
         }
       ],
       "created_at": "2026-06-27T08:28:53.402459+00:00",
-      "updated_at": "2026-06-27T08:38:41.313419+00:00",
+      "updated_at": "2026-06-27T10:30:35.504993+00:00",
       "started_at": "2026-06-27T08:28:53.440541+00:00",
-      "ended_at": "2026-06-27T08:38:41.296818+00:00"
+      "ended_at": "2026-06-27T10:30:35.478627+00:00"
     },
     {
       "id": "ff82e8d3-5e04-4eca-9b69-83a8a5acb7a1",

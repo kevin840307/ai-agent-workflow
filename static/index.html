@@ -6,21 +6,43 @@
     <title>Qwen Workflow</title>
     <link rel="stylesheet" href="/static/styles.css" />
   </head>
-  <body>
+  <body data-page="workflow-runner">
+    <!-- App region: Project sessions -->
     <aside class="projects">
-      <div class="brand">Qwen Workflow</div>
-      <button id="newProject" class="primary wide">New Project</button>
+      <div class="projects-head">
+        <div class="brand">Qwen Workflow</div>
+        <button id="toggleProjects" class="side-toggle" title="Collapse projects" aria-label="Collapse projects" aria-pressed="false">☰</button>
+      </div>
+      <button id="newProject" class="primary wide new-project-button"><span class="button-icon">＋</span><span class="button-text">New Project</span></button>
       <div id="projectList" class="project-list"></div>
     </aside>
 
+    <!-- App region: Workflow runner -->
     <main class="workspace">
       <header class="header">
         <div class="title-block">
           <h1 id="sessionTitle">Select a project</h1>
           <p id="runMeta">No active run</p>
-          <p id="qwenMeta">Checking Qwen...</p>
         </div>
-        <div class="actions">
+        <div class="header-tools">
+          <button id="toggleSettings" class="header-icon" title="Qwen settings" aria-label="Qwen settings" aria-expanded="false">
+            <span class="icon-mark">⚙</span>
+          </button>
+          <button id="toggleDetails" class="header-icon" title="Collapse details" aria-label="Collapse details" aria-pressed="false">
+            <span class="icon-mark">⇥</span>
+          </button>
+        </div>
+        <div id="settingsMenu" class="actions settings-menu" aria-label="Qwen settings panel">
+          <div class="settings-status">
+            <div>
+              <span>Run</span>
+              <strong id="runStatusMeta">No active run</strong>
+            </div>
+            <div>
+              <span>Qwen</span>
+              <strong id="qwenMeta">Checking Qwen...</strong>
+            </div>
+          </div>
           <label class="setting">
             Auth
             <select id="qwenAuthType">
@@ -52,16 +74,25 @@
       <section id="messages" class="history"></section>
 
       <section class="compose-panel">
-        <textarea id="messageInput" placeholder="Describe what to build..." rows="4"></textarea>
-        <div class="compose-actions">
-          <button id="saveRequirement">Save</button>
-          <button id="runWorkflow" class="primary" disabled>Run</button>
-          <button id="retryRun" disabled>Retry</button>
-          <button id="addGuidance" disabled>Add Guidance</button>
+        <div class="composer-box" id="composerBox">
+          <textarea id="messageInput" placeholder="Describe what to build..." rows="2"></textarea>
+          <div class="composer-footer">
+            <div class="composer-left">
+              <span id="composerMode" class="composer-mode">Requirement</span>
+              <button id="saveRequirement" class="composer-tool save-tool" title="Save draft" aria-label="Save draft">Save</button>
+              <button id="retryRun" class="composer-tool" title="Retry workflow" aria-label="Retry workflow" disabled>↻</button>
+              <button id="addGuidance" class="composer-tool" title="Add guidance" aria-label="Add guidance" disabled>＋</button>
+            </div>
+            <div class="composer-right">
+              <span class="composer-shortcut">Ctrl + Enter</span>
+              <button id="runWorkflow" class="primary send-button" disabled>Run ▶</button>
+            </div>
+          </div>
         </div>
       </section>
     </main>
 
+    <!-- App region: Workflow details console -->
     <aside class="details">
       <div class="tabs">
         <button class="tab active" data-tab="stepsPanel">Steps</button>
@@ -80,11 +111,12 @@
         <pre id="logs" class="console"></pre>
       </section>
       <section id="artifactsPanel" class="panel">
+        <input id="artifactSearch" class="artifact-search" placeholder="Search artifacts..." />
         <div id="artifacts" class="artifacts"></div>
         <pre id="artifactContent" class="artifact-content"></pre>
       </section>
     </aside>
 
-    <script src="/static/app.js"></script>
+    <script type="module" src="/static/js/main.js"></script>
   </body>
 </html>

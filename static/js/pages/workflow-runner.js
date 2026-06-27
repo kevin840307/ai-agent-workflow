@@ -1,0 +1,46 @@
+import { createAppContext } from "../core/context.js";
+import { createArtifacts } from "../features/artifacts.js";
+import { createComposer } from "../features/composer.js";
+import { createConfig } from "../features/config.js";
+import { createConsole } from "../features/console.js";
+import { createEvents } from "../features/events.js";
+import { createEventStream } from "../features/event-stream.js";
+import { createInteractions } from "../features/interactions.js";
+import { createLayout } from "../features/layout.js";
+import { createMessages } from "../features/messages.js";
+import { createRequirements } from "../features/requirements.js";
+import { createRuns } from "../features/runs.js";
+import { createSessions } from "../features/sessions.js";
+
+function registerWorkflowRunnerFeatures(ctx) {
+  ctx.features.layout = createLayout(ctx);
+  ctx.features.composer = createComposer(ctx);
+  ctx.features.console = createConsole(ctx);
+  ctx.features.messages = createMessages(ctx);
+  ctx.features.artifacts = createArtifacts(ctx);
+  ctx.features.interactions = createInteractions(ctx);
+  ctx.features.runs = createRuns(ctx);
+  ctx.features.eventStream = createEventStream(ctx);
+  ctx.features.sessions = createSessions(ctx);
+  ctx.features.requirements = createRequirements(ctx);
+  ctx.features.config = createConfig(ctx);
+  ctx.features.events = createEvents(ctx);
+  return ctx;
+}
+
+export function initWorkflowRunnerPage() {
+  const ctx = registerWorkflowRunnerFeatures(createAppContext());
+
+  ctx.features.events.bind();
+  ctx.features.config.load().catch((err) => {
+    ctx.ui.byKey("qwenMeta").textContent = err.message;
+  });
+  ctx.features.sessions.load().catch((err) => {
+    ctx.ui.byKey("runMeta").textContent = err.message;
+    ctx.ui.byKey("runStatusMeta").textContent = "Load failed";
+  });
+  ctx.features.composer.autoResize();
+  ctx.features.composer.updateModeLabel();
+
+  return ctx;
+}

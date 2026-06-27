@@ -1,0 +1,61 @@
+export const UI = {
+  ids: {
+    addGuidance: "addGuidance",
+    artifactContent: "artifactContent",
+    artifacts: "artifacts",
+    artifactSearch: "artifactSearch",
+    composerMode: "composerMode",
+    currentStep: "currentStep",
+    logs: "logs",
+    maxRetries: "maxRetries",
+    messageInput: "messageInput",
+    messages: "messages",
+    newProject: "newProject",
+    progressText: "progressText",
+    projectList: "projectList",
+    qwenAuthType: "qwenAuthType",
+    qwenLive: "qwenLive",
+    qwenMeta: "qwenMeta",
+    qwenReuseSession: "qwenReuseSession",
+    resultText: "resultText",
+    retryRun: "retryRun",
+    runMeta: "runMeta",
+    runStatusMeta: "runStatusMeta",
+    runWorkflow: "runWorkflow",
+    saveRequirement: "saveRequirement",
+    sessionTitle: "sessionTitle",
+    settingsMenu: "settingsMenu",
+    steps: "steps",
+    toggleDetails: "toggleDetails",
+    toggleProjects: "toggleProjects",
+    toggleSettings: "toggleSettings",
+  },
+
+  el(id) {
+    return document.getElementById(id);
+  },
+
+  byKey(key) {
+    return UI.el(UI.ids[key]);
+  },
+
+  on(idOrKey, event, handler) {
+    const id = UI.ids[idOrKey] || idOrKey;
+    const target = UI.el(id);
+    if (target) target.addEventListener(event, handler);
+  },
+
+  escapeHtml(value = "") {
+    return String(value).replace(/[&<>"']/g, (char) => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      "\"": "&quot;",
+      "'": "&#039;",
+    })[char]);
+  },
+
+  shortPath(path = "") {
+    return path.replace(/^C:\\Users\\kevin\\/i, "~/");
+  },
+};

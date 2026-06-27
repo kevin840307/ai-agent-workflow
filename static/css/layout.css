@@ -1,0 +1,26 @@
+/* App regions */
+.projects,
+.details {
+  background: var(--panel);
+  min-height: 0;
+  overflow: auto;
+}
+
+.projects {
+  border-right: 1px solid var(--line);
+  padding: 18px;
+}
+
+.workspace {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  min-width: 0;
+  min-height: 0;
+}
+
+.details {
+  border-left: 1px solid var(--line);
+  display: grid;
+  grid-template-rows: auto 1fr;
+}
+
