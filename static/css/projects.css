@@ -96,3 +96,44 @@
 
 .danger { color: var(--fail); }
 
+
+
+.project-nav {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.project-nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--panel-2);
+  color: var(--text);
+  text-decoration: none;
+}
+
+.project-nav-link:hover {
+  border-color: rgba(15, 118, 110, 0.45);
+  background: #effaf7;
+  color: var(--accent-dark);
+}
+
+.project-nav-link strong {
+  font-size: 13px;
+}
+
+body.projects-collapsed .project-nav-link {
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  justify-content: center;
+}
+
+body.projects-collapsed .project-nav-link strong {
+  display: none;
+}

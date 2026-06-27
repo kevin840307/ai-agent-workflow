@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Workflow Designer</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body data-page="workflow-designer">
+    <div class="designer-shell">
+      <aside class="designer-sidebar">
+        <div class="designer-brand-block">
+          <div class="brand">Qwen Workflow</div>
+          <span class="designer-badge">Config</span>
+        </div>
+
+        <nav class="designer-nav" aria-label="Designer navigation">
+          <a href="/" class="designer-nav-link">Runner</a>
+          <a href="/workflow-designer.html" class="designer-nav-link active">Workflows</a>
+        </nav>
+
+        <div class="designer-sidebar-section">
+          <div class="designer-section-title">System</div>
+          <button id="designerSystemWorkflow" class="designer-workflow-pill active">
+            <strong>Controlled Qwen Workflow</strong>
+            <span>System · read only</span>
+          </button>
+        </div>
+
+        <div class="designer-sidebar-section">
+          <div class="designer-section-row">
+            <div class="designer-section-title">Custom</div>
+            <button id="designerNewWorkflowMini" class="mini-button">＋</button>
+          </div>
+          <div id="designerCustomList" class="designer-custom-list"></div>
+        </div>
+      </aside>
+
+      <main class="designer-main">
+        <header class="designer-topbar">
+          <div>
+            <h1>Workflow Designer</h1>
+            <p>Configure custom workflows, prompts, skills, review strategy, retry, timeout, and human gates.</p>
+          </div>
+          <div class="designer-topbar-actions">
+            <button id="designerImportWorkflow">Import JSON</button>
+            <button id="designerNewWorkflow" class="primary">＋ New Workflow</button>
+          </div>
+        </header>
+
+        <section class="designer-overview">
+          <article class="designer-overview-card system designer-workflow-summary-card">
+            <div class="designer-card-content">
+              <div class="designer-card-title-row">
+                <span class="designer-eyebrow">System workflow</span>
+                <span class="badge">SYSTEM</span>
+                <span class="badge cancelled">READ ONLY</span>
+              </div>
+              <div class="designer-card-main-row">
+                <h2>Controlled Qwen Workflow</h2>
+                <div class="designer-card-actions system-actions">
+                  <button id="designerViewSystem">View</button>
+                  <button id="designerDuplicateWorkflow" class="primary">Duplicate as Custom</button>
+                </div>
+              </div>
+              <p>Built-in protected workflow. View it as the baseline, or duplicate it to create an editable custom workflow.</p>
+              <div class="designer-card-meta-row">
+                <span>Protected</span>
+                <span>Cannot delete</span>
+                <span>Duplicate to customize</span>
+              </div>
+            </div>
+          </article>
+
+          <article class="designer-overview-card custom designer-workflow-summary-card">
+            <div class="designer-card-content">
+              <div class="designer-card-title-row">
+                <span class="designer-eyebrow">Custom workflow</span>
+                <span id="designerEditableBadge" class="badge passed">EDITABLE</span>
+              </div>
+              <div class="designer-card-main-row">
+                <h2 id="designerActiveWorkflowName">My Custom Workflow</h2>
+                <div class="designer-card-actions custom-actions">
+                  <button id="designerDuplicateCustomWorkflow">Duplicate</button>
+                  <button id="designerExportWorkflow">Export JSON</button>
+                  <button id="designerDeleteWorkflow" class="designer-danger-button">Delete</button>
+                </div>
+              </div>
+              <p id="designerActiveWorkflowMeta">Editable · local UI draft</p>
+              <div class="designer-card-meta-row">
+                <span>Local draft</span>
+                <span>Exportable JSON</span>
+                <span>User editable</span>
+              </div>
+            </div>
+          </article>
+        </section>
+
+        <section class="designer-editor">
+          <div class="designer-editor-head">
+            <div>
+              <label class="designer-label" for="workflowNameInput">Workflow Name</label>
+              <input id="workflowNameInput" class="designer-title-input" />
+            </div>
+            <div class="designer-editor-actions">
+              <span id="designerWorkflowDirtyBadge" class="badge passed">Saved</span>
+              <span id="designerWorkflowLockHint" class="designer-lock-hint">Editable</span>
+              <button id="designerResetDraft">Reset Draft</button>
+              <button id="designerSaveDraft" class="primary">Save Draft</button>
+            </div>
+          </div>
+
+          <div class="designer-grid">
+            <aside class="designer-step-list-panel">
+              <div class="designer-panel-head">
+                <div>
+                  <h3>Steps</h3>
+                  <p id="designerStepCount">0 steps</p>
+                </div>
+                <button id="designerAddStep" class="mini-button">＋ Add</button>
+              </div>
+              <div id="designerStepList" class="designer-step-list"></div>
+            </aside>
+
+            <aside class="designer-settings-panel">
+              <div class="designer-panel-head compact">
+                <div>
+                  <h3 id="designerSelectedStepTitle">Step Settings</h3>
+                  <p id="designerSelectedStepType">Select a step</p>
+                </div>
+              </div>
+
+              <div class="designer-tabs" role="tablist">
+                <button class="designer-tab active" data-designer-tab="basic">Basic</button>
+                <button class="designer-tab" data-designer-tab="sources">Prompt</button>
+                <button class="designer-tab" data-designer-tab="review">Review</button>
+                <button class="designer-tab" data-designer-tab="retry">Retry</button>
+                <button class="designer-tab" data-designer-tab="gate">Gate</button>
+                <button class="designer-tab" data-designer-tab="advanced">Advanced</button>
+              </div>
+
+              <div id="designerStepSettings" class="designer-step-settings"></div>
+            </aside>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script type="module" src="/static/js/main.js"></script>
+  </body>
+</html>

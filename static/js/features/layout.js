@@ -4,7 +4,7 @@ function updateProjectsButton(ui, collapsed) {
   const button = ui.byKey("toggleProjects");
   if (!button) return;
   button.classList.toggle("active", collapsed);
-  button.textContent = collapsed ? "→" : "☰";
+  button.textContent = collapsed ? ">" : "<";
   button.title = collapsed ? "Expand projects" : "Collapse projects";
   button.setAttribute("aria-label", button.title);
   button.setAttribute("aria-pressed", String(collapsed));
@@ -15,7 +15,7 @@ function updateDetailsButton(ui, collapsed) {
   if (!button) return;
   button.classList.toggle("active", collapsed);
   const mark = button.querySelector(".icon-mark");
-  if (mark) mark.textContent = collapsed ? "⇤" : "⇥";
+  if (mark) mark.textContent = collapsed ? "<" : ">";
   button.title = collapsed ? "Expand details" : "Collapse details";
   button.setAttribute("aria-label", button.title);
   button.setAttribute("aria-pressed", String(collapsed));

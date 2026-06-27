@@ -22,6 +22,9 @@ async def startup() -> None:
 async def index():
     return FileResponse(runtime.STATIC_DIR / "index.html")
 
+@app.get("/workflow-designer")
+async def workflow_designer():
+    return FileResponse(runtime.STATIC_DIR / "workflow-designer.html")
 
 app.mount("/static", StaticFiles(directory=runtime.STATIC_DIR), name="static")
 

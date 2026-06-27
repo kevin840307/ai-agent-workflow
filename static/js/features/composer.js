@@ -39,13 +39,11 @@ export function createComposer(ctx) {
       const saveButton = ui.byKey("saveRequirement");
 
       if (waiting && !wasWaiting && input) input.value = "";
-      if (input) {
-        input.placeholder = waiting ? "Reply to Qwen and continue..." : "Describe what to build...";
-      }
+      if (input) input.placeholder = waiting ? "Reply to Qwen and continue..." : "Describe what to build...";
       if (runButton) {
         runButton.textContent = state.activeRunStatus === "running"
-          ? "Stop ■"
-          : (waiting ? "Reply" : "Run ▶");
+          ? "Stop"
+          : (waiting ? "Reply" : "Run");
       }
       if (saveButton) saveButton.disabled = waiting;
 
@@ -62,7 +60,7 @@ export function createComposer(ctx) {
 
       if (running) {
         if (runButton) {
-          runButton.textContent = "Stop ■";
+          runButton.textContent = "Stop";
           runButton.disabled = false;
         }
         if (input) input.placeholder = "Workflow is running. You can still add guidance.";
@@ -74,7 +72,7 @@ export function createComposer(ctx) {
 
       if (state.activeRunStatus === "failed" && state.activeRunId) {
         if (runButton) {
-          runButton.textContent = "Retry ↻";
+          runButton.textContent = "Retry";
           runButton.disabled = false;
         }
         if (input) input.placeholder = "Add guidance, then retry if needed...";
