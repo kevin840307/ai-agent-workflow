@@ -15,14 +15,16 @@ export function createEvents(ctx) {
       ui.on("messageInput", "keydown", (event) => {
         if (event.key === "Enter" && event.ctrlKey && !ui.byKey("runWorkflow").disabled) {
           event.preventDefault();
-          ctx.features.runs.start();
+          ctx.features.chat.submit();
         }
       });
       ui.on("qwenAuthType", "change", () => ctx.features.config.saveQwenConfig());
       ui.on("qwenReuseSession", "change", () => ctx.features.config.saveQwenConfig());
       ui.on("maxRetries", "change", () => ctx.features.config.saveQwenConfig());
       ui.on("saveRequirement", "click", () => ctx.features.requirements.save());
-      ui.on("runWorkflow", "click", () => ctx.features.runs.start());
+      ui.on("runWorkflow", "click", () => ctx.features.chat.submit());
+      ui.on("modeWorkflow", "click", () => ctx.features.chat.setMode("workflow"));
+      ui.on("modeChat", "click", () => ctx.features.chat.setMode("chat"));
       ui.on("retryRun", "click", () => ctx.features.runs.retry());
       ui.on("addGuidance", "click", () => ctx.features.runs.addGuidance());
       ui.on("newProject", "click", () => ctx.features.sessions.create());

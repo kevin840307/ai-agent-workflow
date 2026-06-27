@@ -1,5 +1,6 @@
 import { createAppContext } from "../core/context.js";
 import { createArtifacts } from "../features/artifacts.js";
+import { createChat } from "../features/chat.js";
 import { createComposer } from "../features/composer.js";
 import { createConfig } from "../features/config.js";
 import { createConsole } from "../features/console.js";
@@ -16,6 +17,7 @@ import { createSessions } from "../features/sessions.js";
 function registerWorkflowRunnerFeatures(ctx) {
   ctx.features.layout = createLayout(ctx);
   ctx.features.modal = createModal(ctx);
+  ctx.features.chat = createChat(ctx);
   ctx.features.composer = createComposer(ctx);
   ctx.features.console = createConsole(ctx);
   ctx.features.messages = createMessages(ctx);
@@ -44,6 +46,7 @@ export function initWorkflowRunnerPage() {
     ctx.ui.byKey("runStatusMeta").textContent = "Load failed";
   });
   ctx.features.composer.autoResize();
+  ctx.features.chat.setMode("workflow");
   ctx.features.composer.updateModeLabel();
 
   return ctx;

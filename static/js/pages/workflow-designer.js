@@ -1,11 +1,12 @@
-const STORAGE_KEY = "qwenWorkflow.workflowDesigner.v1";
+const STORAGE_KEY = "qwenWorkflow.workflowDesigner.ui.v1";
+const WORKFLOW_API = "/api/workflows";
 
 const StepTypes = [
-  ["ai", "AI Step"],
-  ["validation", "Validation"],
+  ["ai", "AI Prompt"],
+  ["validation", "Validation Function"],
   ["review", "Review"],
-  ["gate", "Gate"],
-  ["command", "Command"],
+  ["gate", "Human Gate"],
+  ["command", "Command Prompt"],
   ["python", "Python Function"],
   ["manual", "Manual Approval"],
 ];
@@ -25,6 +26,45 @@ const ReviewModes = [
   ["new_agent", "New Agent Review"],
   ["multi_agent", "Multi-Agent Review"],
 ];
+
+function functionOptions(groupName, fallbackItems, selected) {
+  const items = availableWorkflowFunctions[groupName] || [];
+  if (!items.length) return options(fallbackItems, selected);
+  const normalized = items.map((item) => [item.id, item.label || item.id]);
+  if (selected && !normalized.some(([value]) => String(value) === String(selected))) {
+    normalized.unshift([selected, `${selected} (custom)`]);
+  }
+  return options(groupName === "validators" || groupName === "aggregators" ? [["", "None"], ...normalized] : normalized, selected);
+}
+
+function functionMeta(groupName, selected) {
+  const items = availableWorkflowFunctions[groupName] || [];
+  return items.find((item) => String(item.id) === String(selected)) || null;
+}
+
+function functionHelp(groupName, selected, emptyText = "Select a backend function.") {
+  const meta = functionMeta(groupName, selected);
+  if (!selected) {
+    return `<div class="designer-function-help"><strong>No function selected</strong><span>${escapeHtml(emptyText)}</span></div>`;
+  }
+  if (!meta) {
+    return `<div class="designer-function-help"><strong>${escapeHtml(selected)}</strong><span>Custom function id. Make sure the backend knows how to execute it.</span></div>`;
+  }
+  return `
+    <div class="designer-function-help">
+      <strong>${escapeHtml(meta.label || meta.id)}</strong>
+      <span>${escapeHtml(meta.description || "No description provided by backend.")}</span>
+    </div>
+  `;
+}
+
+function workflowFunctionCounts() {
+  return {
+    validators: (availableWorkflowFunctions.validators || []).length,
+    reviewStrategies: (availableWorkflowFunctions.reviewStrategies || []).length,
+    aggregators: (availableWorkflowFunctions.aggregators || []).length,
+  };
+}
 
 const FailActions = [
   ["same_step", "Retry same step"],
@@ -122,7 +162,7 @@ Spec:
   },
 };
 
-const systemWorkflow = Object.freeze({
+let systemWorkflow = Object.freeze({
   id: "system-controlled-qwen",
   kind: "system",
   name: "Controlled Qwen Workflow",
@@ -133,12 +173,12 @@ const systemWorkflow = Object.freeze({
   steps: [
     createStep({ name: "Prepare Project", key: "prepare_project", type: "python", description: "Prepare project context and files.", expectedFiles: ["context/project.md"] }),
     createStep({ name: "Generate Spec", key: "generate_spec", type: "ai", command: "/spec", sources: [{ type: "command", value: "/spec" }, { type: "skill_path", value: "skills/spec.md" }], expectedFiles: ["output/spec.md"] }),
-    createStep({ name: "Validate Spec", key: "validate_spec", type: "validation", validator: "functions/validate_spec.py", expectedFiles: ["output/spec.md"] }),
+    createStep({ name: "Validate Spec", key: "validate_spec", type: "validation", validator: "validate_spec", expectedFiles: ["output/spec.md"] }),
     createStep({ name: "Review Spec", key: "review_spec", type: "review", reviewMode: "current_session", command: "", passKeywords: "PASS, APPROVED", failKeywords: "FAIL, BLOCKED" }),
     createStep({ name: "Spec Gate", key: "spec_gate", type: "gate", pauseAfterStep: true, approvalRequired: true, approvalMessage: "Review output/spec.md before continuing." }),
     createStep({ name: "Generate Todo", key: "generate_todo", type: "ai", command: "/plan", sources: [{ type: "command", value: "/plan" }, { type: "artifact", value: "output/spec.md" }], expectedFiles: ["output/todo.md"] }),
     createStep({ name: "Build", key: "build", type: "ai", sources: [{ type: "prompt_file", value: "prompts/build.md" }], expectedFiles: ["build_result.md"] }),
-    createStep({ name: "Run Test", key: "run_test", type: "python", validator: "functions/run_tests.py", expectedFiles: ["test_result.md"] }),
+    createStep({ name: "Run Test", key: "run_test", type: "python", validator: "run_pytest", expectedFiles: ["test_result.md"] }),
     createStep({ name: "Final Review", key: "final_review", type: "review", reviewMode: "multi_agent", reviewers: [{ agent: "qwen-reviewer", prompt: "prompts/final_review.md", weight: 1 }], confidenceThreshold: 0.75 }),
     createStep({ name: "Final Gate", key: "final_gate", type: "gate", pauseAfterStep: true, approvalRequired: true }),
   ],
@@ -149,6 +189,8 @@ let state = {
   selectedWorkflowId: systemWorkflow.id,
   selectedStepId: systemWorkflow.steps[0].id,
   activeTab: "basic",
+  apiLoaded: false,
+  apiError: "",
 };
 
 let templateEditorDraft = null;
@@ -156,6 +198,7 @@ let templateEditorOriginal = null;
 let importWorkflowDraft = null;
 let workflowDirty = false;
 let pendingWorkflowAction = null;
+let availableWorkflowFunctions = { validators: [], reviewStrategies: [], aggregators: [] };
 
 function createStep(overrides = {}) {
   const id = overrides.id || makeId("step");
@@ -213,22 +256,37 @@ function createWorkflow(overrides = {}) {
   };
 }
 
-function initWorkflowDesignerPage() {
-  loadState();
+async function initWorkflowDesignerPage() {
+  await loadState();
   bindEvents();
   render();
 }
 
-function loadState() {
+async function loadState() {
   const saved = readStorage();
-  state.workflows = Array.isArray(saved.workflows) ? saved.workflows.map(normalizeWorkflow) : [];
+  let payload = null;
+  try {
+    payload = await designerApi(WORKFLOW_API);
+    state.apiLoaded = true;
+    state.apiError = "";
+  } catch (error) {
+    state.apiLoaded = false;
+    state.apiError = error.message;
+    toast(`Could not load workflows from API: ${error.message}`);
+  }
+  if (payload?.system) {
+    systemWorkflow = Object.freeze(normalizeWorkflow(payload.system));
+  }
+  availableWorkflowFunctions = payload?.functions || availableWorkflowFunctions;
+  state.workflows = Array.isArray(payload?.custom) ? payload.custom.map(normalizeWorkflow) : [];
   if (!state.workflows.length) {
-    state.workflows = [duplicateSystemWorkflow("My Controlled Workflow")];
+    state.workflows = [];
   }
   state.selectedWorkflowId = saved.selectedWorkflowId || state.workflows[0]?.id || systemWorkflow.id;
   const selected = getSelectedWorkflow();
   state.selectedStepId = saved.selectedStepId || selected?.steps?.[0]?.id || null;
   state.activeTab = saved.activeTab || "basic";
+  workflowDirty = false;
 }
 
 function bindEvents() {
@@ -246,8 +304,7 @@ function bindEvents() {
   on("designerNewWorkflowMini", "click", createNewWorkflow);
   on("designerAddStep", "click", addStep);
   on("designerSaveDraft", "click", () => {
-    saveState();
-    toast("Workflow draft saved locally.");
+    saveState().then(() => toast("Workflow saved to API."));
   });
   on("designerResetDraft", "click", () => {
     const wf = getSelectedWorkflow();
@@ -298,6 +355,7 @@ function handleDocumentClick(event) {
 
   const tab = event.target.closest("[data-designer-tab]");
   if (tab) {
+    if (tab.hidden) return;
     state.activeTab = tab.dataset.designerTab;
     saveUiState();
     renderSettings();
@@ -402,10 +460,16 @@ function updateFromInput(input) {
 
   if (input.dataset.stepField && step) {
     step[input.dataset.stepField] = value;
+    if (input.dataset.stepField === "type") {
+      applyStepTypeDefaults(step);
+      renderWorkflowViewOnly();
+      renderSettings();
+      renderTabs();
+    }
     if (input.dataset.stepField === "templateContent") {
       renderPromptDiagnostics(step);
     }
-    if (input.dataset.stepField === "name" || input.dataset.stepField === "templatePath" || input.dataset.stepField === "filename" || input.dataset.stepField === "outputFile") renderWorkflowViewOnly();
+    if (["name", "templatePath", "filename", "outputFile", "validator", "reviewMode", "aggregatorFunction"].includes(input.dataset.stepField)) renderWorkflowViewOnly();
     markWorkflowDirty();
     return;
   }
@@ -427,12 +491,26 @@ function updateFromInput(input) {
 
 function render() {
   renderSidebar();
+  renderBackendStatus();
   renderWorkflowLabels();
   renderWorkflowDirtyState();
   renderWorkflowEditor();
   renderWorkflowViewOnly();
   renderTabs();
   renderSettings();
+}
+
+function renderBackendStatus() {
+  const target = el("designerBackendStatus");
+  if (!target) return;
+  const counts = workflowFunctionCounts();
+  if (!state.apiLoaded) {
+    target.textContent = `API unavailable${state.apiError ? `: ${state.apiError}` : ""}`;
+    target.classList.add("error");
+    return;
+  }
+  target.classList.remove("error");
+  target.textContent = `API loaded: ${counts.validators} validators, ${counts.reviewStrategies} reviews, ${counts.aggregators} aggregators`;
 }
 
 function renderSidebar() {
@@ -454,7 +532,7 @@ function renderWorkflowLabels() {
   const readonly = isReadonly();
 
   setText("designerActiveWorkflowName", wf.name);
-  setText("designerActiveWorkflowMeta", readonly ? "System · read only · duplicate to edit" : `${wf.steps.length} steps · editable local draft`);
+  setText("designerActiveWorkflowMeta", readonly ? "System · read only · duplicate to edit" : `${wf.steps.length} steps · editable API workflow · ${wf.folderName || "new folder"}`);
   setText("designerEditableBadge", readonly ? "READ ONLY" : "EDITABLE");
   el("designerEditableBadge")?.classList.toggle("passed", !readonly);
   el("designerEditableBadge")?.classList.toggle("cancelled", readonly);
@@ -474,6 +552,79 @@ function renderWorkflowLabels() {
   if (el("designerDuplicateCustomWorkflow")) el("designerDuplicateCustomWorkflow").disabled = readonly;
   if (el("designerDeleteWorkflow")) el("designerDeleteWorkflow").disabled = readonly;
 }
+
+function renderSidebarClean() {
+  const customList = el("designerCustomList");
+  if (!customList) return;
+
+  el("designerSystemWorkflow")?.classList.toggle("active", state.selectedWorkflowId === systemWorkflow.id);
+  customList.innerHTML = state.workflows.map((workflow) => `
+    <div class="designer-workflow-pill ${workflow.id === state.selectedWorkflowId ? "active" : ""}" data-workflow-id="${escapeHtml(workflow.id)}">
+      <strong>${escapeHtml(workflow.name)}</strong>
+      <span>${workflow.steps.length} steps · ${workflow.active ? "active" : "draft"}</span>
+    </div>
+  `).join("");
+}
+
+function renderWorkflowLabelsClean() {
+  const wf = getSelectedWorkflow();
+  if (!wf) return;
+  const readonly = isReadonly();
+
+  setText("designerActiveWorkflowName", wf.name);
+  setText(
+    "designerActiveWorkflowMeta",
+    readonly
+      ? "System · read only · runner default"
+      : `${wf.steps.length} steps · editable API workflow · ${wf.folderName || "new folder"} · runner selection not wired yet`
+  );
+  setText("designerEditableBadge", readonly ? "READ ONLY" : "EDITABLE");
+  el("designerEditableBadge")?.classList.toggle("passed", !readonly);
+  el("designerEditableBadge")?.classList.toggle("cancelled", readonly);
+  const input = el("workflowNameInput");
+  if (input && input.value !== wf.name) input.value = wf.name;
+  if (input) input.disabled = readonly;
+  setText("designerWorkflowLockHint", readonly ? "Read only" : "Editable");
+  el("designerWorkflowLockHint")?.classList.toggle("locked", readonly);
+
+  if (el("designerSaveDraft")) el("designerSaveDraft").disabled = readonly;
+  if (el("designerResetDraft")) el("designerResetDraft").disabled = readonly;
+  if (el("designerDuplicateCustomWorkflow")) el("designerDuplicateCustomWorkflow").disabled = readonly;
+  if (el("designerDeleteWorkflow")) el("designerDeleteWorkflow").disabled = readonly;
+}
+
+function renderStepListClean() {
+  const wf = getSelectedWorkflow();
+  const list = el("designerStepList");
+  if (!wf || !list) return;
+  const readonly = isReadonly();
+
+  if (!wf.steps.length) {
+    list.innerHTML = `<div class="designer-empty-state">No steps yet. Add a step to start designing.</div>`;
+    return;
+  }
+
+  list.innerHTML = wf.steps.map((step, index) => `
+    <button class="designer-step-card ${step.id === state.selectedStepId ? "active" : ""} ${step.enabled ? "" : "disabled-step"}" data-step-id="${escapeHtml(step.id)}">
+      <span class="designer-step-card-title">
+        <strong>${index + 1}. ${escapeHtml(step.name)}</strong>
+        <span class="designer-step-type ${escapeHtml(step.type)}">${escapeHtml(formatStepType(step.type))}</span>
+      </span>
+      <span class="designer-step-meta">${escapeHtml(summarizeStep(step))}</span>
+      <span class="designer-chip-row">
+        ${step.timeoutEnabled ? `<span class="badge running">${step.timeoutMinutes || 0}m timeout</span>` : `<span class="badge">no timeout</span>`}
+        ${step.pauseAfterStep ? `<span class="badge waiting_input">human gate</span>` : ""}
+        ${step.validator ? `<span class="badge passed">${escapeHtml(functionMeta("validators", step.validator)?.label || step.validator)}</span>` : ""}
+        ${step.reviewMode !== "none" ? `<span class="badge passed">${escapeHtml(formatReviewMode(step.reviewMode))}</span>` : ""}
+      </span>
+      ${readonly ? "" : `<span class="designer-step-meta">Click to edit. Use Settings panel for actions.</span>`}
+    </button>
+  `).join("");
+}
+
+renderSidebar = renderSidebarClean;
+renderWorkflowLabels = renderWorkflowLabelsClean;
+renderStepList = renderStepListClean;
 
 function renderWorkflowEditor() {
   const wf = getSelectedWorkflow();
@@ -547,9 +698,68 @@ function renderCanvas() {
 }
 
 function renderTabs() {
+  const step = getSelectedStep();
+  const validTabs = new Set(tabsForStep(step));
   document.querySelectorAll(".designer-tab").forEach((tab) => {
+    tab.hidden = false;
+    tab.classList.toggle("irrelevant", !validTabs.has(tab.dataset.designerTab));
     tab.classList.toggle("active", tab.dataset.designerTab === state.activeTab);
   });
+}
+
+function tabsForStep(step) {
+  if (!step) return ["basic"];
+  const byType = {
+    ai: ["basic", "sources", "retry", "advanced"],
+    command: ["basic", "sources", "retry", "advanced"],
+    validation: ["basic", "retry", "advanced"],
+    python: ["basic", "retry", "advanced"],
+    review: ["basic", "review", "retry", "advanced"],
+    gate: ["basic", "gate", "advanced"],
+    manual: ["basic", "gate", "advanced"],
+  };
+  return byType[step.type] || ["basic", "advanced"];
+}
+
+function ensureActiveTabForStep(step) {
+  const tabs = tabsForStep(step);
+  if (!tabs.includes(state.activeTab)) state.activeTab = tabs[0] || "basic";
+}
+
+function applyStepTypeDefaults(step) {
+  if (!step) return;
+  if (step.type === "validation") {
+    step.validator = step.validator || "validate_spec";
+    step.reviewMode = "none";
+    step.command = "";
+    step.pauseAfterStep = false;
+    step.approvalRequired = false;
+  }
+  if (step.type === "python") {
+    step.validator = step.validator || "run_pytest";
+    step.reviewMode = "none";
+    step.command = "";
+  }
+  if (step.type === "review") {
+    step.reviewMode = step.reviewMode === "none" ? "current_session" : step.reviewMode;
+    step.aggregatorFunction = step.aggregatorFunction || "keyword_confidence";
+  }
+  if (step.type === "gate" || step.type === "manual") {
+    step.pauseAfterStep = true;
+    step.approvalRequired = true;
+    step.reviewMode = "none";
+    step.command = "";
+  }
+  if (step.type === "ai") {
+    step.validator = "";
+    step.reviewMode = "none";
+    step.command = step.command || "";
+  }
+  if (step.type === "command") {
+    step.validator = "";
+    step.reviewMode = "none";
+    step.command = step.command || "custom";
+  }
 }
 
 function renderSettings() {
@@ -564,6 +774,10 @@ function renderSettings() {
   const readonly = isReadonly();
   const disabled = readonly ? "disabled" : "";
   const tab = state.activeTab;
+  if (!tabsForStep(step).includes(tab)) {
+    target.innerHTML = renderIrrelevantTab(step, tab);
+    return;
+  }
 
   if (tab === "basic") target.innerHTML = renderBasic(step, disabled, readonly);
   if (tab === "sources") target.innerHTML = renderSources(step, disabled, readonly);
@@ -571,6 +785,23 @@ function renderSettings() {
   if (tab === "retry") target.innerHTML = renderRetry(step, disabled, readonly);
   if (tab === "gate") target.innerHTML = renderGate(step, disabled, readonly);
   if (tab === "advanced") target.innerHTML = renderAdvanced(step, disabled, readonly);
+}
+
+function renderIrrelevantTab(step, tab) {
+  const tabLabel = {
+    sources: "Prompt",
+    review: "Review",
+    retry: "Retry",
+    gate: "Gate",
+    advanced: "Advanced",
+    basic: "Basic",
+  }[tab] || tab;
+  return `
+    <div class="designer-runner-note">
+      <strong>${escapeHtml(tabLabel)} is not typical for ${escapeHtml(formatStepType(step.type))}</strong>
+      <span>Use Basic for the main ${escapeHtml(formatStepType(step.type))} settings. The tabs stay visible so the layout does not jump while you move between steps.</span>
+    </div>
+  `;
 }
 
 function renderBasic(step, disabled, readonly) {
@@ -585,6 +816,7 @@ function renderBasic(step, disabled, readonly) {
           ${options(StepTypes, step.type)}
         </select>
       </label>
+      ${renderBasicTypeConfig(step, disabled)}
       ${textareaRow("Description", "description", step.description, disabled)}
       ${switchRow("Enabled", "Turn this step on/off without deleting it.", "enabled", step.enabled, disabled)}
       <div class="designer-footer-actions">
@@ -593,6 +825,59 @@ function renderBasic(step, disabled, readonly) {
         <button data-designer-action="duplicate-step" data-step-id="${escapeHtml(step.id)}" ${disabled}>Duplicate</button>
         <button class="designer-danger" data-designer-action="delete-step" data-step-id="${escapeHtml(step.id)}" ${disabled}>Delete</button>
       </div>
+    </div>
+  `;
+}
+
+function renderBasicTypeConfig(step, disabled) {
+  if (step.type === "validation" || step.type === "python") {
+    return `
+      <label class="designer-form-row">
+        <span class="designer-label">${step.type === "python" ? "Python Function" : "Validation Function"}</span>
+        <select class="designer-select" data-step-field="validator" ${disabled}>
+          ${functionOptions("validators", [["", "None"], ["validate_spec", "Validate Spec"], ["validate_todo", "Validate Todo"], ["run_pytest", "Run Pytest"]], step.validator)}
+        </select>
+      </label>
+      ${functionHelp("validators", step.validator, "Choose the Python function this step should run.")}
+      ${expectedFilesPreview(step)}
+    `;
+  }
+  if (step.type === "review") {
+    return `
+      <label class="designer-form-row">
+        <span class="designer-label">Review Strategy</span>
+        <select class="designer-select" data-step-field="reviewMode" ${disabled}>
+          ${functionOptions("reviewStrategies", ReviewModes, step.reviewMode)}
+        </select>
+      </label>
+      ${functionHelp("reviewStrategies", step.reviewMode, "Choose how this review step should run.")}
+    `;
+  }
+  if (step.type === "gate" || step.type === "manual") {
+    return `
+      <div class="designer-runner-note">
+        <strong>Human gate</strong>
+        <span>This step pauses the workflow and waits for a user decision before continuing.</span>
+      </div>
+    `;
+  }
+  if (step.type === "ai" || step.type === "command") {
+    return `
+      <div class="designer-runner-note">
+        <strong>${step.type === "ai" ? "AI prompt step" : "Command step"}</strong>
+        <span>Use the Prompt tab to choose slash commands, skills, prompt files, and output filename.</span>
+      </div>
+    `;
+  }
+  return "";
+}
+
+function expectedFilesPreview(step) {
+  const files = Array.isArray(step.expectedFiles) ? step.expectedFiles.filter(Boolean) : [];
+  return `
+    <div class="designer-function-help">
+      <strong>Expected files</strong>
+      <span>${files.length ? files.map(escapeHtml).join(", ") : "No expected files configured."}</span>
     </div>
   `;
 }
@@ -669,7 +954,7 @@ function renderReview(step, disabled, readonly) {
       <label class="designer-form-row">
         <span class="designer-label">Review Strategy</span>
         <select class="designer-select" data-step-field="reviewMode" ${disabled}>
-          ${options(ReviewModes, step.reviewMode)}
+          ${functionOptions("reviewStrategies", ReviewModes, step.reviewMode)}
         </select>
       </label>
       <div class="designer-list-editor">
@@ -691,7 +976,13 @@ function renderReview(step, disabled, readonly) {
       ${numberRow("Confidence Threshold", "confidenceThreshold", step.confidenceThreshold, disabled, "0", "1", "0.01")}
       ${inputRow("Pass Keywords", "passKeywords", step.passKeywords, disabled)}
       ${inputRow("Fail Keywords", "failKeywords", step.failKeywords, disabled)}
-      ${inputRow("Python Aggregator", "aggregatorFunction", step.aggregatorFunction, disabled, "functions/review_aggregate.py")}
+      <label class="designer-form-row">
+        <span class="designer-label">Python Aggregator</span>
+        <select class="designer-select" data-step-field="aggregatorFunction" ${disabled}>
+          ${functionOptions("aggregators", [["", "None"], ["keyword_confidence", "Keyword + Confidence"]], step.aggregatorFunction)}
+        </select>
+      </label>
+      ${functionHelp("aggregators", step.aggregatorFunction, "Optional aggregation function for multi-agent or keyword-based review results.")}
       <div class="designer-form-hint">Use confidence, keywords, pass count, and Python aggregator to make the final pass/fail decision.</div>
     </div>
   `;
@@ -741,7 +1032,13 @@ function renderAdvanced(step, disabled, readonly) {
       ${switchRow("Enable Timeout", "Timeout counts as failure and follows retry policy.", "timeoutEnabled", step.timeoutEnabled, disabled)}
       ${numberRow("Timeout Minutes", "timeoutMinutes", step.timeoutMinutes, disabled, "0", "1440", "1")}
       ${switchRow("Allow Interaction", "Qwen can pause and ask the user questions.", "allowInteraction", step.allowInteraction, disabled)}
-      ${inputRow("Python Validator", "validator", step.validator, disabled, "functions/validate_step.py")}
+      <label class="designer-form-row">
+        <span class="designer-label">Python Validator</span>
+        <select class="designer-select" data-step-field="validator" ${disabled}>
+          ${functionOptions("validators", [["", "None"], ["validate_spec", "Validate Spec"], ["validate_todo", "Validate Todo"], ["run_pytest", "Run Pytest"]], step.validator)}
+        </select>
+      </label>
+      ${functionHelp("validators", step.validator, "Optional validator used by validation and Python function steps.")}
       <div class="designer-list-editor">
         <div class="designer-section-row">
           <span class="designer-label">Expected Files</span>
@@ -823,9 +1120,11 @@ function normalizeWorkflow(workflow) {
 
 function normalizeStep(step) {
   const base = createStep(step || {});
+  const type = inferStepType(step || base);
   return {
     ...base,
     ...step,
+    type,
     sources: clone(step?.sources || base.sources || []),
     reviewers: clone(step?.reviewers || base.reviewers || []),
     expectedFiles: clone(step?.expectedFiles || base.expectedFiles || []),
@@ -833,7 +1132,27 @@ function normalizeStep(step) {
     filename: step?.filename || normalizeFilename(step?.outputFile || base.filename || base.outputFile),
     outputFile: step?.outputFile || base.outputFile || "",
     templateContent: step?.templateContent || base.templateContent,
+    validator: normalizeFunctionId(step?.validator || base.validator || ""),
   };
+}
+
+function inferStepType(step) {
+  if (!step) return "ai";
+  if (step.type === "ai" && step.reviewMode && step.reviewMode !== "none") return "review";
+  if (step.type === "ai" && String(step.key || "").includes("review")) return "review";
+  return step.type || "ai";
+}
+
+function normalizeFunctionId(value = "") {
+  const raw = String(value || "").trim();
+  const aliases = {
+    "functions/validate_spec.py": "validate_spec",
+    "functions/validate_todo.py": "validate_todo",
+    "functions/run_tests.py": "run_pytest",
+    "functions/run_pytest.py": "run_pytest",
+    "functions/validate.py": "validate_spec",
+  };
+  return aliases[raw] || raw;
 }
 
 function defaultTemplatePath(overrides = {}) {
@@ -1299,26 +1618,31 @@ function deleteWorkflow(workflowId) {
   if (!workflow) return;
   openDeleteConfirm({
     title: "Delete workflow?",
-    message: `${workflow.name} will be removed from local drafts. This action cannot be undone.`,
+    message: `${workflow.name} will be removed from the workflow config API and its workflow folder. This action cannot be undone.`,
     confirmLabel: "Delete Workflow",
     action: "confirm-delete-workflow",
     workflowId,
   });
 }
 
-function performDeleteWorkflow(workflowId) {
+async function performDeleteWorkflow(workflowId) {
   const index = state.workflows.findIndex((item) => item.id === workflowId);
   if (index < 0) return closeConfirm();
-  state.workflows.splice(index, 1);
-  if (state.selectedWorkflowId === workflowId) {
-    const next = state.workflows[0] || systemWorkflow;
-    state.selectedWorkflowId = next.id;
-    state.selectedStepId = next.steps?.[0]?.id || null;
+  try {
+    await designerApi(`${WORKFLOW_API}/${encodeURIComponent(workflowId)}`, { method: "DELETE" });
+    state.workflows.splice(index, 1);
+    if (state.selectedWorkflowId === workflowId) {
+      const next = state.workflows[0] || systemWorkflow;
+      state.selectedWorkflowId = next.id;
+      state.selectedStepId = next.steps?.[0]?.id || null;
+    }
+    closeConfirm();
+    saveUiState();
+    render();
+    toast("Workflow deleted.");
+  } catch (error) {
+    toast(`Could not delete workflow: ${error.message}`);
   }
-  closeConfirm();
-  saveState();
-  render();
-  toast("Workflow deleted from local drafts.");
 }
 
 function deleteStep(stepId) {
@@ -1682,18 +2006,23 @@ function isReadonly() {
   return state.selectedWorkflowId === systemWorkflow.id;
 }
 
-function saveState(options = {}) {
+async function saveState(options = {}) {
   try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify({
-      workflows: state.workflows,
-      selectedWorkflowId: state.selectedWorkflowId,
-      selectedStepId: state.selectedStepId,
-      activeTab: state.activeTab,
-    }));
+    const workflow = getSelectedWorkflow();
+    if (workflow && !isReadonly()) {
+      const saved = await designerApi(`${WORKFLOW_API}/${encodeURIComponent(workflow.id)}`, {
+        method: "PUT",
+        body: JSON.stringify(workflow),
+      });
+      const index = state.workflows.findIndex((item) => item.id === saved.id);
+      if (index >= 0) state.workflows[index] = normalizeWorkflow(saved);
+      state.selectedWorkflowId = saved.id;
+    }
+    saveUiState();
     workflowDirty = false;
     renderWorkflowDirtyState();
   } catch {
-    if (!options.quiet) toast("Could not save local workflow draft.");
+    if (!options.quiet) toast("Could not save workflow to API.");
   }
 }
 
@@ -1702,9 +2031,9 @@ function saveUiState() {
     const saved = readStorage();
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify({
       ...saved,
-      selectedWorkflowId: state.selectedWorkflowId,
       selectedStepId: state.selectedStepId,
       activeTab: state.activeTab,
+      selectedWorkflowId: state.selectedWorkflowId,
     }));
   } catch {
     // UI state persistence is best effort only.
@@ -1771,17 +2100,7 @@ function confirmDiscardWorkflowChanges() {
 }
 
 function reloadSavedWorkflowState() {
-  const saved = readStorage();
-  state.workflows = Array.isArray(saved.workflows) ? saved.workflows.map(normalizeWorkflow) : [];
-  if (!state.workflows.length) {
-    state.workflows = [duplicateSystemWorkflow("My Controlled Workflow")];
-  }
-  state.selectedWorkflowId = saved.selectedWorkflowId || state.workflows[0]?.id || systemWorkflow.id;
-  const selected = getSelectedWorkflow();
-  state.selectedStepId = saved.selectedStepId || selected?.steps?.[0]?.id || null;
-  state.activeTab = saved.activeTab || "basic";
-  workflowDirty = false;
-  render();
+  loadState().then(() => render());
 }
 
 function readStorage() {
@@ -1792,6 +2111,18 @@ function readStorage() {
   }
 }
 
+async function designerApi(path, options = {}) {
+  const response = await fetch(path, {
+    headers: { "Content-Type": "application/json", ...(options.headers || {}) },
+    ...options,
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({ detail: response.statusText }));
+    throw new Error(body.detail || response.statusText);
+  }
+  return response.json();
+}
+
 function readInputValue(input) {
   if (input.type === "checkbox") return input.checked;
   if (input.type === "number") return Number(input.value || 0);
@@ -1800,8 +2131,11 @@ function readInputValue(input) {
 
 function summarizeStep(step) {
   if (step.type === "review") return `${formatReviewMode(step.reviewMode)} · confidence >= ${step.confidenceThreshold}`;
-  if (step.type === "validation") return `Python validator: ${step.validator || "not set"}`;
-  if (step.type === "gate") return step.pauseAfterStep ? "Pause and wait for human approval." : "Gate decision step.";
+  if (step.type === "validation" || step.type === "python") {
+    const meta = functionMeta("validators", step.validator);
+    return `${step.type === "python" ? "Python function" : "Validation function"}: ${meta?.label || step.validator || "not set"}`;
+  }
+  if (step.type === "gate" || step.type === "manual") return step.pauseAfterStep ? "Pause and wait for human approval." : "Gate decision step.";
   if (step.command) return `Command ${step.command} · template ${step.templatePath || "not set"}.`;
   return `${step.templatePath || "no template"} · retry ${step.maxRetries} · ${step.allowInteraction ? "interactive" : "fully automatic"}`;
 }

@@ -167,6 +167,7 @@ body.run-failed .summary > div:last-child {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: nowrap;
   gap: 10px;
   min-width: 0;
 }
@@ -177,6 +178,49 @@ body.run-failed .summary > div:last-child {
   align-items: center;
   gap: 6px;
   min-width: 0;
+}
+
+.composer-left {
+  flex: 1 1 auto;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.composer-left::-webkit-scrollbar { display: none; }
+
+.composer-right {
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+.mode-switch {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel-2);
+}
+
+.mode-option {
+  min-height: 24px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.mode-option.active {
+  background: var(--accent);
+  border: 1px solid var(--accent-dark);
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(15, 118, 110, 0.22);
 }
 
 .composer-mode {
@@ -193,6 +237,7 @@ body.run-failed .summary > div:last-child {
 }
 
 .composer-tool {
+  flex: 0 0 auto;
   min-height: 28px;
   padding: 4px 9px;
   border-radius: 999px;
@@ -256,6 +301,41 @@ body.run-failed .composer-mode {
   color: var(--fail);
 }
 
+body.chat-mode .save-tool,
+body.chat-mode #retryRun,
+body.chat-mode #addGuidance {
+  display: none;
+}
+
+body.chat-mode .message.user::before { content: "User"; }
+
+body.chat-mode .composer-box {
+  border-color: rgba(15, 118, 110, 0.45);
+}
+
+@media (max-width: 1460px) {
+  .composer-shortcut { display: none; }
+}
+
+@media (max-width: 1280px) {
+  .compose-panel { padding-inline: 10px; }
+
+  .composer-box {
+    padding: 8px;
+    border-radius: var(--radius-lg);
+  }
+
+  .composer-left {
+    gap: 5px;
+  }
+
+  .mode-option,
+  .composer-tool,
+  .composer-mode {
+    font-size: 11px;
+  }
+}
+
 /* Details panels */
 .tabs {
   display: grid;
@@ -294,9 +374,9 @@ body.run-failed .composer-mode {
 
 .step {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(112px, 0.7fr) minmax(0, 1fr) auto;
   gap: 8px;
-  align-items: center;
+  align-items: start;
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 10px;
@@ -304,11 +384,18 @@ body.run-failed .composer-mode {
   min-height: 44px;
 }
 
-.step span:first-child { font-weight: 650; }
+.step-title {
+  min-width: 0;
+  padding-top: 3px;
+}
+
+.step-title span:first-child { font-weight: 650; }
 
 .step-actions {
   display: inline-flex;
   align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 6px;
 }
 
@@ -327,11 +414,10 @@ body.run-failed .composer-mode {
 
 .step small {
   display: block;
-  margin-top: 5px;
   color: var(--fail);
   font-size: 12px;
   line-height: 1.35;
-  max-height: 52px;
+  max-height: 58px;
   overflow: auto;
 }
 
@@ -348,6 +434,17 @@ body.run-failed .composer-mode {
 .badge.failed { background: #fee4df; color: var(--fail); }
 .badge.waiting_input { background: #e6f0ff; color: var(--blue); }
 .badge.cancelled { background: #edf0f4; color: #596579; }
+
+@media (max-width: 1320px) {
+  .step {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .step-message {
+    grid-column: 1 / -1;
+    order: 3;
+  }
+}
 
 .console,
 .artifact-content {
@@ -395,4 +492,3 @@ body.run-failed .composer-mode {
   color: var(--accent-dark);
   font-weight: 700;
 }
-

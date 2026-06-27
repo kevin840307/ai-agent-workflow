@@ -21,6 +21,8 @@ export const UI = {
     maxRetries: "maxRetries",
     messageInput: "messageInput",
     messages: "messages",
+    modeChat: "modeChat",
+    modeWorkflow: "modeWorkflow",
     newProject: "newProject",
     progressText: "progressText",
     projectList: "projectList",

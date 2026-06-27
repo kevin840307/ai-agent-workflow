@@ -21,7 +21,11 @@ export function createRuns(ctx) {
       WORKFLOW_STEPS.forEach((title) => {
         const row = document.createElement("div");
         row.className = "step";
-        row.innerHTML = `<div><span>${title}</span></div><div class="step-actions"><span class="badge pending">pending</span></div>`;
+        row.innerHTML = `
+          <div class="step-title"><span>${title}</span></div>
+          <div class="step-message"></div>
+          <div class="step-actions"><span class="badge pending">pending</span></div>
+        `;
         steps.appendChild(row);
       });
     },
@@ -61,7 +65,8 @@ export function createRuns(ctx) {
         const promptArtifact = (run.artifacts || []).find((artifact) => artifact.path === `prompts/${step.key}.md`);
         const promptButton = promptArtifact ? `<button class="mini-button" data-artifact-id="${ui.escapeHtml(promptArtifact.id)}">Prompt</button>` : "";
         row.innerHTML = `
-          <div><span>${ui.escapeHtml(step.title)}</span>${retry}${error}</div>
+          <div class="step-title"><span>${ui.escapeHtml(step.title)}</span>${retry}</div>
+          <div class="step-message">${error}</div>
           <div class="step-actions">
             ${promptButton}
             <button class="mini-button guide-step" data-step-key="${ui.escapeHtml(step.key)}">Guide</button>

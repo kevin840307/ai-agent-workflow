@@ -81,13 +81,16 @@
           <textarea id="messageInput" placeholder="Describe what to build..." rows="2"></textarea>
           <div class="composer-footer">
             <div class="composer-left">
+              <div class="mode-switch" role="group" aria-label="Run mode">
+                <button id="modeWorkflow" class="mode-option active" type="button">Workflow</button>
+                <button id="modeChat" class="mode-option" type="button">Chat</button>
+              </div>
               <span id="composerMode" class="composer-mode">Requirement</span>
               <button id="saveRequirement" class="composer-tool save-tool" title="Save draft" aria-label="Save draft">Save</button>
-              <button id="retryRun" class="composer-tool" title="Retry workflow" aria-label="Retry workflow" disabled>↻ Retry</button>
-              <button id="addGuidance" class="composer-tool" title="Add guidance" aria-label="Add guidance" disabled>＋ Guide</button>
+              <button id="retryRun" class="composer-tool" title="Retry workflow" aria-label="Retry workflow" disabled>↻</button>
+              <button id="addGuidance" class="composer-tool" title="Add guidance" aria-label="Add guidance" disabled>＋</button>
             </div>
             <div class="composer-right">
-              <span class="composer-shortcut">Ctrl + Enter</span>
               <button id="runWorkflow" class="primary send-button" disabled>Run ▶</button>
             </div>
           </div>

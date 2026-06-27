@@ -51,7 +51,13 @@ async def create_workflow_run(session_id: str, body: runtime.CreateRunRequest) -
         return active_run
     requirement = body.requirement
     if not requirement:
-        messages = [msg for msg in data["messages"] if msg["session_id"] == session_id and msg["role"] == "user"]
+        messages = [
+            msg
+            for msg in data["messages"]
+            if msg["session_id"] == session_id
+            and msg["role"] == "user"
+            and msg.get("kind") != "chat"
+        ]
         requirement = messages[-1]["content"] if messages else None
     if not requirement:
         raise HTTPException(status_code=400, detail="Requirement is required")

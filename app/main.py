@@ -5,7 +5,8 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from app import runtime
-from app.controllers import artifact_controller, config_controller, project_controller, workflow_controller
+from app.controllers import artifact_controller, config_controller, project_controller, workflow_config_controller, workflow_controller
+from app.services import workflow_config_service
 
 
 app = FastAPI(title="Qwen Workflow Web MVP")
@@ -16,6 +17,9 @@ async def startup() -> None:
     runtime.ensure_dirs()
     runtime.store.load_sync()
     runtime.mark_interrupted_runs()
+    workflow_config_service.ensure_system_workflow()
+    workflow_config_service.ensure_sample_workflow()
+    runtime.ensure_qwen_serve()
 
 
 @app.get("/")
@@ -30,5 +34,6 @@ app.mount("/static", StaticFiles(directory=runtime.STATIC_DIR), name="static")
 
 app.include_router(config_controller.router)
 app.include_router(project_controller.router)
+app.include_router(workflow_config_controller.router)
 app.include_router(workflow_controller.router)
 app.include_router(artifact_controller.router)

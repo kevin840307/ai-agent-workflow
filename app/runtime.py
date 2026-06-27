@@ -24,7 +24,8 @@ ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = ROOT / "data"
 WORKSPACES_DIR = ROOT / "workspaces"
 STATIC_DIR = ROOT / "static"
-PROMPTS_DIR = ROOT / "prompts"
+WORKFLOW_BUNDLES_DIR = DATA_DIR / "workflows"
+SYSTEM_WORKFLOW_ID = "system-controlled-qwen"
 STORE_FILE = DATA_DIR / "store.json"
 SETTINGS_FILE = DATA_DIR / "settings.json"
 DEFAULT_SKILL_PATH = Path.home() / ".qwen" / "skills"
@@ -89,13 +90,14 @@ class Store:
         self._lock = asyncio.Lock()
 
     def _empty(self) -> dict[str, Any]:
-        return {"sessions": [], "messages": [], "runs": []}
+        return {"sessions": [], "messages": [], "runs": [], "workflow_configs": []}
 
     def load_sync(self) -> dict[str, Any]:
         ensure_dirs()
         if not self.path.exists():
             self.save_sync(self._empty())
         data = json.loads(self.path.read_text(encoding="utf-8-sig"))
+        data.setdefault("workflow_configs", [])
         changed = False
         for session in data.get("sessions", []):
             if not session.get("qwen_session_id"):
@@ -289,14 +291,8 @@ def interaction_instruction() -> str:
     return """Human interaction rule:
 - Ask the user only when progress is genuinely blocked by a missing decision.
 - Do not ask for preferences, nice-to-have details, naming, wording, or choices that can be handled with reasonable assumptions.
-- If the project is empty and no language/runtime/framework is inferable, ask which language or stack to use.
 - If the requested spec is too ambiguous to decide the core scope, user-facing behavior, or success criteria, ask for clarification.
-- If you can complete the artifact with reasonable assumptions, do so and record those assumptions or Unknowns in the artifact.
-- To ask the user, output only this JSON object and no Markdown:
-{"name":"ask_user_question","arguments":{"questions":[{"header":"Short topic","question":"What do you need from the user?"}]}}
-- Ask at most two concise questions at once.
-- After the user replies, their reply will be provided in the next prompt.
-- If you are not asking the user, output only the requested artifact content."""
+- If you can complete the artifact with reasonable assumptions, do so and record those assumptions or Unknowns in the artifact."""
 
 
 def initial_steps() -> list[dict[str, Any]]:
@@ -335,6 +331,13 @@ class EventBus:
 bus = EventBus()
 running_tasks: dict[str, asyncio.Task] = {}
 running_processes: dict[str, asyncio.subprocess.Process] = {}
+qwen_serve_process: subprocess.Popen | None = None
+qwen_serve_status: dict[str, Any] = {
+    "enabled": True,
+    "running": False,
+    "started": False,
+    "error": None,
+}
 
 
 class QwenCliClient:
@@ -479,6 +482,83 @@ class QwenCliClient:
         return stdout
 
 
+def _qwen_serve_command(client: QwenCliClient) -> list[str]:
+    return [client.bin, "serve"]
+
+
+def qwen_serve_disabled() -> bool:
+    return os.environ.get("QWEN_SERVE", "1").lower() in {"0", "false", "no", "off"}
+
+
+def qwen_serve_is_running() -> bool:
+    global qwen_serve_process
+    if qwen_serve_process and qwen_serve_process.poll() is None:
+        return True
+    if os.name != "nt":
+        return False
+    try:
+        script = (
+            "$p = Get-CimInstance Win32_Process | "
+            "Where-Object { "
+            "$_.Name -notmatch 'powershell|python' -and "
+            "$_.CommandLine -match 'qwen' -and "
+            "$_.CommandLine -match 'serve' "
+            "}; "
+            "if ($p) { 'true' } else { 'false' }"
+        )
+        proc = subprocess.run(
+            ["powershell", "-NoProfile", "-Command", script],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        return "true" in proc.stdout.lower()
+    except Exception:
+        return False
+
+
+def ensure_qwen_serve() -> dict[str, Any]:
+    global qwen_serve_process, qwen_serve_status
+    client = QwenCliClient()
+    qwen_serve_status = {
+        "enabled": not qwen_serve_disabled(),
+        "running": False,
+        "started": False,
+        "error": None,
+    }
+    if qwen_serve_status["enabled"] is False:
+        return qwen_serve_status
+    if client.mock:
+        qwen_serve_status.update({"enabled": False, "error": "QWEN_MOCK is enabled."})
+        return qwen_serve_status
+    if shutil.which(client.bin) is None:
+        qwen_serve_status.update({"error": f"Qwen CLI not found: {client.bin}"})
+        return qwen_serve_status
+    if qwen_serve_is_running():
+        qwen_serve_status.update({"running": True})
+        return qwen_serve_status
+    try:
+        creationflags = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
+        command = _qwen_serve_command(client)
+        popen_args: dict[str, Any] = {}
+        if os.name == "nt":
+            command = subprocess.list2cmdline(command)
+            popen_args["shell"] = True
+        qwen_serve_process = subprocess.Popen(
+            command,
+            cwd=str(ROOT),
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            stdin=subprocess.DEVNULL,
+            creationflags=creationflags,
+            **popen_args,
+        )
+        qwen_serve_status.update({"running": True, "started": True})
+    except Exception as exc:
+        qwen_serve_status.update({"error": str(exc)})
+    return qwen_serve_status
+
+
 def qwen_runtime_config() -> dict[str, Any]:
     client = QwenCliClient()
     settings = load_settings()["qwen"]
@@ -496,6 +576,10 @@ def qwen_runtime_config() -> dict[str, Any]:
         "max_retries": int(settings.get("max_retries", 2)),
         "timeout_sec": client.timeout_sec,
         "exists": client.mock or shutil.which(client.bin) is not None,
+        "serve": {
+            **qwen_serve_status,
+            "running": qwen_serve_status.get("running") or qwen_serve_is_running(),
+        },
     }
 
 
@@ -789,8 +873,16 @@ def artifact_record(run_id: str, run_dir: Path, rel_path: str) -> dict[str, Any]
     }
 
 
-def load_prompt(name: str, **values: str) -> str:
-    template = read_text(PROMPTS_DIR / name)
+def workflow_prompt_path(name: str, run: dict[str, Any] | None = None) -> Path:
+    workflow_folder = (run or {}).get("workflow_folder") or (run or {}).get("workflow_id") or SYSTEM_WORKFLOW_ID
+    return WORKFLOW_BUNDLES_DIR / workflow_folder / "prompts" / name
+
+
+def load_prompt(name: str, run: dict[str, Any] | None = None, **values: str) -> str:
+    path = workflow_prompt_path(name, run)
+    if not path.exists():
+        raise WorkflowError(f"Prompt template missing in workflow bundle: {path}")
+    template = read_text(path)
     for key, value in values.items():
         template = template.replace("{{" + key + "}}", value)
     return template
@@ -815,7 +907,7 @@ async def get_run_record(run_id: str) -> dict[str, Any]:
     return run
 
 
-async def append_session_message(session_id: str, role: str, content: str) -> dict[str, Any]:
+async def append_session_message(session_id: str, role: str, content: str, kind: str | None = None) -> dict[str, Any]:
     msg = {
         "id": str(uuid.uuid4()),
         "session_id": session_id,
@@ -823,6 +915,8 @@ async def append_session_message(session_id: str, role: str, content: str) -> di
         "content": content,
         "created_at": utc_now(),
     }
+    if kind:
+        msg["kind"] = kind
 
     def add(data):
         data["messages"].append(msg)
@@ -940,8 +1034,10 @@ async def run_qwen_step(run: dict[str, Any], step_key: str, prompt_name: str, ar
     project_dir = Path(run.get("project_path") or ROOT)
     architecture = read_text(project_dir / "architecture.md")
     skill_context, skill_files = load_skill_context(str(DEFAULT_SKILL_PATH), step_key, requirement)
+    prompt_template = read_text(workflow_prompt_path(prompt_name, run))
     prompt = load_prompt(
         prompt_name,
+        run=run,
         requirement=requirement,
         architecture=architecture,
         project_overview=project_overview(project_dir),
@@ -955,19 +1051,19 @@ async def run_qwen_step(run: dict[str, Any], step_key: str, prompt_name: str, ar
         project_path=run.get("project_path", ""),
         workspace_path=run.get("workspace", ""),
     )
-    if answers.strip() and "{{answers}}" not in read_text(PROMPTS_DIR / prompt_name):
+    if answers.strip() and "{{answers}}" not in prompt_template:
         prompt = (
             f"{prompt}\n\n"
             "User replies from previous workflow interaction:\n\n"
             f"{answers.strip()}\n"
         )
-    if guidance.strip() and "{{guidance}}" not in read_text(PROMPTS_DIR / prompt_name):
+    if guidance.strip() and "{{guidance}}" not in prompt_template:
         prompt = (
             f"{prompt}\n\n"
             "User step guidance added during the workflow:\n\n"
             f"{guidance.strip()}\n"
         )
-    if architecture.strip() and step_key != "prepare_project" and "{{architecture}}" not in read_text(PROMPTS_DIR / prompt_name):
+    if architecture.strip() and step_key != "prepare_project" and "{{architecture}}" not in prompt_template:
         prompt = (
             f"{prompt}\n\n"
             "Current project architecture context from architecture.md:\n\n"
@@ -1152,6 +1248,11 @@ async def build_step(run: dict[str, Any]) -> None:
             "Qwen build output must include FILE/CONTENT/END_FILE blocks."
         )
 
+def format_exception(exc: BaseException) -> str:
+    text = str(exc).strip()
+    if text:
+        return f"{type(exc).__name__}: {text}"
+    return f"{type(exc).__name__}: {exc!r}"
 
 async def execute_workflow(run_id: str, start_index: int = 0) -> None:
     data = await store.read()
@@ -1271,17 +1372,19 @@ async def execute_workflow(run_id: str, start_index: int = 0) -> None:
         await bus.publish(run_id, {"type": "cancelled", "error": "Workflow cancelled by user."})
         raise
     except Exception as exc:
-        await log(run, f"workflow: failed: {exc}")
+        error = format_exception(exc)
+
+        await log(run, f"workflow: failed: {error}")
 
         def fail(r):
             r["status"] = "failed"
-            r["error"] = str(exc)
+            r["error"] = str(error)
             r["ended_at"] = utc_now()
             r["updated_at"] = utc_now()
 
         failed_run = await update_run(run_id, fail)
         write_text(run_dir / ".workflow" / "state.json", json.dumps(failed_run, indent=2, ensure_ascii=False))
         await refresh_artifacts(run_id)
-        await bus.publish(run_id, {"type": "failed", "error": str(exc)})
+        await bus.publish(run_id, {"type": "failed", "error": str(error)})
 
 

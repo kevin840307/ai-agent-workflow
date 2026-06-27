@@ -21,7 +21,18 @@ export function createMessages(ctx) {
       return div;
     },
 
-    async load() {
+    renderEmptyState() {
+      const list = ui.byKey("messages");
+      if (!list || list.querySelector(".message:not(.system)")) return;
+      const empty = list.querySelector(".message.system");
+      if (empty) {
+        empty.textContent = state.runMode === "chat"
+          ? "Ask Qwen anything about this project."
+          : "Describe what you want to build, then run the workflow.";
+      }
+    },
+
+    async load(options = {}) {
       const messages = await api.request(`/api/sessions/${state.activeSessionId}/messages`);
       const list = ui.byKey("messages");
       list.innerHTML = "";
@@ -32,23 +43,33 @@ export function createMessages(ctx) {
       if (!messages.length) {
         const div = document.createElement("div");
         div.className = "message system";
-        div.textContent = "Describe what you want to build, then run the workflow.";
+        div.textContent = state.runMode === "chat"
+          ? "Ask Qwen anything about this project."
+          : "Describe what you want to build, then run the workflow.";
         list.appendChild(div);
       }
 
-      const latest = [...messages].reverse().find((msg) => msg.role === "user");
-      ui.byKey("messageInput").value = latest?.content || "";
+      const latest = [...messages].reverse().find((msg) => (
+        msg.role === "user" && (state.runMode === "chat" || msg.kind !== "chat")
+      ));
+      if (!options.keepDraft) ui.byKey("messageInput").value = state.runMode === "chat" ? "" : (latest?.content || "");
       ctx.features.composer.autoResize();
       list.scrollTop = list.scrollHeight;
     },
 
-    addLocal(content, role = "user") {
+    addLocal(content, role = "user", options = {}) {
       const list = ui.byKey("messages");
+      list.querySelector(".message.system")?.remove();
       const div = document.createElement("div");
       div.className = `message ${role === "user" ? "user" : "assistant"}`;
+      if (options.temporary) div.dataset.temporary = "true";
       div.textContent = content;
       list.appendChild(div);
       list.scrollTop = list.scrollHeight;
+    },
+
+    removeTemporary() {
+      ui.byKey("messages").querySelectorAll("[data-temporary='true']").forEach((node) => node.remove());
     },
 
     renderAsk(text) {

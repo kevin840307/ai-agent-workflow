@@ -30,8 +30,8 @@
   --radius-md: 10px;
   --radius-lg: 14px;
   --radius-xl: 18px;
-  --rail-left: 280px;
-  --rail-right: 520px;
+  --rail-left: clamp(220px, 18vw, 280px);
+  --rail-right: clamp(360px, 32vw, 520px);
   --rail-collapsed: 64px;
   --details-collapsed: 52px;
 }
@@ -90,4 +90,3 @@ h1 {
 
 .primary:hover:not(:disabled) { background: var(--accent-dark); }
 .wide { width: 100%; }
-

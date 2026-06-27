@@ -9,6 +9,8 @@ export const AppState = {
   activeRunStatus: null,
   lastAskText: "",
   currentArtifacts: [],
+  runMode: "workflow",
+  chatBusy: false,
 };
 
 export const WORKFLOW_STEPS = [

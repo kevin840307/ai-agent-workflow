@@ -43,6 +43,7 @@
             <p>Configure custom workflows, prompts, skills, review strategy, retry, timeout, and human gates.</p>
           </div>
           <div class="designer-topbar-actions">
+            <span id="designerBackendStatus" class="designer-api-status">Loading API...</span>
             <button id="designerImportWorkflow">Import JSON</button>
             <button id="designerNewWorkflow" class="primary">＋ New Workflow</button>
           </div>
@@ -86,10 +87,10 @@
                   <button id="designerDeleteWorkflow" class="designer-danger-button">Delete</button>
                 </div>
               </div>
-              <p id="designerActiveWorkflowMeta">Editable · local UI draft</p>
+              <p id="designerActiveWorkflowMeta">Editable · API workflow</p>
               <div class="designer-card-meta-row">
-                <span>Local draft</span>
-                <span>Exportable JSON</span>
+                <span>API-backed</span>
+                <span>Folder-based config</span>
                 <span>User editable</span>
               </div>
             </div>

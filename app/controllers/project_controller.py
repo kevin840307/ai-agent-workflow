@@ -31,3 +31,8 @@ async def list_messages(session_id: str):
 @router.post("/api/sessions/{session_id}/messages")
 async def create_message(session_id: str, body: schemas.CreateMessageRequest):
     return await project_service.create_message(session_id, body)
+
+
+@router.post("/api/sessions/{session_id}/chat")
+async def chat(session_id: str, body: schemas.CreateMessageRequest):
+    return await project_service.chat(session_id, body)

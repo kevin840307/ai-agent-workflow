@@ -249,6 +249,49 @@ body[data-page="workflow-designer"] {
   padding: 8px 10px;
 }
 
+.designer-api-status {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #eef4f2;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.designer-api-status.error {
+  background: #fff7f5;
+  color: var(--fail);
+  border-color: #f5a99e;
+}
+
+.designer-function-help,
+.designer-runner-note {
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: #ffffff;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.designer-function-help strong,
+.designer-runner-note strong {
+  color: var(--text);
+  font-size: 13px;
+}
+
+.designer-tab[hidden] {
+  display: none;
+}
+
 .designer-title-input {
   font-size: 18px;
   font-weight: 760;
@@ -386,6 +429,8 @@ body[data-page="workflow-designer"] {
 .designer-step-type.validation { background: #fff3d8; color: var(--run); }
 .designer-step-type.gate { background: #f4ecff; color: #6d28d9; }
 .designer-step-type.command { background: #edf0f4; color: #596579; }
+.designer-step-type.python { background: #e6f0ff; color: var(--blue); }
+.designer-step-type.manual { background: #f4ecff; color: #6d28d9; }
 
 .designer-tabs {
   display: grid;
@@ -408,6 +453,11 @@ body[data-page="workflow-designer"] {
   background: var(--panel);
   color: var(--accent);
   font-weight: 800;
+}
+
+.designer-tab.irrelevant:not(.active) {
+  color: #9aa3b2;
+  background: #f5f7fa;
 }
 
 .designer-step-settings {

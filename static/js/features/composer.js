@@ -2,12 +2,23 @@ export function createComposer(ctx) {
   const { state, ui } = ctx;
 
   const composer = {
+    clearInput() {
+      const input = ui.byKey("messageInput");
+      if (!input) return;
+      input.value = "";
+      composer.autoResize?.();
+    },
+
     setMode(label = "Requirement") {
       const mode = ui.byKey("composerMode");
       if (mode) mode.textContent = label;
     },
 
     updateModeLabel() {
+      if (state.runMode === "chat") {
+        composer.setMode(state.chatBusy ? "Qwen thinking" : "Chat");
+        return;
+      }
       if (["running", "queued"].includes(state.activeRunStatus)) {
         composer.setMode("Running");
         return;
@@ -37,6 +48,17 @@ export function createComposer(ctx) {
       const input = ui.byKey("messageInput");
       const runButton = ui.byKey("runWorkflow");
       const saveButton = ui.byKey("saveRequirement");
+      if (state.runMode === "chat") {
+        if (input) input.placeholder = "Ask Qwen about this project...";
+        if (runButton) {
+          runButton.textContent = state.chatBusy ? "Wait" : "Send";
+          runButton.disabled = !state.activeSessionId || state.chatBusy;
+        }
+        if (saveButton) saveButton.disabled = true;
+        composer.updateModeLabel();
+        composer.autoResize();
+        return;
+      }
 
       if (waiting && !wasWaiting && input) input.value = "";
       if (input) input.placeholder = waiting ? "Reply to Qwen and continue..." : "Describe what to build...";
@@ -57,6 +79,22 @@ export function createComposer(ctx) {
       const input = ui.byKey("messageInput");
       const runButton = ui.byKey("runWorkflow");
       const saveButton = ui.byKey("saveRequirement");
+      const retryButton = ui.byKey("retryRun");
+      const guidanceButton = ui.byKey("addGuidance");
+
+      if (state.runMode === "chat") {
+        if (input) input.placeholder = "Ask Qwen about this project...";
+        if (runButton) {
+          runButton.textContent = state.chatBusy ? "Wait" : "Send";
+          runButton.disabled = !state.activeSessionId || state.chatBusy;
+        }
+        if (saveButton) saveButton.disabled = true;
+        if (retryButton) retryButton.disabled = true;
+        if (guidanceButton) guidanceButton.disabled = true;
+        composer.updateModeLabel();
+        composer.autoResize();
+        return;
+      }
 
       if (running) {
         if (runButton) {
@@ -84,6 +122,8 @@ export function createComposer(ctx) {
 
       composer.setWaiting(state.waitingForInput);
       if (runButton) runButton.disabled = !state.activeSessionId;
+      if (retryButton) retryButton.disabled = !state.activeRunId || state.activeRunStatus === "running";
+      if (guidanceButton) guidanceButton.disabled = !state.activeRunId;
     },
   };
 

@@ -10,6 +10,9 @@ from app import runtime
 from app.repositories import store_repository
 
 
+CHAT_HISTORY_LIMIT = 16
+
+
 async def create_project(body: runtime.CreateSessionRequest | None = None) -> dict:
     body = body or runtime.CreateSessionRequest()
     session_id = str(uuid.uuid4())
@@ -73,6 +76,7 @@ async def create_message(session_id: str, body: runtime.CreateMessageRequest) ->
         "id": str(uuid.uuid4()),
         "session_id": session_id,
         "role": "user",
+        "kind": "requirement",
         "content": body.content,
         "created_at": runtime.utc_now(),
     }
@@ -88,3 +92,49 @@ async def create_message(session_id: str, body: runtime.CreateMessageRequest) ->
         return msg
 
     return await store_repository.mutate(add)
+
+
+def _chat_prompt(session: dict, history: list[dict], content: str) -> str:
+    lines = [
+        "你現在是一般對話模式，不是在 workflow 模式。",
+        "請直接回覆使用者，不要輸出 FILE/CONTENT/END_FILE 區塊，也不要產生 workflow artifact，除非使用者明確要求。",
+        "預設使用繁體中文回答。",
+        f"Project Path: {session.get('project_path') or runtime.ROOT}",
+        "",
+        "以下是最近對話紀錄：",
+    ]
+    recent = history[-CHAT_HISTORY_LIMIT:]
+    for message in recent:
+        role = "User" if message.get("role") == "user" else "Assistant"
+        lines.append(f"{role}: {message.get('content', '').strip()}")
+    lines.extend(["", f"User: {content.strip()}", "Assistant:"])
+    return "\n".join(lines)
+
+
+async def chat(session_id: str, body: runtime.CreateMessageRequest) -> dict:
+    data = await store_repository.read()
+    session = next((item for item in data["sessions"] if item["id"] == session_id), None)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    history = [msg for msg in data["messages"] if msg["session_id"] == session_id]
+    user_msg = await runtime.append_session_message(session_id, "user", body.content, kind="chat")
+    prompt = _chat_prompt(session, history, body.content)
+    project_path = runtime.resolve_project_path(session.get("project_path"), runtime.ROOT)
+
+    try:
+        answer = await runtime.QwenCliClient().run_stream(
+            prompt,
+            project_path,
+            session.get("qwen_session_id") or session_id,
+        )
+    except runtime.WorkflowError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    assistant_msg = await runtime.append_session_message(
+        session_id,
+        "assistant",
+        answer.strip() or "(Qwen returned no text.)",
+        kind="chat",
+    )
+    return {"user": user_msg, "assistant": assistant_msg}

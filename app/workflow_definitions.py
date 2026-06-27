@@ -58,3 +58,131 @@ RETRY_FROM = {
 
 
 USER_QUESTION_ALLOWED_STEPS = {"prepare_project", "generate_spec", "repair_spec"}
+
+
+def workflow_step_to_config(step: Step) -> dict:
+    step_type = {
+        "qwen": "ai",
+        "validator": "validation",
+        "gate": "gate",
+        "test": "python",
+    }.get(step.kind, step.kind)
+    return {
+        "id": f"system-{step.key}",
+        "key": step.key,
+        "name": step.title,
+        "type": step_type,
+        "enabled": True,
+        "description": "",
+        "command": "",
+        "templatePath": "",
+        "filename": step.artifact or "",
+        "outputFile": step.artifact or "",
+        "templateContent": "",
+        "sources": [],
+        "reviewMode": "current_session" if "review" in step.key else "none",
+        "reviewers": [],
+        "confidenceThreshold": 0.75,
+        "passKeywords": "PASS, APPROVED",
+        "failKeywords": "FAIL, BLOCKED",
+        "aggregatorFunction": "",
+        "maxRetries": 2,
+        "failAction": "same_step",
+        "retryFromStepKey": RETRY_FROM.get(step.key, ""),
+        "keepSameSession": True,
+        "injectFailureFeedback": True,
+        "stopAfterFailures": 3,
+        "pauseAfterStep": step.kind == "gate",
+        "approvalRequired": step.kind == "gate",
+        "approvalMessage": "",
+        "timeoutEnabled": False,
+        "timeoutMinutes": 0,
+        "allowInteraction": step.key in USER_QUESTION_ALLOWED_STEPS,
+        "expectedFiles": [step.artifact] if step.artifact else [],
+        "validator": {
+            "validate_spec": "validate_spec",
+            "validate_todo": "validate_todo",
+            "spec_gate": "require_status_pass",
+            "todo_gate": "require_status_pass",
+            "final_gate": "require_status_pass",
+            "run_test": "run_pytest",
+        }.get(step.key, ""),
+    }
+
+
+def system_workflow_config() -> dict:
+    return {
+        "id": "system-controlled-qwen",
+        "kind": "system",
+        "name": "Controlled Qwen Workflow",
+        "description": "Built-in protected workflow. Duplicate it to create an editable custom workflow.",
+        "active": True,
+        "protected": True,
+        "deletable": False,
+        "skillRoot": str(DEFAULT_SKILL_ROOT_PLACEHOLDER),
+        "promptRoot": "prompts/",
+        "steps": [workflow_step_to_config(step) for step in DEFAULT_WORKFLOW_STEPS],
+    }
+
+
+DEFAULT_SKILL_ROOT_PLACEHOLDER = "~/.qwen/skills"
+
+
+AVAILABLE_WORKFLOW_FUNCTIONS = {
+    "validators": [
+        {
+            "id": "validate_spec",
+            "label": "Validate Spec",
+            "description": "Check required spec sections and AC IDs.",
+        },
+        {
+            "id": "validate_todo",
+            "label": "Validate Todo",
+            "description": "Check todo sections, TEST IDs, and AC coverage.",
+        },
+        {
+            "id": "require_status_pass",
+            "label": "Require Status PASS",
+            "description": "Gate helper for review artifacts that must contain Status: PASS.",
+        },
+        {
+            "id": "run_pytest",
+            "label": "Run Pytest",
+            "description": "Run the configured Python test command.",
+        },
+    ],
+    "reviewStrategies": [
+        {
+            "id": "current_session",
+            "label": "Current Session Review",
+            "description": "Reuse the current Qwen session for review.",
+        },
+        {
+            "id": "new_agent",
+            "label": "New Agent Review",
+            "description": "Run review in a fresh Qwen session.",
+        },
+        {
+            "id": "multi_agent",
+            "label": "Multi-Agent Review",
+            "description": "Run one or more reviewer agents and aggregate their results.",
+        },
+    ],
+    "aggregators": [
+        {
+            "id": "keyword_confidence",
+            "label": "Keyword + Confidence",
+            "description": "Combine pass/fail keywords with a confidence threshold.",
+        },
+        {
+            "id": "majority_vote",
+            "label": "Majority Vote",
+            "description": "Pass when most reviewers pass.",
+        },
+        {
+            "id": "all_must_pass",
+            "label": "All Must Pass",
+            "description": "Pass only when every reviewer passes.",
+        },
+    ],
+}
