@@ -45,14 +45,24 @@ SKILLS_BY_STEP = {
 
 
 RETRY_FROM = {
+    # spec phase
     "prepare_project": "prepare_project",
+    "generate_spec": "generate_spec",
     "validate_spec": "generate_spec",
-    "spec_gate": "review_spec",
+    "review_spec": "generate_spec",
+    "spec_gate": "generate_spec",
+
+    # todo phase
+    "generate_todo": "generate_todo",
     "validate_todo": "generate_todo",
-    "todo_gate": "review_todo",
+    "review_todo": "generate_todo",
+    "todo_gate": "generate_todo",
+
+    # later phases
     "generate_tests": "generate_tests",
     "build": "build",
     "run_test": "build",
+    "final_review": "final_review",
     "final_gate": "final_review",
 }
 

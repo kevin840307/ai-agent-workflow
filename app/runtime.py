@@ -288,11 +288,15 @@ def extract_user_questions(output: str) -> str:
 
 
 def interaction_instruction() -> str:
-    return """Human interaction rule:
-- Ask the user only when progress is genuinely blocked by a missing decision.
-- Do not ask for preferences, nice-to-have details, naming, wording, or choices that can be handled with reasonable assumptions.
-- If the requested spec is too ambiguous to decide the core scope, user-facing behavior, or success criteria, ask for clarification.
-- If you can complete the artifact with reasonable assumptions, do so and record those assumptions or Unknowns in the artifact."""
+    if False:
+        return """Human interaction rule:
+    - 不需要詢問我, 請自行決定."""
+    else:
+        return """Human interaction rule:
+    - Ask the user only when progress is genuinely blocked by a missing decision.
+    - Do not ask for preferences, nice-to-have details, naming, wording, or choices that can be handled with reasonable assumptions.
+    - If the requested spec is too ambiguous to decide the core scope, user-facing behavior, or success criteria, ask for clarification.
+    - If you can complete the artifact with reasonable assumptions, do so and record those assumptions or Unknowns in the artifact."""
 
 
 def initial_steps() -> list[dict[str, Any]]:
@@ -412,73 +416,51 @@ class QwenCliClient:
                     await on_output("stdout", line)
                     await asyncio.sleep(0.02)
             return output
+
         if shutil.which(self.bin) is None:
             raise WorkflowError(f"Qwen CLI not found: {self.bin}. Set QWEN_MOCK=1 for demo mode.")
 
-        proc = await asyncio.create_subprocess_exec(
-            *self.command(qwen_session_id, include_prompt_flag=False),
-            cwd=str(cwd),
-            stdin=asyncio.subprocess.PIPE,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        if run_id:
-            running_processes[run_id] = proc
-        stdout_parts: list[str] = []
-        stderr_parts: list[str] = []
+        def execute() -> subprocess.CompletedProcess:
+            return subprocess.run(
+                self.command(qwen_session_id, include_prompt_flag=False),
+                input=prompt,
+                cwd=str(cwd),
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=timeout_sec or self.timeout_sec,
+            )
 
-        async def read_stream(stream, label: str, parts: list[str]) -> None:
-            while True:
-                raw = await stream.readline()
-                if not raw:
-                    break
-                text = raw.decode("utf-8", errors="replace")
-                parts.append(text)
-                if on_output:
-                    await on_output(label, text.rstrip("\r\n"))
-
-        readers = [
-            asyncio.create_task(read_stream(proc.stdout, "stdout", stdout_parts)),
-            asyncio.create_task(read_stream(proc.stderr, "stderr", stderr_parts)),
-        ]
         try:
-            assert proc.stdin is not None
-            proc.stdin.write(prompt.encode("utf-8"))
-            await proc.stdin.drain()
-            proc.stdin.close()
-            await asyncio.wait_for(proc.wait(), timeout=timeout_sec or self.timeout_sec)
-            await asyncio.gather(*readers)
-        except asyncio.TimeoutError as exc:
-            proc.kill()
-            await proc.wait()
-            for task in readers:
-                task.cancel()
-            raise WorkflowError(f"Qwen CLI timed out after {timeout_sec or self.timeout_sec} seconds.") from exc
-        except asyncio.CancelledError:
-            if proc.returncode is None:
-                proc.terminate()
-                try:
-                    await asyncio.wait_for(proc.wait(), timeout=5)
-                except asyncio.TimeoutError:
-                    proc.kill()
-                    await proc.wait()
-            for task in readers:
-                task.cancel()
-            raise
-        finally:
-            if run_id and running_processes.get(run_id) is proc:
-                running_processes.pop(run_id, None)
+            proc = await asyncio.to_thread(execute)
+        except subprocess.TimeoutExpired as exc:
+            raise WorkflowError(f"Qwen CLI timed out after {exc.timeout} seconds.") from exc
 
-        stdout = "".join(stdout_parts).strip()
-        stderr = "".join(stderr_parts).strip()
+        stdout = (proc.stdout or "").strip()
+        stderr = (proc.stderr or "").strip()
+
+        if on_output:
+            for line in stdout.splitlines():
+                await on_output("stdout", line)
+            for line in stderr.splitlines():
+                await on_output("stderr", line)
+
         if proc.returncode != 0:
             if qwen_session_id and "already in use" in stderr:
                 if on_output:
                     await on_output("stderr", "Qwen session is already in use; retrying this step without --session-id.")
                 return await self.run_stream(prompt, cwd, None, timeout_sec, on_output, run_id)
-            raise WorkflowError(stderr or f"Qwen CLI failed with exit code {proc.returncode}.")
+
+            raise WorkflowError(
+                stderr
+                or stdout
+                or f"Qwen CLI failed with exit code {proc.returncode}, but produced no stdout/stderr."
+            )
+
         if not stdout and stderr:
             raise WorkflowError(stderr)
+
         return stdout
 
 

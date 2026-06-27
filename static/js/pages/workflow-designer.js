@@ -715,8 +715,8 @@ function tabsForStep(step) {
     validation: ["basic", "retry", "advanced"],
     python: ["basic", "retry", "advanced"],
     review: ["basic", "review", "retry", "advanced"],
-    gate: ["basic", "gate", "advanced"],
-    manual: ["basic", "gate", "advanced"],
+    gate: ["basic", "gate", "retry", "advanced"],
+    manual: ["basic", "gate", "retry", "advanced"],
   };
   return byType[step.type] || ["basic", "advanced"];
 }
