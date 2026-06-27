@@ -229,7 +229,7 @@ body.run-waiting .composer-mode {
   color: var(--blue);
 }
 
-/*body.run-waiting .send-button { min-width: 138px; }*/
+body.run-waiting .send-button { min-width: 84px; }
 
 body.run-running .composer-box {
   border-color: #f4c56a;

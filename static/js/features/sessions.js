@@ -87,7 +87,15 @@ export function createSessions(ctx) {
     },
 
     async create() {
-      const projectPath = prompt("Project folder path", "C:\\Users\\kevin\\sort");
+      const projectPath = await ctx.features.modal.openInput({
+        title: "New Project",
+        description: "Create a project session by selecting the source folder Qwen should work with.",
+        label: "Project folder path",
+        defaultValue: "C:\\Users\\kevin\\sort",
+        placeholder: "C:\\Users\\kevin\\sort",
+        hint: "Use an absolute local path. Example: C:\\Users\\kevin\\sort",
+        confirmText: "Create",
+      });
       if (!projectPath) return;
       const session = await api.request("/api/sessions", {
         method: "POST",

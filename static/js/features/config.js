@@ -1,12 +1,18 @@
+import { LocalStore, StorageKeys } from "../core/storage.js";
+
 export function createConfig(ctx) {
   const { api, ui } = ctx;
 
   const configFeature = {
     async load() {
+      const cachedReuse = LocalStore.getBoolean(StorageKeys.qwenReuseSession, null);
+      if (cachedReuse !== null) ui.byKey("qwenReuseSession").checked = cachedReuse;
+
       const config = await api.request("/api/config");
       const qwen = config.qwen;
       ui.byKey("qwenAuthType").value = qwen.auth_type || "";
       ui.byKey("qwenReuseSession").checked = Boolean(qwen.reuse_session);
+      LocalStore.setBoolean(StorageKeys.qwenReuseSession, qwen.reuse_session);
       ui.byKey("maxRetries").value = qwen.max_retries ?? 2;
       configFeature.renderQwenMeta(qwen);
     },
@@ -19,6 +25,7 @@ export function createConfig(ctx) {
     },
 
     async saveQwenConfig() {
+      LocalStore.setBoolean(StorageKeys.qwenReuseSession, ui.byKey("qwenReuseSession").checked);
       const config = await api.request("/api/config/qwen", {
         method: "POST",
         body: JSON.stringify({

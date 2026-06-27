@@ -177,7 +177,15 @@ export function createRuns(ctx) {
         ctx.features.layout.activateTab("logsPanel");
         return;
       }
-      const content = prompt(`Add guidance for ${targetStep}`, "");
+      const content = await ctx.features.modal.openInput({
+        title: "Add Guidance",
+        description: `Guidance will be attached to step: ${targetStep}`,
+        label: "Guidance",
+        placeholder: "Example: Do not guess SQL. Search source code and schema first.",
+        hint: "Ctrl + Enter to confirm. This will not change the API flow.",
+        confirmText: "Save Guidance",
+        multiline: true,
+      });
       if (!content || !content.trim()) return;
       ui.byKey("addGuidance").disabled = true;
       try {

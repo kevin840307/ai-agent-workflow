@@ -13,6 +13,7 @@ css/
   projects.css              # project sidebar
   header.css                # header and settings menu
   workflow-runner.css       # summary, chat, composer, details, artifacts
+  modal.css                 # shared modal dialog
   responsive.css            # collapsed states and responsive rules
 
 js/
@@ -32,6 +33,7 @@ js/
     interactions.js
     layout.js
     messages.js
+    modal.js
     requirements.js
     runs.js
     sessions.js

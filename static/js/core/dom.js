@@ -1,5 +1,16 @@
 export const UI = {
   ids: {
+
+    appModalBackdrop: "appModalBackdrop",
+    modalCancel: "modalCancel",
+    modalClose: "modalClose",
+    modalConfirm: "modalConfirm",
+    modalDescription: "modalDescription",
+    modalHint: "modalHint",
+    modalInput: "modalInput",
+    modalLabel: "modalLabel",
+    modalTextarea: "modalTextarea",
+    modalTitle: "modalTitle",
     addGuidance: "addGuidance",
     artifactContent: "artifactContent",
     artifacts: "artifacts",

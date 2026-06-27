@@ -1,3 +1,3 @@
-// Compatibility entry for environments that still reference /static/app.js.
-// Prefer /static/js/main.js from index.html.
+// Compatibility entry for older templates.
+// The split frontend now starts from /static/js/main.js.
 import "./js/main.js";

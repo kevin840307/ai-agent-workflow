@@ -8,12 +8,14 @@ import { createEventStream } from "../features/event-stream.js";
 import { createInteractions } from "../features/interactions.js";
 import { createLayout } from "../features/layout.js";
 import { createMessages } from "../features/messages.js";
+import { createModal } from "../features/modal.js";
 import { createRequirements } from "../features/requirements.js";
 import { createRuns } from "../features/runs.js";
 import { createSessions } from "../features/sessions.js";
 
 function registerWorkflowRunnerFeatures(ctx) {
   ctx.features.layout = createLayout(ctx);
+  ctx.features.modal = createModal(ctx);
   ctx.features.composer = createComposer(ctx);
   ctx.features.console = createConsole(ctx);
   ctx.features.messages = createMessages(ctx);
@@ -31,7 +33,9 @@ function registerWorkflowRunnerFeatures(ctx) {
 export function initWorkflowRunnerPage() {
   const ctx = registerWorkflowRunnerFeatures(createAppContext());
 
+  ctx.features.modal.bind();
   ctx.features.events.bind();
+  ctx.features.layout.restorePreferences();
   ctx.features.config.load().catch((err) => {
     ctx.ui.byKey("qwenMeta").textContent = err.message;
   });

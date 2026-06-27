@@ -55,9 +55,10 @@ export function createInteractions(ctx) {
           method: "POST",
           body: JSON.stringify({ content }),
         });
-        ui.byKey("messageInput").value = "";
-        ctx.features.composer.autoResize();
-        await ctx.features.messages.load();
+        // Clear immediately after the reply is accepted.
+        // This covers both clicking Reply and pressing Ctrl + Enter.
+        ctx.features.composer.clearInput();
+        await ctx.features.messages.load({ hydrateInput: false });
         interactions.hide();
         await ctx.features.runs.follow(run.id);
       } catch (err) {

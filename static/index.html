@@ -80,8 +80,8 @@
             <div class="composer-left">
               <span id="composerMode" class="composer-mode">Requirement</span>
               <button id="saveRequirement" class="composer-tool save-tool" title="Save draft" aria-label="Save draft">Save</button>
-              <button id="retryRun" class="composer-tool" title="Retry workflow" aria-label="Retry workflow" disabled>↻</button>
-              <button id="addGuidance" class="composer-tool" title="Add guidance" aria-label="Add guidance" disabled>＋</button>
+              <button id="retryRun" class="composer-tool" title="Retry workflow" aria-label="Retry workflow" disabled>↻ Retry</button>
+              <button id="addGuidance" class="composer-tool" title="Add guidance" aria-label="Add guidance" disabled>＋ Guide</button>
             </div>
             <div class="composer-right">
               <span class="composer-shortcut">Ctrl + Enter</span>
@@ -116,6 +116,29 @@
         <pre id="artifactContent" class="artifact-content"></pre>
       </section>
     </aside>
+
+
+
+    <!-- Shared modal: used instead of browser prompt() for workflow inputs -->
+    <div id="appModalBackdrop" class="modal-backdrop" hidden>
+      <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+        <div class="modal-head">
+          <div>
+            <h2 id="modalTitle">Input</h2>
+            <p id="modalDescription"></p>
+          </div>
+          <button id="modalClose" class="modal-close" aria-label="Close dialog">×</button>
+        </div>
+        <label id="modalLabel" class="modal-label" for="modalInput">Value</label>
+        <input id="modalInput" class="modal-input" />
+        <textarea id="modalTextarea" class="modal-textarea" rows="5"></textarea>
+        <div id="modalHint" class="modal-hint"></div>
+        <div class="modal-actions">
+          <button id="modalCancel" class="modal-secondary">Cancel</button>
+          <button id="modalConfirm" class="primary modal-primary">OK</button>
+        </div>
+      </div>
+    </div>
 
     <script type="module" src="/static/js/main.js"></script>
   </body>
