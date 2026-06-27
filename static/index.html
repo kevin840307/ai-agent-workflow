@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Qwen Workflow</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <aside class="projects">
+      <div class="brand">Qwen Workflow</div>
+      <button id="newProject" class="primary wide">New Project</button>
+      <div id="projectList" class="project-list"></div>
+    </aside>
+
+    <main class="workspace">
+      <header class="header">
+        <div class="title-block">
+          <h1 id="sessionTitle">Select a project</h1>
+          <p id="runMeta">No active run</p>
+          <p id="qwenMeta">Checking Qwen...</p>
+        </div>
+        <div class="actions">
+          <label class="setting">
+            Auth
+            <select id="qwenAuthType">
+              <option value="">none</option>
+              <option value="openai">openai</option>
+              <option value="qwen-oauth">qwen-oauth</option>
+              <option value="gemini">gemini</option>
+              <option value="anthropic">anthropic</option>
+              <option value="vertex-ai">vertex-ai</option>
+            </select>
+          </label>
+          <label class="setting">
+            Max Retry
+            <input id="maxRetries" type="number" min="0" max="10" step="1" />
+          </label>
+          <label class="check">
+            <input id="qwenReuseSession" type="checkbox" />
+            Reuse
+          </label>
+        </div>
+      </header>
+
+      <section class="summary">
+        <div><span>Step</span><strong id="currentStep">Idle</strong></div>
+        <div><span>Progress</span><strong id="progressText">0 / 14</strong></div>
+        <div><span>Status</span><strong id="resultText">Waiting</strong></div>
+      </section>
+
+      <section id="messages" class="history"></section>
+
+      <section class="compose-panel">
+        <textarea id="messageInput" placeholder="Describe what to build..." rows="4"></textarea>
+        <div class="compose-actions">
+          <button id="saveRequirement">Save</button>
+          <button id="runWorkflow" class="primary" disabled>Run</button>
+          <button id="retryRun" disabled>Retry</button>
+          <button id="addGuidance" disabled>Add Guidance</button>
+        </div>
+      </section>
+    </main>
+
+    <aside class="details">
+      <div class="tabs">
+        <button class="tab active" data-tab="stepsPanel">Steps</button>
+        <button class="tab" data-tab="qwenPanel">Qwen</button>
+        <button class="tab" data-tab="logsPanel">Logs</button>
+        <button class="tab" data-tab="artifactsPanel">Artifacts</button>
+      </div>
+
+      <section id="stepsPanel" class="panel active">
+        <div id="steps" class="steps"></div>
+      </section>
+      <section id="qwenPanel" class="panel">
+        <pre id="qwenLive" class="console">No Qwen output yet.</pre>
+      </section>
+      <section id="logsPanel" class="panel">
+        <pre id="logs" class="console"></pre>
+      </section>
+      <section id="artifactsPanel" class="panel">
+        <div id="artifacts" class="artifacts"></div>
+        <pre id="artifactContent" class="artifact-content"></pre>
+      </section>
+    </aside>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>

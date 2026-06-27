@@ -1,0 +1,7 @@
+{
+  "qwen": {
+    "auth_type": "",
+    "reuse_session": true,
+    "max_retries": 2
+  }
+}
