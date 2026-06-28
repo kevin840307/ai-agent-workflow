@@ -15,6 +15,15 @@ from app.services import workflow_config_service
 ACTIVE_RUN_STATUSES = {"queued", "running", "waiting_input"}
 
 
+def _same_existing_project_path(left: str | None, right: str) -> bool:
+    """Compare project paths without letting stale invalid store rows block new runs."""
+    try:
+        return str(runtime.resolve_project_path(left or str(runtime.ROOT))) == right
+    except HTTPException:
+        return False
+
+
+
 def start_workflow_task(run_id: str, start_index: int = 0) -> None:
     task = asyncio.create_task(runtime.execute_workflow(run_id, start_index=start_index))
     runtime.running_tasks[run_id] = task
@@ -46,8 +55,8 @@ async def create_workflow_run(session_id: str, body: runtime.CreateRunRequest) -
         (
             run
             for run in data.get("runs", [])
-            if str(runtime.resolve_project_path(run.get("project_path") or str(runtime.ROOT))) == project_path
-            and run.get("status") in ACTIVE_RUN_STATUSES
+            if run.get("status") in ACTIVE_RUN_STATUSES
+            and _same_existing_project_path(run.get("project_path"), project_path)
         ),
         None,
     )
@@ -116,14 +125,14 @@ async def retry_run(run_id: str, body: runtime.RetryRunRequest | None = None) ->
     if active_task and not active_task.done():
         raise HTTPException(status_code=400, detail="This run is still running. Wait for it to finish before retrying.")
     data = await store_repository.read()
+    run_project_path = str(runtime.resolve_project_path(run.get("project_path") or str(runtime.ROOT)))
     active_other = next(
         (
             item
             for item in data.get("runs", [])
             if item.get("id") != run_id
-            and str(runtime.resolve_project_path(item.get("project_path") or str(runtime.ROOT)))
-            == str(runtime.resolve_project_path(run.get("project_path") or str(runtime.ROOT)))
             and item.get("status") in ACTIVE_RUN_STATUSES
+            and _same_existing_project_path(item.get("project_path"), run_project_path)
         ),
         None,
     )
