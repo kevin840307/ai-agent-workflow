@@ -1602,8 +1602,43 @@ body[data-page="workflow-designer"] .designer-step-card:focus-visible {
   border-bottom: 1px solid var(--line);
 }
 
-.designer-step-modal-head > div {
+.designer-step-modal-title-wrap {
   min-width: 0;
+  flex: 1 1 auto;
+}
+
+.designer-step-modal-tools {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 0 0 auto;
+}
+
+.designer-step-modal-nav,
+.designer-step-modal-footer-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+.designer-step-modal-nav button,
+.designer-step-modal-footer-nav button {
+  min-height: 30px;
+  padding: 5px 9px;
+  border-radius: 999px;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.designer-step-modal-nav [data-step-editor-position] {
+  min-width: 52px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
 }
 
 .designer-step-modal-head h2 {
@@ -1641,9 +1676,9 @@ body[data-page="workflow-designer"] .designer-step-card:focus-visible {
 }
 
 .designer-step-modal-footer {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
   gap: 10px;
   padding: 12px 16px;
   border-top: 1px solid var(--line);
@@ -1673,9 +1708,28 @@ body[data-page="workflow-designer"] .designer-step-card:focus-visible {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-  .designer-step-modal-footer {
+  .designer-step-modal-head {
     display: grid;
+    align-items: start;
+  }
+
+  .designer-step-modal-tools {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .designer-step-modal-nav {
+    overflow-x: auto;
+  }
+
+  .designer-step-modal-footer {
+    grid-template-columns: 1fr;
     justify-items: stretch;
+  }
+
+  .designer-step-modal-footer-nav {
+    width: 100%;
+    justify-content: space-between;
   }
 }
 

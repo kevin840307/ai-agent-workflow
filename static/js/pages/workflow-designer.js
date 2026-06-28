@@ -359,8 +359,15 @@ function handleBeforeUnload(event) {
 }
 
 function handleDocumentKeydown(event) {
-  if (event.key !== "Escape") return;
   if (document.querySelector(".designer-confirm-box, .designer-template-modal-box, .designer-preview-box")) return;
+
+  if (stepEditorModalOpen && event.altKey && (event.key === "ArrowLeft" || event.key === "ArrowRight")) {
+    event.preventDefault();
+    switchStepEditor(event.key === "ArrowLeft" ? -1 : 1);
+    return;
+  }
+
+  if (event.key !== "Escape") return;
   if (stepEditorModalOpen) {
     closeStepEditor();
   }
@@ -400,6 +407,8 @@ function handleDocumentClick(event) {
     if (name === "set-step-density") setStepDensity(action.dataset.density);
     if (name === "clear-step-filter") clearStepFilter();
     if (name === "open-step-editor") openStepEditor(action.dataset.stepId);
+    if (name === "step-editor-prev") switchStepEditor(-1);
+    if (name === "step-editor-next") switchStepEditor(1);
     if (name === "close-step-editor") closeStepEditor();
     if (name === "open-template-editor") openTemplateEditor();
     if (name === "save-template-editor") saveTemplateEditor();
@@ -1591,14 +1600,21 @@ function openStepEditor(stepId = state.selectedStepId) {
   box.innerHTML = `
     <div class="designer-export-card designer-step-modal-card" role="dialog" aria-modal="true" aria-labelledby="designerStepModalTitle">
       <div class="designer-step-modal-head">
-        <div>
+        <div class="designer-step-modal-title-wrap">
           <div class="designer-step-card-title">
             <h2 id="designerStepModalTitle" style="margin:0;"></h2>
             <span id="designerStepModalType" class="designer-step-type"></span>
           </div>
           <p id="designerStepModalMeta" class="designer-form-hint"></p>
         </div>
-        <button type="button" data-designer-action="close-step-editor" aria-label="Close">×</button>
+        <div class="designer-step-modal-tools">
+          <div class="designer-step-modal-nav" aria-label="Switch step">
+            <button type="button" data-designer-action="step-editor-prev" data-step-editor-nav="prev" title="Previous step: Alt + ←">← Prev</button>
+            <span data-step-editor-position>1 / 1</span>
+            <button type="button" data-designer-action="step-editor-next" data-step-editor-nav="next" title="Next step: Alt + →">Next →</button>
+          </div>
+          <button type="button" data-designer-action="close-step-editor" aria-label="Close">×</button>
+        </div>
       </div>
 
       <div class="designer-tabs designer-step-modal-tabs" role="tablist">
@@ -1613,6 +1629,10 @@ function openStepEditor(stepId = state.selectedStepId) {
       <div id="designerStepSettingsModal" class="designer-step-settings designer-step-modal-settings"></div>
 
       <div class="designer-footer-actions designer-step-modal-footer">
+        <div class="designer-step-modal-footer-nav" aria-label="Switch step">
+          <button type="button" data-designer-action="step-editor-prev" data-step-editor-nav="prev">← Previous Step</button>
+          <button type="button" data-designer-action="step-editor-next" data-step-editor-nav="next">Next Step →</button>
+        </div>
         <span class="designer-form-hint">Changes are kept in this draft. Use Save Draft on the main screen to persist.</span>
         <button type="button" data-designer-action="close-step-editor">Close</button>
       </div>
@@ -1621,6 +1641,26 @@ function openStepEditor(stepId = state.selectedStepId) {
   document.body.appendChild(box);
   renderStepEditorModal();
   box.querySelector("input, textarea, select, button")?.focus();
+}
+
+function switchStepEditor(direction) {
+  const wf = getSelectedWorkflow();
+  if (!wf?.steps?.length) return;
+
+  const currentIndex = wf.steps.findIndex((item) => item.id === state.selectedStepId);
+  if (currentIndex < 0) return;
+
+  const nextIndex = Math.max(0, Math.min(wf.steps.length - 1, currentIndex + direction));
+  if (nextIndex === currentIndex) return;
+
+  const nextStep = wf.steps[nextIndex];
+  state.selectedStepId = nextStep.id;
+  ensureActiveTabForStep(nextStep);
+  saveUiState();
+  renderWorkflowViewOnly();
+  renderStepEditorModal();
+  const settings = el("designerStepSettingsModal");
+  if (settings) settings.scrollTop = 0;
 }
 
 function closeStepEditor() {
@@ -1643,10 +1683,24 @@ function renderStepEditorHeader() {
   if (!title || !type || !meta || !step) return;
   const wf = getSelectedWorkflow();
   const index = wf?.steps?.findIndex((item) => item.id === step.id) ?? -1;
+  const total = wf?.steps?.length || 0;
   title.textContent = `${index >= 0 ? index + 1 + ". " : ""}${step.name || "Step Settings"}`;
   type.textContent = formatStepType(step.type);
   type.className = `designer-step-type ${step.type || ""}`;
   meta.textContent = `${step.key || "no key"} · ${step.enabled ? "enabled" : "disabled"} · retry ${step.maxRetries ?? 0}`;
+
+  document.querySelectorAll("[data-step-editor-position]").forEach((node) => {
+    node.textContent = index >= 0 && total ? `${index + 1} / ${total}` : "- / -";
+  });
+
+  document.querySelectorAll('[data-step-editor-nav="prev"]').forEach((button) => {
+    button.disabled = index <= 0;
+    button.title = index > 0 ? `Previous: ${wf.steps[index - 1].name}` : "Already first step";
+  });
+  document.querySelectorAll('[data-step-editor-nav="next"]').forEach((button) => {
+    button.disabled = index < 0 || index >= total - 1;
+    button.title = index >= 0 && index < total - 1 ? `Next: ${wf.steps[index + 1].name}` : "Already last step";
+  });
 }
 
 function openTemplateEditor() {
