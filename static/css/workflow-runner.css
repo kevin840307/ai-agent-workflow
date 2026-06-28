@@ -445,26 +445,6 @@ body.chat-mode .composer-box {
 
 .step-title span:first-child { font-weight: 650; }
 
-.step-artifact-hint {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  margin-top: 6px;
-}
-
-.step-artifact-hint span {
-  max-width: 136px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  padding: 2px 6px;
-  border-radius: 999px;
-  background: #e8edf5;
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 700;
-}
-
 .step-actions {
   display: inline-flex;
   align-items: center;
@@ -528,7 +508,7 @@ body.chat-mode .composer-box {
   position: sticky;
   top: 12px;
   display: grid;
-  grid-template-rows: auto auto minmax(260px, 1fr);
+  grid-template-rows: auto minmax(260px, 1fr);
   gap: 8px;
   align-self: start;
   min-width: 0;
@@ -662,4 +642,176 @@ body.chat-mode .composer-box {
   background: #effaf7;
   color: var(--accent-dark);
   font-weight: 700;
+}
+
+
+/* Fullscreen Step Files modal */
+body.artifact-modal-open {
+  overflow: hidden;
+}
+
+.step-files-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 140;
+  display: grid;
+  place-items: stretch;
+  padding: 18px;
+  background: rgba(15, 23, 42, 0.46);
+  backdrop-filter: blur(5px);
+}
+
+.step-files-modal-backdrop[hidden] {
+  display: none;
+}
+
+.step-files-modal-card {
+  display: grid;
+  grid-template-rows: auto auto auto minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+  border: 1px solid rgba(216, 222, 232, 0.95);
+  border-radius: 18px;
+  background: var(--panel);
+  box-shadow: 0 26px 80px rgba(15, 23, 42, 0.28);
+  overflow: hidden;
+}
+
+.step-files-modal-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 18px 12px;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+}
+
+.step-files-modal-title-wrap {
+  min-width: 0;
+}
+
+.step-files-modal-title-wrap span {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.step-files-modal-title-wrap h2 {
+  margin: 0;
+  overflow: hidden;
+  color: var(--text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 18px;
+  line-height: 1.25;
+}
+
+.step-files-modal-title-wrap p {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.step-files-modal-close {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: 999px;
+  color: var(--muted);
+  background: var(--panel-2);
+  font-size: 24px;
+  line-height: 1;
+}
+
+.step-files-tabs {
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+  overflow-x: auto;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel-2);
+}
+
+.step-files-tab {
+  flex: 0 0 auto;
+  max-width: 260px;
+  min-height: 32px;
+  padding: 6px 11px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.step-files-tab.active {
+  border-color: rgba(15, 118, 110, 0.64);
+  background: #e8f5f1;
+  color: var(--accent-dark);
+}
+
+.step-files-active-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+}
+
+.step-files-active-head strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+.step-files-content {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  margin: 0;
+  overflow: auto;
+  white-space: pre-wrap;
+  border: 0;
+  border-radius: 0;
+  background: #0e1726;
+  color: #dbe7ff;
+  padding: 18px;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+@media (max-width: 760px) {
+  .step-files-modal-backdrop {
+    padding: 0;
+  }
+
+  .step-files-modal-card {
+    border-radius: 0;
+  }
+
+  .step-files-active-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
 }

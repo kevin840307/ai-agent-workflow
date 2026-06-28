@@ -2,6 +2,13 @@ export function createArtifacts(ctx) {
   const { api, state, ui } = ctx;
   const byId = (id) => document.getElementById(id);
 
+  const stepFilesModal = {
+    files: [],
+    activeIndex: 0,
+    loadToken: 0,
+    lastFocusedElement: null,
+  };
+
   const artifacts = {
     stepArtifactPaths(step = {}) {
       const config = step.config || {};
@@ -37,21 +44,28 @@ export function createArtifacts(ctx) {
         .filter(Boolean);
     },
 
-    async preview(artifactId, { activateArtifactsTab = false } = {}) {
-      const data = await api.request(`/api/artifacts/${encodeURIComponent(artifactId)}`);
-      const content = `# ${data.path}\n\n${data.content}`;
-      const stepContent = byId("stepArtifactContent");
-      const stepTitle = byId("stepArtifactTitle");
-      const openButton = byId("openArtifactTab");
-      if (stepContent) {
-        stepContent.textContent = content;
-        stepContent.scrollTop = 0;
+    async load(artifactId) {
+      return api.request(`/api/artifacts/${encodeURIComponent(artifactId)}`);
+    },
+
+    format(data = {}) {
+      return `# ${data.path || "Artifact"}\n\n${data.content || ""}`;
+    },
+
+    async preview(artifactId, { activateArtifactsTab = false, updateStepPreview = true } = {}) {
+      const data = await artifacts.load(artifactId);
+      const content = artifacts.format(data);
+
+      if (updateStepPreview) {
+        const stepContent = byId("stepArtifactContent");
+        const stepTitle = byId("stepArtifactTitle");
+        if (stepContent) {
+          stepContent.textContent = content;
+          stepContent.scrollTop = 0;
+        }
+        if (stepTitle) stepTitle.textContent = data.path;
       }
-      if (stepTitle) stepTitle.textContent = data.path;
-      if (openButton) {
-        openButton.disabled = false;
-        openButton.onclick = () => artifacts.open(artifactId);
-      }
+
       if (ui.byKey("artifactContent")) {
         ui.byKey("artifactContent").textContent = content;
         ui.byKey("artifactContent").scrollTop = 0;
@@ -69,11 +83,16 @@ export function createArtifacts(ctx) {
 
       state.selectedStepKey = step?.key || null;
       list.innerHTML = "";
+      list.hidden = true;
 
       if (!step) {
         title.textContent = "Select a step";
-        content.textContent = "Click a step to inspect its prompt, output, and related artifacts.";
-        if (openButton) openButton.disabled = true;
+        content.textContent = "Click a step, then use Step Files to inspect its files.";
+        if (openButton) {
+          openButton.textContent = "Step Files";
+          openButton.disabled = true;
+          openButton.onclick = null;
+        }
         return;
       }
 
@@ -81,29 +100,177 @@ export function createArtifacts(ctx) {
       title.textContent = step.title || step.key;
 
       if (!related.length) {
-        content.textContent = "No artifacts have been created for this step yet.";
-        if (openButton) openButton.disabled = true;
-        const empty = document.createElement("div");
-        empty.className = "step-artifact-empty";
-        empty.textContent = "No files yet";
-        list.appendChild(empty);
+        content.textContent = "No files have been created for this step yet.";
+        if (openButton) {
+          openButton.textContent = "Step Files";
+          openButton.disabled = true;
+          openButton.onclick = null;
+        }
         return;
       }
 
-      related.forEach((artifact, index) => {
-        const button = document.createElement("button");
-        button.className = `step-artifact-chip${index === 0 ? " active" : ""}`;
-        button.textContent = artifact.path.replace(/^output\//, "");
-        button.title = artifact.path;
-        button.onclick = async () => {
-          list.querySelectorAll(".step-artifact-chip").forEach((chip) => chip.classList.remove("active"));
-          button.classList.add("active");
-          await artifacts.preview(artifact.id);
-        };
-        list.appendChild(button);
+      if (openButton) {
+        openButton.textContent = `Step Files ${related.length}`;
+        openButton.disabled = false;
+        openButton.onclick = () => artifacts.openStepFilesModal(run, step);
+      }
+
+      content.textContent = "Loading preview...";
+      const previewArtifact = related.find((artifact) => artifact.id === state.selectedStepArtifactId) || related[0];
+      const selectedStepKey = step.key;
+      artifacts.load(previewArtifact.id)
+        .then((data) => {
+          if (state.selectedStepKey !== selectedStepKey) return;
+          title.textContent = step.title || step.key;
+          content.textContent = artifacts.format(data);
+          content.scrollTop = 0;
+          state.selectedStepArtifactId = previewArtifact.id;
+        })
+        .catch((err) => {
+          if (state.selectedStepKey !== selectedStepKey) return;
+          content.textContent = `Unable to load preview: ${err.message}`;
+        });
+    },
+
+    ensureStepFilesModal() {
+      let backdrop = byId("stepFilesModalBackdrop");
+      if (!backdrop) {
+        backdrop = document.createElement("div");
+        backdrop.id = "stepFilesModalBackdrop";
+        backdrop.className = "step-files-modal-backdrop";
+        backdrop.hidden = true;
+        backdrop.innerHTML = `
+          <div class="step-files-modal-card" role="dialog" aria-modal="true" aria-labelledby="stepFilesModalTitle">
+            <div class="step-files-modal-head">
+              <div class="step-files-modal-title-wrap">
+                <span>Step Files</span>
+                <h2 id="stepFilesModalTitle">Files</h2>
+                <p id="stepFilesModalMeta"></p>
+              </div>
+              <button id="stepFilesModalClose" class="step-files-modal-close" type="button" aria-label="Close files dialog">×</button>
+            </div>
+            <div id="stepFilesTabs" class="step-files-tabs" role="tablist" aria-label="Step files"></div>
+            <div class="step-files-active-head">
+              <strong id="stepFilesActiveName">Select a file</strong>
+              <button id="stepFilesOpenArtifactTab" class="mini-button" type="button">Open in Artifacts</button>
+            </div>
+            <pre id="stepFilesContent" class="step-files-content">Loading...</pre>
+          </div>
+        `;
+        document.body.appendChild(backdrop);
+
+        const closeButton = byId("stepFilesModalClose");
+        closeButton.onclick = () => artifacts.closeStepFilesModal();
+        backdrop.addEventListener("click", (event) => {
+          if (event.target === backdrop) artifacts.closeStepFilesModal();
+        });
+        document.addEventListener("keydown", (event) => {
+          if (backdrop.hidden) return;
+          if (event.key === "Escape") {
+            event.preventDefault();
+            artifacts.closeStepFilesModal();
+          }
+        });
+      }
+
+      return {
+        backdrop,
+        title: byId("stepFilesModalTitle"),
+        meta: byId("stepFilesModalMeta"),
+        tabs: byId("stepFilesTabs"),
+        activeName: byId("stepFilesActiveName"),
+        content: byId("stepFilesContent"),
+        openArtifactTab: byId("stepFilesOpenArtifactTab"),
+        close: byId("stepFilesModalClose"),
+      };
+    },
+
+    closeStepFilesModal() {
+      const els = artifacts.ensureStepFilesModal();
+      els.backdrop.hidden = true;
+      document.body.classList.remove("artifact-modal-open");
+      if (stepFilesModal.lastFocusedElement?.focus) stepFilesModal.lastFocusedElement.focus();
+      stepFilesModal.lastFocusedElement = null;
+    },
+
+    setStepFilesModalActive(index) {
+      const els = artifacts.ensureStepFilesModal();
+      const file = stepFilesModal.files[index];
+      if (!file) return;
+
+      stepFilesModal.activeIndex = index;
+      els.tabs.querySelectorAll(".step-files-tab").forEach((tab, tabIndex) => {
+        tab.classList.toggle("active", tabIndex === index);
+        tab.setAttribute("aria-selected", tabIndex === index ? "true" : "false");
+      });
+      els.activeName.textContent = file.path || "Artifact";
+      els.content.textContent = file.error
+        ? `Unable to load ${file.path}:\n\n${file.error}`
+        : (file.content || "");
+      els.content.scrollTop = 0;
+      if (els.openArtifactTab) {
+        els.openArtifactTab.disabled = !file.id;
+        els.openArtifactTab.onclick = () => file.id && artifacts.open(file.id);
+      }
+      state.selectedStepArtifactId = file.id || null;
+    },
+
+    async openStepFilesModal(run, step) {
+      const related = artifacts.artifactsForStep(step, run.artifacts || []);
+      if (!related.length) return;
+
+      const els = artifacts.ensureStepFilesModal();
+      const token = stepFilesModal.loadToken + 1;
+      stepFilesModal.loadToken = token;
+      stepFilesModal.files = [];
+      stepFilesModal.activeIndex = 0;
+      stepFilesModal.lastFocusedElement = document.activeElement;
+
+      els.title.textContent = step.title || step.key || "Step Files";
+      els.meta.textContent = `${related.length} file${related.length > 1 ? "s" : ""}`;
+      els.tabs.innerHTML = "";
+      els.activeName.textContent = "Loading files...";
+      els.content.textContent = "Loading files...";
+      if (els.openArtifactTab) els.openArtifactTab.disabled = true;
+      els.backdrop.hidden = false;
+      document.body.classList.add("artifact-modal-open");
+
+      const loaded = await Promise.all(related.map(async (artifact) => {
+        try {
+          const data = await artifacts.load(artifact.id);
+          return {
+            id: artifact.id,
+            path: data.path || artifact.path,
+            content: data.content || "",
+          };
+        } catch (err) {
+          return {
+            id: artifact.id,
+            path: artifact.path,
+            content: "",
+            error: err.message,
+          };
+        }
+      }));
+
+      if (stepFilesModal.loadToken !== token || els.backdrop.hidden) return;
+      stepFilesModal.files = loaded;
+      els.tabs.innerHTML = "";
+
+      loaded.forEach((file, index) => {
+        const tab = document.createElement("button");
+        tab.type = "button";
+        tab.className = "step-files-tab";
+        tab.role = "tab";
+        tab.title = file.path;
+        tab.textContent = file.path;
+        tab.onclick = () => artifacts.setStepFilesModalActive(index);
+        els.tabs.appendChild(tab);
       });
 
-      artifacts.preview((related.find((artifact) => artifact.id === state.selectedStepArtifactId) || related[0]).id);
+      const preferredIndex = Math.max(0, loaded.findIndex((file) => file.id === state.selectedStepArtifactId));
+      artifacts.setStepFilesModalActive(preferredIndex);
+      els.close.focus();
     },
 
     priority(path = "") {
@@ -154,7 +321,7 @@ export function createArtifacts(ctx) {
     },
 
     async open(artifactId) {
-      await artifacts.preview(artifactId, { activateArtifactsTab: true });
+      await artifacts.preview(artifactId, { activateArtifactsTab: true, updateStepPreview: false });
     },
   };
 

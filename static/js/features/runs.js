@@ -71,12 +71,8 @@ export function createRuns(ctx) {
         const retry = step.retry_count ? `<span class="retry-count">retry ${step.retry_count}</span>` : "";
         const error = step.error ? `<small>${ui.escapeHtml(step.error)}</small>` : "";
         const relatedArtifacts = ctx.features.artifacts.artifactsForStep(step, run.artifacts || []);
-        const shortArtifactName = (path = "") => path.startsWith("output/") ? path.slice("output/".length) : path;
-        const artifactHint = relatedArtifacts.length
-          ? `<div class="step-artifact-hint">${relatedArtifacts.slice(0, 3).map((artifact) => `<span>${ui.escapeHtml(shortArtifactName(artifact.path))}</span>`).join("")}</div>`
-          : "";
         row.innerHTML = `
-          <div class="step-title"><span>${ui.escapeHtml(step.title)}</span>${retry}${artifactHint}</div>
+          <div class="step-title"><span>${ui.escapeHtml(step.title)}</span>${retry}</div>
           <div class="step-message">${error}</div>
           <div class="step-actions">
             ${relatedArtifacts.length ? `<button class="mini-button inspect-step" data-step-key="${ui.escapeHtml(step.key)}">Files ${relatedArtifacts.length}</button>` : ""}
@@ -90,7 +86,10 @@ export function createRuns(ctx) {
           runs.selectStep(run, step.key);
         };
         const inspect = row.querySelector(".inspect-step");
-        if (inspect) inspect.onclick = () => runs.selectStep(run, step.key);
+        if (inspect) inspect.onclick = (event) => {
+          event.stopPropagation();
+          ctx.features.artifacts.openStepFilesModal(run, step);
+        };
         row.querySelector(".guide-step").onclick = () => runs.addGuidance(step.key);
         row.querySelector(".retry-step").onclick = () => runs.retry(step.key);
         steps.appendChild(row);
