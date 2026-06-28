@@ -262,8 +262,8 @@ async def simulate_question(run_id: str) -> dict:
     run_dir = Path(run["workspace"])
     question = (
         "## Test Interaction\n\n"
-        "這是一個測試用問題，用來驗證 workflow 暫停、回答、Continue 後續跑的流程。\n\n"
-        "- 請輸入任意回答，例如：`使用 Python 實作，測試使用 pytest。`\n"
+        "這是一個測試用的互動問題，用來確認 workflow 可以暫停、顯示問題，並在使用者回覆後繼續執行。\n\n"
+        "- 請回覆缺少的資訊，例如要使用哪一種語言、測試框架，或需要補充的需求細節。\n"
     )
     runtime.write_text(run_dir / "input" / "questions.md", question)
     await runtime.log(run, f"{step_key}: simulated user-input request")

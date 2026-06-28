@@ -138,6 +138,11 @@ function createStep(overrides = {}) {
     timeoutEnabled: overrides.timeoutEnabled ?? false,
     timeoutMinutes: overrides.timeoutMinutes ?? 0,
     allowInteraction: overrides.allowInteraction ?? true,
+    agentCount: overrides.agentCount ?? 3,
+    agentMaxRetries: overrides.agentMaxRetries ?? 3,
+    freshSessionPerAgent: overrides.freshSessionPerAgent ?? true,
+    artifactPattern: overrides.artifactPattern || "",
+    candidateValidator: overrides.candidateValidator || "",
     expectedFiles: clone(overrides.expectedFiles || []),
     validator: overrides.validator || "",
   };
@@ -553,9 +558,6 @@ function renderWorkflowLabels() {
   const skillRootInput = el("workflowSkillRootInput");
   if (skillRootInput && skillRootInput.value !== (wf.skillRoot || "")) skillRootInput.value = wf.skillRoot || "";
   if (skillRootInput) skillRootInput.disabled = readonly;
-  const promptRootInput = el("workflowPromptRootInput");
-  if (promptRootInput && promptRootInput.value !== (wf.promptRoot || "")) promptRootInput.value = wf.promptRoot || "";
-  if (promptRootInput) promptRootInput.disabled = readonly;
   setText("designerWorkflowLockHint", readonly ? "Read only" : "Editable");
   el("designerWorkflowLockHint")?.classList.toggle("locked", readonly);
 
@@ -957,6 +959,7 @@ function renderTabs() {
 
 function tabsForStep(step) {
   if (!step) return ["basic"];
+  if (isConsensusAgentStep(step)) return ["basic", "sources", "retry", "advanced"];
   const byType = {
     ai: ["basic", "sources", "retry", "advanced"],
     command: ["basic", "sources", "retry", "advanced"],
@@ -967,6 +970,10 @@ function tabsForStep(step) {
     manual: ["basic", "gate", "retry", "advanced"],
   };
   return byType[step.type] || ["basic", "advanced"];
+}
+
+function isConsensusAgentStep(step) {
+  return Boolean(step && (step.validator === "consensus_agent" || step.key === "consensus_agent" || step.key === "consensus_security_scan"));
 }
 
 function ensureActiveTabForStep(step) {
@@ -1077,7 +1084,7 @@ function renderBasic(step, disabled, readonly) {
 }
 
 function renderAgentConfig(step, disabled) {
-  if (!["ai", "review", "command"].includes(step.type)) return "";
+  if (!["ai", "review", "command"].includes(step.type) && !isConsensusAgentStep(step)) return "";
   return `
     <div class="designer-template-summary-grid compact">
       ${inputRow("Agent Provider", "agent", step.agent || step.provider || "qwen", disabled, "qwen / opencode")}
@@ -1088,6 +1095,9 @@ function renderAgentConfig(step, disabled) {
 
 function renderBasicTypeConfig(step, disabled) {
   if (step.type === "validation" || step.type === "python") {
+    const promptHint = isConsensusAgentStep(step)
+      ? `<div class="designer-runner-note"><strong>Consensus agent step</strong><span>Use the Prompt tab to edit the template that each internal agent receives.</span></div>`
+      : "";
     return `
       <label class="designer-form-row">
         <span class="designer-label">${step.type === "python" ? "Python Function" : "Validation Function"}</span>
@@ -1096,6 +1106,7 @@ function renderBasicTypeConfig(step, disabled) {
         </select>
       </label>
       ${functionHelp("validators", step.validator, "Choose the Python function this step should run.")}
+      ${promptHint}
       ${expectedFilesPreview(step)}
     `;
   }
@@ -1201,8 +1212,9 @@ function renderSources(step, disabled, readonly) {
       <label class="designer-form-row">
         <span class="designer-label">Command</span>
         <select class="designer-select" data-step-field="command" ${disabled}>
-          ${options([["", "None"], ["/spec", "/spec"], ["/plan", "/plan"], ["/todo", "/todo"], ["/build", "/build"], ["custom", "Custom command"]], step.command)}
+          ${options([["", "None"], ["/spec", "/spec"], ["/plan", "/plan"], ["/todo", "/todo"], ["/build", "/build"], ["/ship", "/ship"], ["/review", "/review"], ["/test", "/test"]], step.command)}
         </select>
+        <span class="designer-form-hint">Selected slash command is prepended to the rendered prompt before the agent runs.</span>
       </label>
 
       <section class="designer-template-summary-card">
@@ -1333,6 +1345,7 @@ function renderGate(step, disabled, readonly) {
 }
 
 function renderAdvanced(step, disabled, readonly) {
+  const showConsensus = step.validator === "consensus_agent" || step.key === "consensus_agent" || step.key === "consensus_security_scan";
   return `
     <div class="designer-form-grid">
       ${readonly ? readonlyNotice() : ""}
@@ -1346,6 +1359,7 @@ function renderAdvanced(step, disabled, readonly) {
         </select>
       </label>
       ${functionHelp("validators", step.validator, "Optional validator used by validation and Python function steps.")}
+      ${showConsensus ? renderConsensusSettings(step, disabled) : ""}
       <div class="designer-list-editor">
         <div class="designer-section-row">
           <span class="designer-label">Expected Files</span>
@@ -1361,6 +1375,29 @@ function renderAdvanced(step, disabled, readonly) {
         <div class="designer-form-hint">Relative names are checked in output/, workspace, then Project Path. Use output/, input/, prompts/, or an absolute path when you need an exact location.</div>
       </div>
     </div>
+  `;
+}
+
+function renderConsensusSettings(step, disabled) {
+  return `
+    <section class="designer-list-editor">
+      <div class="designer-section-row">
+        <span class="designer-label">Consensus Agent</span>
+      </div>
+      <div class="designer-form-grid">
+        ${numberRow("Agent Count", "agentCount", step.agentCount ?? 3, disabled, "1", "10", "1")}
+        ${numberRow("Retry Per Agent", "agentMaxRetries", step.agentMaxRetries ?? 3, disabled, "0", "20", "1")}
+        ${switchRow("Fresh Session Per Agent", "Run each internal agent in a separate session for independent answers.", "freshSessionPerAgent", step.freshSessionPerAgent ?? true, disabled)}
+        ${inputRow("Artifact Pattern", "artifactPattern", step.artifactPattern || step.filename || "", disabled, "result-agent-{index}.md")}
+        <label class="designer-form-row">
+          <span class="designer-label">Inner Validator</span>
+          <select class="designer-select" data-step-field="candidateValidator" ${disabled}>
+            ${functionOptions("validators", [["", "None"], ["validate_security_candidates", "Validate Security Candidates"]], step.candidateValidator)}
+          </select>
+        </label>
+      </div>
+      <div class="designer-form-hint">Use {index} or * in Artifact Pattern. Example: candidate-{index}.md creates candidate-1.md, candidate-2.md, ...</div>
+    </section>
   `;
 }
 
@@ -1827,7 +1864,7 @@ function openTemplateEditor() {
             <h2 style="margin:0;">Edit Prompt Template</h2>
             <span id="designerTemplateDirtyBadge" class="badge passed">Saved</span>
           </div>
-          <p class="designer-form-hint">Backend creates a workflow folder, then saves this step output using Filename.</p>
+          <p class="designer-form-hint">Backend creates a workflow folder, saves this prompt under prompts/, then writes the step artifact using Output File Name.</p>
         </div>
         <button data-designer-action="close-template-editor" aria-label="Close">×</button>
       </div>
@@ -1847,7 +1884,7 @@ function openTemplateEditor() {
           </div>
         </label>
         <label class="designer-form-row">
-          <span class="designer-label">Filename</span>
+          <span class="designer-label">Output File Name</span>
           <input class="designer-input" value="${escapeAttr(templateEditorDraft.filename)}" placeholder="spec.md" data-template-draft-field="filename" ${disabled} />
         </label>
       </div>

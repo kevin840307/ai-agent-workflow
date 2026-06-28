@@ -439,6 +439,95 @@ class WorkflowActions:
                 "Agent build output must include non-test FILE/CONTENT/END_FILE blocks."
             )
 
+    async def consensus_agent_step(
+        self,
+        run: dict[str, Any],
+        step_key: str,
+        prompt_name: str,
+        *,
+        agent_name: str | None = None,
+    ) -> None:
+        """Run multiple agent generations with per-agent validation/retry inside one visible workflow step."""
+        output_dir = Path(run["workspace"]) / "output"
+        input_dir = Path(run["workspace"]) / "input"
+        step_record = next((step for step in run.get("steps", []) if step.get("key") == step_key), {})
+        config = step_config(step_record)
+        agent_count = int(config.get("agentCount") or 3)
+        max_retries = int(config.get("agentMaxRetries") or config.get("maxRetries") or 3)
+        prompt_name = step_prompt_name(step_record, prompt_name)
+        agent_name = agent_name or step_agent_name(step_record) or "qwen"
+        validator = str(config.get("candidateValidator") or config.get("innerValidator") or config.get("validator") or "").strip()
+        artifact_pattern = str(
+            config.get("artifactPattern")
+            or config.get("outputPattern")
+            or config.get("filename")
+            or f"{step_key}-agent-{{index}}.md"
+        )
+        fresh_session_per_agent = bool_config(config, "freshSessionPerAgent", True)
+
+        for agent_index in range(1, agent_count + 1):
+            artifact = normalize_artifact_name(
+                artifact_pattern
+                .replace("{index}", str(agent_index))
+                .replace("{n}", str(agent_index))
+                .replace("*", str(agent_index), 1)
+            )
+            last_error: Exception | None = None
+            for attempt in range(1, max_retries + 1):
+                await self.log(run, f"{step_key}: agent {agent_index}/{agent_count} attempt {attempt}/{max_retries}")
+                try:
+                    await self.run_agent_step(
+                        run,
+                        step_key,
+                        prompt_name,
+                        artifact,
+                        allow_interaction=False,
+                        agent_name=agent_name,
+                        fresh_session=fresh_session_per_agent,
+                    )
+                    if validator and validator != "consensus_agent":
+                        await self.functions.call_python_function(run, validator, output_dir, artifact)
+                        await self.log(run, f"{step_key}: agent {agent_index} validated {artifact} with {validator}")
+                    else:
+                        await self.log(run, f"{step_key}: agent {agent_index} wrote {artifact}")
+                    last_error = None
+                    break
+                except UserInputRequired:
+                    raise
+                except Exception as exc:
+                    last_error = exc
+                    feedback_path = input_dir / "failure-feedback.md"
+                    previous = read_text(feedback_path)
+                    feedback = (
+                        f"## Retry Feedback for {step_key}\n\n"
+                        f"- Failed internal agent: {agent_index}\n"
+                        f"- Retry attempt: {attempt}/{max_retries}\n"
+                        f"- Artifact: {artifact}\n\n"
+                        "Error message to fix:\n\n"
+                        f"{str(exc).strip()}\n\n"
+                    )
+                    write_text(feedback_path, previous + ("\n" if previous.strip() else "") + feedback)
+                    await self.refresh_artifacts(run["id"])
+                    await self.log(run, f"{step_key}: agent {agent_index} failed attempt {attempt}/{max_retries}: {exc}")
+            if last_error is not None:
+                raise WorkflowError(
+                    f"{step_key}: agent {agent_index} failed after {max_retries} attempt(s): {last_error}"
+                ) from last_error
+
+    async def consensus_security_scan_step(
+        self,
+        run: dict[str, Any],
+        prompt_name: str = "00_security_candidate_scan.md",
+        *,
+        agent_name: str | None = None,
+    ) -> None:
+        await self.consensus_agent_step(
+            run,
+            "consensus_security_scan",
+            prompt_name,
+            agent_name=agent_name,
+        )
+
     def action_for_step(self, run: dict[str, Any], step_record: dict[str, Any], output_dir: Path):
         key = step_record["key"]
         config = step_config(step_record)
@@ -500,6 +589,17 @@ class WorkflowActions:
                 agent_name=agent_name,
             ),
             "run_test": lambda: self.functions.call_python_function(run, step_validator_name(step_record) or "run_pytest", output_dir),
+            "consensus_security_scan": lambda: self.consensus_security_scan_step(
+                run,
+                step_prompt_name(step_record, "00_security_candidate_scan.md"),
+                agent_name=agent_name,
+            ),
+            "consensus_agent": lambda: self.consensus_agent_step(
+                run,
+                key,
+                step_prompt_name(step_record, f"{key}.md"),
+                agent_name=agent_name,
+            ),
             "final_review": lambda: self.review_step(
                 run,
                 key,
@@ -518,6 +618,13 @@ class WorkflowActions:
             return lambda: self.validate_or_repair_spec(run, output_dir)
         if step_type == "validation" and validator == "validate_todo":
             return lambda: self.validate_or_repair_todo(run, output_dir)
+        if validator == "consensus_agent":
+            return lambda: self.consensus_agent_step(
+                run,
+                key,
+                step_prompt_name(step_record, f"{key}.md"),
+                agent_name=agent_name,
+            )
         if validator in PYTHON_FUNCTIONS:
             artifact_validators = {"require_status_pass", "validate_security_candidates", "validate_security_report"}
             artifact = (step_artifact_name(step_record, "") or None) if validator in artifact_validators else None

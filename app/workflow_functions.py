@@ -24,111 +24,7 @@ class WorkflowFunctionContext:
     refresh_artifacts: Callable[[str], Awaitable[None]]
 
 
-AVAILABLE_WORKFLOW_FUNCTIONS = {
-    "validators": [
-        {
-            "id": "validate_spec",
-            "label": "Validate Spec",
-            "description": "Check required spec sections and AC IDs.",
-        },
-        {
-            "id": "validate_todo",
-            "label": "Validate Todo",
-            "description": "Check todo sections, TEST IDs, and AC coverage.",
-        },
-        {
-            "id": "require_status_pass",
-            "label": "Require Status PASS",
-            "description": "Gate helper for review artifacts that must contain Status: PASS.",
-        },
-        {
-            "id": "run_pytest",
-            "label": "Run Pytest",
-            "description": "Run the configured Python test command and write output/test-result.md.",
-        },
-        {
-            "id": "collect_security_context",
-            "label": "Collect Security Context",
-            "description": "Write security scan scope and exclude rules to output/security-context.md without embedding source file contents.",
-        },
-        {
-            "id": "combine_security_candidates",
-            "label": "Combine Security Candidates",
-            "description": "Merge same-task multi-agent security candidate files, deduplicate evidence, compute consensus confidence, and write output/security-findings.md.",
-        },
-        {
-            "id": "validate_security_candidates",
-            "label": "Validate Security Candidates",
-            "description": "Check and score one AI-generated security-candidates-agent-*.md artifact for status, checklist coverage, CAND IDs, severity, confidence, evidence quality, and required fields. Fails when quality score is below thresholds.",
-        },
-        {
-            "id": "validate_security_report",
-            "label": "Validate Security Report",
-            "description": "Check and score output/security-report.md for required findings, source finding IDs, severity, confidence, evidence quality, checklist coverage, and risk matrix format. Fails when quality score is below thresholds.",
-        },
-    ],
-    "reviewStrategies": [
-        {
-            "id": "current_session",
-            "label": "Current Session Review",
-            "description": "Reuse the current agent session and evaluate pass/fail keywords plus confidence threshold.",
-        },
-        {
-            "id": "new_agent",
-            "label": "New Agent Review",
-            "description": "Run review in a fresh agent session, then evaluate pass/fail keywords plus confidence threshold.",
-        },
-        {
-            "id": "multi_agent",
-            "label": "Multi-Agent Review",
-            "description": "Run one or more reviewer agents and aggregate with keyword_confidence, majority_vote, or all_must_pass.",
-        },
-    ],
-    "aggregators": [
-        {
-            "id": "keyword_confidence",
-            "label": "Keyword + Confidence",
-            "description": "Combine pass/fail keywords with a confidence threshold.",
-        },
-        {
-            "id": "majority_vote",
-            "label": "Majority Vote",
-            "description": "Pass when most reviewers pass.",
-        },
-        {
-            "id": "all_must_pass",
-            "label": "All Must Pass",
-            "description": "Pass only when every reviewer passes.",
-        },
-    ],
-    "promptParams": [
-        {"id": "requirement", "label": "Requirement", "description": "Main user input from the runner composer.", "sample": "Create a controllable agent workflow UI."},
-        {"id": "project_path", "label": "Project Path", "description": "Current project folder path.", "sample": "C:\\Users\\kevin\\sort"},
-        {"id": "workspace_path", "label": "Workspace Path", "description": "Workflow run workspace path.", "sample": "runs/workflow-001"},
-        {"id": "project_overview", "label": "Project Overview", "description": "Auto-generated overview of project files and folders.", "sample": "Project files:\n- app/main.py"},
-        {"id": "project_profile", "label": "Project Profile", "description": "Detected language, test framework, source files, and test files from the selected project path.", "sample": "Primary language: Python\nTest framework: pytest"},
-        {"id": "architecture", "label": "Architecture", "description": "Content of architecture.md from the selected project path.", "sample": "# Architecture\nFastAPI backend with static frontend."},
-        {"id": "spec", "label": "Spec", "description": "Content of output/spec.md.", "sample": "## Goal\nBuild the requested workflow feature."},
-        {"id": "spec_review", "label": "Spec Review", "description": "Content of output/spec-review.md.", "sample": "Status: PASS"},
-        {"id": "todo", "label": "Todo", "description": "Content of output/todo.md.", "sample": "## Todo List\n- TODO-001 Implement UI."},
-        {"id": "todo_review", "label": "Todo Review", "description": "Content of output/todo-review.md.", "sample": "Status: PASS"},
-        {"id": "test_plan", "label": "Test Plan", "description": "Content of output/test-plan.md.", "sample": "## Test Plan\n- TEST-001 Verify output."},
-        {"id": "test_result", "label": "Test Result", "description": "Content of output/test-result.md.", "sample": "Status: FAIL\nAssertionError: expected file missing."},
-        {"id": "build_result", "label": "Build Result", "description": "Content of output/build-result.md.", "sample": "FILE: app/main.py\nCONTENT:\n..."},
-        {"id": "final_review", "label": "Final Review", "description": "Content of output/final-review.md.", "sample": "Status: PASS"},
-        {"id": "raw_spec", "label": "Raw Spec", "description": "Alias of output/spec.md for older templates.", "sample": "## Goal\nBuild the requested workflow feature."},
-        {"id": "answers", "label": "Answers", "description": "User answers from previous workflow interaction.", "sample": "Use Python and FastAPI."},
-        {"id": "guidance", "label": "Guidance", "description": "User guidance added during the workflow.", "sample": "Keep implementation minimal."},
-        {"id": "last_error", "label": "Last Error", "description": "Latest validation, review, timeout, or runner error.", "sample": "Missing Acceptance Criteria section."},
-        {"id": "failure_feedback", "label": "Failure Feedback", "description": "Accumulated failure feedback for retry prompts.", "sample": "Retry 1/2 from build: tests failed."},
-        {"id": "step_output", "label": "Step Output", "description": "Current step output text when available.", "sample": "Step completed successfully."},
-        {"id": "security_context", "label": "Security Scope", "description": "Content of output/security-context.md. This artifact records project path, exclude rules, scanned file counts, and bounded security-relevant source excerpts.", "sample": "# Security Scan Scope"},
-        {"id": "security_candidates", "label": "Security Candidates", "description": "Multi-agent candidate files such as security-candidates-auth-config.md.", "sample": "## CAND-001"},
-        {"id": "security_findings", "label": "Security Findings", "description": "Python-combined normalized findings from output/security-findings.md.", "sample": "## SEC-001"},
-    ],
-}
-
-
+from app.workflow_function_catalog import AVAILABLE_WORKFLOW_FUNCTIONS
 def ids_with_prefix(text: str, prefix: str) -> set[str]:
     import re
 
@@ -1381,6 +1277,177 @@ def _parse_security_candidates(artifact_name: str, text: str) -> list[dict[str, 
     return candidates
 
 
+def _security_heuristic_candidate(
+    index: int,
+    *,
+    title: str,
+    area: str,
+    file: str,
+    function_class: str,
+    evidence: str,
+    evidence_type: str,
+    severity: str,
+    confidence: str,
+    status: str,
+    data_flow: str,
+    exploitability: str,
+    reason: str,
+    impact: str,
+    recommendation: str,
+) -> dict[str, str]:
+    return {
+        "Candidate ID": f"HEUR-{index:03d}",
+        "Title": title,
+        "Source Artifact": "security-context.md",
+        "Area": area,
+        "File": file,
+        "Function/Class": function_class,
+        "Evidence": evidence,
+        "Evidence Type": evidence_type,
+        "Data Flow Seen": data_flow,
+        "Exploitability Seen": exploitability,
+        "Severity": severity,
+        "AI Confidence Guess": confidence,
+        "Status": status,
+        "Reason": reason,
+        "Impact": impact,
+        "Recommendation": recommendation,
+        "Raw Block": "",
+    }
+
+
+def _security_heuristic_candidates_from_context(text: str) -> list[dict[str, str]]:
+    import re
+
+    candidates: list[dict[str, str]] = []
+
+    def add(**kwargs: str) -> None:
+        candidates.append(_security_heuristic_candidate(len(candidates) + 1, **kwargs))
+
+    blocks: list[tuple[str, str]] = []
+    current_file = "security-context.md"
+    current_lines: list[str] = []
+    for line in text.splitlines():
+        header = re.match(r"^###\s+(.+?)\s*$", line)
+        if header:
+            if current_lines:
+                blocks.append((current_file, "\n".join(current_lines)))
+            current_file = header.group(1).strip()
+            current_lines = []
+            continue
+        if current_file != "security-context.md":
+            current_lines.append(line)
+    if current_lines:
+        blocks.append((current_file, "\n".join(current_lines)))
+    if not blocks:
+        blocks = [("security-context.md", text)]
+
+    def evidence_lines(body: str, pattern: str, limit: int = 3) -> str:
+        matches = []
+        for raw_line in body.splitlines():
+            if re.search(pattern, raw_line, re.IGNORECASE):
+                matches.append(raw_line.strip())
+            if len(matches) >= limit:
+                break
+        return " | ".join(matches) or body.strip()[:240]
+
+    seen: set[tuple[str, str]] = set()
+    secret_pattern = r"Bearer|api[_-]?key|api[_-]?token|secret|private[_-]?key|jwt"
+    credential_pattern = r"pass(word)?|pwd|account"
+    deserialization_pattern = r"BinaryFormatter|ObjectInputStream|pickle\.loads|yaml\.load|deserialize"
+    path_write_pattern = r"AppendAllText|WriteAllText|writeFile|open\(|FileOutputStream|getName|username|user[_-]?input|request|param|args|argv"
+    for file_path, body in blocks:
+        lowered = body.lower()
+
+        if re.search(r"\b(bearer|api[_-]?key|api[_-]?token|secret|private[_-]?key|jwt)\b", lowered):
+            key = (file_path, "credential-token")
+            if key not in seen:
+                seen.add(key)
+                add(
+                    title="Possible hard-coded token or secret in source/config",
+                    area="Secrets and credentials exposure",
+                    file=file_path,
+                    function_class="Unknown",
+                    evidence=f"{file_path}: {evidence_lines(body, secret_pattern)}",
+                    evidence_type="Direct Code",
+                    severity="High",
+                    confidence="Medium",
+                    status="Needs Review",
+                    data_flow="Partial",
+                    exploitability="Partial",
+                    reason="Security context contains token/secret-looking material in a source or configuration excerpt.",
+                    impact="A real exposed token or secret may allow unauthorized access to dependent systems.",
+                    recommendation="Remove hard-coded secrets, rotate exposed credentials, and load secrets from protected runtime configuration.",
+                )
+
+        if re.search(r"\b(pass(word)?|pwd|account)\b", lowered):
+            key = (file_path, "password-field")
+            if key not in seen:
+                seen.add(key)
+                add(
+                    title="Possible plaintext credential field or value",
+                    area="Secrets and credentials exposure",
+                    file=file_path,
+                    function_class="Unknown",
+                    evidence=f"{file_path}: {evidence_lines(body, credential_pattern)}",
+                    evidence_type="Direct Code",
+                    severity="Medium",
+                    confidence="Medium",
+                    status="Needs Review",
+                    data_flow="Partial",
+                    exploitability="Partial",
+                    reason="Security context contains account/password-looking fields or values without visible protected storage.",
+                    impact="Local files, logs, backups, or repositories may expose user credentials.",
+                    recommendation="Avoid storing passwords when possible. If persistence is required, use OS-protected credential storage or encrypted secret storage.",
+                )
+
+        if re.search(r"\b(binaryformatter|objectinputstream|pickle\.loads|yaml\.load|deserialize)\b", lowered):
+            key = (file_path, "unsafe-deserialization")
+            if key not in seen:
+                seen.add(key)
+                add(
+                    title="Potential unsafe deserialization usage",
+                    area="Deserialization and dynamic execution",
+                    file=file_path,
+                    function_class="Unknown",
+                    evidence=f"{file_path}: {evidence_lines(body, deserialization_pattern)}",
+                    evidence_type="Pattern Match",
+                    severity="Medium",
+                    confidence="Medium",
+                    status="Needs Review",
+                    data_flow="Partial",
+                    exploitability="Partial",
+                    reason="Security context contains deserialization APIs or serialized data markers that may be unsafe with untrusted input.",
+                    impact="If attacker-controlled data reaches deserialization, it may enable object injection, code execution, or application compromise.",
+                    recommendation="Use safe parsers and explicit DTOs. Reject untrusted serialized payloads and document trusted file boundaries.",
+                )
+
+        path_write = re.search(r"\b(appendalltext|writealltext|writefile|open\(|fileoutputstream)\b", lowered)
+        dynamic_name = re.search(r"\b(getname|username|user[_-]?input|request|param|args|argv)\b", lowered)
+        if path_write and dynamic_name:
+            key = (file_path, "dynamic-path-write")
+            if key not in seen:
+                seen.add(key)
+                add(
+                    title="Dynamic value appears to influence a file write path",
+                    area="Unsafe file/path handling",
+                    file=file_path,
+                    function_class="Unknown",
+                    evidence=f"{file_path}: {evidence_lines(body, path_write_pattern)}",
+                    evidence_type="Direct Code",
+                    severity="Medium",
+                    confidence="Medium",
+                    status="Needs Review",
+                    data_flow="Partial",
+                    exploitability="Partial",
+                    reason="A runtime/user-like value appears near file write path construction without visible normalization in the excerpt.",
+                    impact="If unsanitized, path traversal or unintended file overwrite may be possible.",
+                    recommendation="Sanitize path components with a strict allowlist and resolve/verify final paths stay under the intended directory.",
+                )
+
+    return candidates
+
+
 def validate_security_candidates(ctx: WorkflowFunctionContext, artifact: str = "security-candidates-agent-1.md") -> None:
     """Validate and score one AI security candidate artifact.
 
@@ -1688,6 +1755,9 @@ def combine_security_candidates(ctx: WorkflowFunctionContext) -> None:
     if missing_files:
         raise WorkflowFunctionError(f"Missing security candidate artifact(s): {', '.join(missing_files)}")
 
+    heuristic_candidates = _security_heuristic_candidates_from_context(ctx.read_text(ctx.output_dir / "security-context.md"))
+    all_candidates.extend(heuristic_candidates)
+
     if not all_candidates:
         raise WorkflowFunctionError("No CAND-### entries were found in multi-agent security candidate artifacts.")
 
@@ -1724,6 +1794,7 @@ def combine_security_candidates(ctx: WorkflowFunctionContext) -> None:
         "",
         "## Combination Summary",
         f"- Candidate artifacts read: {', '.join(candidate_files)}",
+        f"- Deterministic heuristic candidates: {len(heuristic_candidates)}",
         f"- Raw candidates: {len(all_candidates)}",
         f"- Accepted groups: {len(grouped)}",
         f"- Rejected candidates: {len(rejected)}",
@@ -1802,35 +1873,71 @@ def combine_security_candidates(ctx: WorkflowFunctionContext) -> None:
 
 def _synthesize_security_report_from_findings(security_findings_text: str, project_dir: Path) -> str:
     normalized_findings = _security_normalized_finding_blocks(security_findings_text)
-    if normalized_findings:
-        return ""
+    finding_items: list[dict[str, str]] = []
+    for sec_id, block in normalized_findings:
+        finding_items.append({
+            "id": sec_id,
+            "title": block.splitlines()[0].replace(f"## {sec_id} -", "").strip() or "Security finding",
+            "area": _optional_field_in_block(block, "Area") or "General",
+            "severity": _security_normalize_severity_value(_optional_field_in_block(block, "Severity")) or "Medium",
+            "confidence": str(_security_parse_confidence_score(_optional_field_in_block(block, "Confidence Score")) or 50),
+            "evidence": _optional_field_in_block(block, "Evidence") or f"output/security-findings.md: {sec_id}",
+            "impact": _optional_field_in_block(block, "Impact") or "Potential security impact depending on runtime exposure and trust boundary.",
+            "recommendation": _optional_field_in_block(block, "Recommendation") or "Review and remediate the referenced code/configuration.",
+        })
 
-    checklist_rows = [
-        ("Secrets and credentials exposure", "Reviewed", "Limitation: no accepted finding after multi-agent candidate filtering", "No confirmed vulnerability candidate was accepted."),
-        ("Authentication and authorization", "Reviewed", "Limitation: no accepted finding after multi-agent candidate filtering", "No confirmed vulnerability candidate was accepted."),
-        ("Input validation and output encoding", "Reviewed", "Limitation: no accepted finding after multi-agent candidate filtering", "No confirmed vulnerability candidate was accepted."),
-        ("Injection risks", "Reviewed", "Limitation: no accepted finding after multi-agent candidate filtering", "No confirmed vulnerability candidate was accepted."),
-        ("Unsafe file/path handling", "Reviewed", "Limitation: no accepted finding after multi-agent candidate filtering", "No confirmed vulnerability candidate was accepted."),
-        ("Deserialization or dynamic execution", "Reviewed", "Limitation: no accepted finding after multi-agent candidate filtering", "No confirmed vulnerability candidate was accepted."),
-        ("SSRF and outbound HTTP", "Reviewed", "Limitation: no accepted finding after multi-agent candidate filtering", "No confirmed vulnerability candidate was accepted."),
-        ("Web security controls", "Reviewed", "Limitation: no accepted finding after multi-agent candidate filtering", "No confirmed vulnerability candidate was accepted."),
-        ("Dependency and configuration risks", "Reviewed", "Limitation: no accepted finding after multi-agent candidate filtering", "No confirmed vulnerability candidate was accepted."),
-        ("Sensitive logging and error disclosure", "Reviewed", "Limitation: no accepted finding after multi-agent candidate filtering", "No confirmed vulnerability candidate was accepted."),
+    checklist_categories = [
+        "Secrets and credentials exposure",
+        "Authentication and authorization",
+        "Input validation and output encoding",
+        "Injection risks",
+        "Unsafe file/path handling",
+        "Deserialization or dynamic execution",
+        "SSRF and outbound HTTP",
+        "Web security controls",
+        "Dependency and configuration risks",
+        "Sensitive logging and error disclosure",
     ]
+    checklist_rows = []
+    for category in checklist_categories:
+        matching = next((item for item in finding_items if item["area"].lower() == category.lower()), None)
+        if matching:
+            checklist_rows.append((category, "Finding", f"{matching['id']}: {matching['evidence']}", "Accepted by Python-combined security findings."))
+        elif finding_items:
+            checklist_rows.append((category, "Reviewed", "Limitation: no accepted finding in this category after multi-agent candidate filtering", "No accepted finding for this category."))
+        else:
+            checklist_rows.append((category, "Reviewed", "Limitation: no accepted finding after multi-agent candidate filtering", "No confirmed vulnerability candidate was accepted."))
+
+    overall_severity = "Info"
+    if finding_items:
+        overall_severity = _security_best_severity([item["severity"] for item in finding_items])
+    overall_confidence = str(max((_security_parse_confidence_score(item["confidence"]) or 0 for item in finding_items), default=80))
+    if not finding_items:
+        overall_confidence = "80"
+
     lines = [
         "Status: DONE",
         "",
         "# Security Vulnerability Report",
         "",
         "## Summary",
-        "- Overall risk level: Info",
-        "- Overall confidence score: 80",
-        "- Multi-agent candidate filtering did not accept any confirmed security vulnerability findings for the reviewed scope.",
+        f"- Overall risk level: {overall_severity}",
+        f"- Overall confidence score: {overall_confidence}",
+        (
+            f"- Python-combined security findings accepted {len(finding_items)} finding(s) for final review."
+            if finding_items
+            else "- Multi-agent candidate filtering did not accept any confirmed security vulnerability findings for the reviewed scope."
+        ),
         "",
         "## Scan Scope",
         f"- Project path: {project_dir}",
         "- Languages/frameworks detected: see security-findings.md and security-context.md for collected project context.",
-        "- Files or areas reviewed from accepted Python-combined findings and candidate evidence: no accepted findings were produced.",
+        (
+            "- Files or areas reviewed from accepted Python-combined findings and candidate evidence: "
+            + ", ".join(sorted({item["area"] for item in finding_items}))
+            if finding_items
+            else "- Files or areas reviewed from accepted Python-combined findings and candidate evidence: no accepted findings were produced."
+        ),
         "- Multi-agent candidate artifacts reviewed: security-candidates-agent-1.md, security-candidates-agent-2.md, security-candidates-agent-3.md and score artifacts.",
         "",
         "## Method",
@@ -1849,20 +1956,55 @@ def _synthesize_security_report_from_findings(security_findings_text: str, proje
     lines.extend([
         "",
         "## Findings",
-        "No confirmed vulnerabilities found.",
+    ])
+    if finding_items:
+        for index, item in enumerate(finding_items, start=1):
+            lines.extend([
+                f"### VULN-{index:03d} - {item['title']}",
+                f"- Source Finding ID: {item['id']}",
+                f"- Severity: {item['severity']}",
+                f"- Confidence Score: {item['confidence']}",
+                f"- Evidence: {item['evidence']}",
+                f"- Impact: {item['impact']}",
+                f"- Recommendation: {item['recommendation']}",
+                "",
+            ])
+    else:
+        lines.extend([
+            "No confirmed vulnerabilities found.",
+            "",
+        ])
+    lines.extend([
         "",
         "## Risk Matrix",
         "| ID | Source Finding ID | Severity | Confidence Score | Area | Evidence Summary | Status |",
         "| --- | --- | --- | --- | --- | --- | --- |",
-        "| NONE | NONE | Info | 80 | Reviewed scope | No confirmed vulnerabilities found after multi-agent candidate filtering | Closed |",
+    ])
+    if finding_items:
+        for index, item in enumerate(finding_items, start=1):
+            evidence_summary = item["evidence"].replace("|", "/")
+            if len(evidence_summary) > 160:
+                evidence_summary = evidence_summary[:157] + "..."
+            lines.append(
+                f"| VULN-{index:03d} | {item['id']} | {item['severity']} | {item['confidence']} | "
+                f"{item['area'].replace('|', '/')} | {evidence_summary} | Needs remediation |"
+            )
+    else:
+        lines.append("| NONE | NONE | Info | 80 | Reviewed scope | No confirmed vulnerabilities found after multi-agent candidate filtering | Closed |")
+    lines.extend([
         "",
         "## Recommendations",
+        "- Prioritize accepted High and Medium severity findings from the Risk Matrix.",
         "- Continue targeted manual review for high-risk authentication, authorization, input handling, file handling, and configuration paths.",
         "- Run dedicated SAST, dependency, secret, and runtime security tests if stronger assurance is required.",
         "- Re-run this workflow after material code, dependency, or configuration changes.",
         "",
         "## Limitations",
-        "- No accepted SEC findings were produced by security-findings.md, so this report summarizes a no-finding result rather than confirmed vulnerabilities.",
+        (
+            "- Findings are static-analysis candidates accepted from workflow evidence and still require owner review before production severity decisions."
+            if finding_items
+            else "- No accepted SEC findings were produced by security-findings.md, so this report summarizes a no-finding result rather than confirmed vulnerabilities."
+        ),
         "- Confidence is limited by available source context, static review depth, model behavior, and lack of runtime exploit validation.",
         "- Candidate artifacts may include low-evidence or rejected candidates that were intentionally not promoted to final findings.",
         "",
@@ -1876,7 +2018,10 @@ def validate_security_report(ctx: WorkflowFunctionContext, artifact: str = "secu
     if not text.strip():
         raise WorkflowFunctionError(f"{artifact} is empty.")
     security_findings_text = ctx.read_text(ctx.output_dir / "security-findings.md")
-    if "Status: DONE" not in text:
+    normalized_preview = _security_normalized_finding_blocks(security_findings_text)
+    report_is_stale_no_finding = bool(normalized_preview) and "No confirmed vulnerabilities found" in text
+    report_missing_source_findings = bool(normalized_preview) and any(sec_id not in text for sec_id, _block in normalized_preview)
+    if "Status: DONE" not in text or report_is_stale_no_finding or report_missing_source_findings:
         synthesized = _synthesize_security_report_from_findings(security_findings_text, ctx.project_dir)
         if synthesized:
             ctx.write_text(path, synthesized)
@@ -2156,6 +2301,36 @@ def validate_security_report(ctx: WorkflowFunctionContext, artifact: str = "secu
             f"Open output/{_security_report_score_artifact_name(artifact)} for details."
         )
 
+def generate_security_report(ctx: WorkflowFunctionContext) -> None:
+    security_findings_text = ctx.read_text(ctx.output_dir / "security-findings.md")
+    if not security_findings_text.strip():
+        raise WorkflowFunctionError("security-findings.md is missing or empty.")
+    report = _synthesize_security_report_from_findings(security_findings_text, ctx.project_dir)
+    if not report.strip():
+        raise WorkflowFunctionError("Could not generate security-report.md from security-findings.md.")
+    ctx.write_text(ctx.output_dir / "security-report.md", report)
+
+
+def finalize_security_report(ctx: WorkflowFunctionContext) -> None:
+    report = ctx.read_text(ctx.output_dir / "security-report.md")
+    score = ctx.read_text(ctx.output_dir / "security-report-score.md")
+    if "Status: DONE" not in report:
+        raise WorkflowFunctionError("security-report.md must contain Status: DONE before finalization.")
+    if "Status: PASS" not in score:
+        raise WorkflowFunctionError("security-report-score.md must contain Status: PASS before finalization.")
+    summary_lines = [
+        "Status: DONE",
+        "",
+        "# Security Scan Finalized",
+        "",
+        "- Final report: output/security-report.md",
+        "- Validation score: output/security-report-score.md",
+    ]
+    for line in report.splitlines():
+        if line.startswith("- Overall risk level:") or line.startswith("- Overall confidence score:"):
+            summary_lines.append(line)
+    ctx.write_text(ctx.output_dir / "security-final.md", "\n".join(summary_lines).rstrip() + "\n")
+
 async def run_pytest(ctx: WorkflowFunctionContext) -> None:
     command = ctx.run.get("test_command") or os.environ.get("WORKFLOW_TEST_COMMAND", "python -m pytest")
     await ctx.log(ctx.run, f"run_test: executing `{command}` in {ctx.project_dir}")
@@ -2187,6 +2362,8 @@ async def run_pytest(ctx: WorkflowFunctionContext) -> None:
 PYTHON_FUNCTIONS = {
     "collect_security_context": collect_security_context,
     "combine_security_candidates": combine_security_candidates,
+    "generate_security_report": generate_security_report,
+    "finalize_security_report": finalize_security_report,
     "validate_security_candidates": validate_security_candidates,
     "validate_spec": validate_spec,
     "validate_todo": validate_todo,

@@ -36,6 +36,7 @@ Project inspection rules:
 Scan rules:
 - Review every security checklist category before concluding no findings.
 - Report confirmed, likely, inferred, needs-review, and hardening candidates when security-relevant.
+- If Security Context contains security-relevant signals such as Bearer tokens, API tokens, Account/Password fields, serialized credential/config files, BinaryFormatter/resource serialization, file path construction from runtime/user-controlled values, or unprotected config files, you must report them as candidates unless concrete evidence proves they are harmless.
 - Do not invent issues that contradict evidence. When uncertain, use AI Confidence Guess: Low instead of pretending certainty.
 - Do not ignore suspicious patterns just because exploitability is uncertain; mark them Needs Review with AI Confidence Guess: Low.
 - Every candidate must have a stable candidate ID: CAND-001, CAND-002, ...

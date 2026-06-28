@@ -50,6 +50,7 @@ class AgentStepRunner:
         step_config = next((step for step in run.get("steps", []) if step.get("key") == step_key), {})
         agent = self.agent_manager.resolve(step_config.get("config") or {}, agent_name=agent_name or step_config.get("agent"))
         agent_name = agent.name
+        config = step_config.get("config") or {}
         prompt_result = self.prompt_builder.build(
             run,
             step_key,
@@ -64,7 +65,11 @@ class AgentStepRunner:
         # Some workflows, such as multi-agent security consensus, intentionally
         # need independent Qwen sessions for the same project.  Those steps must
         # explicitly set forceFreshQwenSession=true and keepSameSession=false.
-        force_fresh_qwen = bool(step_config.get("forceFreshQwenSession") or step_config.get("isolatedQwenSession"))
+        force_fresh_qwen = bool(
+            config.get("forceFreshQwenSession")
+            or config.get("isolatedQwenSession")
+            or config.get("freshSessionPerAgent")
+        )
         if agent_name == "qwen":
             session_id = None if fresh_session and force_fresh_qwen else base_session_id
         else:

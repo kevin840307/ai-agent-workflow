@@ -1,6 +1,6 @@
-# Qwen Workflow Web MVP
+# Qwen Workflow Web
 
-A small FastAPI web app that runs a Python-controlled AI workflow with Qwen CLI as the agent worker.
+FastAPI + static frontend workflow runner. It provides a ChatGPT-like project UI, but workflow steps are controlled by Python and executed by agent adapters such as Qwen.
 
 ## Run
 
@@ -12,29 +12,86 @@ python -m venv .venv
 
 Open http://127.0.0.1:8000.
 
-## Real Qwen Mode
+## Modes
 
-Install and authenticate Qwen CLI, then run without `QWEN_MOCK=1`. The runner invokes:
+- Workflow mode runs a selected workflow against one project path.
+- Chat mode sends normal chat prompts to the selected project session.
+- Workflow Designer is available at http://127.0.0.1:8000/workflow-designer.
+
+## Qwen Runtime
+
+By default the app tries to use `qwen serve` for lower latency:
 
 ```text
-qwen.cmd --session-id <web-session-uuid> --chat-recording -p "<prompt>"
+POST qwen serve /session/<session>/prompt
 ```
 
-On Windows, `qwen.cmd` avoids PowerShell execution-policy errors from `qwen.ps1`.
-If `qwen -p "hello word"` works in cmd, leave Auth as `none` so the app uses your existing Qwen settings.
+If no matching server is running, the app starts one for the project workspace. Session behavior:
 
-## Mock Mode
+- Normal workflow/chat calls reuse the project `qwen_session_id`.
+- Consensus agent steps can request fresh internal Qwen sessions with `freshSessionPerAgent`.
+- Reset Project creates a new Qwen session id without creating a new project.
+
+Useful environment variables:
+
+- `QWEN_BIN`: Qwen executable. Default is `qwen.cmd` on Windows, `qwen` elsewhere.
+- `QWEN_USE_SERVE`: set `0` to disable serve API and use CLI fallback path.
+- `QWEN_SERVE`: set `0` to prevent auto-starting `qwen serve`.
+- `QWEN_SERVE_FALLBACK_CLI`: set `1` to use CLI when serve fails.
+- `QWEN_TIMEOUT_SEC`: agent timeout seconds. Default `1200`.
+- `QWEN_MOCK`: set `1` for mock output during local UI testing.
+- `WORKFLOW_TEST_COMMAND`: command used by the Run Test step. Default `python -m pytest`.
+
+If `qwen -p "hello world"` works in cmd, keep Auth blank/none in the UI so the app uses your existing Qwen settings.
+
+## Workflows
+
+Workflow bundles live under `data/workflows/<workflow-folder>/`.
+
+```text
+workflow.json
+prompts/
+skills/
+functions/
+```
+
+The built-in workflow is `data/workflows/system-controlled-qwen` and is read-only in the UI. Custom workflows use the same folder format and can edit:
+
+- step type, prompt template, expected files, validator, retry target, retry count, timeout
+- interaction mode
+- review strategy
+- consensus agent settings such as `agentCount`, `agentMaxRetries`, and `freshSessionPerAgent`
+
+Python validation steps do not need to call an agent. Their `validator` field selects a backend function from `/api/workflows/functions`.
+
+## Security Scan
+
+The security scan workflow uses a compact consensus design:
+
+1. collect security manifest
+2. run a generic consensus agent step internally
+3. combine findings
+4. generate report
+5. validate report
+6. finalize report
+
+The visible workflow stays short, while `consensus_agent` can run multiple internal Qwen sessions with per-agent validation and retry.
+
+## Test
 
 ```powershell
-$env:QWEN_MOCK="1"
-python -m uvicorn app.main:app --reload --port 8000
+python -m compileall app tests
+python -m unittest discover -s tests
 ```
 
-## Optional Settings
+Optional frontend syntax check:
 
-- `QWEN_BIN`: Qwen executable path/name. Default: `qwen.cmd` on Windows, `qwen` elsewhere.
-- `QWEN_TIMEOUT_SEC`: Qwen subprocess timeout. Default: `1200`
-- `QWEN_REUSE_SESSION`: reuse one Qwen session per Web session. Default: `1`
-- `QWEN_BARE`: pass `--bare` to Qwen CLI. Default: `0`
-- `QWEN_AUTH_TYPE`: optional environment override for Qwen auth type. If unset, the app uses the Web UI setting stored in `data/settings.json` and defaults to blank/none.
-- `WORKFLOW_TEST_COMMAND`: test command run during the test step. Default: `python -m pytest`
+```powershell
+Get-Content -Raw static\js\main.js | node --input-type=module --check
+Get-Content -Raw static\js\pages\workflow-runner.js | node --input-type=module --check
+Get-Content -Raw static\js\pages\workflow-designer.js | node --input-type=module --check
+```
+
+## Architecture
+
+See `ARCHITECTURE.md` for module responsibilities and extension points.
