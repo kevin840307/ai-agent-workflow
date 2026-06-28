@@ -48,6 +48,7 @@ export function createInteractions(ctx) {
         ctx.features.console.append("logs", "Please enter a reply before continuing.");
         return;
       }
+      ctx.features.composer.clearInput();
       ui.byKey("runWorkflow").disabled = true;
       try {
         ctx.features.console.append("logs", "Submitting reply and continuing workflow...");
@@ -55,9 +56,6 @@ export function createInteractions(ctx) {
           method: "POST",
           body: JSON.stringify({ content }),
         });
-        // Clear immediately after the reply is accepted.
-        // This covers both clicking Reply and pressing Ctrl + Enter.
-        ctx.features.composer.clearInput();
         await ctx.features.messages.load({ hydrateInput: false });
         interactions.hide();
         await ctx.features.runs.follow(run.id);

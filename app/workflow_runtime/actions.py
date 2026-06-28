@@ -13,9 +13,7 @@ from app.runtime_files import (
     project_has_user_files,
     should_ask_for_spec_input,
     snapshot_changed,
-    synthesize_build_from_requirement,
     synthesize_spec_from_requirement,
-    synthesize_tests_from_requirement,
     synthesize_todo_from_spec,
     validate_build_files_are_not_tests,
     validate_generated_test_files,
@@ -425,30 +423,13 @@ class WorkflowActions:
     async def generate_tests_step(self, run: dict[str, Any], prompt_name: str = "07_test.md", artifact: str = "test-plan.md", *, agent_name: str | None = None) -> None:
         output_dir = Path(run["workspace"]) / "output"
         artifact = normalize_artifact_name(artifact)
-        requirement = read_text(Path(run["workspace"]) / "requirement.md")
         try:
             await self.run_agent_step(run, "generate_tests", prompt_name, artifact, agent_name=agent_name)
-        except (UserInputRequired, WorkflowError) as exc:
-            fallback = synthesize_tests_from_requirement(requirement)
-            if not fallback:
-                raise
-            await self.log(run, f"generate_tests: agent output was not usable, writing deterministic fallback: {exc}")
-            write_text(output_dir / artifact, fallback)
-            await self.refresh_artifacts(run["id"])
+        except UserInputRequired:
+            raise
         test_plan = read_text(output_dir / artifact)
         files = extract_build_files(test_plan)
-        try:
-            validate_generated_test_files(files)
-        except WorkflowError as exc:
-            fallback = synthesize_tests_from_requirement(requirement)
-            if not fallback:
-                raise
-            await self.log(run, f"generate_tests: invalid test artifact, writing deterministic fallback: {exc}")
-            write_text(output_dir / artifact, fallback)
-            await self.refresh_artifacts(run["id"])
-            test_plan = fallback
-            files = extract_build_files(test_plan)
-            validate_generated_test_files(files)
+        validate_generated_test_files(files)
         project_dir = Path(run.get("project_path") or ROOT)
         written = apply_build_files(project_dir, test_plan)
         if written:
@@ -461,42 +442,18 @@ class WorkflowActions:
         project_dir = Path(run.get("project_path") or ROOT)
         output_dir = Path(run["workspace"]) / "output"
         artifact = normalize_artifact_name(artifact)
-        requirement = read_text(Path(run["workspace"]) / "requirement.md")
         before = project_file_snapshot(project_dir)
         try:
             await self.run_agent_step(run, "build", prompt_name, artifact, agent_name=agent_name)
-        except (UserInputRequired, WorkflowError) as exc:
-            fallback = synthesize_build_from_requirement(requirement)
-            if not fallback:
-                raise
-            await self.log(run, f"build: agent output was not usable, writing deterministic fallback: {exc}")
-            write_text(output_dir / artifact, fallback)
-            await self.refresh_artifacts(run["id"])
+        except UserInputRequired:
+            raise
         build_result = read_text(output_dir / artifact)
-        try:
-            validate_build_files_are_not_tests(extract_build_files(build_result))
-        except WorkflowError:
-            fallback = synthesize_build_from_requirement(requirement)
-            if not fallback:
-                raise
-            await self.log(run, "build: invalid build artifact wrote tests, replacing with deterministic production fallback")
-            write_text(output_dir / artifact, fallback)
-            await self.refresh_artifacts(run["id"])
-            build_result = fallback
+        validate_build_files_are_not_tests(extract_build_files(build_result))
         written = apply_build_files(project_dir, build_result)
         if written:
             await self.log(run, "build: materialized files: " + ", ".join(str(path.relative_to(project_dir)) for path in written))
         after = project_file_snapshot(project_dir)
         if not snapshot_changed(before, after):
-            fallback = synthesize_build_from_requirement(requirement)
-            if fallback and build_result != fallback:
-                await self.log(run, "build: no project files changed, applying deterministic production fallback")
-                write_text(output_dir / artifact, fallback)
-                await self.refresh_artifacts(run["id"])
-                written = apply_build_files(project_dir, fallback)
-                if written:
-                    await self.log(run, "build: materialized fallback files: " + ", ".join(str(path.relative_to(project_dir)) for path in written))
-                    return
             raise WorkflowError(
                 f"build did not create or modify files under Project Path: {project_dir}. "
                 "Agent build output must include FILE/CONTENT/END_FILE blocks."

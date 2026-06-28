@@ -568,11 +568,21 @@ body.chat-mode .composer-box {
 }
 
 .step-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   min-width: 0;
   padding-top: 3px;
+  white-space: nowrap;
 }
 
-.step-title span:first-child { font-weight: 650; }
+.step-title span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 650;
+}
 
 .step-actions {
   display: inline-flex;
@@ -589,10 +599,12 @@ body.chat-mode .composer-box {
 }
 
 .retry-count {
-  display: inline-block;
-  margin-left: 8px;
+  display: inline-flex;
+  flex: 0 0 auto;
   color: var(--muted);
   font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
 }
 
 .step small {

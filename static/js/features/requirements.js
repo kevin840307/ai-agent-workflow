@@ -1,9 +1,8 @@
 export function createRequirements(ctx) {
   const { api, state, ui } = ctx;
 
-  return {
-    async save() {
-      const content = ui.byKey("messageInput").value.trim();
+  const requirements = {
+    async saveContent(content) {
       if (!content || !state.activeSessionId) return;
       await api.request(`/api/sessions/${state.activeSessionId}/messages`, {
         method: "POST",
@@ -13,5 +12,12 @@ export function createRequirements(ctx) {
       await ctx.features.sessions.refreshList();
       ui.byKey("messages").scrollTop = ui.byKey("messages").scrollHeight;
     },
+
+    async save() {
+      const content = ui.byKey("messageInput").value.trim();
+      await requirements.saveContent(content);
+    },
   };
+
+  return requirements;
 }

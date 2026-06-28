@@ -19,7 +19,6 @@ async def startup() -> None:
     runtime.mark_interrupted_runs()
     workflow_config_service.ensure_system_workflow()
     workflow_config_service.ensure_sample_workflow()
-    runtime.ensure_qwen_serve()
 
 
 @app.get("/")

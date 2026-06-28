@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
-from typing import Iterable
+from typing import Callable, Iterable
 
 from app.runtime_errors import ValidationError, WorkflowError
 from app.runtime_paths import read_text, write_text
@@ -115,57 +116,6 @@ def should_ask_for_spec_input(requirement: str, project_dir: Path) -> bool:
     return not project_has_user_files(project_dir) and not requirement_mentions_language(requirement)
 
 
-def requirement_is_python_bubble_sort(requirement: str) -> bool:
-    lower = requirement.lower()
-    mentions_python = "python" in lower or ".py" in lower
-    mentions_bubble = "bubble" in lower or "泡沫" in requirement or "氣泡" in requirement
-    return mentions_python and mentions_bubble
-
-
-def synthesize_build_from_requirement(requirement: str) -> str:
-    if not requirement_is_python_bubble_sort(requirement):
-        return ""
-    return (
-        "FILE: bubble_sort.py\n"
-        "CONTENT:\n"
-        "from __future__ import annotations\n\n\n"
-        "def bubble_sort(items):\n"
-        "    \"\"\"Return a sorted copy of items using bubble sort.\"\"\"\n"
-        "    result = list(items)\n"
-        "    n = len(result)\n"
-        "    for end in range(n - 1, 0, -1):\n"
-        "        swapped = False\n"
-        "        for index in range(end):\n"
-        "            if result[index] > result[index + 1]:\n"
-        "                result[index], result[index + 1] = result[index + 1], result[index]\n"
-        "                swapped = True\n"
-        "        if not swapped:\n"
-        "            break\n"
-        "    return result\n"
-        "END_FILE\n"
-    )
-
-
-def synthesize_tests_from_requirement(requirement: str) -> str:
-    if not requirement_is_python_bubble_sort(requirement):
-        return ""
-    return (
-        "FILE: tests/test_bubble_sort.py\n"
-        "CONTENT:\n"
-        "from bubble_sort import bubble_sort\n\n\n"
-        "def test_bubble_sort_orders_numbers():\n"
-        "    assert bubble_sort([3, 1, 2]) == [1, 2, 3]\n\n\n"
-        "def test_bubble_sort_handles_duplicates():\n"
-        "    assert bubble_sort([4, 2, 4, 1]) == [1, 2, 4, 4]\n\n\n"
-        "def test_bubble_sort_handles_empty_list():\n"
-        "    assert bubble_sort([]) == []\n\n\n"
-        "def test_bubble_sort_does_not_mutate_input():\n"
-        "    values = [2, 1]\n"
-        "    assert bubble_sort(values) == [1, 2]\n"
-        "    assert values == [2, 1]\n"
-        "END_FILE\n"
-    )
-
 
 def classify_test_retry_target(project_dir: Path, test_result: str) -> str:
     text = test_result or ""
@@ -176,7 +126,6 @@ def classify_test_retry_target(project_dir: Path, test_result: str) -> str:
             "error collecting",
             "importerror while importing test module",
             "syntaxerror",
-            "no module named",
         ]
     )
     if test_collection_or_import_problem:
@@ -199,7 +148,7 @@ def project_file_snapshot(project_dir: Path) -> dict[str, tuple[int, int]]:
     snapshot: dict[str, tuple[int, int]] = {}
     if not project_dir.exists():
         return snapshot
-    ignored_dirs = {".git", ".qwen-workflow", "__pycache__", "node_modules", ".venv", "venv"}
+    ignored_dirs = {".git", ".qwen-workflow", "__pycache__", ".pytest_cache", ".mypy_cache", "node_modules", ".venv", "venv"}
     for path in project_dir.rglob("*"):
         if not path.is_file():
             continue
@@ -227,6 +176,178 @@ def project_overview(project_dir: Path, limit: int = 180) -> str:
     if len(paths) > limit:
         lines.append(f"- ... {len(paths) - limit} more files")
     return "\n".join(lines)
+
+
+def project_profile(project_dir: Path) -> str:
+    snapshot = project_file_snapshot(project_dir)
+    if not snapshot:
+        return (
+            "Project appears empty.\n"
+            "- Primary language: unknown until requirement specifies it.\n"
+            "- Architecture guidance: create a minimal structure for the requested language."
+        )
+
+    paths = sorted(snapshot)
+    normalized_paths = [path.replace("\\", "/") for path in paths]
+    lower_paths = [path.lower() for path in normalized_paths]
+    suffix_counts: dict[str, int] = {}
+    for path in normalized_paths:
+        suffix = Path(path).suffix.lower()
+        if suffix:
+            suffix_counts[suffix] = suffix_counts.get(suffix, 0) + 1
+
+    languages = _detect_project_languages(lower_paths, suffix_counts)
+    test_frameworks = _detect_test_frameworks(project_dir, lower_paths)
+    source_files = _sample_paths(normalized_paths, _is_source_path, 12)
+    test_files = _sample_paths(normalized_paths, _is_test_path, 12)
+    marker_files = _sample_paths(normalized_paths, _is_marker_file, 12)
+    source_roots = _source_roots(source_files)
+
+    primary_language = languages[0] if languages else "unknown"
+    return "\n".join(
+        [
+            "Detected project profile:",
+            f"- Primary language: {primary_language}",
+            f"- Languages detected: {', '.join(languages) if languages else 'unknown'}",
+            f"- Test framework: {', '.join(test_frameworks) if test_frameworks else 'unknown'}",
+            f"- Marker/config files: {', '.join(marker_files) if marker_files else 'none detected'}",
+            f"- Source roots by usage: {', '.join(source_roots) if source_roots else 'none detected'}",
+            f"- Existing source files: {', '.join(source_files) if source_files else 'none detected'}",
+            f"- Existing test files: {', '.join(test_files) if test_files else 'none detected'}",
+            "- Architecture guidance: extend the dominant existing language, module layout, naming, and test style. Do not introduce a new src/tests layout unless it is the dominant source root or architecture.md says to use it.",
+        ]
+    )
+
+
+def _detect_project_languages(lower_paths: list[str], suffix_counts: dict[str, int]) -> list[str]:
+    scores = {
+        "Python": suffix_counts.get(".py", 0) * 3,
+        "TypeScript": (suffix_counts.get(".ts", 0) + suffix_counts.get(".tsx", 0)) * 3,
+        "JavaScript": (suffix_counts.get(".js", 0) + suffix_counts.get(".jsx", 0) + suffix_counts.get(".mjs", 0)) * 3,
+        "Java": suffix_counts.get(".java", 0) * 3,
+        "C#": suffix_counts.get(".cs", 0) * 3,
+        "Go": suffix_counts.get(".go", 0) * 3,
+        "Rust": suffix_counts.get(".rs", 0) * 3,
+        "PHP": suffix_counts.get(".php", 0) * 3,
+        "Ruby": suffix_counts.get(".rb", 0) * 3,
+    }
+    marker_boosts = {
+        "Python": ["pyproject.toml", "requirements.txt", "pytest.ini", "setup.py", "tox.ini"],
+        "TypeScript": ["tsconfig.json"],
+        "JavaScript": ["package.json", "vite.config.js", "webpack.config.js"],
+        "Java": ["pom.xml", "build.gradle", "src/main/java"],
+        "C#": [".csproj", ".sln"],
+        "Go": ["go.mod"],
+        "Rust": ["cargo.toml"],
+        "PHP": ["composer.json"],
+        "Ruby": ["gemfile"],
+    }
+    for language, markers in marker_boosts.items():
+        for marker in markers:
+            if any(marker in path for path in lower_paths):
+                scores[language] += 5
+    ranked = sorted(((score, language) for language, score in scores.items() if score > 0), reverse=True)
+    return [language for _, language in ranked]
+
+
+def _detect_test_frameworks(project_dir: Path, lower_paths: list[str]) -> list[str]:
+    frameworks: list[str] = []
+    if any(path == "pytest.ini" or path.startswith("tests/test_") for path in lower_paths):
+        frameworks.append("pytest")
+    if any(path.endswith(".py") and "unittest" in _safe_read_lower(project_dir / path) for path in lower_paths[:80]):
+        frameworks.append("unittest")
+    if "package.json" in lower_paths:
+        package_text = read_text(project_dir / "package.json")
+        try:
+            package = json.loads(package_text)
+        except json.JSONDecodeError:
+            package = {}
+        package_blob = json.dumps(package).lower() if package else package_text.lower()
+        for name in ["vitest", "jest", "mocha", "playwright"]:
+            if name in package_blob:
+                frameworks.append(name)
+    if any(path == "pom.xml" for path in lower_paths):
+        frameworks.append("maven test")
+    if any(path == "build.gradle" or path == "build.gradle.kts" for path in lower_paths):
+        frameworks.append("gradle test")
+    return _unique(frameworks)
+
+
+def _sample_paths(paths: list[str], predicate: Callable[[str], bool], limit: int) -> list[str]:
+    return [path for path in paths if predicate(path.replace("\\", "/"))][:limit]
+
+
+def _source_roots(source_files: list[str]) -> list[str]:
+    counts: dict[str, int] = {}
+    for source_file in source_files:
+        parts = Path(source_file).parts
+        root = parts[0] if len(parts) > 1 else "."
+        counts[root] = counts.get(root, 0) + 1
+    ranked = sorted(counts.items(), key=lambda item: (-item[1], 0 if item[0] == "." else 1, item[0]))
+    return [f"{root} ({count})" for root, count in ranked]
+
+
+def _is_source_path(path: str) -> bool:
+    lower = path.lower()
+    if _is_test_path(lower):
+        return False
+    return Path(lower).suffix in {".py", ".js", ".jsx", ".ts", ".tsx", ".java", ".cs", ".go", ".rs", ".php", ".rb"}
+
+
+def _is_test_path(path: str) -> bool:
+    lower = path.lower()
+    name = Path(lower).name
+    return (
+        lower.startswith("tests/")
+        or "/tests/" in lower
+        or name.startswith("test_")
+        or name.endswith("_test.py")
+        or name.endswith(".test.js")
+        or name.endswith(".spec.js")
+        or name.endswith(".test.ts")
+        or name.endswith(".spec.ts")
+        or name.endswith("test.java")
+    )
+
+
+def _is_marker_file(path: str) -> bool:
+    name = Path(path.lower()).name
+    return name in {
+        "architecture.md",
+        "pyproject.toml",
+        "requirements.txt",
+        "pytest.ini",
+        "setup.py",
+        "tox.ini",
+        "package.json",
+        "tsconfig.json",
+        "vite.config.js",
+        "vite.config.ts",
+        "pom.xml",
+        "build.gradle",
+        "build.gradle.kts",
+        "go.mod",
+        "cargo.toml",
+        "composer.json",
+        "gemfile",
+    } or name.endswith(".csproj") or name.endswith(".sln")
+
+
+def _safe_read_lower(path: Path, max_chars: int = 8000) -> str:
+    try:
+        return read_text(path)[:max_chars].lower()
+    except OSError:
+        return ""
+
+
+def _unique(values: list[str]) -> list[str]:
+    seen: set[str] = set()
+    unique_values: list[str] = []
+    for value in values:
+        if value not in seen:
+            seen.add(value)
+            unique_values.append(value)
+    return unique_values
 
 
 def snapshot_changed(before: dict[str, tuple[int, int]], after: dict[str, tuple[int, int]]) -> bool:
@@ -277,7 +398,7 @@ def is_test_file_path(rel_path: str) -> bool:
 
 def validate_generated_test_files(files: list[tuple[str, str]]) -> None:
     if not files:
-        raise WorkflowError("generate_tests did not create any test files. Qwen test output must include FILE/CONTENT/END_FILE blocks.")
+        raise WorkflowError("generate_tests did not create any test files. Agent test output must include FILE/CONTENT/END_FILE blocks.")
     invalid = [rel_path for rel_path, _ in files if not is_test_file_path(rel_path)]
     if invalid:
         raise WorkflowError(

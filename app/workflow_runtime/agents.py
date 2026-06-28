@@ -9,7 +9,7 @@ from typing import Any, Awaitable, Callable, Protocol
 
 from app.runtime_errors import WorkflowError
 
-from .qwen_serve import QwenCliClient
+from .qwen_serve import QwenCliClient, run_prompt_via_serve
 from .settings import load_settings
 
 AgentOutputCallback = Callable[[str, str], Awaitable[None]]
@@ -93,7 +93,7 @@ async def run_process_stream(
     return stdout, stderr
 
 
-class QwenCliAdapter:
+class QwenAdapter:
     name = "qwen"
 
     def __init__(self) -> None:
@@ -103,6 +103,24 @@ class QwenCliAdapter:
         self.client = QwenCliClient()
 
     async def run_stream(self, request: AgentRequest, on_output: AgentOutputCallback | None = None) -> AgentResult:
+        use_serve = os.environ.get("QWEN_USE_SERVE", "1").lower() not in {"0", "false", "no", "off"}
+        if use_serve and not self.client.mock:
+            try:
+                output = await run_prompt_via_serve(
+                    request.prompt,
+                    request.cwd,
+                    request.session_id,
+                    on_output=on_output,
+                    timeout_sec=self.client.timeout_sec,
+                )
+                return AgentResult(output=output, session_id=request.session_id, raw_output=output)
+            except Exception as exc:
+                fallback_enabled = os.environ.get("QWEN_SERVE_FALLBACK_CLI", "1").lower() not in {"0", "false", "no", "off"}
+                if not fallback_enabled:
+                    raise
+                if on_output:
+                    await on_output("stderr", f"Qwen serve failed; falling back to CLI: {exc}")
+
         output = await self.client.run_stream(
             request.prompt,
             request.cwd,
@@ -113,12 +131,15 @@ class QwenCliAdapter:
         return AgentResult(output=output, session_id=request.session_id, raw_output=output)
 
     def command_preview(self, request: AgentRequest) -> str:
+        use_serve = os.environ.get("QWEN_USE_SERVE", "1").lower() not in {"0", "false", "no", "off"}
+        if use_serve and not self.client.mock:
+            return "POST qwen serve /session/<session>/prompt"
         return " ".join([*self.client.command(request.session_id, include_prompt_flag=False), "<prompt via stdin>"])
 
     def health(self) -> dict[str, Any]:
         return {
             "name": self.name,
-            "type": "qwen_cli",
+            "type": "qwen_serve",
             "mock": self.client.mock,
             "bin": self.client.bin,
             "reuse_session": self.client.reuse_session,
@@ -126,6 +147,7 @@ class QwenCliAdapter:
             "auth_type": self.client.auth_type or None,
             "timeout_sec": self.client.timeout_sec,
             "exists": self.client.mock or shutil.which(self.client.bin) is not None,
+            "fallback": "cli",
         }
 
 
@@ -198,11 +220,11 @@ class AgentManager:
         for name, config in providers.items():
             config = config or {}
             provider_type = config.get("type") or f"{name}_cli"
-            if name == "qwen" or provider_type == "qwen_cli":
-                agents[name] = QwenCliAdapter()
+            if name == "qwen" or provider_type in {"qwen_cli", "qwen_serve"}:
+                agents[name] = QwenAdapter()
             elif name == "opencode" or provider_type == "opencode_cli":
                 agents[name] = OpenCodeCliAdapter(config)
-        agents.setdefault("qwen", QwenCliAdapter())
+        agents.setdefault("qwen", QwenAdapter())
         return default_agent, agents
 
     def available_agent_names(self) -> set[str]:

@@ -63,7 +63,7 @@ export function createComposer(ctx) {
       if (waiting && !wasWaiting && input) input.value = "";
       if (input) input.placeholder = waiting ? "Reply to Qwen and continue..." : "Describe what to build...";
       if (runButton) {
-        runButton.textContent = state.activeRunStatus === "running"
+        runButton.textContent = ["queued", "running"].includes(state.activeRunStatus)
           ? "Stop"
           : (waiting ? "Reply" : "Run");
       }
@@ -122,7 +122,7 @@ export function createComposer(ctx) {
 
       composer.setWaiting(state.waitingForInput);
       if (runButton) runButton.disabled = !state.activeSessionId;
-      if (retryButton) retryButton.disabled = !state.activeRunId || state.activeRunStatus === "running";
+      if (retryButton) retryButton.disabled = !state.activeRunId || ["queued", "running"].includes(state.activeRunStatus);
       if (guidanceButton) guidanceButton.disabled = !state.activeRunId;
     },
   };

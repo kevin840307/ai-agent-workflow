@@ -9,6 +9,7 @@ from fastapi import HTTPException
 
 from app import runtime
 from app.repositories import store_repository
+from app.workflow_runtime.agents import AgentRequest
 
 
 CHAT_HISTORY_LIMIT = 16
@@ -178,11 +179,17 @@ async def chat(session_id: str, body: runtime.CreateMessageRequest) -> dict:
     project_path = runtime.resolve_project_path(session.get("project_path"), runtime.ROOT)
 
     try:
-        answer = await runtime.QwenCliClient().run_stream(
-            prompt,
-            project_path,
-            session.get("qwen_session_id") or session_id,
+        agent = runtime.agent_manager.resolve(agent_name="qwen")
+        result = await agent.run_stream(
+            AgentRequest(
+                run_id=f"chat-{session_id}",
+                step_key="chat",
+                prompt=prompt,
+                cwd=project_path,
+                session_id=session.get("qwen_session_id") or session_id,
+            )
         )
+        answer = result.output
     except runtime.WorkflowError as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 

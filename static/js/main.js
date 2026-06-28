@@ -1,5 +1,5 @@
 import { initWorkflowDesignerPage } from "./pages/workflow-designer.js?v=20260628-reset1";
-import { initWorkflowRunnerPage } from "./pages/workflow-runner.js?v=20260628-reset1";
+import { initWorkflowRunnerPage } from "./pages/workflow-runner.js?v=20260628-retry-stop1";
 
 const page = document.body?.dataset.page || "workflow-runner";
 

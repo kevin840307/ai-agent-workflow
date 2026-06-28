@@ -46,7 +46,7 @@ export function createRuns(ctx) {
       ui.byKey("currentStep").textContent = running?.title || failed?.title || (run.status === "done" ? "Complete" : "Idle");
       ui.byKey("progressText").textContent = `${passed} / ${run.steps.length}`;
       ui.byKey("resultText").textContent = run.status.toUpperCase();
-      ui.byKey("retryRun").disabled = run.status === "running";
+      ui.byKey("retryRun").disabled = ["queued", "running"].includes(run.status);
       ui.byKey("addGuidance").disabled = false;
       ctx.features.composer.updatePrimaryAction(run);
 
@@ -73,7 +73,7 @@ export function createRuns(ctx) {
           <div class="step-title"><span>${ui.escapeHtml(step.title)}</span>${retry}</div>
           <div class="step-message">${error}</div>
           <div class="step-actions">
-            ${relatedArtifacts.length ? `<button class="mini-button inspect-step" data-step-key="${ui.escapeHtml(step.key)}">Files${relatedArtifacts.length}</button>` : ""}
+            ${relatedArtifacts.length ? `<button class="mini-button inspect-step" data-step-key="${ui.escapeHtml(step.key)}">Files ${relatedArtifacts.length}</button>` : ""}
             <button class="mini-button guide-step" data-step-key="${ui.escapeHtml(step.key)}">Guide</button>
             <button class="mini-button retry-step" data-step-key="${ui.escapeHtml(step.key)}">Retry</button>
             <span class="badge ${step.status}">${step.status}</span>
@@ -138,10 +138,16 @@ export function createRuns(ctx) {
       if (!state.activeSessionId) return;
 
       const content = ui.byKey("messageInput").value.trim();
-      if (content) await ctx.features.requirements.save();
+      if (content) {
+        ctx.features.composer.clearInput();
+        await ctx.features.requirements.saveContent(content);
+      }
       ui.byKey("runWorkflow").disabled = true;
 
       try {
+        state.activeRunStatus = "queued";
+        ctx.features.composer.updatePrimaryAction();
+        ui.byKey("runWorkflow").disabled = true;
         ui.byKey("logs").textContent = "Starting workflow...\n";
         ui.byKey("qwenLive").textContent = "Waiting for Qwen process...\n";
         const run = await api.request(`/api/sessions/${state.activeSessionId}/workflow-runs`, {
@@ -167,6 +173,9 @@ export function createRuns(ctx) {
       }
       ui.byKey("retryRun").disabled = true;
       try {
+        state.activeRunStatus = "queued";
+        ctx.features.layout.applyRunStatus("queued");
+        ctx.features.composer.updatePrimaryAction();
         ctx.features.console.append("logs", stepKey ? `Retry requested from ${stepKey}...` : "Retry requested...");
         const run = await api.request(`/api/workflow-runs/${state.activeRunId}/retry`, {
           method: "POST",
@@ -182,7 +191,8 @@ export function createRuns(ctx) {
           if (run) runs.render(run);
         }
       } finally {
-        ui.byKey("retryRun").disabled = false;
+        ui.byKey("retryRun").disabled = ["queued", "running"].includes(state.activeRunStatus);
+        ctx.features.composer.updatePrimaryAction();
       }
     },
 

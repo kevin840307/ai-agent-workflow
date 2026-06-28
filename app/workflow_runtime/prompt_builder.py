@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from app.runtime_errors import WorkflowError
-from app.runtime_files import failure_feedback_for_step, project_overview
+from app.runtime_files import failure_feedback_for_step, project_overview, project_profile
 from app.runtime_paths import DEFAULT_SKILL_PATH, ROOT, SYSTEM_WORKFLOW_ID, WORKFLOW_BUNDLES_DIR, read_text, write_text
 from app.runtime_skills import load_skill_context
 
@@ -74,11 +74,12 @@ class PromptBuilder:
         guidance = read_text(input_dir / "guidance.md")
         failure_feedback = failure_feedback_for_step(read_text(input_dir / "failure-feedback.md"), step_key)
         architecture = read_text(project_dir / "architecture.md")
+        profile = project_profile(project_dir)
 
         skill_root = step_config.get("skillRoot") or run.get("skill_root") or str(DEFAULT_SKILL_PATH)
         skill_context, skill_files = load_skill_context(str(skill_root), step_key, requirement)
 
-        values = self._template_values(run, output_dir, project_dir, requirement, architecture, answers, guidance, failure_feedback, step_config)
+        values = self._template_values(run, output_dir, project_dir, requirement, architecture, profile, answers, guidance, failure_feedback, step_config)
         prompt_template = read_text(workflow_prompt_path(prompt_name, run))
         prompt = load_prompt(prompt_name, run=run, **values)
 
@@ -112,6 +113,8 @@ class PromptBuilder:
                 )
         if architecture.strip() and step_key != "prepare_project" and "{{architecture}}" not in prompt_template:
             prompt = f"{prompt}\n\nCurrent project architecture context from architecture.md:\n\n{architecture.strip()}\n"
+        if profile.strip() and step_key != "prepare_project" and "{{project_profile}}" not in prompt_template:
+            prompt = f"{prompt}\n\nCurrent project profile inferred from existing files:\n\n{profile.strip()}\n"
         if allow_interaction is None:
             allow_interaction = bool(step_record.get("allow_interaction"))
         prompt = f"{prompt}\n\n{interaction_instruction(bool(allow_interaction))}"
@@ -138,6 +141,7 @@ class PromptBuilder:
         project_dir: Path,
         requirement: str,
         architecture: str,
+        profile: str,
         answers: str,
         guidance: str,
         failure_feedback: str,
@@ -150,6 +154,7 @@ class PromptBuilder:
         return {
             "requirement": requirement,
             "architecture": architecture,
+            "project_profile": profile,
             "project_overview": project_overview(project_dir),
             "spec": read_text(output_dir / "spec.md"),
             "spec_review": read_text(output_dir / "spec-review.md"),
