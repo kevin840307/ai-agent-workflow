@@ -43,7 +43,10 @@ export const UI = {
     toggleDetails: "toggleDetails",
     toggleProjects: "toggleProjects",
     toggleSettings: "toggleSettings",
+    workflowDropdownButton: "workflowDropdownButton",
+    workflowDropdownMenu: "workflowDropdownMenu",
     workflowPicker: "workflowPicker",
+    workflowSelectedLabel: "workflowSelectedLabel",
     workflowSelect: "workflowSelect",
   },
 

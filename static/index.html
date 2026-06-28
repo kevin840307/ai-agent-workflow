@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Qwen Workflow</title>
-    <link rel="stylesheet" href="/static/styles.css?v=20260628-index-composer3" />
+    <link rel="stylesheet" href="/static/styles.css?v=20260628-caret-center" />
   </head>
   <body data-page="workflow-runner">
     <!-- App region: Project sessions -->
@@ -89,10 +89,15 @@
               </div>
               <span id="composerMode" class="composer-mode">Requirement</span>
             </div>
-            <label class="workflow-picker" id="workflowPicker">
-              <span>Run with</span>
-              <select id="workflowSelect"></select>
-            </label>
+            <div class="workflow-picker" id="workflowPicker">
+              <span class="workflow-picker-label">Run with</span>
+              <select id="workflowSelect" class="workflow-native-select" aria-hidden="true" tabindex="-1"></select>
+              <button id="workflowDropdownButton" class="workflow-dropdown-button" type="button" aria-haspopup="listbox" aria-expanded="false">
+                <span id="workflowSelectedLabel" class="workflow-selected-label">Select workflow</span>
+                <span class="workflow-dropdown-caret" aria-hidden="true"></span>
+              </button>
+              <div id="workflowDropdownMenu" class="workflow-dropdown-menu" role="listbox" hidden></div>
+            </div>
           </div>
           <textarea id="messageInput" placeholder="Describe what to build..." rows="2"></textarea>
           <div class="composer-footer">
@@ -159,7 +164,7 @@
       </div>
     </div>
 
-    <script type="module" src="/static/js/main.js?v=20260628-artifacts3"></script>
+    <script type="module" src="/static/js/main.js?v=20260628-caret-center"></script>
   </body>
 </html>
 

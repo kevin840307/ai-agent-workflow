@@ -847,3 +847,302 @@ body.artifact-modal-open {
     flex-direction: column;
   }
 }
+
+/* Composer workflow picker - custom dropdown polish */
+.workflow-picker {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  width: min(380px, 45vw);
+  max-width: 380px;
+  height: 36px;
+  padding: 4px 4px 4px 12px;
+  overflow: visible;
+  border: 1px solid rgba(203, 213, 225, 0.82);
+  border-radius: 999px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.94);
+  flex: 0 1 380px;
+}
+
+.workflow-picker::after { display: none; }
+
+.workflow-picker:hover {
+  border-color: rgba(15, 118, 110, 0.34);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.96);
+}
+
+.workflow-picker.open,
+.workflow-picker:focus-within {
+  border-color: rgba(15, 118, 110, 0.58);
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.12), 0 12px 30px rgba(15, 23, 42, 0.10);
+}
+
+.workflow-picker-label {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  height: 24px;
+  padding: 0 10px 0 0;
+  border-right: 1px solid rgba(203, 213, 225, 0.88);
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.workflow-native-select {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.workflow-dropdown-button {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 24px;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  width: 100%;
+  height: 28px;
+  padding: 0 3px 0 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.workflow-dropdown-button:hover:not(:disabled) {
+  border-color: transparent;
+}
+
+.workflow-selected-label {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 850;
+  text-align: left;
+}
+
+.workflow-dropdown-caret {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 24px;
+  width: 24px;
+  height: 24px;
+  border: 1px solid rgba(15, 118, 110, 0.14);
+  border-radius: 999px;
+  background: #edf7f5;
+  color: var(--accent);
+  line-height: 1;
+  transition: transform 160ms ease, background 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+.workflow-dropdown-caret::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 7px;
+  height: 7px;
+  margin: 0;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: translate(-50%, -62%) rotate(45deg);
+  transform-origin: center;
+}
+
+.workflow-dropdown-button:hover .workflow-dropdown-caret {
+  border-color: rgba(15, 118, 110, 0.28);
+  background: #e3f5f1;
+}
+
+.workflow-picker.open .workflow-dropdown-caret {
+  transform: rotate(180deg);
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #ffffff;
+}
+
+.workflow-dropdown-menu {
+  position: absolute;
+  top: auto;
+  bottom: calc(100% + 10px);
+  right: 0;
+  z-index: 120;
+  width: min(460px, 72vw);
+  max-height: min(360px, calc(100dvh - 180px));
+  padding: 8px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  border: 1px solid rgba(203, 213, 225, 0.92);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.18), 0 2px 8px rgba(15, 23, 42, 0.08);
+}
+
+.workflow-dropdown-menu::after {
+  content: "";
+  position: absolute;
+  right: 20px;
+  bottom: -6px;
+  width: 10px;
+  height: 10px;
+  border-right: 1px solid rgba(203, 213, 225, 0.92);
+  border-bottom: 1px solid rgba(203, 213, 225, 0.92);
+  background: rgba(255, 255, 255, 0.98);
+  transform: rotate(45deg);
+}
+
+.workflow-dropdown-menu[hidden] {
+  display: none;
+}
+
+.workflow-dropdown-option {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(56px, max-content);
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 54px;
+  padding: 9px 10px;
+  overflow: hidden;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: transparent;
+  text-align: left;
+}
+
+.workflow-dropdown-option:hover:not(:disabled) {
+  border-color: rgba(15, 118, 110, 0.20);
+  background: #f4fbf9;
+}
+
+.workflow-dropdown-option.active {
+  border-color: rgba(15, 118, 110, 0.44);
+  background: linear-gradient(180deg, #effaf7, #f7fcfb);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.workflow-option-main {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.workflow-option-main strong,
+.workflow-option-main small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workflow-option-main strong {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.workflow-option-main small {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.workflow-option-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  justify-self: end;
+  min-width: 0;
+  max-width: 82px;
+  height: 22px;
+  padding: 0 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #eef2f7;
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.workflow-dropdown-option.active .workflow-option-badge {
+  background: #dff6ef;
+  color: var(--accent-dark);
+}
+
+@media (max-width: 1280px) {
+  .workflow-picker {
+    width: min(320px, 42vw);
+    max-width: 320px;
+  }
+
+  .workflow-selected-label {
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 760px) {
+  .workflow-picker {
+    width: 100%;
+    max-width: none;
+    flex-basis: auto;
+  }
+
+  .workflow-dropdown-menu {
+    left: 0;
+    right: 0;
+    width: 100%;
+    max-height: min(320px, calc(100dvh - 160px));
+  }
+
+  .workflow-dropdown-option {
+    grid-template-columns: minmax(0, 1fr) minmax(52px, max-content);
+    gap: 6px;
+    padding-right: 8px;
+  }
+
+  .workflow-option-badge {
+    max-width: 70px;
+    padding: 0 7px;
+    font-size: 9px;
+    letter-spacing: 0.03em;
+  }
+}
+
+.workflow-picker span:not(.workflow-picker-label) {
+  flex: initial;
+  border-right: 0;
+  color: inherit;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.workflow-picker .workflow-native-select {
+  position: absolute;
+  width: 1px;
+  max-width: 1px;
+  height: 1px;
+  min-height: 1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
