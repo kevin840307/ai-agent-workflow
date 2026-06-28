@@ -79,10 +79,20 @@ The visible workflow stays short, while `consensus_agent` can run multiple inter
 
 ## Test
 
+Daily checks:
+
 ```powershell
 python -m compileall app tests
-python -m unittest discover -s tests
+python -m unittest discover -s tests -v
 ```
+
+Manual opt-in checks are documented in `TESTING.md`, including:
+
+- `RUN_REAL_QWEN=1` minimal real Qwen CLI smoke
+- `RUN_REAL_QWEN_FULL=1` full real Qwen system workflow smoke
+- `RUN_REAL_QWEN_STABILITY=1` same-prompt stability check
+- `RUN_CLEAN_REPO_SMOKE=1` clean repo smoke
+- `RUN_PLAYWRIGHT_UI=1` Playwright UI E2E
 
 Optional frontend syntax check:
 

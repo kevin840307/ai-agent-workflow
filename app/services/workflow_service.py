@@ -13,6 +13,12 @@ from app.services import workflow_config_service
 
 
 ACTIVE_RUN_STATUSES = {"queued", "running", "waiting_input"}
+_RUN_CREATION_LOCKS: dict[int, asyncio.Lock] = {}
+
+
+def _run_creation_lock() -> asyncio.Lock:
+    loop = asyncio.get_running_loop()
+    return _RUN_CREATION_LOCKS.setdefault(id(loop), asyncio.Lock())
 
 
 def _same_existing_project_path(left: str | None, right: str) -> bool:
@@ -45,73 +51,74 @@ async def get_latest_run_for_session(session_id: str) -> dict | None:
 
 
 async def create_workflow_run(session_id: str, body: runtime.CreateRunRequest) -> dict:
-    data = await store_repository.read()
-    session = next((session for session in data["sessions"] if session["id"] == session_id), None)
-    if not session:
-        raise HTTPException(status_code=404, detail="Session not found")
-    workflow = await workflow_config_service.get_workflow(body.workflow_id or workflow_config_service.SYSTEM_WORKFLOW_ID)
-    project_path = str(runtime.resolve_project_path(body.project_path or session.get("project_path") or str(runtime.ROOT)))
-    active_run = next(
-        (
-            run
-            for run in data.get("runs", [])
-            if run.get("status") in ACTIVE_RUN_STATUSES
-            and _same_existing_project_path(run.get("project_path"), project_path)
-        ),
-        None,
-    )
-    if active_run:
-        return active_run
-    requirement = body.requirement
-    if not requirement:
-        messages = [
-            msg
-            for msg in data["messages"]
-            if msg["session_id"] == session_id
-            and msg["role"] == "user"
-            and msg.get("kind", "requirement") == "requirement"
-        ]
-        requirement = messages[-1]["content"] if messages else None
-    if not requirement:
-        raise HTTPException(status_code=400, detail="Requirement is required")
+    async with _run_creation_lock():
+        data = await store_repository.read()
+        session = next((session for session in data["sessions"] if session["id"] == session_id), None)
+        if not session:
+            raise HTTPException(status_code=404, detail="Session not found")
+        workflow = await workflow_config_service.get_workflow(body.workflow_id or workflow_config_service.SYSTEM_WORKFLOW_ID)
+        project_path = str(runtime.resolve_project_path(body.project_path or session.get("project_path") or str(runtime.ROOT)))
+        active_run = next(
+            (
+                run
+                for run in data.get("runs", [])
+                if run.get("status") in ACTIVE_RUN_STATUSES
+                and _same_existing_project_path(run.get("project_path"), project_path)
+            ),
+            None,
+        )
+        if active_run:
+            return active_run
+        requirement = body.requirement
+        if not requirement:
+            messages = [
+                msg
+                for msg in data["messages"]
+                if msg["session_id"] == session_id
+                and msg["role"] == "user"
+                and msg.get("kind", "requirement") == "requirement"
+            ]
+            requirement = messages[-1]["content"] if messages else None
+        if not requirement:
+            raise HTTPException(status_code=400, detail="Requirement is required")
 
-    steps = runtime.initial_steps(workflow.get("steps", []))
-    if not steps:
-        raise HTTPException(status_code=400, detail="Workflow has no enabled steps.")
+        steps = runtime.initial_steps(workflow.get("steps", []))
+        if not steps:
+            raise HTTPException(status_code=400, detail="Workflow has no enabled steps.")
 
-    run_id = str(uuid.uuid4())
-    project_dir = Path(project_path)
-    run_dir = project_dir / ".qwen-workflow" / "runs" / f"session-{session_id}" / f"run-{run_id}"
-    (run_dir / "output").mkdir(parents=True, exist_ok=True)
-    (run_dir / "input").mkdir(parents=True, exist_ok=True)
-    (run_dir / ".workflow").mkdir(parents=True, exist_ok=True)
-    runtime.write_text(run_dir / "requirement.md", requirement)
-    runtime.write_text(run_dir / ".workflow" / "run-log.md", "")
-    run = {
-        "id": run_id,
-        "session_id": session_id,
-        "qwen_session_id": session.get("qwen_session_id") or session_id,
-        "status": "queued",
-        "error": None,
-        "workspace": str(run_dir),
-        "project_path": project_path,
-        "workflow_id": workflow["id"],
-        "workflow_folder": workflow.get("folderName") or workflow["id"],
-        "workflow_name": workflow.get("name") or workflow["id"],
-        "skill_root": workflow.get("skillRoot") or "",
-        "test_command": body.test_command,
-        "steps": steps,
-        "artifacts": [],
-        "created_at": runtime.utc_now(),
-        "updated_at": runtime.utc_now(),
-        "started_at": None,
-        "ended_at": None,
-    }
-    runtime.write_text(run_dir / ".workflow" / "state.json", json.dumps(run, indent=2, ensure_ascii=False))
-    await store_repository.mutate(lambda d: (d["runs"].insert(0, run), run)[1])
-    await runtime.refresh_artifacts(run_id)
-    start_workflow_task(run_id)
-    return run
+        run_id = str(uuid.uuid4())
+        project_dir = Path(project_path)
+        run_dir = project_dir / ".qwen-workflow" / "runs" / f"session-{session_id}" / f"run-{run_id}"
+        (run_dir / "output").mkdir(parents=True, exist_ok=True)
+        (run_dir / "input").mkdir(parents=True, exist_ok=True)
+        (run_dir / ".workflow").mkdir(parents=True, exist_ok=True)
+        runtime.write_text(run_dir / "requirement.md", requirement)
+        runtime.write_text(run_dir / ".workflow" / "run-log.md", "")
+        run = {
+            "id": run_id,
+            "session_id": session_id,
+            "qwen_session_id": session.get("qwen_session_id") or session_id,
+            "status": "queued",
+            "error": None,
+            "workspace": str(run_dir),
+            "project_path": project_path,
+            "workflow_id": workflow["id"],
+            "workflow_folder": workflow.get("folderName") or workflow["id"],
+            "workflow_name": workflow.get("name") or workflow["id"],
+            "skill_root": workflow.get("skillRoot") or "",
+            "test_command": body.test_command,
+            "steps": steps,
+            "artifacts": [],
+            "created_at": runtime.utc_now(),
+            "updated_at": runtime.utc_now(),
+            "started_at": None,
+            "ended_at": None,
+        }
+        runtime.write_text(run_dir / ".workflow" / "state.json", json.dumps(run, indent=2, ensure_ascii=False))
+        await store_repository.mutate(lambda d: (d["runs"].insert(0, run), run)[1])
+        await runtime.refresh_artifacts(run_id)
+        start_workflow_task(run_id)
+        return run
 
 
 async def get_run(run_id: str) -> dict:

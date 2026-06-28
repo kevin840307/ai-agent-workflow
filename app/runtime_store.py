@@ -28,8 +28,19 @@ class Store:
         ensure_dirs()
         if not self.path.exists():
             self.save_sync(self._empty())
-        data = json.loads(self.path.read_text(encoding="utf-8-sig"))
-        data.setdefault("workflow_configs", [])
+        try:
+            data = json.loads(self.path.read_text(encoding="utf-8-sig"))
+        except json.JSONDecodeError:
+            backup = self.path.with_suffix(f".corrupt-{int(time.time())}.json")
+            try:
+                self.path.replace(backup)
+            except OSError:
+                pass
+            data = self._empty()
+            self.save_sync(data)
+        for key in ["sessions", "messages", "runs", "workflow_configs"]:
+            if key not in data or not isinstance(data.get(key), list):
+                data[key] = []
         changed = False
         for session in data.get("sessions", []):
             if not session.get("qwen_session_id"):
@@ -40,8 +51,25 @@ class Store:
                 changed = True
         for run in data.get("runs", []):
             if not run.get("qwen_session_id"):
-                run["qwen_session_id"] = run["session_id"]
+                run["qwen_session_id"] = run.get("session_id")
                 changed = True
+            for key, default in {
+                "status": "queued",
+                "error": None,
+                "artifacts": [],
+                "started_at": None,
+                "ended_at": None,
+                "created_at": None,
+                "updated_at": None,
+                "workflow_id": "",
+                "workflow_folder": "",
+                "workflow_name": "",
+                "skill_root": "",
+                "test_command": None,
+            }.items():
+                if key not in run:
+                    run[key] = default
+                    changed = True
             if not run.get("steps"):
                 run["steps"] = self._default_steps()
                 changed = True

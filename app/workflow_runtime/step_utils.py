@@ -3,6 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from app.runtime_errors import WorkflowError
+
 
 TRUE_VALUES = {"1", "true", "yes", "on"}
 FALSE_VALUES = {"0", "false", "no", "off"}
@@ -99,8 +101,11 @@ def expected_file_candidates(run: dict[str, Any], rel_path: str) -> list[Path]:
     raw_path = rel_path.strip()
     absolute_path = Path(raw_path).expanduser()
     if absolute_path.is_absolute():
-        return [absolute_path]
+        raise WorkflowError(f"Unsafe expected file path outside workflow/project boundary: {rel_path}")
     normalized = raw_path.replace("\\", "/").lstrip("/")
+    parts = Path(normalized).parts
+    if not normalized or ".." in parts:
+        raise WorkflowError(f"Unsafe expected file path outside workflow/project boundary: {rel_path}")
     candidates: list[Path] = []
     if normalized.startswith("output/"):
         candidates.append(workspace / normalized)
