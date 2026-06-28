@@ -99,6 +99,30 @@
                 </div>
                 <button id="designerAddStep" class="mini-button">＋ Add</button>
               </div>
+              <div class="designer-step-toolbar" aria-label="Step filters and display mode">
+                <label class="designer-step-search-wrap" for="designerStepSearch">
+                  <span>Search</span>
+                  <input id="designerStepSearch" class="designer-input designer-step-search" placeholder="name / key / validator / file" data-step-filter-field="search" />
+                </label>
+                <label class="designer-step-type-wrap" for="designerStepTypeFilter">
+                  <span>Type</span>
+                  <select id="designerStepTypeFilter" class="designer-select designer-step-type-filter" data-step-filter-field="type">
+                    <option value="all">All types</option>
+                    <option value="ai">AI</option>
+                    <option value="validation">Validation</option>
+                    <option value="review">Review</option>
+                    <option value="gate">Gate</option>
+                    <option value="command">Command</option>
+                    <option value="python">Python</option>
+                    <option value="manual">Manual</option>
+                  </select>
+                </label>
+                <div class="designer-density-toggle" aria-label="Step density">
+                  <button type="button" data-designer-action="set-step-density" data-density="dense">Dense</button>
+                  <button type="button" data-designer-action="set-step-density" data-density="compact">Compact</button>
+                  <button type="button" data-designer-action="set-step-density" data-density="detail">Detail</button>
+                </div>
+              </div>
               <div id="designerStepList" class="designer-step-list"></div>
             </aside>
 
@@ -126,6 +150,6 @@
       </main>
     </div>
 
-    <script type="module" src="/static/js/main.js?v=20260628-ui2"></script>
+    <script type="module" src="/static/js/main.js?v=20260628-designer-all1"></script>
   </body>
 </html>

@@ -189,6 +189,9 @@ let state = {
   selectedWorkflowId: systemWorkflow.id,
   selectedStepId: systemWorkflow.steps[0].id,
   activeTab: "basic",
+  stepFilter: "",
+  stepTypeFilter: "all",
+  stepDensity: "compact",
   apiLoaded: false,
   apiError: "",
 };
@@ -196,6 +199,8 @@ let state = {
 let templateEditorDraft = null;
 let templateEditorOriginal = null;
 let importWorkflowDraft = null;
+let stepEditorModalOpen = false;
+let draggedStepId = null;
 let workflowDirty = false;
 let pendingWorkflowAction = null;
 let availableWorkflowFunctions = { validators: [], reviewStrategies: [], aggregators: [] };
@@ -286,6 +291,9 @@ async function loadState() {
   const selected = getSelectedWorkflow();
   state.selectedStepId = saved.selectedStepId || selected?.steps?.[0]?.id || null;
   state.activeTab = saved.activeTab || "basic";
+  state.stepFilter = saved.stepFilter || "";
+  state.stepTypeFilter = saved.stepTypeFilter || "all";
+  state.stepDensity = ["dense", "compact", "detail"].includes(saved.stepDensity) ? saved.stepDensity : "compact";
   workflowDirty = false;
 }
 
@@ -335,6 +343,12 @@ function bindEvents() {
   document.addEventListener("click", handleDocumentClick);
   document.addEventListener("input", handleDocumentInput);
   document.addEventListener("change", handleDocumentChange);
+  document.addEventListener("keydown", handleDocumentKeydown);
+  document.addEventListener("dragstart", handleStepDragStart);
+  document.addEventListener("dragover", handleStepDragOver);
+  document.addEventListener("dragleave", handleStepDragLeave);
+  document.addEventListener("drop", handleStepDrop);
+  document.addEventListener("dragend", handleStepDragEnd);
   window.addEventListener("beforeunload", handleBeforeUnload);
 }
 
@@ -344,6 +358,13 @@ function handleBeforeUnload(event) {
   event.returnValue = "";
 }
 
+function handleDocumentKeydown(event) {
+  if (event.key !== "Escape") return;
+  if (document.querySelector(".designer-confirm-box, .designer-template-modal-box, .designer-preview-box")) return;
+  if (stepEditorModalOpen) {
+    closeStepEditor();
+  }
+}
 
 function handleDocumentClick(event) {
   const navLink = event.target.closest("a.designer-nav-link");
@@ -376,6 +397,10 @@ function handleDocumentClick(event) {
     if (name === "duplicate-step") duplicateStep(action.dataset.stepId);
     if (name === "move-step-up") moveStep(action.dataset.stepId, -1);
     if (name === "move-step-down") moveStep(action.dataset.stepId, 1);
+    if (name === "set-step-density") setStepDensity(action.dataset.density);
+    if (name === "clear-step-filter") clearStepFilter();
+    if (name === "open-step-editor") openStepEditor(action.dataset.stepId);
+    if (name === "close-step-editor") closeStepEditor();
     if (name === "open-template-editor") openTemplateEditor();
     if (name === "save-template-editor") saveTemplateEditor();
     if (name === "close-template-editor") requestCloseTemplateEditor();
@@ -407,13 +432,19 @@ function handleDocumentClick(event) {
     return;
   }
 
-  const stepButton = event.target.closest("[data-step-id]");
+  const stepButton = event.target.closest(".designer-step-card[data-step-id]");
   if (stepButton) {
-    selectStep(stepButton.dataset.stepId);
+    selectStep(stepButton.dataset.stepId, { openModal: true });
   }
 }
 
 function handleDocumentInput(event) {
+  const filterInput = event.target.closest("[data-step-filter-field]");
+  if (filterInput) {
+    updateStepFilter(filterInput);
+    return;
+  }
+
   const draftInput = event.target.closest("[data-template-draft-field]");
   if (draftInput) {
     updateTemplateDraft(draftInput);
@@ -425,6 +456,12 @@ function handleDocumentInput(event) {
 }
 
 function handleDocumentChange(event) {
+  const filterInput = event.target.closest("[data-step-filter-field]");
+  if (filterInput) {
+    updateStepFilter(filterInput);
+    return;
+  }
+
   const importFile = event.target.closest("#designerImportFile");
   if (importFile) {
     readImportFile(importFile);
@@ -470,6 +507,7 @@ function updateFromInput(input) {
       renderPromptDiagnostics(step);
     }
     if (["name", "templatePath", "filename", "outputFile", "validator", "reviewMode", "aggregatorFunction"].includes(input.dataset.stepField)) renderWorkflowViewOnly();
+    renderStepEditorHeader();
     markWorkflowDirty();
     return;
   }
@@ -498,6 +536,7 @@ function render() {
   renderWorkflowViewOnly();
   renderTabs();
   renderSettings();
+  renderStepEditorModal();
 }
 
 function renderBackendStatus() {
@@ -600,29 +639,221 @@ function renderStepListClean() {
   const list = el("designerStepList");
   if (!wf || !list) return;
   const readonly = isReadonly();
+  syncStepFilterControls();
 
   if (!wf.steps.length) {
+    setText("designerStepCount", "0 steps");
     list.innerHTML = `<div class="designer-empty-state">No steps yet. Add a step to start designing.</div>`;
     return;
   }
 
-  list.innerHTML = wf.steps.map((step, index) => `
-    <button class="designer-step-card ${step.id === state.selectedStepId ? "active" : ""} ${step.enabled ? "" : "disabled-step"}" data-step-id="${escapeHtml(step.id)}">
-      <span class="designer-step-card-title">
-        <strong>${index + 1}. ${escapeHtml(step.name)}</strong>
-        <span class="designer-step-type ${escapeHtml(step.type)}">${escapeHtml(formatStepType(step.type))}</span>
-      </span>
-      <span class="designer-step-meta">${escapeHtml(summarizeStep(step))}</span>
-      <span class="designer-chip-row">
-        ${step.timeoutEnabled ? `<span class="badge running">${step.timeoutMinutes || 0}m timeout</span>` : `<span class="badge">no timeout</span>`}
-        ${step.pauseAfterStep ? `<span class="badge waiting_input">human gate</span>` : ""}
-        ${step.validator ? `<span class="badge passed">${escapeHtml(functionMeta("validators", step.validator)?.label || step.validator)}</span>` : ""}
-        ${step.reviewMode !== "none" ? `<span class="badge passed">${escapeHtml(formatReviewMode(step.reviewMode))}</span>` : ""}
-      </span>
-      ${readonly ? "" : `<span class="designer-step-meta">Click to edit. Use Settings panel for actions.</span>`}
-    </button>
-  `).join("");
+  const visibleSteps = getVisibleSteps(wf);
+  setText(
+    "designerStepCount",
+    visibleSteps.length === wf.steps.length
+      ? `${wf.steps.length} steps`
+      : `${visibleSteps.length} / ${wf.steps.length} steps`
+  );
+
+  if (!visibleSteps.length) {
+    list.innerHTML = `
+      <div class="designer-empty-state designer-filter-empty">
+        <strong>No matching steps</strong>
+        <span>Try another keyword or type filter.</span>
+        <button type="button" data-designer-action="clear-step-filter">Clear Filter</button>
+      </div>
+    `;
+    return;
+  }
+
+  list.classList.toggle("designer-step-density-dense", state.stepDensity === "dense");
+  list.classList.toggle("designer-step-density-compact", state.stepDensity === "compact");
+  list.classList.toggle("designer-step-density-detail", state.stepDensity === "detail");
+
+  list.innerHTML = visibleSteps.map(({ step, index }) => {
+    const disabled = readonly ? "disabled" : "";
+    const badges = [
+      step.timeoutEnabled ? `<span class="badge running">${step.timeoutMinutes || 0}m</span>` : "",
+      step.pauseAfterStep ? `<span class="badge waiting_input">human</span>` : "",
+      step.validator ? `<span class="badge passed">${escapeHtml(functionMeta("validators", step.validator)?.label || step.validator)}</span>` : "",
+      step.reviewMode !== "none" ? `<span class="badge passed">${escapeHtml(formatReviewMode(step.reviewMode))}</span>` : "",
+    ].filter(Boolean).join("");
+    const detailItems = [
+      ["Key", step.key || "-"],
+      ["Template", step.templatePath || "-"],
+      ["File", step.filename || normalizeFilename(step.outputFile || "-")],
+      ["Retry", step.maxRetries ?? 0],
+      ["Expected", (step.expectedFiles || []).length ? step.expectedFiles.join(", ") : "-"],
+    ];
+
+    return `
+      <article class="designer-step-card designer-step-card-compact designer-step-card-${escapeHtml(state.stepDensity)} ${escapeHtml(step.type)}-card ${step.id === state.selectedStepId ? "active" : ""} ${step.enabled ? "" : "disabled-step"}" data-step-id="${escapeHtml(step.id)}" draggable="${readonly ? "false" : "true"}" tabindex="0" title="Click to edit ${escapeHtml(step.name)}">
+        <span class="designer-step-card-main">
+          <span class="designer-step-primary">
+            <span class="designer-step-index">${index + 1}</span>
+            <span class="designer-step-card-title">
+              <strong>${escapeHtml(step.name)}</strong>
+            </span>
+            <span class="designer-step-type ${escapeHtml(step.type)}">${escapeHtml(formatStepType(step.type))}</span>
+          </span>
+          <span class="designer-step-card-actions" aria-label="Step actions">
+            <button type="button" data-designer-action="move-step-up" data-step-id="${escapeHtml(step.id)}" ${disabled}>↑ Move Up</button>
+            <button type="button" data-designer-action="move-step-down" data-step-id="${escapeHtml(step.id)}" ${disabled}>↓ Move Down</button>
+            <button type="button" data-designer-action="duplicate-step" data-step-id="${escapeHtml(step.id)}" ${disabled}>Duplicate</button>
+            <button type="button" class="designer-danger" data-designer-action="delete-step" data-step-id="${escapeHtml(step.id)}" ${disabled}>Delete</button>
+          </span>
+        </span>
+        <span class="designer-step-card-sub">
+          <span class="designer-step-summary">${escapeHtml(summarizeStep(step))}</span>
+          ${badges ? `<span class="designer-chip-row designer-step-badges">${badges}</span>` : ""}
+        </span>
+        ${state.stepDensity === "detail" ? `
+          <dl class="designer-step-detail-grid">
+            ${detailItems.map(([label, value]) => `
+              <div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(String(value))}</dd></div>
+            `).join("")}
+          </dl>
+        ` : ""}
+      </article>
+    `;
+  }).join("");
 }
+
+function getVisibleSteps(wf) {
+  const typeFilter = state.stepTypeFilter || "all";
+  const term = normalizeStepFilter(state.stepFilter);
+  return wf.steps
+    .map((step, index) => ({ step, index }))
+    .filter(({ step }) => {
+      if (typeFilter !== "all" && step.type !== typeFilter) return false;
+      if (!term) return true;
+      return stepSearchText(step).includes(term);
+    });
+}
+
+function normalizeStepFilter(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function stepSearchText(step) {
+  return [
+    step.name,
+    step.key,
+    step.type,
+    formatStepType(step.type),
+    step.description,
+    step.command,
+    step.templatePath,
+    step.filename,
+    step.validator,
+    step.reviewMode,
+    step.aggregatorFunction,
+    ...(step.expectedFiles || []),
+    ...(step.sources || []).map((source) => `${source.type} ${source.value}`),
+  ].filter(Boolean).join(" ").toLowerCase();
+}
+
+function syncStepFilterControls() {
+  const search = el("designerStepSearch");
+  if (search && search.value !== state.stepFilter) search.value = state.stepFilter;
+  const type = el("designerStepTypeFilter");
+  if (type && type.value !== state.stepTypeFilter) type.value = state.stepTypeFilter;
+  document.querySelectorAll("[data-designer-action='set-step-density']").forEach((button) => {
+    button.classList.toggle("active", button.dataset.density === state.stepDensity);
+  });
+}
+
+function updateStepFilter(input) {
+  const field = input.dataset.stepFilterField;
+  if (field === "search") state.stepFilter = input.value || "";
+  if (field === "type") state.stepTypeFilter = input.value || "all";
+  saveUiState();
+  renderWorkflowViewOnly();
+}
+
+function clearStepFilter() {
+  state.stepFilter = "";
+  state.stepTypeFilter = "all";
+  saveUiState();
+  renderWorkflowViewOnly();
+}
+
+function setStepDensity(density) {
+  if (!["dense", "compact", "detail"].includes(density)) return;
+  state.stepDensity = density;
+  saveUiState();
+  renderWorkflowViewOnly();
+}
+
+function clearStepDropTargets() {
+  document.querySelectorAll(".designer-step-card.drag-over-top, .designer-step-card.drag-over-bottom, .designer-step-card.dragging").forEach((node) => {
+    node.classList.remove("drag-over-top", "drag-over-bottom", "dragging");
+  });
+}
+
+function isDropBefore(event, card) {
+  const rect = card.getBoundingClientRect();
+  return event.clientY < rect.top + rect.height / 2;
+}
+
+function handleStepDragStart(event) {
+  const card = event.target.closest(".designer-step-card[data-step-id]");
+  if (!card || isReadonly()) return;
+  draggedStepId = card.dataset.stepId;
+  card.classList.add("dragging");
+  if (event.dataTransfer) {
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", draggedStepId);
+  }
+}
+
+function handleStepDragOver(event) {
+  if (!draggedStepId || isReadonly()) return;
+  const card = event.target.closest(".designer-step-card[data-step-id]");
+  if (!card || card.dataset.stepId === draggedStepId) return;
+  event.preventDefault();
+  clearStepDropTargets();
+  card.classList.add(isDropBefore(event, card) ? "drag-over-top" : "drag-over-bottom");
+}
+
+function handleStepDragLeave(event) {
+  const card = event.target.closest(".designer-step-card[data-step-id]");
+  if (!card || card.contains(event.relatedTarget)) return;
+  card.classList.remove("drag-over-top", "drag-over-bottom");
+}
+
+function handleStepDrop(event) {
+  if (!draggedStepId || isReadonly()) return;
+  const targetCard = event.target.closest(".designer-step-card[data-step-id]");
+  if (!targetCard || targetCard.dataset.stepId === draggedStepId) return;
+  event.preventDefault();
+
+  const wf = getSelectedWorkflow();
+  if (!wf) return;
+  const fromIndex = wf.steps.findIndex((item) => item.id === draggedStepId);
+  const targetIndex = wf.steps.findIndex((item) => item.id === targetCard.dataset.stepId);
+  if (fromIndex < 0 || targetIndex < 0) return;
+
+  let insertIndex = isDropBefore(event, targetCard) ? targetIndex : targetIndex + 1;
+  const [step] = wf.steps.splice(fromIndex, 1);
+  if (fromIndex < insertIndex) insertIndex -= 1;
+  wf.steps.splice(insertIndex, 0, step);
+  state.selectedStepId = step.id;
+  draggedStepId = null;
+  clearStepDropTargets();
+  markWorkflowDirty();
+  renderWorkflowViewOnly();
+  renderTabs();
+  renderSettings();
+  renderStepEditorModal();
+  toast("Step reordered. Save Draft to keep it.");
+}
+
+function handleStepDragEnd() {
+  draggedStepId = null;
+  clearStepDropTargets();
+}
+
 
 renderSidebar = renderSidebarClean;
 renderWorkflowLabels = renderWorkflowLabelsClean;
@@ -640,6 +871,7 @@ function renderWorkflowViewOnly() {
   const step = getSelectedStep();
   setText("designerSelectedStepTitle", step ? step.name : "Step Settings");
   setText("designerSelectedStepType", step ? formatStepType(step.type) : "Select a step");
+  renderStepEditorHeader();
 }
 
 function renderStepList() {
@@ -765,7 +997,7 @@ function applyStepTypeDefaults(step) {
 }
 
 function renderSettings() {
-  const target = el("designerStepSettings");
+  const target = el("designerStepSettingsModal") || el("designerStepSettings");
   const step = getSelectedStep();
   if (!target) return;
   if (!step) {
@@ -821,11 +1053,9 @@ function renderBasic(step, disabled, readonly) {
       ${renderBasicTypeConfig(step, disabled)}
       ${textareaRow("Description", "description", step.description, disabled)}
       ${switchRow("Enabled", "Turn this step on/off without deleting it.", "enabled", step.enabled, disabled)}
-      <div class="designer-footer-actions">
-        <button data-designer-action="move-step-up" data-step-id="${escapeHtml(step.id)}" ${disabled}>↑ Move Up</button>
-        <button data-designer-action="move-step-down" data-step-id="${escapeHtml(step.id)}" ${disabled}>↓ Move Down</button>
-        <button data-designer-action="duplicate-step" data-step-id="${escapeHtml(step.id)}" ${disabled}>Duplicate</button>
-        <button class="designer-danger" data-designer-action="delete-step" data-step-id="${escapeHtml(step.id)}" ${disabled}>Delete</button>
+      <div class="designer-runner-note">
+        <strong>Step actions stay on the main screen</strong>
+        <span>Use Move Up, Move Down, Duplicate, and Delete directly on the step card outside this popup.</span>
       </div>
     </div>
   `;
@@ -1347,6 +1577,78 @@ function updateTemplateDraft(input) {
   renderTemplateDirtyState();
 }
 
+
+function openStepEditor(stepId = state.selectedStepId) {
+  if (stepId) state.selectedStepId = stepId;
+  const step = getSelectedStep();
+  if (!step) return;
+  ensureActiveTabForStep(step);
+  closeStepEditor();
+  stepEditorModalOpen = true;
+
+  const box = document.createElement("div");
+  box.className = "designer-export-box designer-step-modal-box";
+  box.innerHTML = `
+    <div class="designer-export-card designer-step-modal-card" role="dialog" aria-modal="true" aria-labelledby="designerStepModalTitle">
+      <div class="designer-step-modal-head">
+        <div>
+          <div class="designer-step-card-title">
+            <h2 id="designerStepModalTitle" style="margin:0;"></h2>
+            <span id="designerStepModalType" class="designer-step-type"></span>
+          </div>
+          <p id="designerStepModalMeta" class="designer-form-hint"></p>
+        </div>
+        <button type="button" data-designer-action="close-step-editor" aria-label="Close">×</button>
+      </div>
+
+      <div class="designer-tabs designer-step-modal-tabs" role="tablist">
+        <button type="button" class="designer-tab active" data-designer-tab="basic">Basic</button>
+        <button type="button" class="designer-tab" data-designer-tab="sources">Prompt</button>
+        <button type="button" class="designer-tab" data-designer-tab="review">Review</button>
+        <button type="button" class="designer-tab" data-designer-tab="retry">Retry</button>
+        <button type="button" class="designer-tab" data-designer-tab="gate">Gate</button>
+        <button type="button" class="designer-tab" data-designer-tab="advanced">Advanced</button>
+      </div>
+
+      <div id="designerStepSettingsModal" class="designer-step-settings designer-step-modal-settings"></div>
+
+      <div class="designer-footer-actions designer-step-modal-footer">
+        <span class="designer-form-hint">Changes are kept in this draft. Use Save Draft on the main screen to persist.</span>
+        <button type="button" data-designer-action="close-step-editor">Close</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(box);
+  renderStepEditorModal();
+  box.querySelector("input, textarea, select, button")?.focus();
+}
+
+function closeStepEditor() {
+  document.querySelectorAll(".designer-step-modal-box").forEach((node) => node.remove());
+  stepEditorModalOpen = false;
+}
+
+function renderStepEditorModal() {
+  if (!stepEditorModalOpen || !document.querySelector(".designer-step-modal-box")) return;
+  renderStepEditorHeader();
+  renderTabs();
+  renderSettings();
+}
+
+function renderStepEditorHeader() {
+  const step = getSelectedStep();
+  const title = el("designerStepModalTitle");
+  const type = el("designerStepModalType");
+  const meta = el("designerStepModalMeta");
+  if (!title || !type || !meta || !step) return;
+  const wf = getSelectedWorkflow();
+  const index = wf?.steps?.findIndex((item) => item.id === step.id) ?? -1;
+  title.textContent = `${index >= 0 ? index + 1 + ". " : ""}${step.name || "Step Settings"}`;
+  type.textContent = formatStepType(step.type);
+  type.className = `designer-step-type ${step.type || ""}`;
+  meta.textContent = `${step.key || "no key"} · ${step.enabled ? "enabled" : "disabled"} · retry ${step.maxRetries ?? 0}`;
+}
+
 function openTemplateEditor() {
   const step = getSelectedStep();
   if (!step) return;
@@ -1434,6 +1736,7 @@ function saveTemplateEditor() {
   closeTemplateEditor({ force: true });
   renderSettings();
   renderWorkflowViewOnly();
+  renderStepEditorModal();
   toast("Template saved.");
 }
 
@@ -1542,11 +1845,14 @@ function doSelectWorkflow(workflowId, stepId = null) {
   render();
 }
 
-function selectStep(stepId) {
+function selectStep(stepId, options = {}) {
   state.selectedStepId = stepId;
+  ensureActiveTabForStep(getSelectedStep());
   saveUiState();
   renderWorkflowViewOnly();
+  renderTabs();
   renderSettings();
+  if (options.openModal) openStepEditor(stepId);
 }
 
 function createNewWorkflow() {
@@ -1608,6 +1914,7 @@ function addStep() {
   state.activeTab = "basic";
   markWorkflowDirty();
   render();
+  openStepEditor(step.id);
   toast("Step added. Save Draft to keep it.");
 }
 
@@ -1667,7 +1974,9 @@ function performDeleteStep(stepId) {
   const index = wf.steps.findIndex((item) => item.id === stepId);
   if (index < 0) return closeConfirm();
   wf.steps.splice(index, 1);
+  const deletedSelectedStep = state.selectedStepId === stepId;
   state.selectedStepId = wf.steps[Math.max(0, index - 1)]?.id || wf.steps[0]?.id || null;
+  if (deletedSelectedStep) closeStepEditor();
   closeConfirm();
   markWorkflowDirty();
   render();
@@ -1684,6 +1993,7 @@ function duplicateStep(stepId) {
   state.selectedStepId = copy.id;
   markWorkflowDirty();
   render();
+  openStepEditor(copy.id);
   toast("Step duplicated. Save Draft to keep it.");
 }
 
@@ -1697,7 +2007,9 @@ function moveStep(stepId, offset) {
   wf.steps.splice(target, 0, step);
   markWorkflowDirty();
   renderWorkflowViewOnly();
+  renderTabs();
   renderSettings();
+  renderStepEditorModal();
 }
 
 function addSource() {
@@ -2036,6 +2348,9 @@ function saveUiState() {
       selectedStepId: state.selectedStepId,
       activeTab: state.activeTab,
       selectedWorkflowId: state.selectedWorkflowId,
+      stepFilter: state.stepFilter,
+      stepTypeFilter: state.stepTypeFilter,
+      stepDensity: state.stepDensity,
     }));
   } catch {
     // UI state persistence is best effort only.
