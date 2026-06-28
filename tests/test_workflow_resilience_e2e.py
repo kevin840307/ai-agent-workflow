@@ -11,6 +11,7 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 
 from app.main import app
+from app import runtime
 from app.mock_qwen import mock_qwen_response
 from app.runtime_files import apply_extracted_files, extract_build_files, validate_build_files_are_not_tests, validate_generated_test_files
 from app.services import workflow_config_service
@@ -133,6 +134,12 @@ class WorkflowResilienceE2ETests(unittest.TestCase):
             self.assertEqual(latest.status_code, 200, latest.text)
             run = latest.json()
             if run["status"] in {"done", "failed", "cancelled", "waiting_input"}:
+                cleanup_deadline = time.time() + 2
+                while time.time() < cleanup_deadline:
+                    task = runtime.running_tasks.get(run["id"])
+                    if task is None or task.done():
+                        return run
+                    time.sleep(0.01)
                 return run
             time.sleep(0.05)
         self.fail(f"workflow run did not reach a terminal state within {timeout_sec}s: {run}")

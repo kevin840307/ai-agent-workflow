@@ -112,3 +112,68 @@ The Playwright test therefore validates only the generated temporary project fol
 
 If a failure still expects the full `C:\Users\...` path, the latest `tests/test_release_and_ui_manual.py`
 was not applied. Confirm that the file contains `run_meta_text = run_meta.inner_text(...)`.
+
+## Extra workflow quality contracts
+
+These run by default and cover API response schema, run-log observability, broad performance baselines, and fuzzed file-boundary security:
+
+```powershell
+python -m unittest tests.test_workflow_quality_contracts -v
+```
+
+They are included in:
+
+```powershell
+python -m unittest discover -s tests -v
+```
+
+## Playwright UI behavior regression suite
+
+`PlaywrightUiManualTests` now covers these browser flows:
+
+- basic create project → run workflow → reset
+- reset must not create duplicate project rows
+- workflow preview shows full description/steps before a run, compacts after a run, and expands again after switching workflow
+- intentional final review failure → UI retry → workflow passes
+- intentional generated-test-file validation failure → failed step/error is visible and retry is enabled
+
+Run all UI behavior tests:
+
+```powershell
+$env:RUN_PLAYWRIGHT_UI="1"; $env:QWEN_MOCK="1"; $env:QWEN_USE_SERVE="0"
+python -m unittest tests.test_release_and_ui_manual.PlaywrightUiManualTests -v
+```
+
+Run focused UI tests:
+
+```powershell
+$env:RUN_PLAYWRIGHT_UI="1"; $env:QWEN_MOCK="1"; $env:QWEN_USE_SERVE="0"
+python -m unittest tests.test_release_and_ui_manual.PlaywrightUiManualTests.test_playwright_reset_and_preview_regression_is_opt_in -v
+python -m unittest tests.test_release_and_ui_manual.PlaywrightUiManualTests.test_playwright_retry_failed_review_is_opt_in -v
+python -m unittest tests.test_release_and_ui_manual.PlaywrightUiManualTests.test_playwright_gate_failed_ui_is_opt_in -v
+```
+
+The failed-review and gate-failure UI checks use deterministic mock scenarios internally:
+
+```powershell
+$env:QWEN_MOCK_SCENARIO="fail_final_review_once"
+$env:QWEN_MOCK_SCENARIO="generate_tests_no_files"
+```
+
+You normally do not need to set `QWEN_MOCK_SCENARIO` yourself because the Playwright test starts its own server subprocess with the correct scenario.
+
+Clear optional Playwright variables after manual checks:
+
+```powershell
+Remove-Item Env:RUN_PLAYWRIGHT_UI -ErrorAction SilentlyContinue
+Remove-Item Env:QWEN_MOCK_SCENARIO -ErrorAction SilentlyContinue
+Remove-Item Env:QWEN_MOCK -ErrorAction SilentlyContinue
+Remove-Item Env:QWEN_USE_SERVE -ErrorAction SilentlyContinue
+```
+
+Plain marker names for documentation contract tests:
+
+```text
+QWEN_MOCK_SCENARIO=fail_final_review_once
+QWEN_MOCK_SCENARIO=generate_tests_no_files
+```

@@ -1,9 +1,36 @@
 from __future__ import annotations
 
+import os
+from collections import defaultdict
+
+
+_SCENARIO_COUNTS: dict[str, int] = defaultdict(int)
+
+
+def _scenario_once(key: str) -> bool:
+    _SCENARIO_COUNTS[key] += 1
+    return _SCENARIO_COUNTS[key] == 1
+
 
 def mock_qwen_response(prompt: str) -> str:
-    """Deterministic Qwen-like output for local UI and workflow E2E tests."""
+    """Deterministic Qwen-like output for local UI and workflow E2E tests.
+
+    QWEN_MOCK_SCENARIO can intentionally bend one mock response so manual UI
+    tests can exercise failed review, retry, and validation surfaces without
+    depending on a real model behaving badly.
+    """
     normalized = prompt.lower()
+    scenario = os.environ.get("QWEN_MOCK_SCENARIO", "").strip().lower()
+
+    if scenario == "fail_final_review_once" and ("output/final-review.md" in prompt or "you are doing the final workflow review" in normalized):
+        if _scenario_once("fail_final_review_once:final_review"):
+            return "Status: FAIL\n\n## Findings\n- Intentional mock failure for Playwright retry coverage.\nConfidence: 1.0\n"
+
+    if scenario == "generate_tests_no_files" and ("you are generating automated tests" in normalized or "OUTPUT_FILE: output/test-plan.md" in prompt):
+        return "Status: DONE\n\n## Test Plan\n- Intentional mock output without FILE blocks for Playwright gate failure coverage.\n"
+
+    if scenario == "build_no_files" and ("you are implementing production code" in normalized or "OUTPUT_FILE: output/build-result.md" in prompt):
+        return "Status: DONE\n\nIntentional mock build output without FILE blocks.\n"
 
     if "you are preparing project architecture context" in normalized or "only create or update `architecture.md`" in prompt:
         return """Status: DONE

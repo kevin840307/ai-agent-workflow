@@ -64,7 +64,8 @@ class RunState:
         return await self.store.mutate(add)
 
     async def log(self, run: dict[str, Any], message: str) -> None:
-        line = f"[{utc_now()}] {message}"
+        meta = f"run_id={run.get('id', '')} session_id={run.get('session_id', '')}"
+        line = f"[{utc_now()}] {meta} {message}"
         run_dir = Path(run["workspace"])
         write_text(run_dir / ".workflow" / "run-log.md", read_text(run_dir / ".workflow" / "run-log.md") + line + "\n")
         await self.bus.publish(run["id"], {"type": "log", "message": line})

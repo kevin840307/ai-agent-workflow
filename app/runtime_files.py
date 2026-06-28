@@ -2,11 +2,35 @@ from __future__ import annotations
 
 import json
 import re
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
+from urllib.parse import unquote
 from typing import Callable, Iterable
 
 from app.runtime_errors import ValidationError, WorkflowError
 from app.runtime_paths import read_text, write_text
+
+
+def unsafe_relative_path_reason(raw_path: str) -> str | None:
+    """Return a reason when an agent-supplied path must not be written/read.
+
+    Path checks need to be platform-independent because tests may run on Linux
+    while users run the product on Windows.  Therefore Windows drive/UNC paths
+    are rejected explicitly instead of relying only on pathlib.Path semantics.
+    """
+    raw = str(raw_path or "").strip().strip("`")
+    if not raw:
+        return "empty path"
+    decoded = unquote(raw).replace("\\", "/")
+    path = Path(decoded)
+    win_path = PureWindowsPath(decoded)
+    if decoded.startswith("/") or path.is_absolute() or win_path.is_absolute() or win_path.drive or decoded.startswith("//"):
+        return "absolute path"
+    parts = [part for part in decoded.split("/") if part not in {"", "."}]
+    if any(part.strip() == ".." for part in parts):
+        return "parent directory traversal"
+    if ".qwen-workflow" in parts:
+        return "reserved workflow directory"
+    return None
 
 
 def require_sections(text: str, sections: Iterable[str], label: str) -> None:
@@ -369,9 +393,10 @@ def apply_extracted_files(project_dir: Path, files: list[tuple[str, str]], *, ou
     written: list[Path] = []
     project_root = project_dir.resolve()
     for rel_path, content in files:
-        rel = Path(rel_path)
-        if rel.is_absolute() or ".." in rel.parts or ".qwen-workflow" in rel.parts:
-            raise WorkflowError(f"{output_label} contains unsafe file path: {rel_path}")
+        reason = unsafe_relative_path_reason(rel_path)
+        if reason:
+            raise WorkflowError(f"{output_label} contains unsafe file path ({reason}): {rel_path}")
+        rel = Path(unquote(str(rel_path).strip().strip("`")).replace("\\", "/"))
         target = (project_root / rel).resolve()
         if target != project_root and project_root not in target.parents:
             raise WorkflowError(f"{output_label} path escapes Project Path: {rel_path}")

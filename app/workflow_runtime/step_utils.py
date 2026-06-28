@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
+from urllib.parse import unquote
 from typing import Any
 
 from app.runtime_errors import WorkflowError
@@ -98,13 +99,16 @@ def expected_file_candidates(run: dict[str, Any], rel_path: str) -> list[Path]:
     workspace = Path(run["workspace"])
     output_dir = workspace / "output"
     project_dir = Path(run.get("project_path") or workspace)
-    raw_path = rel_path.strip()
-    absolute_path = Path(raw_path).expanduser()
-    if absolute_path.is_absolute():
+    raw_path = str(rel_path or "").strip().strip("`")
+    decoded = unquote(raw_path).replace("\\", "/")
+    windows_path = PureWindowsPath(decoded)
+    if decoded.startswith("/") or Path(decoded).expanduser().is_absolute() or windows_path.is_absolute() or windows_path.drive or decoded.startswith("//"):
         raise WorkflowError(f"Unsafe expected file path outside workflow/project boundary: {rel_path}")
-    normalized = raw_path.replace("\\", "/").lstrip("/")
-    parts = Path(normalized).parts
-    if not normalized or ".." in parts:
+    normalized = decoded.lstrip("/")
+    parts = [part for part in normalized.split("/") if part not in {"", "."}]
+    if not normalized or any(part.strip() == ".." for part in parts):
+        raise WorkflowError(f"Unsafe expected file path outside workflow/project boundary: {rel_path}")
+    if ".qwen-workflow" in parts:
         raise WorkflowError(f"Unsafe expected file path outside workflow/project boundary: {rel_path}")
     candidates: list[Path] = []
     if normalized.startswith("output/"):
