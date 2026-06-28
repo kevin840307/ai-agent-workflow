@@ -597,13 +597,96 @@ SECURITY_CONFIDENCE_WORD_SCORES = {
 }
 
 
+def _security_clean_enum_value(value: str) -> str:
+    """Remove common Markdown decoration around enum-like values."""
+    import re
+
+    cleaned = (value or "").strip()
+    cleaned = cleaned.strip("`*_ ")
+    cleaned = re.sub(r"\s+", " ", cleaned)
+    return cleaned.strip()
+
+
+def _security_normalize_check_status_value(value: str) -> str | None:
+    """Normalize checklist table status values without burning retries."""
+    import re
+
+    cleaned = _security_clean_enum_value(value)
+    if not cleaned:
+        return None
+    lowered = cleaned.lower().replace("_", " ").replace("-", " ")
+    lowered = re.sub(r"\s+", " ", lowered).strip()
+    mapping = {
+        "reviewed": "Reviewed",
+        "review": "Reviewed",
+        "reviewing": "Reviewed",
+        "checked": "Reviewed",
+        "checked reviewed": "Reviewed",
+        "finding": "Finding",
+        "findings": "Finding",
+        "found": "Finding",
+        "risk": "Risk",
+        "risky": "Risk",
+        "needs review": "Limited",
+        "need review": "Limited",
+        "limited": "Limited",
+        "limitation": "Limited",
+        "partial": "Limited",
+        "not applicable": "Not applicable",
+        "not applicable reviewed": "Not applicable",
+        "not appicable": "Not applicable",
+        "n/a": "Not applicable",
+        "na": "Not applicable",
+        "no finding": "Reviewed",
+        "no findings": "Reviewed",
+        "none": "Reviewed",
+    }
+    if lowered in mapping:
+        return mapping[lowered]
+    if "not applicable" in lowered or lowered in {"n a", "n/a"}:
+        return "Not applicable"
+    if "need" in lowered and "review" in lowered:
+        return "Limited"
+    if "review" in lowered:
+        return "Reviewed"
+    if "finding" in lowered or "found" in lowered:
+        return "Finding"
+    if "risk" in lowered:
+        return "Risk"
+    if "limit" in lowered or "partial" in lowered:
+        return "Limited"
+    return None
+
+
+def _security_normalize_severity_value(value: str) -> str | None:
+    """Normalize severity enum values and repair copied enum placeholders."""
+    cleaned = _security_clean_enum_value(value)
+    if not cleaned:
+        return None
+    valid = ["Critical", "High", "Medium", "Low", "Info"]
+    if cleaned in valid:
+        return cleaned
+    lowered = cleaned.lower()
+    # Model sometimes copies the enum instruction literally. Use a neutral
+    # severity so scoring can continue and quality checks can handle the finding.
+    if "|" in cleaned and all(token.lower() in lowered for token in ["critical", "high", "medium", "low", "info"]):
+        return "Medium"
+    for severity in valid:
+        if lowered == severity.lower():
+            return severity
+    for severity in valid:
+        if severity.lower() in lowered:
+            return severity
+    return None
+
+
 def _security_normalize_status_value(value: str) -> str | None:
     import re
 
-    raw = (value or "").strip()
+    raw = _security_clean_enum_value(value)
     if not raw:
         return None
-    compact = re.sub(r"\s+", " ", raw.replace("**", "")).strip()
+    compact = re.sub(r"\s+", " ", raw).strip()
     if compact in SECURITY_VALID_STATUSES:
         return compact
     lowered = compact.lower()
@@ -773,6 +856,13 @@ def _normalize_security_candidate_artifact_text(text: str) -> tuple[str, list[st
             normalized_rows = [["Check", "Status", "Evidence", "Notes"], ["---", "---", "---", "---"]]
             for row_index, row in enumerate(checklist_rows[1:], start=1):
                 check, status, evidence, note_text = _coerce_markdown_table_row(row, 4)[:4]
+                normalized_check_status = _security_normalize_check_status_value(status)
+                if normalized_check_status and normalized_check_status != status:
+                    notes.append(f"Checklist row {row_index}: normalized Status '{status}' -> '{normalized_check_status}'")
+                    status = normalized_check_status
+                elif not normalized_check_status:
+                    notes.append(f"Checklist row {row_index}: normalized invalid Status '{status}' -> 'Limited'")
+                    status = "Limited"
                 if _security_is_placeholder_text(evidence):
                     evidence = _security_limit_text(check, "evidence")
                     notes.append(f"Checklist row {row_index}: replaced placeholder Evidence with limitation text")
@@ -802,6 +892,13 @@ def _normalize_security_candidate_artifact_text(text: str) -> tuple[str, list[st
             for row in rows[1:]:
                 row = _coerce_markdown_table_row(row, 6)
                 candidate_id, severity, confidence_guess, status, area, evidence_summary = row[:6]
+                normalized_severity = _security_normalize_severity_value(severity)
+                if normalized_severity and normalized_severity != severity:
+                    notes.append(f"{candidate_id}: normalized Severity '{severity}' -> '{normalized_severity}'")
+                    severity = normalized_severity
+                elif not normalized_severity:
+                    notes.append(f"{candidate_id}: normalized invalid Severity '{severity}' -> 'Medium'")
+                    severity = "Medium"
                 normalized_status, _normalized_confidence, row_notes = _security_normalize_status_and_confidence(status, confidence_guess)
                 if normalized_status:
                     status = normalized_status
@@ -833,6 +930,14 @@ def _normalize_security_candidate_artifact_text(text: str) -> tuple[str, list[st
             or _optional_field_in_block(block, "Confidence Score")
         )
         normalized_status, _unused_numeric, block_notes = _security_normalize_status_and_confidence(status_value, ai_guess_value)
+        severity_value = _optional_field_in_block(block, "Severity")
+        normalized_severity = _security_normalize_severity_value(severity_value)
+        if normalized_severity and normalized_severity != severity_value:
+            block = _replace_or_insert_markdown_field(block, "Severity", normalized_severity, after_fields=["Exploitability Seen"])
+            notes.append(f"{candidate_id}: normalized Severity '{severity_value}' -> '{normalized_severity}'")
+        elif severity_value and not normalized_severity:
+            block = _replace_or_insert_markdown_field(block, "Severity", "Medium", after_fields=["Exploitability Seen"])
+            notes.append(f"{candidate_id}: normalized invalid Severity '{severity_value}' -> 'Medium'")
         if normalized_status:
             block = _replace_or_insert_markdown_field(block, "Status", normalized_status, after_fields=["AI Confidence Guess", "Severity"])
         guess = _security_normalize_confidence_guess_value(ai_guess_value) or "Medium"
@@ -1228,7 +1333,8 @@ def validate_security_candidates(ctx: WorkflowFunctionContext, artifact: str = "
         check, status, evidence, notes = row
         if not check.strip():
             raise WorkflowFunctionError(f"{artifact} Checklist Coverage row {index} has empty Check.")
-        if status not in allowed_check_statuses:
+        normalized_status = _security_normalize_check_status_value(status)
+        if normalized_status not in allowed_check_statuses:
             raise WorkflowFunctionError(
                 f"{artifact} Checklist Coverage row {index} has invalid Status '{status}'. "
                 "Use Reviewed, Finding, Risk, Not applicable, or Limited."
@@ -1259,15 +1365,19 @@ def validate_security_candidates(ctx: WorkflowFunctionContext, artifact: str = "
         candidate_id, severity, ai_guess, status, area, evidence_summary = row
         if not candidate_id.startswith("CAND-"):
             raise WorkflowFunctionError(f"{artifact} Candidate Index row {index} must start with a CAND-### ID.")
-        if severity not in valid_severities:
+        normalized_severity = _security_normalize_severity_value(severity)
+        if normalized_severity not in valid_severities:
             raise WorkflowFunctionError(f"{artifact} Candidate Index row {index} has invalid Severity '{severity}'.")
+        severity = normalized_severity
         normalized_guess = _security_normalize_confidence_guess_value(ai_guess)
         if not normalized_guess:
             raise WorkflowFunctionError(
                 f"{artifact} Candidate Index row {index} has invalid AI Confidence Guess '{ai_guess}'. Use High, Medium, or Low."
             )
-        if status not in valid_statuses:
+        normalized_status = _security_normalize_status_value(status)
+        if normalized_status not in valid_statuses:
             raise WorkflowFunctionError(f"{artifact} Candidate Index row {index} has invalid Status '{status}'.")
+        status = normalized_status
         if not area.strip() or not evidence_summary.strip() or evidence_summary.strip() in {"-", "N/A", "Unknown", "TBD"}:
             raise WorkflowFunctionError(f"{artifact} Candidate Index row {index} must include Area and Evidence Summary.")
         index_guess_by_id[candidate_id] = normalized_guess
@@ -1306,10 +1416,12 @@ def validate_security_candidates(ctx: WorkflowFunctionContext, artifact: str = "
             _require_field_in_block(artifact, candidate_id, raw_block, field)
 
         severity = (candidate.get("Severity") or "").strip()
-        if severity not in valid_severities:
+        normalized_severity = _security_normalize_severity_value(severity)
+        if normalized_severity not in valid_severities:
             raise WorkflowFunctionError(
                 f"{artifact} {candidate_id} has invalid Severity '{severity}'. Use Critical, High, Medium, Low, or Info."
             )
+        severity = normalized_severity
 
         ai_guess = _security_normalize_confidence_guess_value(candidate.get("AI Confidence Guess", ""))
         if not ai_guess:
@@ -1321,11 +1433,13 @@ def validate_security_candidates(ctx: WorkflowFunctionContext, artifact: str = "
             )
 
         status = (candidate.get("Status") or "").strip()
-        if status not in valid_statuses:
+        normalized_status = _security_normalize_status_value(status)
+        if normalized_status not in valid_statuses:
             raise WorkflowFunctionError(
                 f"{artifact} {candidate_id} has invalid Status '{status}'. "
                 "Use Confirmed, Likely, Needs Review, Hardening, False Positive, Not Applicable, or No Finding."
             )
+        status = normalized_status
 
         evidence_type = (candidate.get("Evidence Type") or "").strip()
         if not _security_evidence_type_base_score(evidence_type):

@@ -32,6 +32,10 @@ export function createWorkflows(ctx) {
     return (workflow?.steps || []).filter((step) => step.enabled !== false);
   }
 
+  function hasLoadedRunForWorkflow(workflowId) {
+    return Boolean(state.activeRunId && state.activeRunWorkflowId && state.activeRunWorkflowId === workflowId);
+  }
+
   function outputLabel(step) {
     const output = step.outputFile || step.filename || "";
     if (output) return output;
@@ -151,9 +155,12 @@ export function createWorkflows(ctx) {
       const allSteps = workflow.steps || [];
       const steps = enabledSteps(workflow);
       const locked = isLocked();
+      const hasLoadedRun = hasLoadedRunForWorkflow(workflow.id);
+      const compact = locked || hasLoadedRun;
+      const compactLabel = locked ? "Running" : "Run loaded";
       const description = workflow.description || "This workflow will be used for the next run.";
-      const descriptionHtml = locked ? "" : `<p>${ui.escapeHtml(description)}</p>`;
-      const stepsHtml = locked ? "" : `
+      const descriptionHtml = compact ? "" : `<p>${ui.escapeHtml(description)}</p>`;
+      const stepsHtml = compact ? "" : `
           <div class="workflow-preview-steps" aria-label="Selected workflow steps">
             ${steps.map((step, index) => `
               <div class="workflow-preview-step">
@@ -167,7 +174,7 @@ export function createWorkflows(ctx) {
             `).join("")}
           </div>`;
       preview.innerHTML = `
-        <div class="workflow-preview-card${locked ? " locked compact" : ""}">
+        <div class="workflow-preview-card${compact ? " locked compact" : ""}">
           <div class="workflow-preview-head">
             <div class="workflow-preview-title-wrap">
               <span class="workflow-preview-eyebrow">Run with preview</span>
@@ -177,7 +184,7 @@ export function createWorkflows(ctx) {
             <div class="workflow-preview-meta">
               <span>${steps.length} enabled</span>
               <span>${allSteps.length} total</span>
-              ${locked ? `<span class="workflow-preview-lock">Running</span>` : ""}
+              ${compact ? `<span class="workflow-preview-lock">${ui.escapeHtml(compactLabel)}</span>` : ""}
             </div>
           </div>
           ${stepsHtml}

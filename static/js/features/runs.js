@@ -36,6 +36,7 @@ export function createRuns(ctx) {
     render(run) {
       state.activeRunId = run.id;
       state.activeRunStatus = run.status;
+      state.activeRunWorkflowId = run.workflow_id || state.activeRunWorkflowId || state.selectedWorkflowId || null;
       ctx.features.layout.applyRunStatus(run.status);
 
       const session = state.sessions.find((item) => item.id === run.session_id);
@@ -61,6 +62,7 @@ export function createRuns(ctx) {
       runs.renderSteps(run);
       ctx.features.artifacts.render(run.artifacts || []);
       ctx.features.interactions.render(run);
+      ctx.features.workflows?.renderPreview?.();
     },
 
     renderSteps(run) {
@@ -149,6 +151,8 @@ export function createRuns(ctx) {
 
       try {
         state.activeRunStatus = "queued";
+        state.activeRunWorkflowId = state.selectedWorkflowId || state.activeRunWorkflowId || null;
+        ctx.features.workflows?.renderPreview?.();
         ctx.features.composer.updatePrimaryAction();
         ui.byKey("runWorkflow").disabled = true;
         ui.byKey("logs").textContent = "Starting workflow...\n";

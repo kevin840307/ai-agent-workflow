@@ -41,6 +41,8 @@ Scan rules:
 - Use Data Flow Seen exactly as one of: Yes, Partial, No, Not applicable.
 - Use Exploitability Seen exactly as one of: Yes, Partial, No, Not applicable.
 - Use Status exactly as one of: Confirmed, Likely, Needs Review, Hardening, False Positive, Not Applicable, No Finding.
+- Do not wrap enum values in bold, backticks, brackets, parentheses, or explanatory suffixes. Write `Status: Needs Review`, not `Status: **Needs Review**` or `Status: Needs Review: High confidence`.
+- In the final Candidates example below, keep the concrete sample values or replace them with one valid enum value only; do not copy the full enum list into an output field.
 - Keep Status and AI Confidence Guess separate. Never write values like `Needs Review: High confidence`, `Likely - 80`, or `Status: High`.
 - Evidence must be concrete. Prefer file path + function/class/config name + observed code/config behavior.
 - Evidence must come from the inspected project path, not from this prompt.
@@ -74,7 +76,7 @@ Status: DONE
 ## Scan Summary
 - Agent mode: independent same-task candidate scan
 - Scope reviewed: <brief scope based on Project Path>
-- Overall evidence confidence guess: High | Medium | Low
+- Overall evidence confidence guess: Medium
 - Evidence quality target: concrete file/path/function/config evidence for every non-No-Finding candidate
 
 ## Checklist Coverage
@@ -107,12 +109,12 @@ Do not include Confidence Score in this file.
 - File: <file path from Project Path or Not applicable>
 - Function/Class: <function/class/config name or Not applicable>
 - Evidence: <file/path/function/config evidence from Project Path. If inferred, start with Inferred:.>
-- Evidence Type: Direct Code | Direct Config | Dependency | Pattern Match | Inferred
-- Data Flow Seen: Yes | Partial | No | Not applicable
-- Exploitability Seen: Yes | Partial | No | Not applicable
-- Severity: Critical | High | Medium | Low | Info
-- AI Confidence Guess: High | Medium | Low
-- Status: Confirmed | Likely | Needs Review | Hardening | False Positive | Not Applicable | No Finding
+- Evidence Type: Direct Code
+- Data Flow Seen: Partial
+- Exploitability Seen: Partial
+- Severity: High
+- AI Confidence Guess: Medium
+- Status: Likely
 - Reason: <why this is or is not a candidate>
 - Impact: <risk impact>
 - Recommendation: <defensive remediation or review action>
