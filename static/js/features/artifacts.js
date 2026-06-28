@@ -2,10 +2,98 @@ export function createArtifacts(ctx) {
   const { api, state, ui } = ctx;
   const byId = (id) => document.getElementById(id);
 
+  const escapeHtml = (value = "") => String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+
+  const sanitizeDownloadName = (path = "artifact.md") => {
+    const name = String(path || "artifact.md").split(/[\\/]/).filter(Boolean).pop() || "artifact.md";
+    return name.replace(/[^a-zA-Z0-9._-]/g, "_");
+  };
+
+  const inlineMarkdown = (value = "") => escapeHtml(value)
+    .replace(/`([^`]+)`/g, "<code>$1</code>")
+    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+
+  const renderMarkdownTable = (lines) => {
+    if (lines.length < 2) return "";
+    const split = (line) => line.trim().replace(/^\|/, "").replace(/\|$/, "").split("|").map((cell) => cell.trim());
+    const headers = split(lines[0]);
+    const rows = lines.slice(2).map(split).filter((row) => row.length);
+    const head = headers.map((cell) => `<th>${inlineMarkdown(cell)}</th>`).join("");
+    const body = rows.map((row) => `<tr>${headers.map((_, index) => `<td>${inlineMarkdown(row[index] || "")}</td>`).join("")}</tr>`).join("");
+    return `<div class="markdown-table-wrap"><table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`;
+  };
+
+  const renderMarkdown = (markdown = "") => {
+    const lines = String(markdown || "").replace(/\r\n/g, "\n").split("\n");
+    const html = [];
+    let paragraph = [];
+    let list = [];
+    let table = [];
+
+    const flushParagraph = () => {
+      if (!paragraph.length) return;
+      html.push(`<p>${inlineMarkdown(paragraph.join(" "))}</p>`);
+      paragraph = [];
+    };
+    const flushList = () => {
+      if (!list.length) return;
+      html.push(`<ul>${list.map((item) => `<li>${inlineMarkdown(item)}</li>`).join("")}</ul>`);
+      list = [];
+    };
+    const flushTable = () => {
+      if (!table.length) return;
+      html.push(renderMarkdownTable(table));
+      table = [];
+    };
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      const isTableLine = /^\|.+\|$/.test(trimmed);
+      if (isTableLine) {
+        flushParagraph();
+        flushList();
+        table.push(trimmed);
+        continue;
+      }
+      flushTable();
+
+      if (!trimmed) {
+        flushParagraph();
+        flushList();
+        continue;
+      }
+      const heading = trimmed.match(/^(#{1,6})\s+(.+)$/);
+      if (heading) {
+        flushParagraph();
+        flushList();
+        const level = Math.min(6, heading[1].length);
+        html.push(`<h${level}>${inlineMarkdown(heading[2])}</h${level}>`);
+        continue;
+      }
+      const bullet = trimmed.match(/^[-*+]\s+(.+)$/);
+      if (bullet) {
+        flushParagraph();
+        list.push(bullet[1]);
+        continue;
+      }
+      paragraph.push(trimmed);
+    }
+    flushTable();
+    flushParagraph();
+    flushList();
+    return html.join("\n") || '<p class="muted">Empty Markdown file.</p>';
+  };
+
   const stepFilesModal = {
     files: [],
     activeIndex: 0,
     loadToken: 0,
+    viewMode: "source",
     lastFocusedElement: null,
   };
 
@@ -85,9 +173,14 @@ export function createArtifacts(ctx) {
             <div id="stepFilesTabs" class="step-files-tabs" role="tablist" aria-label="Step files"></div>
             <div class="step-files-active-head">
               <strong id="stepFilesActiveName">Select a file</strong>
-              <button id="stepFilesOpenArtifactTab" class="mini-button" type="button">Open in Artifacts</button>
+              <div class="step-files-actions">
+                <button id="stepFilesOpenArtifactTab" class="mini-button" type="button">Open in Artifacts</button>
+                <button id="stepFilesPreviewToggle" class="mini-button" type="button">Preview</button>
+                <button id="stepFilesDownload" class="mini-button" type="button">Download</button>
+              </div>
             </div>
             <pre id="stepFilesContent" class="step-files-content">Loading...</pre>
+            <div id="stepFilesMarkdownPreview" class="step-files-markdown-preview" hidden></div>
           </div>
         `;
         document.body.appendChild(backdrop);
@@ -113,7 +206,10 @@ export function createArtifacts(ctx) {
         tabs: byId("stepFilesTabs"),
         activeName: byId("stepFilesActiveName"),
         content: byId("stepFilesContent"),
+        markdownPreview: byId("stepFilesMarkdownPreview"),
         openArtifactTab: byId("stepFilesOpenArtifactTab"),
+        previewToggle: byId("stepFilesPreviewToggle"),
+        download: byId("stepFilesDownload"),
         close: byId("stepFilesModalClose"),
       };
     },
@@ -137,15 +233,56 @@ export function createArtifacts(ctx) {
         tab.setAttribute("aria-selected", tabIndex === index ? "true" : "false");
       });
       els.activeName.textContent = file.path || "Artifact";
-      els.content.textContent = file.error
-        ? `Unable to load ${file.path}:\n\n${file.error}`
-        : (file.content || "");
-      els.content.scrollTop = 0;
+      artifacts.renderStepFileContent(file);
       if (els.openArtifactTab) {
         els.openArtifactTab.disabled = !file.id;
         els.openArtifactTab.onclick = () => file.id && artifacts.open(file.id);
       }
+      if (els.download) {
+        els.download.disabled = Boolean(file.error);
+        els.download.onclick = () => artifacts.downloadStepFile(file);
+      }
+      if (els.previewToggle) {
+        els.previewToggle.disabled = Boolean(file.error);
+        els.previewToggle.onclick = () => {
+          stepFilesModal.viewMode = stepFilesModal.viewMode === "preview" ? "source" : "preview";
+          artifacts.renderStepFileContent(file);
+        };
+      }
       state.selectedStepArtifactId = file.id || null;
+    },
+
+    renderStepFileContent(file) {
+      const els = artifacts.ensureStepFilesModal();
+      const content = file.error
+        ? `Unable to load ${file.path}:\n\n${file.error}`
+        : (file.content || "");
+      const previewMode = stepFilesModal.viewMode === "preview" && !file.error;
+      els.content.hidden = previewMode;
+      if (els.markdownPreview) {
+        els.markdownPreview.hidden = !previewMode;
+        els.markdownPreview.innerHTML = previewMode ? renderMarkdown(content) : "";
+        els.markdownPreview.scrollTop = 0;
+      }
+      els.content.textContent = content;
+      els.content.scrollTop = 0;
+      if (els.previewToggle) {
+        els.previewToggle.textContent = previewMode ? "Source" : "Preview";
+        els.previewToggle.classList.toggle("active", previewMode);
+      }
+    },
+
+    downloadStepFile(file) {
+      if (!file || file.error) return;
+      const blob = new Blob([file.content || ""], { type: "text/markdown;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = sanitizeDownloadName(file.path || "artifact.md");
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
     },
 
     async openStepFilesModal(run, step) {
@@ -165,6 +302,17 @@ export function createArtifacts(ctx) {
       els.activeName.textContent = "Loading files...";
       els.content.textContent = "Loading files...";
       if (els.openArtifactTab) els.openArtifactTab.disabled = true;
+      if (els.previewToggle) {
+        els.previewToggle.disabled = true;
+        els.previewToggle.textContent = "Preview";
+        els.previewToggle.classList.remove("active");
+      }
+      if (els.download) els.download.disabled = true;
+      if (els.markdownPreview) {
+        els.markdownPreview.hidden = true;
+        els.markdownPreview.innerHTML = "";
+      }
+      stepFilesModal.viewMode = "source";
       els.backdrop.hidden = false;
       document.body.classList.add("artifact-modal-open");
 

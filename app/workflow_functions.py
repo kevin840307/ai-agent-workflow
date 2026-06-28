@@ -49,7 +49,7 @@ AVAILABLE_WORKFLOW_FUNCTIONS = {
         {
             "id": "collect_security_context",
             "label": "Collect Security Context",
-            "description": "Collect bounded source/config snippets into output/security-context.md for security scanning.",
+            "description": "Write security scan scope and exclude rules to output/security-context.md without embedding source file contents.",
         },
         {
             "id": "combine_security_candidates",
@@ -57,9 +57,14 @@ AVAILABLE_WORKFLOW_FUNCTIONS = {
             "description": "Merge same-task multi-agent security candidate files, deduplicate evidence, compute consensus confidence, and write output/security-findings.md.",
         },
         {
+            "id": "validate_security_candidates",
+            "label": "Validate Security Candidates",
+            "description": "Check and score one AI-generated security-candidates-agent-*.md artifact for status, checklist coverage, CAND IDs, severity, confidence, evidence quality, and required fields. Fails when quality score is below thresholds.",
+        },
+        {
             "id": "validate_security_report",
             "label": "Validate Security Report",
-            "description": "Check output/security-report.md contains required findings, source finding IDs, severity, confidence, evidence, and risk matrix format.",
+            "description": "Check and score output/security-report.md for required findings, source finding IDs, severity, confidence, evidence quality, checklist coverage, and risk matrix format. Fails when quality score is below thresholds.",
         },
     ],
     "reviewStrategies": [
@@ -117,7 +122,7 @@ AVAILABLE_WORKFLOW_FUNCTIONS = {
         {"id": "last_error", "label": "Last Error", "description": "Latest validation, review, timeout, or runner error.", "sample": "Missing Acceptance Criteria section."},
         {"id": "failure_feedback", "label": "Failure Feedback", "description": "Accumulated failure feedback for retry prompts.", "sample": "Retry 1/2 from build: tests failed."},
         {"id": "step_output", "label": "Step Output", "description": "Current step output text when available.", "sample": "Step completed successfully."},
-        {"id": "security_context", "label": "Security Context", "description": "Content of output/security-context.md.", "sample": "# Security Scan Context"},
+        {"id": "security_context", "label": "Security Scope", "description": "Content of output/security-context.md. This artifact records project path, exclude rules, and scanned file counts without source snippets.", "sample": "# Security Scan Scope"},
         {"id": "security_candidates", "label": "Security Candidates", "description": "Multi-agent candidate files such as security-candidates-auth-config.md.", "sample": "## CAND-001"},
         {"id": "security_findings", "label": "Security Findings", "description": "Python-combined normalized findings from output/security-findings.md.", "sample": "## SEC-001"},
     ],
@@ -199,8 +204,29 @@ SECURITY_CONTEXT_EXTENSIONS = {
 }
 
 SECURITY_CONTEXT_SKIP_DIRS = {
-    ".git", ".qwen-workflow", "node_modules", "vendor", "venv", ".venv", "env", "__pycache__", ".pytest_cache",
-    "dist", "build", "target", "bin", "obj", ".next", "coverage", ".idea", ".vscode",
+    ".git", ".hg", ".svn", ".vs", ".idea", ".vscode", ".qwen-workflow",
+    "node_modules", "vendor", "bower_components",
+    "venv", ".venv", "env", ".envdir",
+    "__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache", ".tox", ".nox",
+    "dist", "build", "target", "bin", "obj", "out", ".next", ".nuxt", ".svelte-kit",
+    "coverage", ".coverage", "htmlcov",
+    ".gradle", ".mvn", ".parcel-cache", ".turbo", ".cache",
+    "logs", "log", "tmp", "temp",
+}
+
+SECURITY_CONTEXT_SKIP_FILE_NAMES = {
+    ".DS_Store", "Thumbs.db", "desktop.ini",
+    ".coverage", "coverage.xml",
+    "package-lock.json", "yarn.lock", "pnpm-lock.yaml", "poetry.lock", "Pipfile.lock",
+}
+
+SECURITY_CONTEXT_SKIP_SUFFIXES = {
+    ".pyc", ".pyo", ".pyd", ".class", ".jar", ".war", ".ear",
+    ".dll", ".exe", ".pdb", ".so", ".dylib", ".o", ".obj",
+    ".zip", ".7z", ".rar", ".tar", ".gz", ".tgz",
+    ".png", ".jpg", ".jpeg", ".gif", ".ico", ".svg", ".webp",
+    ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx",
+    ".log", ".tmp", ".cache",
 }
 
 SECURITY_KEYWORDS = [
@@ -217,9 +243,17 @@ SECURITY_KEYWORDS = [
 
 def _is_security_context_file(path: Path) -> bool:
     name = path.name.lower()
+    if name in SECURITY_CONTEXT_SKIP_FILE_NAMES:
+        return False
+    if path.suffix.lower() in SECURITY_CONTEXT_SKIP_SUFFIXES:
+        return False
     if name in {"dockerfile", "makefile", "pom.xml", "build.gradle", "package.json", "requirements.txt", "pyproject.toml", "go.mod", "cargo.toml", ".env", ".env.example"}:
         return True
     return path.suffix.lower() in SECURITY_CONTEXT_EXTENSIONS
+
+
+def _is_under_security_excluded_path(relative: Path) -> bool:
+    return any(part in SECURITY_CONTEXT_SKIP_DIRS for part in relative.parts[:-1])
 
 
 def _safe_read_limited(path: Path, max_bytes: int) -> tuple[str, bool]:
@@ -238,103 +272,93 @@ def _line_matches_security_keyword(line: str) -> bool:
 
 
 def collect_security_context(ctx: WorkflowFunctionContext) -> None:
+    """Write a small scan-scope artifact without embedding source file contents.
+
+    Security candidate agents run from the project path and inspect files directly.
+    This function intentionally records scope/exclusion metadata only, so generated
+    prompts do not become huge or unstable because of expanded source snippets.
+    """
     project_dir = ctx.project_dir
     if not project_dir.exists() or not project_dir.is_dir():
         raise WorkflowFunctionError(f"Project path does not exist or is not a directory: {project_dir}")
 
-    max_files = int(os.environ.get("SECURITY_CONTEXT_MAX_FILES", "80"))
-    max_bytes_per_file = int(os.environ.get("SECURITY_CONTEXT_MAX_BYTES_PER_FILE", "12000"))
-    max_total_chars = int(os.environ.get("SECURITY_CONTEXT_MAX_TOTAL_CHARS", "90000"))
+    max_inventory = int(os.environ.get("SECURITY_SCOPE_MAX_FILES", "300"))
+    included_count = 0
+    excluded_dir_count = 0
+    excluded_file_count = 0
+    inventory: list[str] = []
+    extension_counts: dict[str, int] = {}
 
-    candidates: list[Path] = []
     for path in sorted(project_dir.rglob("*")):
+        try:
+            relative = path.relative_to(project_dir)
+        except ValueError:
+            continue
+        if path.is_dir():
+            if relative.name in SECURITY_CONTEXT_SKIP_DIRS or _is_under_security_excluded_path(relative / "dummy"):
+                excluded_dir_count += 1
+            continue
         if not path.is_file():
             continue
-        relative = path.relative_to(project_dir)
-        parts = set(relative.parts[:-1])
-        if parts & SECURITY_CONTEXT_SKIP_DIRS:
+        if _is_under_security_excluded_path(relative):
+            excluded_file_count += 1
             continue
-        if not _is_security_context_file(path):
+        if path.name.lower() in SECURITY_CONTEXT_SKIP_FILE_NAMES or path.suffix.lower() in SECURITY_CONTEXT_SKIP_SUFFIXES:
+            excluded_file_count += 1
             continue
-        try:
-            size = path.stat().st_size
-        except OSError:
-            continue
-        if size > 2_000_000:
-            continue
-        candidates.append(path)
-        if len(candidates) >= max_files:
-            break
+        included_count += 1
+        suffix = path.suffix.lower() or "[no extension]"
+        extension_counts[suffix] = extension_counts.get(suffix, 0) + 1
+        if len(inventory) < max_inventory:
+            inventory.append(relative.as_posix())
 
+    extension_summary = sorted(extension_counts.items(), key=lambda item: (-item[1], item[0]))[:30]
     sections: list[str] = [
         "Status: DONE",
         "",
-        "# Security Scan Context",
+        "# Security Scan Scope",
         "",
         f"Project path: {project_dir}",
-        f"Files selected: {len(candidates)}",
+        "Source content embedded: No",
+        "Agent input mode: Project Path only; candidate agents must inspect files directly from Project Path.",
+        f"Included file count: {included_count}",
+        f"Excluded directory count: {excluded_dir_count}",
+        f"Excluded file count: {excluded_file_count}",
         "",
-        "## Selected Files",
+        "## Exclusion Rules",
+        "- Excluded directories: " + ", ".join(sorted(SECURITY_CONTEXT_SKIP_DIRS)),
+        "- Excluded file names: " + ", ".join(sorted(SECURITY_CONTEXT_SKIP_FILE_NAMES)),
+        "- Excluded suffixes: " + ", ".join(sorted(SECURITY_CONTEXT_SKIP_SUFFIXES)),
+        "",
+        "## Extension Summary",
     ]
-    for path in candidates:
-        try:
-            relative = path.relative_to(project_dir).as_posix()
-        except ValueError:
-            relative = path.as_posix()
-        sections.append(f"- {relative}")
+    if extension_summary:
+        sections.extend(f"- {suffix}: {count}" for suffix, count in extension_summary)
+    else:
+        sections.append("- No scannable files found after exclusions.")
 
-    sections.extend(["", "## High-Signal Security Lines"])
-    matched_any = False
-    remaining = max_total_chars
-    for path in candidates:
-        if remaining <= 0:
-            break
-        relative = path.relative_to(project_dir).as_posix()
-        try:
-            content, truncated = _safe_read_limited(path, max_bytes_per_file)
-        except OSError:
-            continue
-        matched_lines = []
-        for number, line in enumerate(content.splitlines(), start=1):
-            if _line_matches_security_keyword(line):
-                matched_lines.append(f"{number}: {line[:220]}")
-            if len(matched_lines) >= 25:
-                break
-        if matched_lines:
-            matched_any = True
-            block = f"\n### {relative}\n" + "\n".join(f"- {item}" for item in matched_lines)
-            if truncated:
-                block += "\n- [file content truncated for context size]"
-            if len(block) > remaining:
-                block = block[:remaining] + "\n[security context truncated]"
-            sections.append(block)
-            remaining -= len(block)
-    if not matched_any:
-        sections.append("- No high-signal keyword lines found in selected files.")
+    sections.extend([
+        "",
+        "## File Inventory Preview",
+        f"Showing up to {max_inventory} relative paths only. No file contents are included.",
+    ])
+    if inventory:
+        sections.extend(f"- {item}" for item in inventory)
+        if included_count > len(inventory):
+            sections.append(f"- ... {included_count - len(inventory)} more files omitted from preview")
+    else:
+        sections.append("- No scannable files found after exclusions.")
 
-    sections.extend(["", "## File Content Samples"])
-    for path in candidates:
-        if remaining <= 0:
-            break
-        relative = path.relative_to(project_dir).as_posix()
-        try:
-            content, truncated = _safe_read_limited(path, min(max_bytes_per_file, 8000))
-        except OSError:
-            continue
-        if not content.strip():
-            continue
-        content = content.strip()
-        block = f"\n### {relative}\n{content}"
-        if truncated:
-            block += "\n[file content truncated]"
-        if len(block) > remaining:
-            block = block[:remaining] + "\n[security context truncated]"
-        sections.append(block)
-        remaining -= len(block)
+    sections.extend([
+        "",
+        "## Notes For Agents",
+        "- Use Project Path for direct inspection.",
+        "- Do not cite this scope file as vulnerability evidence unless reporting scan limitations.",
+        "- Real vulnerability evidence should cite project file path, function/class/config, and observed behavior.",
+    ])
 
     output_path = ctx.output_dir / "security-context.md"
     ctx.write_text(output_path, "\n".join(sections).strip() + "\n")
-
 
 def _markdown_section_body(text: str, section: str) -> str:
     marker = f"## {section}"
@@ -440,6 +464,203 @@ def _security_evidence_has_location(evidence: str) -> bool:
     return any(token in evidence for token in tokens)
 
 
+
+
+SECURITY_SCORE_THRESHOLDS = {
+    "total": 75,
+    "evidence": 18,
+    "confidence": 12,
+    "coverage": 12,
+}
+
+SECURITY_REPORT_SCORE_THRESHOLDS = {
+    "total": 80,
+    "evidence": 18,
+    "confidence": 12,
+    "coverage": 12,
+    "source_mapping": 8,
+}
+
+
+def _security_score_artifact_name(artifact: str) -> str:
+    path = Path(artifact)
+    suffix = path.suffix or ".md"
+    return f"{path.stem}-score{suffix}"
+
+
+def _security_report_score_artifact_name(artifact: str = "security-report.md") -> str:
+    path = Path(artifact)
+    suffix = path.suffix or ".md"
+    return f"{path.stem}-score{suffix}"
+
+
+def _security_evidence_score_value(evidence: str, *, status: str = "") -> int:
+    evidence = (evidence or "").strip()
+    if not evidence or evidence in {"-", "N/A", "Unknown", "TBD"}:
+        return 0
+    lower = evidence.lower()
+    has_location = _security_evidence_has_location(evidence)
+    inferred = lower.startswith("inferred:") or "inferred" in lower or "推測" in evidence or "推論" in evidence
+    has_line_or_symbol = any(token in evidence for token in [":", "#", "()", "function", "class", "config", "line", "Line"])
+    has_code_signal = any(token in lower for token in ["uses ", "call", "execute", "decode", "open(", "eval", "exec", "shell", "password", "token", "secret", "query", "sql", "cors", "debug"])
+
+    if status == "No Finding" and has_location:
+        return 24
+    if has_location and has_line_or_symbol and has_code_signal and not inferred:
+        return 30
+    if has_location and (has_line_or_symbol or has_code_signal) and not inferred:
+        return 26
+    if has_location and not inferred:
+        return 22
+    if inferred and has_location:
+        return 16
+    if inferred:
+        return 12
+    return 6
+
+
+def _security_parse_confidence_score(value: str) -> int | None:
+    import re
+
+    raw = (value or "").strip()
+    if not re.fullmatch(r"\d{1,3}", raw):
+        return None
+    score = int(raw)
+    if score < 0 or score > 100:
+        return None
+    return score
+
+
+def _security_require_confidence_score(value: str, artifact: str, target: str) -> int:
+    score = _security_parse_confidence_score(value)
+    if score is None:
+        raise WorkflowFunctionError(
+            f"{artifact} {target} has invalid Confidence Score '{value}'. Use an integer from 0 to 100."
+        )
+    return score
+
+
+def _security_confidence_consistency_score(confidence: str, evidence_score: int, *, status: str = "", severity: str = "") -> int:
+    confidence_score = _security_parse_confidence_score(confidence)
+    if confidence_score is None:
+        return 0
+    severity = (severity or "").strip().title()
+    status = (status or "").strip()
+    if status == "No Finding":
+        if confidence_score >= 80 and evidence_score >= 22:
+            return 18
+        if 50 <= confidence_score <= 79 and evidence_score >= 16:
+            return 16
+        if confidence_score < 50:
+            return 12
+        return 8
+
+    if confidence_score >= 80:
+        if evidence_score >= 24:
+            return 20
+        if evidence_score >= 18:
+            return 15
+        return 7
+    if confidence_score >= 50:
+        if evidence_score >= 18:
+            return 17
+        if evidence_score >= 12:
+            return 14
+        return 9
+    if evidence_score < 18:
+        return 16
+    if severity in {"Critical", "High"} and evidence_score >= 24:
+        return 11
+    return 13
+
+
+def _security_average(values: list[int], default: int = 0) -> int:
+    if not values:
+        return default
+    return round(sum(values) / len(values))
+
+
+def _security_score_status(total: int, category_scores: dict[str, int], thresholds: dict[str, int]) -> tuple[str, list[str]]:
+    failures: list[str] = []
+    if total < thresholds.get("total", 0):
+        failures.append(f"Total score below threshold: {total}/{thresholds.get('total', 0)}.")
+    for key, threshold in thresholds.items():
+        if key == "total":
+            continue
+        value = category_scores.get(key, 0)
+        if value < threshold:
+            label = key.replace("_", " ").title()
+            failures.append(f"{label} score below threshold: {value}/{threshold}.")
+    return ("FAIL" if failures else "PASS"), failures
+
+
+def _render_security_score_report(
+    *,
+    title: str,
+    artifact: str,
+    status: str,
+    scores: dict[str, int],
+    max_scores: dict[str, int],
+    thresholds: dict[str, int],
+    failures: list[str],
+    details: list[str],
+    retry_guidance: list[str],
+) -> str:
+    total = scores.get("total", 0)
+    max_total = max_scores.get("total", 100)
+    lines = [
+        f"# {title}",
+        "",
+        f"Status: {status}",
+        f"Artifact: {artifact}",
+        f"Total score: {total}/{max_total}",
+        "",
+        "## Score Summary",
+        "| Category | Score | Max | Threshold |",
+        "| --- | ---: | ---: | ---: |",
+    ]
+    for key, label in [
+        ("format", "Format"),
+        ("evidence", "Evidence"),
+        ("confidence", "Confidence"),
+        ("coverage", "Coverage"),
+        ("consistency", "Consistency"),
+        ("source_mapping", "Source Mapping"),
+        ("total", "Total"),
+    ]:
+        if key not in scores:
+            continue
+        threshold = thresholds.get(key, "-")
+        lines.append(f"| {label} | {scores[key]} | {max_scores.get(key, '-')} | {threshold} |")
+    lines.extend(["", "## Failure Reasons"])
+    lines.extend([f"- {item}" for item in failures] or ["- None."])
+    lines.extend(["", "## Details"])
+    lines.extend(details or ["- No detailed scoring notes."])
+    lines.extend(["", "## Retry Guidance"])
+    lines.extend(retry_guidance or ["- No retry needed."])
+    return "\n".join(lines).rstrip() + "\n"
+
+
+def _parse_security_quality_scores(output_dir: Path) -> dict[str, dict[str, int | str]]:
+    import re
+
+    scores: dict[str, dict[str, int | str]] = {}
+    for path in sorted(output_dir.glob("security-candidates-agent-*-score.md")):
+        text = path.read_text(encoding="utf-8", errors="replace") if path.exists() else ""
+        artifact_match = re.search(r"(?m)^Artifact:\s*(.+?)\s*$", text)
+        total_match = re.search(r"(?m)^Total score:\s*(\d+)\s*/\s*100\s*$", text)
+        status_match = re.search(r"(?m)^Status:\s*(PASS|FAIL)\s*$", text)
+        if not artifact_match or not total_match:
+            continue
+        artifact = artifact_match.group(1).strip()
+        scores[artifact] = {
+            "artifact": artifact,
+            "score_file": path.name,
+            "total": int(total_match.group(1)),
+            "status": status_match.group(1) if status_match else "UNKNOWN",
+        }
+    return scores
+
 def _security_field_value_rank(value: str, values: list[str], default: str) -> int:
     normalized = (value or "").strip().title()
     try:
@@ -455,14 +676,18 @@ def _security_best_severity(values: list[str]) -> str:
 
 
 def _security_consensus_confidence(confidences: list[str], evidence: str, consensus_count: int) -> str:
-    order = ["High", "Medium", "Low"]
-    best = sorted(confidences or ["Low"], key=lambda item: _security_field_value_rank(item, order, "Low"))[0]
+    numeric_scores = [score for score in (_security_parse_confidence_score(value) for value in confidences) if score is not None]
+    base_score = _security_average(numeric_scores, 30)
     has_location = _security_evidence_has_location(evidence)
-    if consensus_count >= 2 and has_location and best in {"High", "Medium"}:
-        return "High"
-    if has_location and best in {"High", "Medium"}:
-        return "Medium"
-    return "Low"
+    if consensus_count >= 3 and has_location:
+        base_score += 20
+    elif consensus_count >= 2 and has_location:
+        base_score += 12
+    elif has_location:
+        base_score += 5
+    else:
+        base_score = min(base_score, 45)
+    return str(max(0, min(100, round(base_score))))
 
 
 def _security_candidate_key(candidate: dict[str, str]) -> str:
@@ -496,13 +721,15 @@ def _parse_security_candidates(artifact_name: str, text: str) -> list[dict[str, 
         }
         for field in [
             "Area", "File", "Location", "Function/Class", "Evidence", "Severity", "Severity Guess",
-            "Confidence", "Confidence Guess", "Status", "Reason", "Impact", "Recommendation",
+            "Confidence Score", "Confidence", "Confidence Guess", "Status", "Reason", "Impact", "Recommendation",
         ]:
             value = _optional_field_in_block(block, field)
             if value:
                 item[field] = value
         if "Severity" not in item and "Severity Guess" in item:
             item["Severity"] = item["Severity Guess"]
+        if "Confidence" not in item and "Confidence Score" in item:
+            item["Confidence"] = item["Confidence Score"]
         if "Confidence" not in item and "Confidence Guess" in item:
             item["Confidence"] = item["Confidence Guess"]
         if "Location" not in item and "File" in item:
@@ -511,13 +738,252 @@ def _parse_security_candidates(artifact_name: str, text: str) -> list[dict[str, 
     return candidates
 
 
+def validate_security_candidates(ctx: WorkflowFunctionContext, artifact: str = "security-candidates-agent-1.md") -> None:
+    """Validate one AI security candidate artifact before allowing the workflow to continue.
+
+    This is intentionally strict because each security_scan_agent_X step is retried from
+    its own fresh Qwen session when the generated Markdown is malformed.
+    """
+    artifact = (artifact or "").strip() or "security-candidates-agent-1.md"
+    path = ctx.output_dir / artifact
+    text = ctx.read_text(path)
+    if not text.strip():
+        raise WorkflowFunctionError(f"{artifact} is empty.")
+    if "Status: DONE" not in text:
+        raise WorkflowFunctionError(f"{artifact} must contain 'Status: DONE'.")
+
+    require_sections(text, ["Scan Summary", "Checklist Coverage", "Candidate Index", "Candidates"], artifact)
+
+    summary = _markdown_section_body(text, "Scan Summary")
+    overall_confidence = _optional_field_in_block(summary, "Overall candidate confidence score")
+    if not overall_confidence:
+        raise WorkflowFunctionError(
+            f"{artifact} Scan Summary must include 'Overall candidate confidence score: <integer 0-100>'."
+        )
+    _security_require_confidence_score(overall_confidence, artifact, "Overall candidate confidence score")
+
+    checklist = _markdown_section_body(text, "Checklist Coverage")
+    checklist_rows = _require_markdown_table(
+        "Checklist Coverage",
+        checklist,
+        ["Check", "Status", "Evidence", "Notes"],
+        artifact,
+    )
+    if len(checklist_rows) < 8:
+        raise WorkflowFunctionError(f"{artifact} Checklist Coverage must contain at least 8 reviewed security categories.")
+    allowed_check_statuses = {"Reviewed", "Finding", "Risk", "Not applicable", "Limited"}
+    for index, row in enumerate(checklist_rows, start=1):
+        check, status, evidence, notes = row
+        if not check.strip():
+            raise WorkflowFunctionError(f"{artifact} Checklist Coverage row {index} has empty Check.")
+        if status not in allowed_check_statuses:
+            raise WorkflowFunctionError(
+                f"{artifact} Checklist Coverage row {index} has invalid Status '{status}'. "
+                "Use Reviewed, Finding, Risk, Not applicable, or Limited."
+            )
+        if not evidence.strip() or evidence.strip() in {"-", "N/A", "Unknown", "TBD"}:
+            raise WorkflowFunctionError(
+                f"{artifact} Checklist Coverage row {index} must include concrete evidence, a file/config reference, or a stated limitation."
+            )
+        if not notes.strip() or notes.strip() in {"-", "N/A", "Unknown", "TBD"}:
+            raise WorkflowFunctionError(f"{artifact} Checklist Coverage row {index} must include Notes.")
+
+    candidate_index = _markdown_section_body(text, "Candidate Index")
+    candidate_index_rows = _require_markdown_table(
+        "Candidate Index",
+        candidate_index,
+        ["ID", "Severity", "Confidence Score", "Status", "Area", "Evidence Summary"],
+        artifact,
+    )
+    if not candidate_index_rows:
+        raise WorkflowFunctionError(f"{artifact} Candidate Index must contain at least one CAND row.")
+
+    valid_severities = {"Critical", "High", "Medium", "Low", "Info"}
+    valid_statuses = {"Confirmed", "Likely", "Needs Review", "Hardening", "False Positive", "Not Applicable", "No Finding"}
+    for index, row in enumerate(candidate_index_rows, start=1):
+        candidate_id, severity, confidence, status, area, evidence_summary = row
+        if not candidate_id.startswith("CAND-"):
+            raise WorkflowFunctionError(f"{artifact} Candidate Index row {index} must start with a CAND-### ID.")
+        if severity not in valid_severities:
+            raise WorkflowFunctionError(f"{artifact} Candidate Index row {index} has invalid Severity '{severity}'.")
+        _security_require_confidence_score(confidence, artifact, f"Candidate Index row {index} Confidence Score")
+        if status not in valid_statuses:
+            raise WorkflowFunctionError(f"{artifact} Candidate Index row {index} has invalid Status '{status}'.")
+        if not area.strip() or not evidence_summary.strip() or evidence_summary.strip() in {"-", "N/A", "Unknown", "TBD"}:
+            raise WorkflowFunctionError(f"{artifact} Candidate Index row {index} must include Area and Evidence Summary.")
+
+    candidates = _parse_security_candidates(artifact, text)
+    if not candidates:
+        raise WorkflowFunctionError(f"{artifact} must include at least one '### CAND-001 - ...' block.")
+
+    valid_statuses = {"Confirmed", "Likely", "Needs Review", "Hardening", "False Positive", "Not Applicable", "No Finding"}
+    candidate_ids = [candidate.get("Candidate ID", "") for candidate in candidates]
+    if candidate_ids[0] != "CAND-001":
+        raise WorkflowFunctionError(f"{artifact} candidate IDs must start with CAND-001.")
+    duplicate_ids = sorted({candidate_id for candidate_id in candidate_ids if candidate_ids.count(candidate_id) > 1})
+    if duplicate_ids:
+        raise WorkflowFunctionError(f"{artifact} has duplicate candidate IDs: {', '.join(duplicate_ids)}")
+    for expected_index, candidate_id in enumerate(candidate_ids, start=1):
+        expected_id = f"CAND-{expected_index:03d}"
+        if candidate_id != expected_id:
+            raise WorkflowFunctionError(
+                f"{artifact} candidate IDs must be sequential. Expected {expected_id}, got {candidate_id}."
+            )
+
+    index_ids = [row[0] for row in candidate_index_rows]
+    if index_ids != candidate_ids:
+        raise WorkflowFunctionError(
+            f"{artifact} Candidate Index IDs must exactly match Candidates block IDs in order. "
+            f"Index: {', '.join(index_ids)}; Blocks: {', '.join(candidate_ids)}."
+        )
+
+    index_confidence_by_id = {row[0]: row[2] for row in candidate_index_rows}
+
+    for candidate in candidates:
+        candidate_id = candidate.get("Candidate ID", "CAND-???")
+        raw_block = candidate.get("Raw Block", "")
+        for field in [
+            "Area", "File", "Function/Class", "Evidence", "Severity", "Confidence Score",
+            "Status", "Reason", "Impact", "Recommendation",
+        ]:
+            _require_field_in_block(artifact, candidate_id, raw_block, field)
+
+        severity = (candidate.get("Severity") or "").strip()
+        if severity not in valid_severities:
+            raise WorkflowFunctionError(
+                f"{artifact} {candidate_id} has invalid Severity '{severity}'. Use Critical, High, Medium, Low, or Info."
+            )
+
+        confidence = (candidate.get("Confidence") or "").strip()
+        confidence_score_value = _security_require_confidence_score(confidence, artifact, f"{candidate_id} Confidence Score")
+        index_confidence = index_confidence_by_id.get(candidate_id, "")
+        index_confidence_value = _security_require_confidence_score(index_confidence, artifact, f"{candidate_id} Candidate Index Confidence Score")
+        if index_confidence_value != confidence_score_value:
+            raise WorkflowFunctionError(
+                f"{artifact} {candidate_id} Confidence Score must match Candidate Index. "
+                f"Index={index_confidence}, Block={confidence}."
+            )
+
+        status = (candidate.get("Status") or "").strip()
+        if status not in valid_statuses:
+            raise WorkflowFunctionError(
+                f"{artifact} {candidate_id} has invalid Status '{status}'. "
+                "Use Confirmed, Likely, Needs Review, Hardening, False Positive, Not Applicable, or No Finding."
+            )
+
+        evidence = (candidate.get("Evidence") or "").strip()
+        if evidence in {"", "-", "N/A", "Unknown", "TBD"}:
+            raise WorkflowFunctionError(f"{artifact} {candidate_id} Evidence must not be empty or placeholder text.")
+        if status != "No Finding" and not _security_evidence_has_location(evidence):
+            raise WorkflowFunctionError(
+                f"{artifact} {candidate_id} Evidence must include file/path/function/config evidence, "
+                "or explicitly start with 'Inferred:'."
+            )
+        if status == "No Finding" and severity != "Info":
+            raise WorkflowFunctionError(f"{artifact} {candidate_id} with Status: No Finding must use Severity: Info.")
+        if status == "No Finding" and len(candidates) > 1:
+            raise WorkflowFunctionError(
+                f"{artifact} should not mix Status: No Finding with additional candidate findings."
+            )
+
+    candidate_details: list[str] = []
+    candidate_evidence_scores: list[int] = []
+    candidate_confidence_scores: list[int] = []
+    for candidate in candidates:
+        candidate_id = candidate.get("Candidate ID", "CAND-???")
+        status = (candidate.get("Status") or "").strip()
+        severity = (candidate.get("Severity") or "").strip()
+        confidence = (candidate.get("Confidence") or "").strip()
+        evidence = (candidate.get("Evidence") or "").strip()
+        evidence_score = _security_evidence_score_value(evidence, status=status)
+        confidence_score = _security_confidence_consistency_score(
+            confidence, evidence_score, status=status, severity=severity
+        )
+        candidate_evidence_scores.append(evidence_score)
+        candidate_confidence_scores.append(confidence_score)
+        candidate_details.append(
+            f"- {candidate_id}: Severity={severity}, Confidence={confidence}, Status={status}, "
+            f"EvidenceScore={evidence_score}/30, ConfidenceScore={confidence_score}/20"
+        )
+
+    checklist_quality_scores: list[int] = []
+    for row in checklist_rows:
+        _check, status, evidence, _notes = row
+        evidence_score = _security_evidence_score_value(evidence, status=status)
+        checklist_quality_scores.append(evidence_score)
+
+    format_score = 20
+    evidence_score = min(30, _security_average(candidate_evidence_scores, 0))
+    confidence_score = min(20, _security_average(candidate_confidence_scores, 0))
+    coverage_count_score = min(12, round(len(checklist_rows) / 12 * 12))
+    coverage_evidence_score = min(8, round((_security_average(checklist_quality_scores, 0) / 30) * 8))
+    coverage_score = min(20, coverage_count_score + coverage_evidence_score)
+
+    consistency_score = 10
+    for candidate in candidates:
+        severity = (candidate.get("Severity") or "").strip()
+        confidence = (candidate.get("Confidence") or "").strip()
+        evidence = (candidate.get("Evidence") or "").strip()
+        status = (candidate.get("Status") or "").strip()
+        evidence_score_for_candidate = _security_evidence_score_value(evidence, status=status)
+        confidence_value = _security_parse_confidence_score(confidence) or 0
+        if confidence_value >= 80 and evidence_score_for_candidate < 18:
+            consistency_score -= 3
+        if severity in {"Critical", "High"} and status in {"Hardening", "No Finding", "Not Applicable"}:
+            consistency_score -= 2
+        if severity == "Info" and status in {"Confirmed", "Likely"}:
+            consistency_score -= 2
+    consistency_score = max(0, min(10, consistency_score))
+
+    scores = {
+        "format": format_score,
+        "evidence": evidence_score,
+        "confidence": confidence_score,
+        "coverage": coverage_score,
+        "consistency": consistency_score,
+    }
+    total = sum(scores.values())
+    scores["total"] = total
+    max_scores = {"format": 20, "evidence": 30, "confidence": 20, "coverage": 20, "consistency": 10, "total": 100}
+    status, failures = _security_score_status(total, scores, SECURITY_SCORE_THRESHOLDS)
+    retry_guidance = []
+    if failures:
+        retry_guidance.extend([
+            "The next agent attempt must keep the exact Markdown schema and improve the weak scoring categories.",
+            "Provide concrete file path, function/class/config, and observed code/config behavior for every non-No-Finding candidate.",
+            "Use Confidence Score 80-100 only when evidence is concrete and directly supported by the security context.",
+            "Cover at least 12 checklist categories with concrete evidence or explicit limitation notes.",
+        ])
+    score_report = _render_security_score_report(
+        title="Security Candidate Validation Score",
+        artifact=artifact,
+        status=status,
+        scores=scores,
+        max_scores=max_scores,
+        thresholds=SECURITY_SCORE_THRESHOLDS,
+        failures=failures,
+        details=candidate_details,
+        retry_guidance=retry_guidance,
+    )
+    ctx.write_text(ctx.output_dir / _security_score_artifact_name(artifact), score_report)
+    if failures:
+        raise WorkflowFunctionError(
+            f"{artifact} quality score failed: total {total}/100; "
+            f"evidence {evidence_score}/30; confidence {confidence_score}/20; coverage {coverage_score}/20. "
+            f"Open output/{_security_score_artifact_name(artifact)} for details."
+        )
+
+
 def combine_security_candidates(ctx: WorkflowFunctionContext) -> None:
     """Merge multiple AI-generated security candidate artifacts into stable normalized findings."""
-    candidate_files = sorted(path.name for path in ctx.output_dir.glob("security-candidates-agent-*.md"))
+    candidate_files = sorted(
+        path.name
+        for path in ctx.output_dir.glob("security-candidates-agent-*.md")
+        if not path.name.endswith("-score.md")
+    )
     if not candidate_files:
         raise WorkflowFunctionError("No security-candidates-agent-*.md artifacts found to combine.")
     valid_severities = {"Critical", "High", "Medium", "Low", "Info"}
-    valid_confidences = {"High", "Medium", "Low"}
     accepted_statuses = {"Confirmed", "Likely", "Needs Review", "Hardening", "Candidate", "Risk"}
     rejected_statuses = {"False Positive", "Not Applicable", "No Finding"}
 
@@ -537,6 +1003,8 @@ def combine_security_candidates(ctx: WorkflowFunctionContext) -> None:
     if not all_candidates:
         raise WorkflowFunctionError("No CAND-### entries were found in multi-agent security candidate artifacts.")
 
+    quality_scores = _parse_security_quality_scores(ctx.output_dir)
+
     grouped: dict[str, list[dict[str, str]]] = {}
     rejected: list[dict[str, str]] = []
     for candidate in all_candidates:
@@ -546,8 +1014,8 @@ def combine_security_candidates(ctx: WorkflowFunctionContext) -> None:
             continue
         evidence = candidate.get("Evidence") or ""
         severity = (candidate.get("Severity") or "Info").strip().title()
-        confidence = (candidate.get("Confidence") or "Low").strip().title()
-        if severity not in valid_severities or confidence not in valid_confidences:
+        confidence = (candidate.get("Confidence") or "").strip()
+        if severity not in valid_severities or _security_parse_confidence_score(confidence) is None:
             rejected.append(candidate)
             continue
         if not evidence or evidence in {"-", "N/A", "Unknown", "TBD"}:
@@ -568,10 +1036,22 @@ def combine_security_candidates(ctx: WorkflowFunctionContext) -> None:
         f"- Raw candidates: {len(all_candidates)}",
         f"- Accepted groups: {len(grouped)}",
         f"- Rejected candidates: {len(rejected)}",
-        "- Confidence merge rule: repeated same-task agents + concrete evidence raise confidence; weak or inferred evidence remains Low.",
+        "- Confidence Score merge rule: repeated same-task agents + concrete evidence raise numeric confidence; weak or inferred evidence remains lower.",
+        "- Agent quality rule: candidate artifacts must pass Python quality scoring before they can be combined.",
+        "",
+        "## Agent Quality Scores",
+        "| Artifact | Score File | Total Score | Status |",
+        "| --- | --- | ---: | --- |",
+    ]
+    for name in candidate_files:
+        score = quality_scores.get(name, {})
+        lines.append(
+            f"| {name} | {score.get('score_file', 'missing')} | {score.get('total', 0)} | {score.get('status', 'UNKNOWN')} |"
+        )
+    lines.extend([
         "",
         "## Accepted Findings",
-    ]
+    ])
 
     if not grouped:
         lines.extend([
@@ -587,7 +1067,8 @@ def combine_security_candidates(ctx: WorkflowFunctionContext) -> None:
             evidence = next((item.get("Evidence") for item in items if _security_evidence_has_location(item.get("Evidence", ""))), items[0].get("Evidence", ""))
             severity = _security_best_severity([item.get("Severity", "Info") for item in items])
             confidence = _security_consensus_confidence([item.get("Confidence", "Low") for item in items], evidence, len(items))
-            status = "Likely" if confidence in {"High", "Medium"} and severity != "Info" else "Needs Review"
+            confidence_value = _security_parse_confidence_score(confidence) or 0
+            status = "Likely" if confidence_value >= 50 and severity != "Info" else "Needs Review"
             if severity == "Info":
                 status = "Hardening"
             source_ids = [f"{item.get('Source Artifact')}:{item.get('Candidate ID')}" for item in items]
@@ -599,8 +1080,9 @@ def combine_security_candidates(ctx: WorkflowFunctionContext) -> None:
                 f"- Source Candidate IDs: {', '.join(source_ids)}",
                 f"- Area: {area}",
                 f"- Severity: {severity}",
-                f"- Confidence: {confidence}",
+                f"- Confidence Score: {confidence}",
                 f"- Consensus Count: {len(items)}",
+                f"- Agent Quality Scores: {', '.join(str(quality_scores.get(item.get('Source Artifact', ''), {}).get('total', 'unknown')) for item in items)}",
                 f"- Status: {status}",
                 f"- Evidence: {evidence}",
                 f"- Reason: {reason}",
@@ -618,7 +1100,7 @@ def combine_security_candidates(ctx: WorkflowFunctionContext) -> None:
                 f"- {item.get('Source Artifact')}:{item.get('Candidate ID')} | "
                 f"Status={item.get('Status', 'Rejected')} | "
                 f"Severity={item.get('Severity', 'Unknown')} | "
-                f"Confidence={item.get('Confidence', 'Unknown')} | "
+                f"ConfidenceScore={item.get('Confidence', 'Unknown')} | "
                 f"Evidence={item.get('Evidence', '').strip()[:160] or 'missing'}"
             )
 
@@ -647,15 +1129,16 @@ def validate_security_report(ctx: WorkflowFunctionContext, artifact: str = "secu
 
     summary = _markdown_section_body(text, "Summary")
     valid_severities = {"Critical", "High", "Medium", "Low", "Info"}
-    valid_confidences = {"High", "Medium", "Low"}
     if not any(f"Overall risk level: {severity}" in summary for severity in valid_severities):
         raise WorkflowFunctionError(
             f"{artifact} Summary must include 'Overall risk level: Critical|High|Medium|Low|Info'."
         )
-    if not any(f"Overall confidence: {confidence}" in summary for confidence in valid_confidences):
+    overall_confidence = _optional_field_in_block(summary, "Overall confidence score")
+    if not overall_confidence:
         raise WorkflowFunctionError(
-            f"{artifact} Summary must include 'Overall confidence: High|Medium|Low'."
+            f"{artifact} Summary must include 'Overall confidence score: <integer 0-100>'."
         )
+    _security_require_confidence_score(overall_confidence, artifact, "Overall confidence score")
 
     security_findings_text = ctx.read_text(ctx.output_dir / "security-findings.md")
     normalized_findings = _security_normalized_finding_blocks(security_findings_text)
@@ -731,11 +1214,8 @@ def validate_security_report(ctx: WorkflowFunctionContext, artifact: str = "secu
                     f"{artifact} {finding_id} has invalid Severity '{severity}'. Use Critical, High, Medium, Low, or Info."
                 )
 
-            confidence = _require_field_in_block(artifact, finding_id, block, "Confidence")
-            if confidence not in valid_confidences:
-                raise WorkflowFunctionError(
-                    f"{artifact} {finding_id} has invalid Confidence '{confidence}'. Use High, Medium, or Low."
-                )
+            confidence = _require_field_in_block(artifact, finding_id, block, "Confidence Score")
+            _security_require_confidence_score(confidence, artifact, f"{finding_id} Confidence Score")
 
             evidence = _require_field_in_block(artifact, finding_id, block, "Evidence")
             if not _security_evidence_has_location(evidence):
@@ -758,7 +1238,7 @@ def validate_security_report(ctx: WorkflowFunctionContext, artifact: str = "secu
     risk_matrix_rows = _require_markdown_table(
         "Risk Matrix",
         risk_matrix,
-        ["ID", "Source Finding ID", "Severity", "Confidence", "Area", "Evidence Summary", "Status"],
+        ["ID", "Source Finding ID", "Severity", "Confidence Score", "Area", "Evidence Summary", "Status"],
         artifact,
     )
     for index, row in enumerate(risk_matrix_rows, start=1):
@@ -768,8 +1248,7 @@ def validate_security_report(ctx: WorkflowFunctionContext, artifact: str = "secu
             raise WorkflowFunctionError(f"{artifact} Risk Matrix row {index} Source Finding ID must be SEC-### or NONE.")
         if row[2] not in valid_severities:
             raise WorkflowFunctionError(f"{artifact} Risk Matrix row {index} has invalid Severity '{row[2]}'.")
-        if row[3] not in valid_confidences:
-            raise WorkflowFunctionError(f"{artifact} Risk Matrix row {index} has invalid Confidence '{row[3]}'.")
+        _security_require_confidence_score(row[3], artifact, f"Risk Matrix row {index} Confidence Score")
         if not row[4] or not row[5] or not row[6]:
             raise WorkflowFunctionError(f"{artifact} Risk Matrix row {index} must fill Area, Evidence Summary, and Status.")
     if finding_ids:
@@ -779,14 +1258,14 @@ def validate_security_report(ctx: WorkflowFunctionContext, artifact: str = "secu
         for finding_id, block in finding_blocks:
             source_id = _require_field_in_block(artifact, finding_id, block, "Source Finding ID")
             severity = _require_field_in_block(artifact, finding_id, block, "Severity")
-            confidence = _require_field_in_block(artifact, finding_id, block, "Confidence")
+            confidence = _require_field_in_block(artifact, finding_id, block, "Confidence Score")
             matching_rows = [line for line in risk_matrix.splitlines() if f"| {finding_id} |" in line]
             if not matching_rows:
                 raise WorkflowFunctionError(f"{artifact} Risk Matrix missing row for {finding_id}.")
             row = matching_rows[0]
             if f"| {source_id} |" not in row or f"| {severity} |" not in row or f"| {confidence} |" not in row:
                 raise WorkflowFunctionError(
-                    f"{artifact} Risk Matrix row for {finding_id} must repeat Source Finding ID, Severity, and Confidence."
+                    f"{artifact} Risk Matrix row for {finding_id} must repeat Source Finding ID, Severity, and Confidence Score."
                 )
     else:
         if normalized_ids:
@@ -802,8 +1281,108 @@ def validate_security_report(ctx: WorkflowFunctionContext, artifact: str = "secu
                     )
                 if row[2] not in {"Info", "Low"}:
                     raise WorkflowFunctionError(f"{artifact} Risk Matrix no-finding row Severity must be Info or Low.")
-                if row[3] not in valid_confidences:
-                    raise WorkflowFunctionError(f"{artifact} Risk Matrix no-finding row Confidence must be High, Medium, or Low.")
+                _security_require_confidence_score(row[3], artifact, "Risk Matrix no-finding row Confidence Score")
+
+    report_details: list[str] = []
+    finding_evidence_scores: list[int] = []
+    finding_confidence_scores: list[int] = []
+    if finding_blocks:
+        for finding_id, block in finding_blocks:
+            severity = _require_field_in_block(artifact, finding_id, block, "Severity")
+            confidence = _require_field_in_block(artifact, finding_id, block, "Confidence Score")
+            evidence = _require_field_in_block(artifact, finding_id, block, "Evidence")
+            evidence_score = _security_evidence_score_value(evidence, status="Finding")
+            confidence_score = _security_confidence_consistency_score(
+                confidence, evidence_score, status="Finding", severity=severity
+            )
+            finding_evidence_scores.append(evidence_score)
+            finding_confidence_scores.append(confidence_score)
+            report_details.append(
+                f"- {finding_id}: Severity={severity}, ConfidenceScore={confidence}, "
+                f"EvidenceScore={evidence_score}/30, ConfidenceScore={confidence_score}/20"
+            )
+    else:
+        no_finding_evidence = "No confirmed vulnerabilities found after multi-agent candidate filtering"
+        finding_evidence_scores.append(_security_evidence_score_value(no_finding_evidence, status="No Finding"))
+        finding_confidence_scores.append(16)
+        report_details.append("- NONE: no accepted SEC findings; report uses complete no-finding risk matrix row.")
+
+    checklist_quality_scores = [
+        _security_evidence_score_value(row[2], status=row[1]) for row in checklist_rows
+    ]
+    format_score = 20
+    evidence_score = min(30, _security_average(finding_evidence_scores, 0))
+    confidence_score = min(20, _security_average(finding_confidence_scores, 0))
+    coverage_count_score = min(12, round(len(checklist_rows) / 10 * 12))
+    coverage_evidence_score = min(8, round((_security_average(checklist_quality_scores, 0) / 30) * 8))
+    coverage_score = min(20, coverage_count_score + coverage_evidence_score)
+    source_mapping_score = 10
+    if finding_ids:
+        if missing_source_ids:
+            source_mapping_score = 0
+        elif len(mapped_source_ids) != len(set(mapped_source_ids)):
+            source_mapping_score = 7
+        else:
+            source_mapping_score = 10
+    consistency_score = 10
+    for finding_id, block in finding_blocks:
+        severity = _require_field_in_block(artifact, finding_id, block, "Severity")
+        confidence = _require_field_in_block(artifact, finding_id, block, "Confidence Score")
+        evidence = _require_field_in_block(artifact, finding_id, block, "Evidence")
+        evidence_score_for_finding = _security_evidence_score_value(evidence, status="Finding")
+        confidence_value = _security_parse_confidence_score(confidence) or 0
+        if confidence_value >= 80 and evidence_score_for_finding < 18:
+            consistency_score -= 3
+        if severity == "Info" and confidence_value >= 80:
+            consistency_score -= 1
+    consistency_score = max(0, min(10, consistency_score))
+
+    scores = {
+        "format": format_score,
+        "evidence": evidence_score,
+        "confidence": confidence_score,
+        "coverage": coverage_score,
+        "consistency": consistency_score,
+        "source_mapping": source_mapping_score,
+    }
+    total = min(100, format_score + evidence_score + confidence_score + coverage_score + consistency_score + source_mapping_score)
+    scores["total"] = total
+    max_scores = {
+        "format": 20,
+        "evidence": 30,
+        "confidence": 20,
+        "coverage": 20,
+        "consistency": 10,
+        "source_mapping": 10,
+        "total": 100,
+    }
+    status, failures = _security_score_status(total, scores, SECURITY_REPORT_SCORE_THRESHOLDS)
+    retry_guidance = []
+    if failures:
+        retry_guidance.extend([
+            "The next report attempt must preserve every accepted SEC finding and include numeric Confidence Score for every VULN.",
+            "Every VULN must include concrete evidence copied or summarized from security-findings.md.",
+            "Risk Matrix rows must repeat ID, Source Finding ID, Severity, and numeric Confidence Score exactly.",
+            "Checklist evidence must cite reviewed files, configs, or explicit limitations.",
+        ])
+    score_report = _render_security_score_report(
+        title="Security Report Validation Score",
+        artifact=artifact,
+        status=status,
+        scores=scores,
+        max_scores=max_scores,
+        thresholds=SECURITY_REPORT_SCORE_THRESHOLDS,
+        failures=failures,
+        details=report_details,
+        retry_guidance=retry_guidance,
+    )
+    ctx.write_text(ctx.output_dir / _security_report_score_artifact_name(artifact), score_report)
+    if failures:
+        raise WorkflowFunctionError(
+            f"{artifact} quality score failed: total {total}/100; "
+            f"evidence {evidence_score}/30; confidence {confidence_score}/20; coverage {coverage_score}/20. "
+            f"Open output/{_security_report_score_artifact_name(artifact)} for details."
+        )
 
 async def run_pytest(ctx: WorkflowFunctionContext) -> None:
     command = ctx.run.get("test_command") or os.environ.get("WORKFLOW_TEST_COMMAND", "python -m pytest")
@@ -836,6 +1415,7 @@ async def run_pytest(ctx: WorkflowFunctionContext) -> None:
 PYTHON_FUNCTIONS = {
     "collect_security_context": collect_security_context,
     "combine_security_candidates": combine_security_candidates,
+    "validate_security_candidates": validate_security_candidates,
     "validate_spec": validate_spec,
     "validate_todo": validate_todo,
     "require_status_pass": require_status_pass,

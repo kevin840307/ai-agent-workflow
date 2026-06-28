@@ -24,12 +24,12 @@ Scan rules:
 - Inspect the provided Security Scan Context from output/security-context.md. Treat it as the primary evidence source.
 - Do not stop after saying no confirmed vulnerabilities. First complete the Security Checklist and review each category.
 - Report confirmed, likely, inferred, and hardening findings when they are security-relevant.
-- It is acceptable to use Severity: Info or Low and Confidence: Low for defensive hardening findings when evidence is limited.
+- It is acceptable to use Severity: Info or Low and Confidence Score: 30 for defensive hardening findings when evidence is limited.
 - Only say "No confirmed vulnerabilities found." when the checklist found no confirmed, likely, inferred, or hardening findings.
 - Every finding must have a stable ID: VULN-001, VULN-002, ...
 - Every finding must include Severity, Confidence, Evidence, Impact, and Recommendation.
 - Use severity exactly as one of: Critical, High, Medium, Low, Info.
-- Use confidence exactly as one of: High, Medium, Low.
+- Use Confidence Score as an integer from 0 to 100, without %, decimals, or words.
 - Evidence must be concrete. Prefer file path + function/class/config name + observed code/config behavior.
 - If the issue is inferred, Evidence must explicitly start with "Inferred:" and explain the signal.
 - Do not invent vulnerabilities that contradict the evidence. When uncertain, lower Confidence instead of pretending certainty.
@@ -57,7 +57,7 @@ Status: DONE
 
 ## Summary
 - Overall risk level: Critical | High | Medium | Low | Info
-- Overall confidence: High | Medium | Low
+- Overall confidence score: 0-100
 - One-paragraph summary.
 
 ## Scan Scope
@@ -89,7 +89,7 @@ Allowed Status values are exactly: Reviewed, Finding, Risk, Not applicable, Limi
 ## Findings
 ### VULN-001 - <short title>
 - Severity: Critical | High | Medium | Low | Info
-- Confidence: High | Medium | Low
+- Confidence Score: <integer 0-100>
 - Evidence: <file/path/function/config evidence. Include file path and function/class/config when available. If inferred, start with Inferred: and explain why.>
 - Impact: <risk impact>
 - Recommendation: <defensive remediation>
@@ -98,7 +98,7 @@ If and only if there are no confirmed, likely, inferred, or hardening findings, 
 No confirmed vulnerabilities found.
 
 ## Risk Matrix
-| ID | Severity | Confidence | Area | Evidence Summary | Status |
+| ID | Severity | Confidence Score | Area | Evidence Summary | Status |
 | --- | --- | --- | --- | --- | --- |
 | VULN-001 | Medium | High | Example area | app/example.py: function_name | Needs remediation |
 

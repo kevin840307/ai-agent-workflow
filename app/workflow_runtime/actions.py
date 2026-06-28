@@ -519,11 +519,14 @@ class WorkflowActions:
         if step_type == "validation" and validator == "validate_todo":
             return lambda: self.validate_or_repair_todo(run, output_dir)
         if validator in PYTHON_FUNCTIONS:
-            artifact = (step_artifact_name(step_record, "") or None) if validator == "require_status_pass" else None
+            artifact_validators = {"require_status_pass", "validate_security_candidates", "validate_security_report"}
+            artifact = (step_artifact_name(step_record, "") or None) if validator in artifact_validators else None
             return lambda: self.functions.call_python_function(run, validator, output_dir, artifact)
         if step_type == "python":
             function_id = validator or "run_pytest"
-            return lambda: self.functions.call_python_function(run, function_id, output_dir)
+            artifact_validators = {"validate_security_candidates", "validate_security_report"}
+            artifact = (step_artifact_name(step_record, "") or None) if function_id in artifact_validators else None
+            return lambda: self.functions.call_python_function(run, function_id, output_dir, artifact)
         if validator == "require_status_pass" or step_type in {"gate", "manual"}:
             artifact = step_artifact_name(step_record, step_record.get("key", "review") + ".md")
             return lambda: asyncio.to_thread(self.functions.require_status, output_dir / artifact, "PASS")

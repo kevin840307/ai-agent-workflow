@@ -161,7 +161,9 @@ class PromptBuilder:
             "step_output": step_output,
             "security_context": read_text(output_dir / "security-context.md"),
             "security_candidates": self._read_security_candidate_artifacts(output_dir),
+            "security_candidate_scores": self._read_security_candidate_score_artifacts(output_dir),
             "security_findings": read_text(output_dir / "security-findings.md"),
+            "security_report_score": read_text(output_dir / "security-report-score.md"),
             "project_path": str(run.get("project_path", "")),
             "workspace_path": str(run.get("workspace", "")),
         }
@@ -169,6 +171,16 @@ class PromptBuilder:
     def _read_security_candidate_artifacts(self, output_dir: Path) -> str:
         blocks: list[str] = []
         for path in sorted(output_dir.glob("security-candidates-agent-*.md")):
+            if path.name.endswith("-score.md"):
+                continue
+            text = read_text(path)
+            if text.strip():
+                blocks.append(f"### output/{path.name}\n\n{text.strip()}")
+        return "\n\n".join(blocks)
+
+    def _read_security_candidate_score_artifacts(self, output_dir: Path) -> str:
+        blocks: list[str] = []
+        for path in sorted(output_dir.glob("security-candidates-agent-*-score.md")):
             text = read_text(path)
             if text.strip():
                 blocks.append(f"### output/{path.name}\n\n{text.strip()}")
@@ -198,6 +210,7 @@ class PromptBuilder:
             "final-review.md": "{{final_review}}",
             "security-context.md": "{{security_context}}",
             "security-findings.md": "{{security_findings}}",
+            "security-report-score.md": "{{security_report_score}}",
         }
         blocks: list[str] = []
         for artifact in artifacts:

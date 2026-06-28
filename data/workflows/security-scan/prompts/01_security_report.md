@@ -8,8 +8,11 @@ Important report rules:
 - Use security-findings.md as the source of truth for final findings.
 - Do not create new vulnerabilities that are not present as accepted SEC-### findings.
 - Do not drop accepted SEC-### findings. Every accepted SEC finding must become one VULN finding.
-- Preserve Severity and Confidence from security-findings.md unless you lower confidence due to clearly stated evidence weakness.
-- Every VULN must include Source Finding ID, Severity, Confidence, Evidence, Impact, and Recommendation.
+- Preserve Severity and numeric Confidence Score from security-findings.md unless you lower the numeric confidence score due to clearly stated evidence weakness.
+- Every VULN must include Source Finding ID, Severity, Confidence Score, Evidence, Impact, and Recommendation.
+- Every security bug/finding must visibly include numeric Confidence Score in the finding body and in the Risk Matrix row.
+- In every VULN block, place Confidence Score directly after Severity so reviewers can see each bug numeric security confidence immediately.
+- A Python validator will score this final report. Low Evidence, Confidence Score, Coverage, or Source Mapping scores will fail and retry this report step.
 - If security-findings.md has no accepted findings, produce a complete no-finding report with the required table row format.
 
 Project Path: {{project_path}}
@@ -27,11 +30,11 @@ Project Profile:
 Existing architecture.md:
 {{architecture}}
 
-Security Scan Context:
-{{security_context}}
-
 Multi-Agent Candidate Artifacts:
 {{security_candidates}}
+
+Candidate Quality Score Artifacts:
+{{security_candidate_scores}}
 
 Python-Combined Security Findings:
 {{security_findings}}
@@ -46,20 +49,21 @@ Status: DONE
 # Security Vulnerability Report
 
 ## Summary
-- Overall risk level: Critical | High | Medium | Low | Info
-- Overall confidence: High | Medium | Low
+- Overall risk level: Critical | 0-100 | Info
+- Overall confidence score: 0-100
 - One-paragraph summary.
 
 ## Scan Scope
 - Project path.
 - Languages/frameworks detected.
-- Files or areas reviewed from the available project overview and security context.
+- Files or areas reviewed from accepted Python-combined findings and candidate evidence.
 - Multi-agent candidate artifacts reviewed.
 
 ## Method
-- Static code and configuration review based on collected project context.
+- Static code and configuration review based on Project Path inspection by multiple independent AI agents.
 - Multiple independent same-task AI candidate scans.
-- Python filtering, deduplication, and confidence merging into security-findings.md.
+- Python scoring, filtering, deduplication, and confidence merging into security-findings.md.
+- Candidate quality score artifacts are used to understand evidence quality and confidence reliability.
 - Final report generated only from accepted Python-combined findings.
 - Note that this is not a replacement for SAST/DAST/dependency scanning unless those tools are explicitly run elsewhere.
 
@@ -82,26 +86,28 @@ Allowed Status values are exactly: Reviewed, Finding, Risk, Not applicable, Limi
 ## Findings
 ### VULN-001 - <short title>
 - Source Finding ID: SEC-001
-- Severity: Critical | High | Medium | Low | Info
-- Confidence: High | Medium | Low
+- Severity: Critical | 0-100 | Info
+- Confidence Score: <integer 0-100>
 - Evidence: <copy or summarize concrete evidence from SEC-001>
 - Impact: <risk impact>
 - Recommendation: <defensive remediation>
+
+Every VULN block must include Confidence Score exactly once with an integer value from 0 to 100.
 
 If and only if there are no accepted SEC findings in security-findings.md, write exactly:
 No confirmed vulnerabilities found.
 
 ## Risk Matrix
-| ID | Source Finding ID | Severity | Confidence | Area | Evidence Summary | Status |
+| ID | Source Finding ID | Severity | Confidence Score | Area | Evidence Summary | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| VULN-001 | SEC-001 | Medium | High | Example area | app/example.py: function_name | Needs remediation |
+| VULN-001 | SEC-001 | Medium | 85 | Example area | app/example.py: function_name | Needs remediation |
 
 If and only if there are no accepted SEC findings, use this complete row format:
-| NONE | NONE | Info | High | Reviewed scope | No confirmed vulnerabilities found after multi-agent candidate filtering | Closed |
+| NONE | NONE | Info | 80 | Reviewed scope | No confirmed vulnerabilities found after multi-agent candidate filtering | Closed |
 
 ## Recommendations
 - Prioritized defensive fixes.
 - Suggested tests or validation checks.
 
 ## Limitations
-- List missing context, files, runtime behavior, dependency lock files, environment data, or assumptions that limit confidence.
+- List missing context, files, runtime behavior, dependency lock files, environment data, direct file-access limitations, or assumptions that limit confidence.

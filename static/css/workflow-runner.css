@@ -1158,3 +1158,108 @@ body.artifact-modal-open {
   opacity: 0;
   pointer-events: none;
 }
+
+/* Step file Markdown preview and download actions */
+.step-files-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+}
+
+.step-files-actions .mini-button.active {
+  border-color: rgba(15, 118, 110, 0.64);
+  background: #e8f5f1;
+  color: var(--accent-dark);
+}
+
+.step-files-markdown-preview {
+  height: 100%;
+  min-height: 0;
+  overflow: auto;
+  background: #ffffff;
+  color: var(--text);
+  padding: 22px 26px 32px;
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+.step-files-markdown-preview h1,
+.step-files-markdown-preview h2,
+.step-files-markdown-preview h3,
+.step-files-markdown-preview h4,
+.step-files-markdown-preview h5,
+.step-files-markdown-preview h6 {
+  margin: 18px 0 10px;
+  line-height: 1.25;
+  color: var(--text);
+}
+
+.step-files-markdown-preview h1 { font-size: 24px; }
+.step-files-markdown-preview h2 { font-size: 20px; }
+.step-files-markdown-preview h3 { font-size: 17px; }
+
+.step-files-markdown-preview p {
+  margin: 8px 0;
+}
+
+.step-files-markdown-preview ul {
+  margin: 8px 0 14px 20px;
+  padding: 0;
+}
+
+.step-files-markdown-preview li {
+  margin: 5px 0;
+}
+
+.step-files-markdown-preview code {
+  padding: 2px 6px;
+  border-radius: 7px;
+  background: var(--panel-2);
+  color: var(--accent-dark);
+  font-size: 0.92em;
+}
+
+.markdown-table-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+  margin: 12px 0 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+
+.step-files-markdown-preview table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.step-files-markdown-preview th,
+.step-files-markdown-preview td {
+  padding: 9px 11px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+}
+
+.step-files-markdown-preview th {
+  background: var(--panel-2);
+  color: var(--text);
+  font-weight: 850;
+}
+
+.step-files-markdown-preview tr:last-child td {
+  border-bottom: 0;
+}
+
+@media (max-width: 760px) {
+  .step-files-actions {
+    justify-content: flex-start;
+  }
+
+  .step-files-markdown-preview {
+    padding: 18px;
+  }
+}
