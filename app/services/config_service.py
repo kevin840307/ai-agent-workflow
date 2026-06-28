@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from fastapi import HTTPException
 
-from app import runtime
+from app.runtime_modules import api as runtime
 
 
 def get_config() -> dict:

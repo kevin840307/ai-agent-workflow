@@ -4,8 +4,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from app.runtime_errors import WorkflowError
-from app.runtime_files import apply_extracted_files, classify_test_retry_target, extract_build_files
+from app.runtime_modules.errors import WorkflowError
+from app.runtime_modules.files import apply_extracted_files, classify_test_retry_target, extract_build_files
 from app.services import workflow_config_service
 from app.workflow_function_catalog import AVAILABLE_WORKFLOW_FUNCTIONS
 from app.workflow_functions import PYTHON_FUNCTIONS

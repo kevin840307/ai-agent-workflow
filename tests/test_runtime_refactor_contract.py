@@ -1,0 +1,127 @@
+from __future__ import annotations
+
+import importlib
+from pathlib import Path
+import unittest
+
+
+class RuntimeRefactorContractTests(unittest.TestCase):
+    def test_new_runtime_modules_import_paths_are_available(self) -> None:
+        modules = [
+            "app.runtime_modules.api",
+            "app.runtime_modules.errors",
+            "app.runtime_modules.events",
+            "app.runtime_modules.files",
+            "app.runtime_modules.paths",
+            "app.runtime_modules.qwen",
+            "app.runtime_modules.run_state",
+            "app.runtime_modules.skills",
+            "app.runtime_modules.store",
+        ]
+        for module_name in modules:
+            with self.subTest(module_name=module_name):
+                module = importlib.import_module(module_name)
+                self.assertIsNotNone(module)
+
+    def test_runtime_api_keeps_public_contract(self) -> None:
+        runtime_api = importlib.import_module("app.runtime_modules.api")
+        expected = [
+            "Store",
+            "RunState",
+            "WorkflowError",
+            "WorkflowCancelled",
+            "ValidationError",
+            "UserInputRequired",
+            "CreateRunRequest",
+            "CreateSessionRequest",
+            "QwenSettingsRequest",
+            "ROOT",
+            "STORE_FILE",
+            "WORKSPACES_DIR",
+            "store",
+            "run_state",
+            "bus",
+            "refresh_artifacts",
+            "execute_workflow",
+            "qwen_runtime_config",
+        ]
+        for name in expected:
+            self.assertTrue(hasattr(runtime_api, name), f"runtime api missing export: {name}")
+
+    def test_runtime_paths_keep_project_root_after_module_move(self) -> None:
+        paths = importlib.import_module("app.runtime_modules.paths")
+        self.assertEqual(Path(paths.ROOT), Path(__file__).resolve().parents[1])
+        self.assertEqual(paths.WORKSPACES_DIR, paths.ROOT / "workspaces")
+        self.assertEqual(paths.STORE_FILE, paths.ROOT / "data" / "store.json")
+
+    def test_legacy_runtime_files_are_removed_or_empty_deletion_markers(self) -> None:
+        repo = Path(__file__).resolve().parents[1]
+        legacy_files = [
+            "app/runtime.py",
+            "app/runtime_errors.py",
+            "app/runtime_events.py",
+            "app/runtime_files.py",
+            "app/runtime_paths.py",
+            "app/runtime_qwen.py",
+            "app/runtime_run_state.py",
+            "app/runtime_skills.py",
+            "app/runtime_store.py",
+        ]
+        for rel_path in legacy_files:
+            with self.subTest(rel_path=rel_path):
+                path = repo / rel_path
+                if not path.exists():
+                    continue
+                self.assertEqual(path.read_text(encoding="utf-8"), "")
+
+    def test_application_code_uses_runtime_modules_not_legacy_runtime_paths(self) -> None:
+        repo = Path(__file__).resolve().parents[1]
+        legacy_patterns = [
+            "from app import runtime",
+            "import app.runtime\n",
+            "import app.runtime as",
+            "from app.runtime import",
+            "from app.runtime_errors",
+            "from app.runtime_events",
+            "from app.runtime_files",
+            "from app.runtime_paths",
+            "from app.runtime_qwen",
+            "from app.runtime_run_state",
+            "from app.runtime_skills",
+            "from app.runtime_store",
+            "app.runtime_qwen.",
+            "app.runtime_files.",
+            "app.runtime_paths.",
+            "app.runtime_store.",
+            "app.runtime_run_state.",
+            "app.runtime_errors.",
+            "app.runtime_skills.",
+            "app.runtime_events.",
+        ]
+        ignored = {
+            Path("app/runtime.py"),
+            Path("app/runtime_errors.py"),
+            Path("app/runtime_events.py"),
+            Path("app/runtime_files.py"),
+            Path("app/runtime_paths.py"),
+            Path("app/runtime_qwen.py"),
+            Path("app/runtime_run_state.py"),
+            Path("app/runtime_skills.py"),
+            Path("app/runtime_store.py"),
+            Path("tests/test_runtime_refactor_contract.py"),
+        }
+        violations: list[str] = []
+        for base in (repo / "app", repo / "tests"):
+            for path in base.rglob("*.py"):
+                rel_path = path.relative_to(repo)
+                if "__pycache__" in path.parts or rel_path in ignored:
+                    continue
+                text = path.read_text(encoding="utf-8")
+                for pattern in legacy_patterns:
+                    if pattern in text:
+                        violations.append(f"{rel_path}: contains {pattern!r}")
+        self.assertEqual(violations, [])
+
+
+if __name__ == "__main__":
+    unittest.main()

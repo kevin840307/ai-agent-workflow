@@ -5,7 +5,7 @@ import json
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 
-from app import runtime
+from app.runtime_modules import api as runtime
 from app.domain import schemas
 from app.services import workflow_service
 

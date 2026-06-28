@@ -5,8 +5,8 @@ import re
 from pathlib import Path
 from typing import Any, Awaitable, Callable
 
-from app.runtime_errors import UserInputRequired, ValidationError, WorkflowError
-from app.runtime_files import (
+from app.runtime_modules.errors import UserInputRequired, ValidationError, WorkflowError
+from app.runtime_modules.files import (
     apply_build_files,
     apply_extracted_files,
     extract_build_files,
@@ -20,7 +20,7 @@ from app.runtime_files import (
     validate_build_files_are_not_tests,
     validate_generated_test_files,
 )
-from app.runtime_paths import ROOT, read_text, write_text
+from app.runtime_modules.paths import ROOT, read_text, write_text
 from app.workflow_functions import PYTHON_FUNCTIONS, WorkflowFunctionError
 
 from .agent_step_runner import AgentStepRunner

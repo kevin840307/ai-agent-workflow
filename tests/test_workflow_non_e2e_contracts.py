@@ -12,16 +12,16 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 
 from app.main import app
-from app.runtime_errors import ValidationError, WorkflowError
-from app.runtime_files import (
+from app.runtime_modules.errors import ValidationError, WorkflowError
+from app.runtime_modules.files import (
     apply_extracted_files,
     extract_build_files,
     validate_build_files_are_not_tests,
     validate_generated_test_files,
 )
-from app.runtime_run_state import RunState
-from app.runtime_store import Store
-from app.runtime_qwen import QwenCliClient
+from app.runtime_modules.run_state import RunState
+from app.runtime_modules.store import Store
+from app.runtime_modules.qwen import QwenCliClient
 from app.services import workflow_config_service
 from app.workflow_runtime.agent_step_runner import AgentStepRunner
 from app.workflow_runtime.functions import WorkflowFunctionService
@@ -282,13 +282,13 @@ class QwenRunnerUnitTests(unittest.TestCase):
     def test_qwen_runner_timeout_and_non_zero_exit(self) -> None:
         with tempfile.TemporaryDirectory() as tmp, self._with_env(QWEN_BIN="qwen-test", QWEN_MOCK="0"):
             client = QwenCliClient({})
-            with patch("app.runtime_qwen.shutil.which", return_value="/bin/qwen-test"):
-                with patch("app.runtime_qwen.subprocess.run", side_effect=subprocess.TimeoutExpired("qwen", 2)):
+            with patch("app.runtime_modules.qwen.shutil.which", return_value="/bin/qwen-test"):
+                with patch("app.runtime_modules.qwen.subprocess.run", side_effect=subprocess.TimeoutExpired("qwen", 2)):
                     with self.assertRaisesRegex(WorkflowError, "timed out after 2"):
                         client.run("prompt", Path(tmp), timeout_sec=2)
 
                 failed = subprocess.CompletedProcess(args=["qwen-test"], returncode=7, stdout="", stderr="boom")
-                with patch("app.runtime_qwen.subprocess.run", return_value=failed):
+                with patch("app.runtime_modules.qwen.subprocess.run", return_value=failed):
                     with self.assertRaisesRegex(WorkflowError, "boom"):
                         client.run("prompt", Path(tmp))
 
@@ -303,7 +303,7 @@ class QwenRunnerUnitTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmp, self._with_env(QWEN_BIN="qwen-test", QWEN_MOCK="0", QWEN_REUSE_SESSION="1"):
             client = QwenCliClient({})
-            with patch("app.runtime_qwen.shutil.which", return_value="/bin/qwen-test"), patch("app.runtime_qwen.subprocess.run", side_effect=fake_run):
+            with patch("app.runtime_modules.qwen.shutil.which", return_value="/bin/qwen-test"), patch("app.runtime_modules.qwen.subprocess.run", side_effect=fake_run):
                 self.assertEqual(client.run("prompt", Path(tmp), qwen_session_id="s1"), "ok")
 
         self.assertIn("--session-id", calls[0])
@@ -462,7 +462,7 @@ class ApiWorkflowContractTests(unittest.TestCase):
         os.environ["QWEN_MOCK"] = "1"
         try:
             with tempfile.TemporaryDirectory() as tmp, self._patch_workflow(workflow), patch(
-                "app.runtime_qwen.mock_qwen_response", side_effect=qwen_response
+                "app.runtime_modules.qwen.mock_qwen_response", side_effect=qwen_response
             ):
                 project_dir = Path(tmp)
                 project_dir.joinpath("seed.py").write_text("VALUE = 1\n", encoding="utf-8")

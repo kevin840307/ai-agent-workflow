@@ -11,9 +11,9 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 
 from app.main import app
-from app import runtime
+from app.runtime_modules import api as runtime
 from app.mock_qwen import mock_qwen_response
-from app.runtime_files import apply_extracted_files, extract_build_files, validate_build_files_are_not_tests, validate_generated_test_files
+from app.runtime_modules.files import apply_extracted_files, extract_build_files, validate_build_files_are_not_tests, validate_generated_test_files
 from app.services import workflow_config_service
 
 
@@ -190,7 +190,7 @@ class WorkflowResilienceE2ETests(unittest.TestCase):
             return "Status: DONE\n\nReset contract artifact.\n"
 
         with mock_qwen_env(), tempfile.TemporaryDirectory() as tmp, self._patched_workflow(workflow), patch(
-            "app.runtime_qwen.mock_qwen_response", side_effect=qwen_response
+            "app.runtime_modules.qwen.mock_qwen_response", side_effect=qwen_response
         ):
             project_dir = Path(tmp)
             project_dir.joinpath("seed.py").write_text("VALUE = 1\n", encoding="utf-8")
@@ -254,7 +254,7 @@ class WorkflowResilienceE2ETests(unittest.TestCase):
             return "Status: DONE\n\nAfter gate artifact.\n"
 
         with mock_qwen_env(), tempfile.TemporaryDirectory() as tmp, self._patched_workflow(workflow), patch(
-            "app.runtime_qwen.mock_qwen_response", side_effect=qwen_response
+            "app.runtime_modules.qwen.mock_qwen_response", side_effect=qwen_response
         ):
             project_dir = Path(tmp)
             project_dir.joinpath("seed.py").write_text("VALUE = 1\n", encoding="utf-8")
@@ -285,7 +285,7 @@ class WorkflowResilienceE2ETests(unittest.TestCase):
             return "Status: DONE\n\nOnly raw.md is written; must-exist.md is intentionally missing.\n"
 
         with mock_qwen_env(), tempfile.TemporaryDirectory() as tmp, self._patched_workflow(workflow), patch(
-            "app.runtime_qwen.mock_qwen_response", side_effect=qwen_response
+            "app.runtime_modules.qwen.mock_qwen_response", side_effect=qwen_response
         ):
             project_dir = Path(tmp)
             project_dir.joinpath("seed.py").write_text("VALUE = 1\n", encoding="utf-8")
@@ -308,7 +308,7 @@ class WorkflowResilienceE2ETests(unittest.TestCase):
             return "Status: DONE\n\nIsolation artifact.\n"
 
         with mock_qwen_env(), tempfile.TemporaryDirectory() as tmp, self._patched_workflow(workflow), patch(
-            "app.runtime_qwen.mock_qwen_response", side_effect=qwen_response
+            "app.runtime_modules.qwen.mock_qwen_response", side_effect=qwen_response
         ):
             root = Path(tmp)
             project_a = root / "project-a"
@@ -347,7 +347,7 @@ class WorkflowResilienceE2ETests(unittest.TestCase):
             return '{"name":"ask_user_question","arguments":{"question":"bad tool call"}}'
 
         with mock_qwen_env(), tempfile.TemporaryDirectory() as tmp, self._patched_workflow(workflow), patch(
-            "app.runtime_qwen.mock_qwen_response", side_effect=qwen_response
+            "app.runtime_modules.qwen.mock_qwen_response", side_effect=qwen_response
         ):
             project_dir = Path(tmp)
             project_dir.joinpath("seed.py").write_text("VALUE = 1\n", encoding="utf-8")
@@ -368,7 +368,7 @@ class WorkflowResilienceE2ETests(unittest.TestCase):
             return "Status: DONE\n\nPersistent artifact.\n"
 
         with mock_qwen_env(), tempfile.TemporaryDirectory() as tmp, self._patched_workflow(workflow), patch(
-            "app.runtime_qwen.mock_qwen_response", side_effect=qwen_response
+            "app.runtime_modules.qwen.mock_qwen_response", side_effect=qwen_response
         ):
             project_dir = Path(tmp)
             project_dir.joinpath("seed.py").write_text("VALUE = 1\n", encoding="utf-8")
@@ -441,7 +441,7 @@ class WorkflowResilienceE2ETests(unittest.TestCase):
             return "\n".join(["Status: DONE", *[f"line {i}" for i in range(80)]])
 
         with mock_qwen_env(), tempfile.TemporaryDirectory() as tmp, self._patched_workflow(workflow), patch(
-            "app.runtime_qwen.mock_qwen_response", side_effect=qwen_response
+            "app.runtime_modules.qwen.mock_qwen_response", side_effect=qwen_response
         ):
             project_dir = Path(tmp)
             project_dir.joinpath("seed.py").write_text("VALUE = 1\n", encoding="utf-8")
@@ -462,7 +462,7 @@ class WorkflowResilienceE2ETests(unittest.TestCase):
             return "Status: DONE\n\nConcurrent run artifact.\n"
 
         with mock_qwen_env(), tempfile.TemporaryDirectory() as tmp, self._patched_workflow(workflow), patch(
-            "app.runtime_qwen.mock_qwen_response", side_effect=qwen_response
+            "app.runtime_modules.qwen.mock_qwen_response", side_effect=qwen_response
         ):
             project_dir = Path(tmp)
             project_dir.joinpath("seed.py").write_text("VALUE = 1\n", encoding="utf-8")
@@ -503,7 +503,7 @@ END_FILE
 """
 
         with mock_qwen_env(), tempfile.TemporaryDirectory() as tmp, self._patched_workflow(workflow), patch(
-            "app.runtime_qwen.mock_qwen_response", side_effect=qwen_response
+            "app.runtime_modules.qwen.mock_qwen_response", side_effect=qwen_response
         ):
             project_dir = Path(tmp) / "project"
             project_dir.mkdir()

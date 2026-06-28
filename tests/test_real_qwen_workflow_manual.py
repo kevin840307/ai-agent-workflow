@@ -10,7 +10,7 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from app.main import app
-from app.runtime_qwen import QwenCliClient
+from app.runtime_modules.qwen import QwenCliClient
 from app.services import workflow_config_service
 
 

@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from app.mock_qwen import mock_qwen_response
-from app.runtime_errors import WorkflowError
+from app.runtime_modules.errors import WorkflowError
 
 
 class QwenCliClient:

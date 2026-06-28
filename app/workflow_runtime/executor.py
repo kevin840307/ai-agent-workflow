@@ -5,8 +5,8 @@ import json
 from pathlib import Path
 from typing import Any, Awaitable, Callable
 
-from app.runtime_errors import UserInputRequired, WorkflowError
-from app.runtime_paths import utc_now, write_text
+from app.runtime_modules.errors import UserInputRequired, WorkflowError
+from app.runtime_modules.paths import utc_now, write_text
 
 from .actions import WorkflowActions
 from .retry_policy import retry_target_for_failure

@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from app.runtime_paths import DEFAULT_SKILL_PATH, read_text
+from app.runtime_modules.paths import DEFAULT_SKILL_PATH, read_text
 
 
 def resolve_skill_file(skill_path: str | None) -> Path | None:

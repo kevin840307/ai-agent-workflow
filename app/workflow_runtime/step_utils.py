@@ -4,7 +4,7 @@ from pathlib import Path, PureWindowsPath
 from urllib.parse import unquote
 from typing import Any
 
-from app.runtime_errors import WorkflowError
+from app.runtime_modules.errors import WorkflowError
 
 
 TRUE_VALUES = {"1", "true", "yes", "on"}

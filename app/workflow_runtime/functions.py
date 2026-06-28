@@ -4,8 +4,8 @@ import asyncio
 from pathlib import Path
 from typing import Any, Awaitable, Callable
 
-from app.runtime_errors import ValidationError, WorkflowError
-from app.runtime_paths import ROOT, read_text, write_text
+from app.runtime_modules.errors import ValidationError, WorkflowError
+from app.runtime_modules.paths import ROOT, read_text, write_text
 from app.workflow_functions import PYTHON_FUNCTIONS, WorkflowFunctionContext, WorkflowFunctionError
 
 LogFn = Callable[[dict[str, Any], str], Awaitable[None]]

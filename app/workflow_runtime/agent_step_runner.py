@@ -4,8 +4,8 @@ import os
 from pathlib import Path
 from typing import Any, Awaitable, Callable
 
-from app.runtime_errors import UserInputRequired, WorkflowError
-from app.runtime_paths import read_text, write_text
+from app.runtime_modules.errors import UserInputRequired, WorkflowError
+from app.runtime_modules.paths import read_text, write_text
 
 from .agents import AgentManager, AgentRequest
 from .prompt_builder import PromptBuilder

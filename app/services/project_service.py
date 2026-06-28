@@ -7,7 +7,7 @@ from pathlib import Path
 
 from fastapi import HTTPException
 
-from app import runtime
+from app.runtime_modules import api as runtime
 from app.repositories import store_repository
 from app.workflow_runtime.agents import AgentRequest
 from app.workflow_runtime.qwen_serve import forget_qwen_serve_session

@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Awaitable, Callable, Protocol
 
-from app.runtime_errors import WorkflowError
+from app.runtime_modules.errors import WorkflowError
 
 from .qwen_serve import QwenCliClient, run_prompt_via_serve
 from .settings import load_settings

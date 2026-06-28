@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from app import runtime
+from app.runtime_modules import api as runtime
 from app.controllers import artifact_controller, config_controller, project_controller, workflow_config_controller, workflow_controller
 from app.services import workflow_config_service
 

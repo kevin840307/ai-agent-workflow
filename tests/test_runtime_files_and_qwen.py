@@ -5,15 +5,15 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from app.runtime_files import (
+from app.runtime_modules.files import (
     extract_build_files,
     project_profile,
     requirement_mentions_language,
     validate_build_files_are_not_tests,
     validate_generated_test_files,
 )
-from app.runtime_qwen import QwenCliClient
-from app.runtime_errors import WorkflowError
+from app.runtime_modules.qwen import QwenCliClient
+from app.runtime_modules.errors import WorkflowError
 
 
 class RuntimeFilesAndQwenTests(unittest.TestCase):

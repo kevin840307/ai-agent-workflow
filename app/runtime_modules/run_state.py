@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from app.runtime_paths import read_text, utc_now, write_text
+from app.runtime_modules.paths import read_text, utc_now, write_text
 
 
 def artifact_record(run_id: str, run_dir: Path, rel_path: str) -> dict[str, Any]:

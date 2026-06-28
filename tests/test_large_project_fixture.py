@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 from unittest.mock import patch
 
 from app.main import app
-from app.runtime_files import project_file_snapshot, project_overview, project_profile
+from app.runtime_modules.files import project_file_snapshot, project_overview, project_profile
 from app.workflow_runtime.prompt_builder import PromptBuilder
 from app.services import workflow_config_service
 
@@ -155,7 +155,7 @@ class LargeProjectFixtureTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmp, Env(QWEN_MOCK="1", QWEN_USE_SERVE="0", QWEN_WORKFLOW_SHOW_AGENT_STDOUT="0"), patch(
             "app.services.workflow_service.workflow_config_service.get_workflow", side_effect=fake_get_workflow
-        ), patch("app.runtime_qwen.mock_qwen_response", side_effect=qwen_response):
+        ), patch("app.runtime_modules.qwen.mock_qwen_response", side_effect=qwen_response):
             project_dir = Path(tmp) / "large-project"
             project_dir.mkdir()
             create_large_python_project(project_dir, file_count=80)

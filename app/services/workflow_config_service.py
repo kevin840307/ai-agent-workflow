@@ -9,7 +9,7 @@ from pathlib import Path
 
 from fastapi import HTTPException
 
-from app import runtime
+from app.runtime_modules import api as runtime
 from app.workflow_functions import AVAILABLE_WORKFLOW_FUNCTIONS
 
 

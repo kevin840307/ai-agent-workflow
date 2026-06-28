@@ -8,7 +8,7 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from app.main import app
-from app.runtime_paths import SETTINGS_FILE
+from app.runtime_modules.paths import SETTINGS_FILE
 
 
 class ProjectAndConfigApiTests(unittest.TestCase):

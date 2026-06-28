@@ -15,10 +15,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Awaitable, Callable
 
-from app.runtime_paths import DEFAULT_SKILL_PATH, ROOT
-from app.runtime_qwen import QwenCliClient as BaseQwenCliClient
-from app.runtime_skills import discover_skill_files
-from app.runtime_errors import WorkflowError
+from app.runtime_modules.paths import DEFAULT_SKILL_PATH, ROOT
+from app.runtime_modules.qwen import QwenCliClient as BaseQwenCliClient
+from app.runtime_modules.skills import discover_skill_files
+from app.runtime_modules.errors import WorkflowError
 
 from .settings import load_settings
 

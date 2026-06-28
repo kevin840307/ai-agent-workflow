@@ -11,9 +11,9 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 
 from app.main import app
-from app import runtime
-from app.runtime_errors import WorkflowError
-from app.runtime_files import apply_extracted_files
+from app.runtime_modules import api as runtime
+from app.runtime_modules.errors import WorkflowError
+from app.runtime_modules.files import apply_extracted_files
 from app.workflow_runtime.step_utils import expected_file_candidates
 from app.services import workflow_config_service
 
@@ -131,7 +131,7 @@ class ApiResponseSnapshotContractTests(_WorkflowTestSupport, unittest.TestCase):
             return "Status: DONE\n\nAPI response snapshot artifact.\n"
 
         with _mock_qwen_env(), tempfile.TemporaryDirectory() as tmp, self._patched_workflow(workflow), patch(
-            "app.runtime_qwen.mock_qwen_response", side_effect=qwen_response
+            "app.runtime_modules.qwen.mock_qwen_response", side_effect=qwen_response
         ):
             project_dir = Path(tmp)
             project_dir.joinpath("README.md").write_text("# API Snapshot\n", encoding="utf-8")

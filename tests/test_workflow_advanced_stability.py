@@ -12,11 +12,11 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
-from app import runtime
+from app.runtime_modules import api as runtime
 from app.domain.schemas import CreateRunRequest
 from app.main import app
-from app.runtime_qwen import QwenCliClient
-from app.runtime_store import Store
+from app.runtime_modules.qwen import QwenCliClient
+from app.runtime_modules.store import Store
 from app.services import workflow_config_service, workflow_service
 
 
@@ -221,7 +221,7 @@ class StoreMigrationAndCrashRecoveryTests(unittest.TestCase):
                 }
             )
 
-            with patch("app.runtime.store", store):
+            with patch("app.runtime_modules.api.store", store):
                 runtime.mark_interrupted_runs()
 
             recovered = store.load_sync()["runs"][0]
@@ -273,7 +273,7 @@ class WorkflowRunRaceConditionTests(unittest.IsolatedAsyncioTestCase):
             async def fake_refresh(run_id: str):
                 await asyncio.sleep(0)
 
-            with patch("app.runtime.store", store), patch("app.runtime.refresh_artifacts", side_effect=fake_refresh), patch(
+            with patch("app.runtime_modules.api.store", store), patch("app.runtime_modules.api.refresh_artifacts", side_effect=fake_refresh), patch(
                 "app.services.workflow_service.workflow_config_service.get_workflow", side_effect=fake_get_workflow
             ), patch("app.services.workflow_service.start_workflow_task"):
                 body = CreateRunRequest(workflow_id=workflow["id"], requirement="race", project_path=str(project_dir))
@@ -302,7 +302,7 @@ class WorkflowRunRaceConditionTests(unittest.IsolatedAsyncioTestCase):
                 await asyncio.sleep(0.001)
                 return workflow
 
-            with patch("app.runtime.store", store), patch("app.runtime.refresh_artifacts", side_effect=noop), patch(
+            with patch("app.runtime_modules.api.store", store), patch("app.runtime_modules.api.refresh_artifacts", side_effect=noop), patch(
                 "app.services.workflow_service.workflow_config_service.get_workflow", side_effect=fake_get_workflow
             ), patch("app.services.workflow_service.start_workflow_task"):
                 results = await asyncio.gather(

@@ -6,7 +6,7 @@ import time
 from pathlib import Path
 from typing import Any, Callable
 
-from app.runtime_paths import ensure_dirs
+from app.runtime_modules.paths import ensure_dirs
 
 
 class Store:

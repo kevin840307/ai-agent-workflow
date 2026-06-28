@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Callable
 
-from app import runtime
+from app.runtime_modules import api as runtime
 
 
 async def read() -> dict[str, Any]:
