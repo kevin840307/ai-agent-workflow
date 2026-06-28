@@ -1,0 +1,98 @@
+{
+  "id": "security-scan",
+  "kind": "custom",
+  "name": "Security Vulnerability Scan",
+  "description": "Scan project code for security vulnerabilities and generate a validated Markdown report with severity, confidence, and evidence.",
+  "active": false,
+  "protected": false,
+  "deletable": true,
+  "folderName": "security-scan",
+  "skillRoot": "~/.qwen/skills",
+  "promptRoot": "prompts/",
+  "created_at": "2026-06-28T00:00:00+00:00",
+  "updated_at": "2026-06-28T00:00:00+00:00",
+  "steps": [
+    {
+      "id": "security-scan-generate-report",
+      "key": "security_scan",
+      "name": "Security Scan",
+      "type": "ai",
+      "enabled": true,
+      "description": "Use Qwen to inspect the project context and produce output/security-report.md.",
+      "command": "",
+      "templatePath": "prompts/00_security_scan.md",
+      "filename": "security-report.md",
+      "outputFile": "security-report.md",
+      "templateContent": "",
+      "sources": [
+        {
+          "type": "skill_path",
+          "value": "code-review-and-quality"
+        }
+      ],
+      "reviewMode": "none",
+      "reviewers": [],
+      "confidenceThreshold": 0.75,
+      "passKeywords": "PASS, APPROVED",
+      "failKeywords": "FAIL, BLOCKED",
+      "aggregatorFunction": "",
+      "maxRetries": 3,
+      "failAction": "same_step",
+      "retryFromStepKey": "security_scan",
+      "keepSameSession": true,
+      "injectFailureFeedback": true,
+      "stopAfterFailures": 2,
+      "pauseAfterStep": false,
+      "approvalRequired": false,
+      "approvalMessage": "",
+      "timeoutEnabled": false,
+      "timeoutMinutes": 0,
+      "allowInteraction": false,
+      "expectedFiles": [
+        "security-report.md"
+      ],
+      "validator": "",
+      "contextArtifacts": []
+    },
+    {
+      "id": "security-scan-validate-report",
+      "key": "validate_security_report",
+      "name": "Validate Security Report",
+      "type": "python",
+      "enabled": true,
+      "description": "Validate output/security-report.md structure, severity, confidence, evidence, and vulnerability finding format.",
+      "command": "",
+      "templatePath": "prompts/validate_security_report.md",
+      "filename": "security-report.md",
+      "outputFile": "security-report.md",
+      "templateContent": "",
+      "sources": [],
+      "reviewMode": "none",
+      "reviewers": [],
+      "confidenceThreshold": 0.75,
+      "passKeywords": "PASS, APPROVED",
+      "failKeywords": "FAIL, BLOCKED",
+      "aggregatorFunction": "",
+      "maxRetries": 2,
+      "failAction": "selected_step",
+      "failActionStepKey": "security_scan",
+      "retryFromStepKey": "security_scan",
+      "keepSameSession": true,
+      "injectFailureFeedback": true,
+      "stopAfterFailures": 2,
+      "pauseAfterStep": false,
+      "approvalRequired": false,
+      "approvalMessage": "",
+      "timeoutEnabled": false,
+      "timeoutMinutes": 0,
+      "allowInteraction": false,
+      "expectedFiles": [
+        "security-report.md"
+      ],
+      "validator": "validate_security_report",
+      "contextArtifacts": [
+        "security-report.md"
+      ]
+    }
+  ]
+}

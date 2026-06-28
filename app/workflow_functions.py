@@ -46,6 +46,11 @@ AVAILABLE_WORKFLOW_FUNCTIONS = {
             "label": "Run Pytest",
             "description": "Run the configured Python test command and write output/test-result.md.",
         },
+        {
+            "id": "validate_security_report",
+            "label": "Validate Security Report",
+            "description": "Check output/security-report.md contains the required vulnerability scan sections and finding format.",
+        },
     ],
     "reviewStrategies": [
         {
@@ -173,6 +178,160 @@ def summarize_command_failure(stdout: str, stderr: str) -> str:
     return "\n".join(selected).strip()
 
 
+def _markdown_section_body(text: str, section: str) -> str:
+    marker = f"## {section}"
+    start = text.find(marker)
+    if start < 0:
+        return ""
+    start += len(marker)
+    next_section = text.find("\n## ", start)
+    if next_section < 0:
+        next_section = len(text)
+    return text[start:next_section].strip()
+
+
+def _ids_with_prefix_ordered(text: str, prefix: str) -> list[str]:
+    import re
+
+    return re.findall(rf"\b{prefix}-\d{{3}}\b", text)
+
+
+def _security_finding_blocks(findings: str) -> list[tuple[str, str]]:
+    import re
+
+    matches = list(re.finditer(r"(?m)^###\s+(VULN-\d{3})\b.*$", findings))
+    blocks: list[tuple[str, str]] = []
+    for index, match in enumerate(matches):
+        start = match.start()
+        end = matches[index + 1].start() if index + 1 < len(matches) else len(findings)
+        blocks.append((match.group(1), findings[start:end].strip()))
+    return blocks
+
+
+def _require_field_in_block(artifact: str, finding_id: str, block: str, field: str) -> str:
+    import re
+
+    pattern = rf"(?im)^\s*[-*]?\s*{re.escape(field)}\s*:\s*(.+?)\s*$"
+    match = re.search(pattern, block)
+    if not match or not match.group(1).strip() or match.group(1).strip() in {"-", "N/A", "TBD", "Unknown"}:
+        raise WorkflowFunctionError(f"{artifact} {finding_id} must include non-empty '{field}: ...'.")
+    return match.group(1).strip()
+
+
+def validate_security_report(ctx: WorkflowFunctionContext, artifact: str = "security-report.md") -> None:
+    path = ctx.output_dir / artifact
+    text = ctx.read_text(path)
+    if not text.strip():
+        raise WorkflowFunctionError(f"{artifact} is empty.")
+    if "Status: DONE" not in text:
+        raise WorkflowFunctionError(f"{artifact} must contain 'Status: DONE'.")
+
+    required_sections = [
+        "Summary",
+        "Scan Scope",
+        "Method",
+        "Findings",
+        "Risk Matrix",
+        "Recommendations",
+        "Limitations",
+    ]
+    require_sections(text, required_sections, artifact)
+
+    summary = _markdown_section_body(text, "Summary")
+    valid_severities = {"Critical", "High", "Medium", "Low", "Info"}
+    valid_confidences = {"High", "Medium", "Low"}
+    if not any(f"Overall risk level: {severity}" in summary for severity in valid_severities):
+        raise WorkflowFunctionError(
+            f"{artifact} Summary must include 'Overall risk level: Critical|High|Medium|Low|Info'."
+        )
+    if not any(f"Overall confidence: {confidence}" in summary for confidence in valid_confidences):
+        raise WorkflowFunctionError(
+            f"{artifact} Summary must include 'Overall confidence: High|Medium|Low'."
+        )
+
+    findings = _markdown_section_body(text, "Findings")
+    if not findings:
+        raise WorkflowFunctionError(f"{artifact} Findings section must not be empty.")
+
+    finding_blocks = _security_finding_blocks(findings)
+    finding_ids = [finding_id for finding_id, _block in finding_blocks]
+    no_findings_markers = [
+        "No confirmed vulnerabilities found",
+        "No vulnerabilities found",
+        "No findings",
+    ]
+    has_no_findings_marker = any(marker.lower() in findings.lower() for marker in no_findings_markers)
+    if not finding_ids and not has_no_findings_marker:
+        raise WorkflowFunctionError(
+            f"{artifact} Findings must include at least one '### VULN-001 - ...' finding or explicitly state 'No confirmed vulnerabilities found'."
+        )
+
+    if finding_ids:
+        if finding_ids[0] != "VULN-001":
+            raise WorkflowFunctionError(f"{artifact} findings must start with VULN-001.")
+        duplicate_ids = sorted({item for item in finding_ids if finding_ids.count(item) > 1})
+        if duplicate_ids:
+            raise WorkflowFunctionError(f"{artifact} has duplicate finding IDs: {', '.join(duplicate_ids)}")
+
+        for expected_index, finding_id in enumerate(finding_ids, start=1):
+            expected_id = f"VULN-{expected_index:03d}"
+            if finding_id != expected_id:
+                raise WorkflowFunctionError(
+                    f"{artifact} finding IDs must be sequential. Expected {expected_id}, got {finding_id}."
+                )
+
+        for finding_id, block in finding_blocks:
+            severity = _require_field_in_block(artifact, finding_id, block, "Severity")
+            if severity not in valid_severities:
+                raise WorkflowFunctionError(
+                    f"{artifact} {finding_id} has invalid Severity '{severity}'. Use Critical, High, Medium, Low, or Info."
+                )
+
+            confidence = _require_field_in_block(artifact, finding_id, block, "Confidence")
+            if confidence not in valid_confidences:
+                raise WorkflowFunctionError(
+                    f"{artifact} {finding_id} has invalid Confidence '{confidence}'. Use High, Medium, or Low."
+                )
+
+            evidence = _require_field_in_block(artifact, finding_id, block, "Evidence")
+            evidence_lower = evidence.lower()
+            evidence_has_location = any(token in evidence for token in ["/", "\\", ".py", ".js", ".ts", ".java", ".cs", ".vb", ".yml", ".yaml", ".json", ".xml", ".properties", ":"])
+            evidence_is_inferred = "inferred" in evidence_lower or "推測" in evidence or "推論" in evidence
+            if not evidence_has_location and not evidence_is_inferred:
+                raise WorkflowFunctionError(
+                    f"{artifact} {finding_id} Evidence must include a file/path/function/config reference, or explicitly say it is inferred."
+                )
+
+            _require_field_in_block(artifact, finding_id, block, "Impact")
+            _require_field_in_block(artifact, finding_id, block, "Recommendation")
+
+    risk_matrix = _markdown_section_body(text, "Risk Matrix")
+    if not risk_matrix:
+        raise WorkflowFunctionError(f"{artifact} Risk Matrix section must not be empty.")
+    risk_matrix_header = "| ID | Severity | Confidence | Area | Evidence Summary | Status |"
+    if risk_matrix_header not in risk_matrix:
+        raise WorkflowFunctionError(
+            f"{artifact} Risk Matrix must include columns: ID, Severity, Confidence, Area, Evidence Summary, Status."
+        )
+    if finding_ids:
+        missing = [finding_id for finding_id in finding_ids if finding_id not in risk_matrix]
+        if missing:
+            raise WorkflowFunctionError(f"{artifact} Risk Matrix missing finding IDs: {', '.join(missing)}")
+        for finding_id, block in finding_blocks:
+            severity = _require_field_in_block(artifact, finding_id, block, "Severity")
+            confidence = _require_field_in_block(artifact, finding_id, block, "Confidence")
+            matching_rows = [line for line in risk_matrix.splitlines() if f"| {finding_id} |" in line]
+            if not matching_rows:
+                raise WorkflowFunctionError(f"{artifact} Risk Matrix missing row for {finding_id}.")
+            row = matching_rows[0]
+            if f"| {severity} |" not in row or f"| {confidence} |" not in row:
+                raise WorkflowFunctionError(
+                    f"{artifact} Risk Matrix row for {finding_id} must repeat the finding Severity and Confidence."
+                )
+    elif not has_no_findings_marker and "No confirmed vulnerabilities found" not in risk_matrix:
+        raise WorkflowFunctionError(f"{artifact} Risk Matrix must state 'No confirmed vulnerabilities found' when there are no findings.")
+
+
 async def run_pytest(ctx: WorkflowFunctionContext) -> None:
     command = ctx.run.get("test_command") or os.environ.get("WORKFLOW_TEST_COMMAND", "python -m pytest")
     await ctx.log(ctx.run, f"run_test: executing `{command}` in {ctx.project_dir}")
@@ -206,4 +365,5 @@ PYTHON_FUNCTIONS = {
     "validate_todo": validate_todo,
     "require_status_pass": require_status_pass,
     "run_pytest": run_pytest,
+    "validate_security_report": validate_security_report,
 }
