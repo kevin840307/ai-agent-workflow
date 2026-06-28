@@ -192,6 +192,7 @@ let state = {
   stepFilter: "",
   stepTypeFilter: "all",
   stepDensity: "compact",
+  stepActionMenuExpanded: false,
   apiLoaded: false,
   apiError: "",
 };
@@ -201,6 +202,7 @@ let templateEditorOriginal = null;
 let importWorkflowDraft = null;
 let stepEditorModalOpen = false;
 let draggedStepId = null;
+let stepContextMenuOpen = false;
 let workflowDirty = false;
 let pendingWorkflowAction = null;
 let availableWorkflowFunctions = { validators: [], reviewStrategies: [], aggregators: [] };
@@ -294,6 +296,7 @@ async function loadState() {
   state.stepFilter = saved.stepFilter || "";
   state.stepTypeFilter = saved.stepTypeFilter || "all";
   state.stepDensity = ["dense", "compact", "detail"].includes(saved.stepDensity) ? saved.stepDensity : "compact";
+  state.stepActionMenuExpanded = Boolean(saved.stepActionMenuExpanded);
   workflowDirty = false;
 }
 
@@ -341,6 +344,7 @@ function bindEvents() {
   }
 
   document.addEventListener("click", handleDocumentClick);
+  document.addEventListener("contextmenu", handleDocumentContextMenu);
   document.addEventListener("input", handleDocumentInput);
   document.addEventListener("change", handleDocumentChange);
   document.addEventListener("keydown", handleDocumentKeydown);
@@ -368,6 +372,10 @@ function handleDocumentKeydown(event) {
   }
 
   if (event.key !== "Escape") return;
+  if (stepContextMenuOpen) {
+    closeStepContextMenu();
+    return;
+  }
   if (stepEditorModalOpen) {
     closeStepEditor();
   }
@@ -397,6 +405,12 @@ function handleDocumentClick(event) {
   const action = event.target.closest("[data-designer-action]");
   if (action) {
     const name = action.dataset.designerAction;
+    if (name === "open-step-context-menu") {
+      event.preventDefault();
+      openStepContextMenu(action.dataset.stepId, { anchor: action });
+      return;
+    }
+    closeStepContextMenu();
     if (name === "delete-workflow") deleteWorkflow(action.dataset.workflowId);
     if (name === "confirm-delete-workflow") performDeleteWorkflow(action.dataset.workflowId);
     if (name === "delete-step") deleteStep(action.dataset.stepId);
@@ -405,6 +419,7 @@ function handleDocumentClick(event) {
     if (name === "move-step-up") moveStep(action.dataset.stepId, -1);
     if (name === "move-step-down") moveStep(action.dataset.stepId, 1);
     if (name === "set-step-density") setStepDensity(action.dataset.density);
+    if (name === "toggle-step-actions") toggleStepActionMenu();
     if (name === "clear-step-filter") clearStepFilter();
     if (name === "open-step-editor") openStepEditor(action.dataset.stepId);
     if (name === "step-editor-prev") switchStepEditor(-1);
@@ -435,6 +450,10 @@ function handleDocumentClick(event) {
     return;
   }
 
+  if (!event.target.closest(".designer-step-context-menu")) {
+    closeStepContextMenu();
+  }
+
   const workflowButton = event.target.closest("[data-workflow-id]");
   if (workflowButton) {
     selectWorkflow(workflowButton.dataset.workflowId);
@@ -443,8 +462,19 @@ function handleDocumentClick(event) {
 
   const stepButton = event.target.closest(".designer-step-card[data-step-id]");
   if (stepButton) {
-    selectStep(stepButton.dataset.stepId, { openModal: true });
+    selectStep(stepButton.dataset.stepId, { openModal: event.detail >= 2 });
   }
+}
+
+function handleDocumentContextMenu(event) {
+  const stepCard = event.target.closest(".designer-step-card[data-step-id]");
+  if (!stepCard) {
+    closeStepContextMenu();
+    return;
+  }
+
+  event.preventDefault();
+  openStepContextMenu(stepCard.dataset.stepId, { x: event.clientX, y: event.clientY });
 }
 
 function handleDocumentInput(event) {
@@ -696,7 +726,7 @@ function renderStepListClean() {
     ];
 
     return `
-      <article class="designer-step-card designer-step-card-compact designer-step-card-${escapeHtml(state.stepDensity)} ${escapeHtml(step.type)}-card ${step.id === state.selectedStepId ? "active" : ""} ${step.enabled ? "" : "disabled-step"}" data-step-id="${escapeHtml(step.id)}" draggable="${readonly ? "false" : "true"}" tabindex="0" title="Click to edit ${escapeHtml(step.name)}">
+      <article class="designer-step-card designer-step-card-compact designer-step-card-${escapeHtml(state.stepDensity)} ${escapeHtml(step.type)}-card ${step.id === state.selectedStepId ? "active" : ""} ${step.enabled ? "" : "disabled-step"}" data-step-id="${escapeHtml(step.id)}" draggable="${readonly ? "false" : "true"}" tabindex="0" title="Click to select. Double-click to edit ${escapeHtml(step.name)}">
         <span class="designer-step-card-main">
           <span class="designer-step-primary">
             <span class="designer-step-index">${index + 1}</span>
@@ -705,12 +735,7 @@ function renderStepListClean() {
             </span>
             <span class="designer-step-type ${escapeHtml(step.type)}">${escapeHtml(formatStepType(step.type))}</span>
           </span>
-          <span class="designer-step-card-actions" aria-label="Step actions">
-            <button type="button" data-designer-action="move-step-up" data-step-id="${escapeHtml(step.id)}" ${disabled}>↑ Move Up</button>
-            <button type="button" data-designer-action="move-step-down" data-step-id="${escapeHtml(step.id)}" ${disabled}>↓ Move Down</button>
-            <button type="button" data-designer-action="duplicate-step" data-step-id="${escapeHtml(step.id)}" ${disabled}>Duplicate</button>
-            <button type="button" class="designer-danger" data-designer-action="delete-step" data-step-id="${escapeHtml(step.id)}" ${disabled}>Delete</button>
-          </span>
+          <button type="button" class="designer-step-card-menu" data-designer-action="open-step-context-menu" data-step-id="${escapeHtml(step.id)}" title="Step actions" aria-label="Step actions for ${escapeAttr(step.name || "step")}">⋮</button>
         </span>
         <span class="designer-step-card-sub">
           <span class="designer-step-summary">${escapeHtml(summarizeStep(step))}</span>
@@ -725,7 +750,110 @@ function renderStepListClean() {
         ` : ""}
       </article>
     `;
-  }).join("");
+  }).join("") + renderStepFloatingActions(wf);
+}
+
+function renderStepFloatingActions(wf) {
+  const step = getSelectedStep();
+  if (!wf || !step) return "";
+  const readonly = isReadonly();
+  const index = wf.steps.findIndex((item) => item.id === step.id);
+  if (index < 0) return "";
+  const disabled = readonly ? "disabled" : "";
+  const moveUpDisabled = readonly || index <= 0 ? "disabled" : "";
+  const moveDownDisabled = readonly || index >= wf.steps.length - 1 ? "disabled" : "";
+  const expanded = state.stepActionMenuExpanded;
+  const editLabel = readonly ? "View step" : "Edit step";
+  const expandLabel = expanded ? "Collapse step actions" : "Expand step actions";
+  return `
+    <aside class="designer-step-floating-actions ${expanded ? "expanded" : "collapsed"}" aria-label="Selected step actions">
+      <button type="button" class="designer-action-fab designer-action-toggle" data-designer-action="toggle-step-actions" aria-expanded="${expanded ? "true" : "false"}" title="${expandLabel}" aria-label="${expandLabel}">
+        <span aria-hidden="true">${expanded ? "×" : "⋯"}</span>
+      </button>
+      <div class="designer-floating-panel" aria-hidden="${expanded ? "false" : "true"}">
+        <span class="designer-floating-step-context" title="${escapeAttr(step.name || "Selected step")}">
+          <strong>${escapeHtml(index + 1)} / ${escapeHtml(wf.steps.length)}</strong>
+          <span>${escapeHtml(step.name || "Selected step")}</span>
+        </span>
+        <span class="designer-floating-action-buttons">
+          <button type="button" class="designer-action-fab designer-floating-primary" data-designer-action="open-step-editor" data-step-id="${escapeHtml(step.id)}" title="${editLabel}" aria-label="${editLabel}"><span aria-hidden="true">✎</span></button>
+          <button type="button" class="designer-action-fab" data-designer-action="move-step-up" data-step-id="${escapeHtml(step.id)}" title="Move up" aria-label="Move up" ${moveUpDisabled}><span aria-hidden="true">↑</span></button>
+          <button type="button" class="designer-action-fab" data-designer-action="move-step-down" data-step-id="${escapeHtml(step.id)}" title="Move down" aria-label="Move down" ${moveDownDisabled}><span aria-hidden="true">↓</span></button>
+          <button type="button" class="designer-action-fab" data-designer-action="duplicate-step" data-step-id="${escapeHtml(step.id)}" title="Duplicate" aria-label="Duplicate" ${disabled}><span aria-hidden="true">⧉</span></button>
+          <button type="button" class="designer-action-fab designer-danger" data-designer-action="delete-step" data-step-id="${escapeHtml(step.id)}" title="Delete" aria-label="Delete" ${disabled}><span aria-hidden="true">×</span></button>
+        </span>
+      </div>
+    </aside>
+  `;
+}
+
+function openStepContextMenu(stepId, options = {}) {
+  const wf = getSelectedWorkflow();
+  const step = wf?.steps?.find((item) => item.id === stepId);
+  if (!wf || !step) return;
+
+  const anchorRect = options.anchor?.getBoundingClientRect?.();
+  const x = Number.isFinite(options.x) ? options.x : (anchorRect ? anchorRect.right - 4 : window.innerWidth - 260);
+  const y = Number.isFinite(options.y) ? options.y : (anchorRect ? anchorRect.bottom + 6 : window.innerHeight - 260);
+
+  state.selectedStepId = step.id;
+  ensureActiveTabForStep(step);
+  saveUiState();
+  renderWorkflowViewOnly();
+  renderTabs();
+  renderSettings();
+
+  closeStepContextMenu();
+  const readonly = isReadonly();
+  const index = wf.steps.findIndex((item) => item.id === step.id);
+  const moveUpDisabled = readonly || index <= 0 ? "disabled" : "";
+  const moveDownDisabled = readonly || index >= wf.steps.length - 1 ? "disabled" : "";
+  const editLabel = readonly ? "View step" : "Edit step";
+
+  const menu = document.createElement("div");
+  menu.className = "designer-step-context-menu";
+  menu.setAttribute("role", "menu");
+  menu.setAttribute("aria-label", `Actions for ${step.name || "selected step"}`);
+  menu.innerHTML = `
+    <div class="designer-step-context-head">
+      <strong>${escapeHtml(index + 1)} / ${escapeHtml(wf.steps.length)}</strong>
+      <span title="${escapeAttr(step.name || "Selected step")}">${escapeHtml(step.name || "Selected step")}</span>
+    </div>
+    <button type="button" role="menuitem" data-designer-action="open-step-editor" data-step-id="${escapeHtml(step.id)}">
+      <span aria-hidden="true">✎</span><span>${escapeHtml(editLabel)}</span>
+    </button>
+    <button type="button" role="menuitem" data-designer-action="move-step-up" data-step-id="${escapeHtml(step.id)}" ${moveUpDisabled}>
+      <span aria-hidden="true">↑</span><span>Move Up</span>
+    </button>
+    <button type="button" role="menuitem" data-designer-action="move-step-down" data-step-id="${escapeHtml(step.id)}" ${moveDownDisabled}>
+      <span aria-hidden="true">↓</span><span>Move Down</span>
+    </button>
+    <button type="button" role="menuitem" data-designer-action="duplicate-step" data-step-id="${escapeHtml(step.id)}" ${readonly ? "disabled" : ""}>
+      <span aria-hidden="true">⧉</span><span>Duplicate</span>
+    </button>
+    <button type="button" role="menuitem" class="designer-context-danger" data-designer-action="delete-step" data-step-id="${escapeHtml(step.id)}" ${readonly ? "disabled" : ""}>
+      <span aria-hidden="true">×</span><span>Delete</span>
+    </button>
+  `;
+  document.body.appendChild(menu);
+  positionStepContextMenu(menu, x, y);
+  stepContextMenuOpen = true;
+}
+
+function positionStepContextMenu(menu, x, y) {
+  const margin = 10;
+  const rect = menu.getBoundingClientRect();
+  const left = Math.min(Math.max(margin, x), Math.max(margin, window.innerWidth - rect.width - margin));
+  const top = Math.min(Math.max(margin, y), Math.max(margin, window.innerHeight - rect.height - margin));
+  menu.style.left = `${left}px`;
+  menu.style.top = `${top}px`;
+}
+
+function closeStepContextMenu() {
+  const menus = document.querySelectorAll(".designer-step-context-menu");
+  if (!menus.length && !stepContextMenuOpen) return;
+  menus.forEach((node) => node.remove());
+  stepContextMenuOpen = false;
 }
 
 function getVisibleSteps(wf) {
@@ -794,14 +922,30 @@ function setStepDensity(density) {
   renderWorkflowViewOnly();
 }
 
+function toggleStepActionMenu() {
+  state.stepActionMenuExpanded = !state.stepActionMenuExpanded;
+  saveUiState();
+  renderWorkflowViewOnly();
+}
+
 function clearStepDropTargets() {
   document.querySelectorAll(".designer-step-card.drag-over-top, .designer-step-card.drag-over-bottom, .designer-step-card.dragging").forEach((node) => {
     node.classList.remove("drag-over-top", "drag-over-bottom", "dragging");
   });
 }
 
+function isStepGridLayout(card) {
+  const list = card?.closest?.(".designer-step-list");
+  if (!list?.classList?.contains("designer-step-density-dense")) return false;
+  const columnCount = getComputedStyle(list).gridTemplateColumns.split(" ").filter(Boolean).length;
+  return columnCount > 1;
+}
+
 function isDropBefore(event, card) {
   const rect = card.getBoundingClientRect();
+  if (isStepGridLayout(card)) {
+    return event.clientX < rect.left + rect.width / 2;
+  }
   return event.clientY < rect.top + rect.height / 2;
 }
 
@@ -1064,7 +1208,7 @@ function renderBasic(step, disabled, readonly) {
       ${switchRow("Enabled", "Turn this step on/off without deleting it.", "enabled", step.enabled, disabled)}
       <div class="designer-runner-note">
         <strong>Step actions stay on the main screen</strong>
-        <span>Use Move Up, Move Down, Duplicate, and Delete directly on the step card outside this popup.</span>
+        <span>Use the floating action bar on the step list for Edit, Move, Duplicate, and Delete.</span>
       </div>
     </div>
   `;
@@ -1601,7 +1745,7 @@ function openStepEditor(stepId = state.selectedStepId) {
     <div class="designer-export-card designer-step-modal-card" role="dialog" aria-modal="true" aria-labelledby="designerStepModalTitle">
       <div class="designer-step-modal-head">
         <div class="designer-step-modal-title-wrap">
-          <div class="designer-step-card-title">
+          <div class="designer-step-modal-title-line">
             <h2 id="designerStepModalTitle" style="margin:0;"></h2>
             <span id="designerStepModalType" class="designer-step-type"></span>
           </div>
@@ -2405,6 +2549,7 @@ function saveUiState() {
       stepFilter: state.stepFilter,
       stepTypeFilter: state.stepTypeFilter,
       stepDensity: state.stepDensity,
+      stepActionMenuExpanded: state.stepActionMenuExpanded,
     }));
   } catch {
     // UI state persistence is best effort only.
