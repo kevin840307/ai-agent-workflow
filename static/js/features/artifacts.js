@@ -52,19 +52,9 @@ export function createArtifacts(ctx) {
       return `# ${data.path || "Artifact"}\n\n${data.content || ""}`;
     },
 
-    async preview(artifactId, { activateArtifactsTab = false, updateStepPreview = true } = {}) {
+    async preview(artifactId, { activateArtifactsTab = false } = {}) {
       const data = await artifacts.load(artifactId);
       const content = artifacts.format(data);
-
-      if (updateStepPreview) {
-        const stepContent = byId("stepArtifactContent");
-        const stepTitle = byId("stepArtifactTitle");
-        if (stepContent) {
-          stepContent.textContent = content;
-          stepContent.scrollTop = 0;
-        }
-        if (stepTitle) stepTitle.textContent = data.path;
-      }
 
       if (ui.byKey("artifactContent")) {
         ui.byKey("artifactContent").textContent = content;
@@ -74,62 +64,8 @@ export function createArtifacts(ctx) {
       if (activateArtifactsTab) ctx.features.layout.activateTab("artifactsPanel");
     },
 
-    renderStepPreview(run, step) {
-      const list = byId("stepArtifactList");
-      const title = byId("stepArtifactTitle");
-      const content = byId("stepArtifactContent");
-      const openButton = byId("openArtifactTab");
-      if (!list || !title || !content) return;
-
+    renderStepPreview(_run, step) {
       state.selectedStepKey = step?.key || null;
-      list.innerHTML = "";
-      list.hidden = true;
-
-      if (!step) {
-        title.textContent = "Select a step";
-        content.textContent = "Click a step, then use Step Files to inspect its files.";
-        if (openButton) {
-          openButton.textContent = "Step Files";
-          openButton.disabled = true;
-          openButton.onclick = null;
-        }
-        return;
-      }
-
-      const related = artifacts.artifactsForStep(step, run.artifacts || []);
-      title.textContent = step.title || step.key;
-
-      if (!related.length) {
-        content.textContent = "No files have been created for this step yet.";
-        if (openButton) {
-          openButton.textContent = "Step Files";
-          openButton.disabled = true;
-          openButton.onclick = null;
-        }
-        return;
-      }
-
-      if (openButton) {
-        openButton.textContent = `Step Files ${related.length}`;
-        openButton.disabled = false;
-        openButton.onclick = () => artifacts.openStepFilesModal(run, step);
-      }
-
-      content.textContent = "Loading preview...";
-      const previewArtifact = related.find((artifact) => artifact.id === state.selectedStepArtifactId) || related[0];
-      const selectedStepKey = step.key;
-      artifacts.load(previewArtifact.id)
-        .then((data) => {
-          if (state.selectedStepKey !== selectedStepKey) return;
-          title.textContent = step.title || step.key;
-          content.textContent = artifacts.format(data);
-          content.scrollTop = 0;
-          state.selectedStepArtifactId = previewArtifact.id;
-        })
-        .catch((err) => {
-          if (state.selectedStepKey !== selectedStepKey) return;
-          content.textContent = `Unable to load preview: ${err.message}`;
-        });
     },
 
     ensureStepFilesModal() {

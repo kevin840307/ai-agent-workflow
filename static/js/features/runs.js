@@ -13,7 +13,6 @@ export function createRuns(ctx) {
       ui.byKey("logs").textContent = "";
       ui.byKey("artifacts").innerHTML = "";
       ui.byKey("artifactContent").textContent = "";
-      ctx.features.artifacts.renderStepPreview(null, null);
     },
 
     renderStepSkeleton() {
@@ -58,7 +57,6 @@ export function createRuns(ctx) {
       state.selectedStepKey = selectedStep?.key || null;
       runs.renderSteps(run);
       ctx.features.artifacts.render(run.artifacts || []);
-      ctx.features.artifacts.renderStepPreview(run, selectedStep);
       ctx.features.interactions.render(run);
     },
 
@@ -75,7 +73,7 @@ export function createRuns(ctx) {
           <div class="step-title"><span>${ui.escapeHtml(step.title)}</span>${retry}</div>
           <div class="step-message">${error}</div>
           <div class="step-actions">
-            ${relatedArtifacts.length ? `<button class="mini-button inspect-step" data-step-key="${ui.escapeHtml(step.key)}">Files ${relatedArtifacts.length}</button>` : ""}
+            ${relatedArtifacts.length ? `<button class="mini-button inspect-step" data-step-key="${ui.escapeHtml(step.key)}">Files${relatedArtifacts.length}</button>` : ""}
             <button class="mini-button guide-step" data-step-key="${ui.escapeHtml(step.key)}">Guide</button>
             <button class="mini-button retry-step" data-step-key="${ui.escapeHtml(step.key)}">Retry</button>
             <span class="badge ${step.status}">${step.status}</span>
@@ -104,7 +102,6 @@ export function createRuns(ctx) {
       const rows = [...document.querySelectorAll(".step")];
       const index = run.steps.findIndex((item) => item.key === step.key);
       if (rows[index]) rows[index].classList.add("selected");
-      ctx.features.artifacts.renderStepPreview(run, step);
     },
 
     async loadLatest() {
