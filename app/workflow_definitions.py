@@ -72,6 +72,18 @@ RETRY_FROM = {
 USER_QUESTION_ALLOWED_STEPS = {"prepare_project", "generate_spec", "repair_spec"}
 
 
+CONTEXT_ARTIFACTS_BY_STEP = {
+    "review_spec": ["spec.md"],
+    "generate_todo": ["spec.md", "spec-review.md"],
+    "validate_todo": ["spec.md", "todo.md"],
+    "review_todo": ["spec.md", "spec-review.md", "todo.md"],
+    "generate_tests": ["spec.md", "todo.md", "todo-review.md"],
+    "build": ["spec.md", "spec-review.md", "todo.md", "todo-review.md", "test-plan.md"],
+    "run_test": ["test-plan.md", "build-result.md"],
+    "final_review": ["spec.md", "todo.md", "test-plan.md", "build-result.md", "test-result.md"],
+}
+
+
 def workflow_step_to_config(step: Step) -> dict:
     step_type = {
         "qwen": "ai",
@@ -90,8 +102,11 @@ def workflow_step_to_config(step: Step) -> dict:
         "templatePath": "",
         "filename": step.artifact or "",
         "outputFile": step.artifact or "",
+        "agent": "qwen" if step.kind == "qwen" else "",
+        "provider": "qwen" if step.kind == "qwen" else "",
         "templateContent": "",
         "sources": [],
+        "contextArtifacts": CONTEXT_ARTIFACTS_BY_STEP.get(step.key, []),
         "reviewMode": "current_session" if "review" in step.key else "none",
         "reviewers": [],
         "confidenceThreshold": 0.75,

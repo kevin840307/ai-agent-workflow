@@ -205,6 +205,14 @@ class AgentManager:
         agents.setdefault("qwen", QwenCliAdapter())
         return default_agent, agents
 
+    def available_agent_names(self) -> set[str]:
+        _default_agent, agents = self._settings()
+        return set(agents)
+
+    def default_agent_name(self) -> str:
+        default_agent, _agents = self._settings()
+        return default_agent
+
     def resolve(self, step_config: dict[str, Any] | None = None, *, agent_name: str | None = None) -> AgentClient:
         config = step_config or {}
         default_agent, agents = self._settings()

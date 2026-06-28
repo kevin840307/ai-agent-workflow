@@ -63,6 +63,7 @@ function workflowFunctionCounts() {
     validators: (availableWorkflowFunctions.validators || []).length,
     reviewStrategies: (availableWorkflowFunctions.reviewStrategies || []).length,
     aggregators: (availableWorkflowFunctions.aggregators || []).length,
+    promptParams: availablePromptParams().length,
   };
 }
 
@@ -73,16 +74,46 @@ const FailActions = [
   ["stop", "Stop immediately"],
 ];
 
-const AvailableParams = [
-  { key: "requirement", label: "Requirement", description: "Main user input from the runner composer.", sample: "Create a controllable Qwen workflow UI." },
+const BuiltInPromptParams = [
+  { key: "requirement", label: "Requirement", description: "Main user input from the runner composer.", sample: "Create a controllable agent workflow UI." },
   { key: "project_path", label: "Project Path", description: "Current project folder path.", sample: "C:\\Users\\kevin\\sort" },
   { key: "workspace_path", label: "Workspace Path", description: "Workflow run workspace path.", sample: "runs/workflow-001" },
+  { key: "project_overview", label: "Project Overview", description: "Auto-generated overview of the project files and folders.", sample: "Project files:\n- app/main.py\n- static/js/pages/workflow-designer.js" },
+  { key: "architecture", label: "Architecture", description: "Content of architecture.md from the selected project path.", sample: "# Architecture\nFastAPI backend with static frontend." },
   { key: "spec", label: "Spec", description: "Rendered content from output/spec.md.", sample: "## Goal\nBuild the requested workflow feature." },
   { key: "spec_review", label: "Spec Review", description: "Rendered content from output/spec-review.md.", sample: "Status: PASS" },
   { key: "todo", label: "Todo", description: "Rendered content from output/todo.md.", sample: "## Todo List\n- TODO-001 Implement UI." },
+  { key: "todo_review", label: "Todo Review", description: "Rendered content from output/todo-review.md.", sample: "Status: PASS" },
+  { key: "test_plan", label: "Test Plan", description: "Rendered content from output/test-plan.md.", sample: "## Test Plan\n- TEST-001 Verify build output." },
+  { key: "test_result", label: "Test Result", description: "Rendered content from output/test-result.md.", sample: "Status: FAIL\nAssertionError: expected file missing." },
+  { key: "build_result", label: "Build Result", description: "Rendered content from output/build-result.md.", sample: "FILE: app/main.py\nCONTENT:\n..." },
+  { key: "final_review", label: "Final Review", description: "Rendered content from output/final-review.md.", sample: "Status: PASS" },
+  { key: "raw_spec", label: "Raw Spec", description: "Alias of output/spec.md, kept for older templates.", sample: "## Goal\nBuild the requested workflow feature." },
+  { key: "answers", label: "Answers", description: "User answers collected from previous workflow interaction.", sample: "Use Python and FastAPI." },
+  { key: "guidance", label: "Guidance", description: "User guidance added during the workflow.", sample: "Keep the implementation minimal and maintainable." },
   { key: "last_error", label: "Last Error", description: "Latest validation, review, timeout, or runner error.", sample: "Missing Acceptance Criteria section." },
+  { key: "failure_feedback", label: "Failure Feedback", description: "Failure feedback accumulated for the retry target step.", sample: "Retry 1/2 from build: tests failed because app/main.py was not updated." },
   { key: "step_output", label: "Step Output", description: "Current step output text when available.", sample: "Step completed successfully." },
 ];
+
+function availablePromptParams() {
+  const merged = [];
+  const seen = new Set();
+  const add = (param) => {
+    const key = String(param?.key || param?.id || "").trim();
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    merged.push({
+      key,
+      label: param.label || key,
+      description: param.description || "Provided by backend runtime context.",
+      sample: param.sample ?? param.example ?? `[${key}]`,
+    });
+  };
+  BuiltInPromptParams.forEach(add);
+  (availableWorkflowFunctions.promptParams || []).forEach(add);
+  return merged;
+}
 
 const TemplatePresets = {
   generate_spec: {
@@ -205,7 +236,7 @@ let draggedStepId = null;
 let stepContextMenuOpen = false;
 let workflowDirty = false;
 let pendingWorkflowAction = null;
-let availableWorkflowFunctions = { validators: [], reviewStrategies: [], aggregators: [] };
+let availableWorkflowFunctions = { validators: [], reviewStrategies: [], aggregators: [], promptParams: [] };
 
 function createStep(overrides = {}) {
   const id = overrides.id || makeId("step");
@@ -220,6 +251,8 @@ function createStep(overrides = {}) {
     templatePath: overrides.templatePath || defaultTemplatePath(overrides),
     filename: overrides.filename || defaultFilename(overrides),
     outputFile: overrides.outputFile || "", // backward compatibility for older localStorage drafts
+    agent: overrides.agent || overrides.provider || "qwen",
+    provider: overrides.provider || overrides.agent || "qwen",
     templateContent: overrides.templateContent || defaultTemplateContent(overrides),
     sources: clone(overrides.sources || []),
     reviewMode: overrides.reviewMode || "none",
@@ -545,7 +578,7 @@ function updateFromInput(input) {
     if (input.dataset.stepField === "templateContent") {
       renderPromptDiagnostics(step);
     }
-    if (["name", "templatePath", "filename", "outputFile", "validator", "reviewMode", "aggregatorFunction"].includes(input.dataset.stepField)) renderWorkflowViewOnly();
+    if (["name", "templatePath", "filename", "outputFile", "validator", "reviewMode", "aggregatorFunction", "agent", "provider", "maxRetries", "failAction", "retryFromStepKey", "keepSameSession", "injectFailureFeedback", "timeoutEnabled", "timeoutMinutes"].includes(input.dataset.stepField)) renderWorkflowViewOnly();
     renderStepEditorHeader();
     markWorkflowDirty();
     return;
@@ -590,7 +623,7 @@ function renderBackendStatus() {
   }
   target.classList.remove("error");
   target.textContent = "API Ready";
-  target.title = `${counts.validators} validators, ${counts.reviewStrategies} review strategies, ${counts.aggregators} aggregators loaded from backend`;
+  target.title = `${counts.validators} validators, ${counts.reviewStrategies} review strategies, ${counts.aggregators} aggregators, ${counts.promptParams} prompt params loaded`;
 }
 
 function renderSidebar() {
@@ -721,7 +754,8 @@ function renderStepListClean() {
       ["Key", step.key || "-"],
       ["Template", step.templatePath || "-"],
       ["File", step.filename || normalizeFilename(step.outputFile || "-")],
-      ["Retry", step.maxRetries ?? 0],
+      ["Retry", `${step.maxRetries ?? 0}${step.retryFromStepKey ? ` → ${step.retryFromStepKey}` : ""}`],
+      ["Agent", step.agent || step.provider || "default"],
       ["Expected", (step.expectedFiles || []).length ? step.expectedFiles.join(", ") : "-"],
     ];
 
@@ -1076,7 +1110,8 @@ function renderCanvas() {
       <p>${escapeHtml(step.description || summarizeStep(step))}</p>
       <div class="designer-chip-row" style="margin-top: 8px;">
         ${step.enabled ? `<span class="badge passed">enabled</span>` : `<span class="badge cancelled">disabled</span>`}
-        <span class="badge">retry ${step.maxRetries}</span>
+        <span class="badge">retry ${step.maxRetries}${step.retryFromStepKey ? ` → ${escapeHtml(step.retryFromStepKey)}` : ""}</span>
+        ${step.agent || step.provider ? `<span class="badge">agent ${escapeHtml(step.agent || step.provider)}</span>` : ""}
         ${step.allowInteraction ? `<span class="badge waiting_input">interaction</span>` : `<span class="badge">auto</span>`}
         ${step.pauseAfterStep ? `<span class="badge running">pause</span>` : ""}
       </div>
@@ -1203,6 +1238,7 @@ function renderBasic(step, disabled, readonly) {
           ${options(StepTypes, step.type)}
         </select>
       </label>
+      ${renderAgentConfig(step, disabled)}
       ${renderBasicTypeConfig(step, disabled)}
       ${textareaRow("Description", "description", step.description, disabled)}
       ${switchRow("Enabled", "Turn this step on/off without deleting it.", "enabled", step.enabled, disabled)}
@@ -1210,6 +1246,16 @@ function renderBasic(step, disabled, readonly) {
         <strong>Step actions stay on the main screen</strong>
         <span>Use the floating action bar on the step list for Edit, Move, Duplicate, and Delete.</span>
       </div>
+    </div>
+  `;
+}
+
+function renderAgentConfig(step, disabled) {
+  if (!["ai", "review", "command"].includes(step.type)) return "";
+  return `
+    <div class="designer-template-summary-grid compact">
+      ${inputRow("Agent Provider", "agent", step.agent || step.provider || "qwen", disabled, "qwen / opencode")}
+      ${inputRow("Provider Alias", "provider", step.provider || step.agent || "qwen", disabled, "optional")}
     </div>
   `;
 }
@@ -1391,8 +1437,9 @@ function renderRetry(step, disabled, readonly) {
           ${options([["", "Current / automatic"], ...(wf?.steps || []).map((item) => [item.key, item.name])], step.retryFromStepKey)}
         </select>
       </label>
-      ${switchRow("Keep Same Session", "Continue in the same Qwen session when retrying.", "keepSameSession", step.keepSameSession, disabled)}
+      ${switchRow("Keep Same Session", "Continue in the same agent session when retrying.", "keepSameSession", step.keepSameSession, disabled)}
       ${switchRow("Inject Failure Feedback", "Pass validation/review error back into the retry prompt.", "injectFailureFeedback", step.injectFailureFeedback, disabled)}
+      <div class="designer-function-help"><strong>Backend retry target</strong><span>${escapeHtml(step.retryFromStepKey || "Current / automatic")} · On fail: ${escapeHtml(step.failAction || "same_step")}</span></div>
       ${numberRow("Stop After Continuous Failures", "stopAfterFailures", step.stopAfterFailures, disabled, "1", "20", "1")}
     </div>
   `;
@@ -1516,6 +1563,8 @@ function normalizeStep(step) {
     templatePath: step?.templatePath || base.templatePath,
     filename: step?.filename || normalizeFilename(step?.outputFile || base.filename || base.outputFile),
     outputFile: step?.outputFile || base.outputFile || "",
+    agent: step?.agent || step?.provider || base.agent || "qwen",
+    provider: step?.provider || step?.agent || base.provider || "qwen",
     templateContent: step?.templateContent || base.templateContent,
     validator: normalizeFunctionId(step?.validator || base.validator || ""),
   };
@@ -1573,7 +1622,7 @@ function normalizeFilename(value = "") {
 }
 
 function getAvailableParamKeys() {
-  return new Set(AvailableParams.map((param) => param.key));
+  return new Set(availablePromptParams().map((param) => param.key));
 }
 
 function extractTemplateParams(content = "") {
@@ -1850,6 +1899,8 @@ function renderStepEditorHeader() {
 function openTemplateEditor() {
   const step = getSelectedStep();
   if (!step) return;
+  closeStepContextMenu();
+  closePromptPreview();
   closeTemplateEditor();
   const readonly = isReadonly();
   templateEditorDraft = {
@@ -1900,7 +1951,7 @@ function openTemplateEditor() {
             <span class="designer-mini-muted">Click to insert</span>
           </div>
           <div class="designer-param-list">
-            ${AvailableParams.map((param) => `
+            ${availablePromptParams().map((param) => `
               <button type="button" class="designer-param-chip" data-designer-action="insert-param" data-param="${escapeAttr(param.key)}" title="${escapeAttr(param.description)}" ${disabled}>
                 {{${escapeHtml(param.key)}}}
               </button>
@@ -2023,7 +2074,7 @@ function closePromptPreview() {
 }
 
 function renderPromptWithSamples(content = "") {
-  const samples = Object.fromEntries(AvailableParams.map((param) => [param.key, param.sample]));
+  const samples = Object.fromEntries(availablePromptParams().map((param) => [param.key, param.sample]));
   return String(content).replace(/{{\s*([a-zA-Z0-9_.-]+)\s*}}/g, (_match, name) => samples[name] ?? `[UNKNOWN_PARAM:${name}]`);
 }
 
@@ -2454,7 +2505,7 @@ function exportWorkflow() {
         <h2 style="margin:0;">Export Workflow JSON</h2>
         <button data-designer-action="close-export">×</button>
       </div>
-      <p class="designer-form-hint">This is UI-only JSON for backend schema reference.</p>
+      <p class="designer-form-hint">This is the backend workflow.json payload. Runtime execution uses these values directly.</p>
       <pre>${escapeHtml(JSON.stringify(toExportWorkflow(wf), null, 2))}</pre>
       <div class="designer-footer-actions">
         <button data-designer-action="close-export">Close</button>
@@ -2646,14 +2697,14 @@ function readInputValue(input) {
 }
 
 function summarizeStep(step) {
-  if (step.type === "review") return `${formatReviewMode(step.reviewMode)} · confidence >= ${step.confidenceThreshold}`;
+  if (step.type === "review") return `${formatReviewMode(step.reviewMode)} · confidence >= ${step.confidenceThreshold} · retry ${step.maxRetries}${step.retryFromStepKey ? ` → ${step.retryFromStepKey}` : ""}`;
   if (step.type === "validation" || step.type === "python") {
     const meta = functionMeta("validators", step.validator);
     return `${step.type === "python" ? "Python function" : "Validation function"}: ${meta?.label || step.validator || "not set"}`;
   }
   if (step.type === "gate" || step.type === "manual") return step.pauseAfterStep ? "Pause and wait for human approval." : "Gate decision step.";
-  if (step.command) return `Command ${step.command} · template ${step.templatePath || "not set"}.`;
-  return `${step.templatePath || "no template"} · retry ${step.maxRetries} · ${step.allowInteraction ? "interactive" : "fully automatic"}`;
+  if (step.command) return `Command ${step.command} · template ${step.templatePath || "not set"} · retry ${step.maxRetries}${step.retryFromStepKey ? ` → ${step.retryFromStepKey}` : ""}.`;
+  return `${step.templatePath || "no template"} · retry ${step.maxRetries}${step.retryFromStepKey ? ` → ${step.retryFromStepKey}` : ""} · ${step.allowInteraction ? "interactive" : "fully automatic"}`;
 }
 
 function formatStepType(type) {

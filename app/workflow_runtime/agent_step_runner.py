@@ -42,7 +42,8 @@ class AgentStepRunner:
         *,
         allow_interaction: bool | None = None,
         agent_name: str | None = None,
-    ) -> None:
+        fresh_session: bool = False,
+    ) -> str:
         output_dir = Path(run["workspace"]) / "output"
         input_dir = Path(run["workspace"]) / "input"
         step_config = next((step for step in run.get("steps", []) if step.get("key") == step_key), {})
@@ -56,7 +57,7 @@ class AgentStepRunner:
             agent_name=agent_name,
         )
         cwd = Path(run.get("project_path") or run["workspace"])
-        session_id = self._session_id_for_agent(run, agent_name)
+        session_id = None if fresh_session else self._session_id_for_agent(run, agent_name)
         request = AgentRequest(
             run_id=run["id"],
             step_key=step_key,
@@ -106,6 +107,7 @@ class AgentStepRunner:
         await self._publish_status(run["id"], agent_name, step_key, f"Wrote output/{artifact}")
         await self.log(run, f"{step_key}: wrote output/{artifact}")
         await self.refresh_artifacts(run["id"])
+        return output
 
     def _session_id_for_agent(self, run: dict[str, Any], agent_name: str) -> str | None:
         provider_sessions = run.get("agent_session_ids") or {}

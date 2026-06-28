@@ -189,7 +189,31 @@ class RunState:
                 ".workflow/run-log.md",
                 ".workflow/state.json",
             ]
-            run["artifacts"] = [artifact_record(run["id"], run_dir, rel) for rel in rels if (run_dir / rel).exists()]
+
+            def add_rel(value):
+                raw = str(value or "").strip().replace("\\", "/")
+                if not raw:
+                    return
+                if raw.startswith("output/") or raw.startswith("input/") or raw.startswith("prompts/") or raw.startswith(".workflow/"):
+                    rels.append(raw)
+                else:
+                    rels.append(f"output/{raw}")
+
+            for step in run.get("steps", []):
+                config = step.get("config") or {}
+                add_rel(f"prompts/{step.get('key')}.md")
+                add_rel(config.get("outputFile") or config.get("filename"))
+                for expected in config.get("expectedFiles") or []:
+                    add_rel(expected)
+                output_file = str(config.get("outputFile") or config.get("filename") or "").strip()
+                if output_file:
+                    stem = Path(output_file).stem
+                    suffix = Path(output_file).suffix or ".md"
+                    for index, _reviewer in enumerate(config.get("reviewers") or [], start=1):
+                        add_rel(f"{stem}.reviewer-{index}{suffix}")
+
+            deduped = list(dict.fromkeys(rels))
+            run["artifacts"] = [artifact_record(run["id"], run_dir, rel) for rel in deduped if (run_dir / rel).exists()]
             run["updated_at"] = utc_now()
 
         run = await self.update_run(run_id, apply)

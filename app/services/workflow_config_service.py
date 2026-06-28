@@ -157,6 +157,56 @@ def find_workflow_path(workflow_id: str) -> Path | None:
     return None
 
 
+
+
+def normalize_step_config(step: dict) -> dict:
+    item = deepcopy(step or {})
+    item.setdefault("id", f"step-{uuid.uuid4()}")
+    item.setdefault("key", slugify(item.get("name") or item.get("id") or "step").replace("-", "_"))
+    item.setdefault("name", item.get("key") or "Step")
+    item.setdefault("type", "ai")
+    item.setdefault("enabled", True)
+    item.setdefault("description", "")
+    item.setdefault("command", "")
+    item.setdefault("templatePath", default_prompt_path(item))
+    item.setdefault("filename", item.get("outputFile") or "")
+    item.setdefault("outputFile", item.get("filename") or "")
+    if item.get("type") in {"ai", "review", "command", "agent"}:
+        item.setdefault("agent", item.get("provider") or "qwen")
+        item.setdefault("provider", item.get("agent") or "qwen")
+    else:
+        item.setdefault("agent", "")
+        item.setdefault("provider", "")
+    item.setdefault("templateContent", "")
+    item.setdefault("sources", [])
+    item.setdefault("reviewMode", "current_session" if item.get("type") == "review" or "review" in str(item.get("key", "")) else "none")
+    item.setdefault("reviewers", [])
+    item.setdefault("confidenceThreshold", 0.75)
+    item.setdefault("passKeywords", "PASS, APPROVED")
+    item.setdefault("failKeywords", "FAIL, BLOCKED")
+    item.setdefault("aggregatorFunction", "keyword_confidence" if item.get("type") == "review" else "")
+    item.setdefault("maxRetries", 2)
+    item.setdefault("failAction", "same_step")
+    item.setdefault("retryFromStepKey", "")
+    item.setdefault("keepSameSession", True)
+    item.setdefault("injectFailureFeedback", True)
+    item.setdefault("stopAfterFailures", 3)
+    item.setdefault("pauseAfterStep", item.get("type") in {"gate", "manual"})
+    item.setdefault("approvalRequired", item.get("type") in {"gate", "manual"})
+    item.setdefault("approvalMessage", "")
+    item.setdefault("timeoutEnabled", False)
+    item.setdefault("timeoutMinutes", 0)
+    item.setdefault("allowInteraction", True)
+    item.setdefault("expectedFiles", [item["outputFile"]] if item.get("outputFile") else [])
+    item.setdefault("validator", "")
+    return item
+
+
+def normalize_workflow_steps(workflow: dict) -> dict:
+    item = deepcopy(workflow or {})
+    item["steps"] = [normalize_step_config(step) for step in item.get("steps", [])]
+    return item
+
 def _normalize_workflow(workflow: dict, existing_folder: str | None = None) -> dict:
     item = deepcopy(workflow or {})
     item.setdefault("id", f"workflow-{uuid.uuid4()}")
@@ -173,6 +223,7 @@ def _normalize_workflow(workflow: dict, existing_folder: str | None = None) -> d
     item["folderName"] = existing_folder or item.get("folderName") or unique_folder_name(item.get("name") or item["id"], item["id"])
     item["updated_at"] = runtime.utc_now()
     item.setdefault("created_at", item["updated_at"])
+    item = normalize_workflow_steps(item)
     return item
 
 
@@ -262,10 +313,11 @@ def system_workflow_with_folder() -> dict:
         existing["protected"] = True
         existing["deletable"] = False
         existing.setdefault("active", True)
+        existing = normalize_workflow_steps(existing)
         ensure_workflow_prompt_files(SYSTEM_WORKFLOW_ID, existing)
         return read_prompt_files(existing, SYSTEM_WORKFLOW_ID)
 
-    workflow = system_workflow_config()
+    workflow = normalize_workflow_steps(system_workflow_config())
     workflow["folderName"] = SYSTEM_WORKFLOW_ID
     seed_prompts_from_root(SYSTEM_WORKFLOW_ID, workflow)
     stored = write_prompt_files(workflow)

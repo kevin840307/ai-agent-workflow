@@ -8,17 +8,26 @@ from app.runtime_paths import ROOT, read_text
 
 
 def retry_target_for_step(step_record: dict[str, Any], steps: list[dict[str, Any]], current_index: int) -> str | None:
-    retry_from = step_record.get("retry_from_step_key") or (step_record.get("config") or {}).get("retryFromStepKey")
-    if retry_from:
-        return retry_from
-    fail_action = step_record.get("fail_action") or "same_step"
+    """Resolve retry target from workflow.json, not hard-coded defaults.
+
+    Precedence:
+    1. retryFromStepKey explicitly configured in workflow.json.
+    2. failAction behavior.
+    3. current failed step.
+    """
+    config = step_record.get("config") or {}
+    configured_retry_from = step_record.get("retry_from_step_key") or config.get("retryFromStepKey")
+    if configured_retry_from:
+        return str(configured_retry_from)
+
+    fail_action = step_record.get("fail_action") or config.get("failAction") or "same_step"
     if fail_action == "stop":
         return None
     if fail_action == "previous_step" and current_index > 0:
         return steps[current_index - 1]["key"]
-    selected = (step_record.get("config") or {}).get("failActionStepKey")
-    if fail_action == "selected_step" and selected:
-        return selected
+    if fail_action == "selected_step":
+        selected = config.get("failActionStepKey") or config.get("selectedStepKey") or config.get("retryFromStepKey")
+        return str(selected) if selected else step_record.get("key")
     return step_record.get("key")
 
 

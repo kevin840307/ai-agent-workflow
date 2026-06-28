@@ -43,7 +43,8 @@
       "expectedFiles": [
         "architecture.md"
       ],
-      "validator": ""
+      "validator": "",
+      "contextArtifacts": []
     },
     {
       "id": "system-generate_spec",
@@ -79,7 +80,8 @@
       "expectedFiles": [
         "spec.md"
       ],
-      "validator": ""
+      "validator": "",
+      "contextArtifacts": []
     },
     {
       "id": "system-validate_spec",
@@ -113,7 +115,8 @@
       "timeoutMinutes": 0,
       "allowInteraction": false,
       "expectedFiles": [],
-      "validator": "validate_spec"
+      "validator": "validate_spec",
+      "contextArtifacts": []
     },
     {
       "id": "system-review_spec",
@@ -149,7 +152,10 @@
       "expectedFiles": [
         "spec-review.md"
       ],
-      "validator": ""
+      "validator": "",
+      "contextArtifacts": [
+        "spec.md"
+      ]
     },
     {
       "id": "system-spec_gate",
@@ -183,7 +189,8 @@
       "timeoutMinutes": 0,
       "allowInteraction": false,
       "expectedFiles": [],
-      "validator": "require_status_pass"
+      "validator": "require_status_pass",
+      "contextArtifacts": []
     },
     {
       "id": "system-generate_todo",
@@ -219,7 +226,11 @@
       "expectedFiles": [
         "todo.md"
       ],
-      "validator": ""
+      "validator": "",
+      "contextArtifacts": [
+        "spec.md",
+        "spec-review.md"
+      ]
     },
     {
       "id": "system-validate_todo",
@@ -253,7 +264,11 @@
       "timeoutMinutes": 0,
       "allowInteraction": false,
       "expectedFiles": [],
-      "validator": "validate_todo"
+      "validator": "validate_todo",
+      "contextArtifacts": [
+        "spec.md",
+        "todo.md"
+      ]
     },
     {
       "id": "system-review_todo",
@@ -289,7 +304,12 @@
       "expectedFiles": [
         "todo-review.md"
       ],
-      "validator": ""
+      "validator": "",
+      "contextArtifacts": [
+        "spec.md",
+        "spec-review.md",
+        "todo.md"
+      ]
     },
     {
       "id": "system-todo_gate",
@@ -323,7 +343,8 @@
       "timeoutMinutes": 0,
       "allowInteraction": false,
       "expectedFiles": [],
-      "validator": "require_status_pass"
+      "validator": "require_status_pass",
+      "contextArtifacts": []
     },
     {
       "id": "system-generate_tests",
@@ -359,7 +380,12 @@
       "expectedFiles": [
         "test-plan.md"
       ],
-      "validator": ""
+      "validator": "",
+      "contextArtifacts": [
+        "spec.md",
+        "todo.md",
+        "todo-review.md"
+      ]
     },
     {
       "id": "system-build",
@@ -395,7 +421,14 @@
       "expectedFiles": [
         "build-result.md"
       ],
-      "validator": ""
+      "validator": "",
+      "contextArtifacts": [
+        "spec.md",
+        "spec-review.md",
+        "todo.md",
+        "todo-review.md",
+        "test-plan.md"
+      ]
     },
     {
       "id": "system-run_test",
@@ -431,7 +464,11 @@
       "expectedFiles": [
         "test-result.md"
       ],
-      "validator": "run_pytest"
+      "validator": "run_pytest",
+      "contextArtifacts": [
+        "test-plan.md",
+        "build-result.md"
+      ]
     },
     {
       "id": "system-final_review",
@@ -467,7 +504,14 @@
       "expectedFiles": [
         "final-review.md"
       ],
-      "validator": ""
+      "validator": "",
+      "contextArtifacts": [
+        "spec.md",
+        "todo.md",
+        "test-plan.md",
+        "build-result.md",
+        "test-result.md"
+      ]
     },
     {
       "id": "system-final_gate",
@@ -501,7 +545,8 @@
       "timeoutMinutes": 0,
       "allowInteraction": false,
       "expectedFiles": [],
-      "validator": "require_status_pass"
+      "validator": "require_status_pass",
+      "contextArtifacts": []
     }
   ],
   "folderName": "system-controlled-qwen"

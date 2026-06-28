@@ -2664,3 +2664,27 @@ body[data-page="workflow-designer"] .designer-step-density-dense .designer-step-
     bottom: -5px;
   }
 }
+
+/* Prompt template editor must sit above the step editor modal, context menu, and floating actions. */
+body[data-page="workflow-designer"] .designer-template-modal-box {
+  z-index: 260;
+  padding: 8px;
+}
+
+body[data-page="workflow-designer"] .designer-template-modal-card {
+  position: relative;
+  z-index: 261;
+}
+
+body[data-page="workflow-designer"] .designer-template-unsaved-box {
+  z-index: 300;
+}
+
+body[data-page="workflow-designer"] .designer-preview-box {
+  z-index: 320;
+}
+
+body[data-page="workflow-designer"]:has(.designer-template-modal-box) .designer-step-floating-actions,
+body[data-page="workflow-designer"]:has(.designer-template-modal-box) .designer-step-context-menu {
+  display: none;
+}

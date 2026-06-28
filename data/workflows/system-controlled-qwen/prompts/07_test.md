@@ -20,7 +20,9 @@ Previous Failure Feedback:
 {{failure_feedback}}
 
 Rules:
-- Write pytest tests only under tests/.
+- Generate tests according to Requirement + Spec + Todo.
+- Match the existing project test framework when it is clear from Project Overview.
+- For Python projects, write pytest tests only under tests/.
 - Test files must be named tests/test_*.py or tests/conftest.py.
 - Keep tests separate from production code.
 - For a Python bubble sort requirement, import `bubble_sort` from the production module and test sorted output, duplicates, empty list, and that the original input is not unexpectedly corrupted unless the spec requires in-place sorting.

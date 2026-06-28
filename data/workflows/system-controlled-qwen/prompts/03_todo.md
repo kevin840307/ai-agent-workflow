@@ -11,7 +11,7 @@ Spec:
 Previous Failure Feedback:
 {{failure_feedback}}
 
-Create an implementation todo that references every AC ID from the spec.
+Create an implementation todo from the Spec. Reference every AC ID from the spec. Do not introduce a different language/framework than the Requirement or existing Project Overview implies.
 
 Use exactly these section headings:
 

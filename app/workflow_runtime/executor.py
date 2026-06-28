@@ -10,7 +10,7 @@ from app.runtime_paths import utc_now, write_text
 
 from .actions import WorkflowActions
 from .retry_policy import retry_target_for_failure
-from .step_utils import format_exception
+from .step_utils import expected_file_candidates, expected_files, format_exception, timeout_seconds
 
 
 class WorkflowExecutor:
@@ -84,7 +84,8 @@ class WorkflowExecutor:
                     if retry_key not in key_to_index:
                         await self.log(run, f"{key}: retry target {retry_key} is not in this workflow")
                         raise
-                    max_retries = int(step_record.get("max_retries", 0) or 0)
+                    retry_step_record = next((item for item in step_records if item.get("key") == retry_key), step_record)
+                    max_retries = int(retry_step_record.get("max_retries", step_record.get("max_retries", 0)) or 0)
                     current_retry_count = await self.get_step_retry_count(run_id, retry_key)
                     if current_retry_count >= max_retries:
                         message = (
@@ -111,10 +112,20 @@ class WorkflowExecutor:
             await self._mark_failed(run_id, run, run_dir, exc)
 
     async def _run_step(self, run_id: str, run: dict[str, Any], key: str, action: Callable[[], Awaitable[None]]) -> None:
+        step_record = next((item for item in run.get("steps", []) if item.get("key") == key), {})
         await self.set_step(run_id, key, "running")
         await self.log(run, f"{key}: started")
         try:
-            await action()
+            timeout = timeout_seconds(step_record)
+            if timeout:
+                await asyncio.wait_for(action(), timeout=timeout)
+            else:
+                await action()
+            self._validate_expected_files(run, step_record)
+        except asyncio.TimeoutError as exc:
+            message = f"{key}: timed out after {timeout_seconds(step_record) or 0:.0f} seconds."
+            await self.set_step(run_id, key, "failed", message)
+            raise WorkflowError(message) from exc
         except UserInputRequired as exc:
             await self.set_step(run_id, key, "waiting_input", str(exc))
             raise
@@ -123,6 +134,15 @@ class WorkflowExecutor:
             raise
         await self.set_step(run_id, key, "passed")
         await self.log(run, f"{key}: passed")
+
+    def _validate_expected_files(self, run: dict[str, Any], step_record: dict[str, Any]) -> None:
+        missing: list[str] = []
+        for rel_path in expected_files(step_record):
+            candidates = expected_file_candidates(run, rel_path)
+            if not any(path.exists() and path.is_file() for path in candidates):
+                missing.append(rel_path)
+        if missing:
+            raise WorkflowError(f"{step_record.get('key')}: expected file(s) not found: {', '.join(missing)}")
 
     async def _mark_done(self, run_id: str, run: dict[str, Any], run_dir: Path) -> None:
         def finish(r: dict[str, Any]) -> None:
