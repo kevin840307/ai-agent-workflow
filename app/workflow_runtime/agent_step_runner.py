@@ -60,12 +60,15 @@ class AgentStepRunner:
         prompt_text = self._harden_prompt_for_step(step_key, prompt_result.prompt)
         cwd = Path(run.get("project_path") or run["workspace"])
         base_session_id = self._session_id_for_agent(run, agent_name)
-        # Qwen serve should keep one Qwen session per project/app session.
-        # Some old workflow steps used fresh_session/new_agent for review, but
-        # passing None makes serve create unrelated or default sessions and can
-        # collide with the active project session.  Non-Qwen adapters keep the
-        # previous fresh_session behavior.
-        session_id = base_session_id if agent_name == "qwen" else (None if fresh_session else base_session_id)
+        # Qwen serve normally keeps one Qwen session per project/app session.
+        # Some workflows, such as multi-agent security consensus, intentionally
+        # need independent Qwen sessions for the same project.  Those steps must
+        # explicitly set forceFreshQwenSession=true and keepSameSession=false.
+        force_fresh_qwen = bool(step_config.get("forceFreshQwenSession") or step_config.get("isolatedQwenSession"))
+        if agent_name == "qwen":
+            session_id = None if fresh_session and force_fresh_qwen else base_session_id
+        else:
+            session_id = None if fresh_session else base_session_id
         request = AgentRequest(
             run_id=run["id"],
             step_key=step_key,

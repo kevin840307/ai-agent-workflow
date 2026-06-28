@@ -2,8 +2,8 @@ You are scanning the selected project for security vulnerabilities.
 
 Output only Markdown. Do not output JSON. Do not use code fences. Do not ask questions.
 Do not modify project files. Do not output FILE/CONTENT/END_FILE blocks.
-Do not provide exploit instructions, payloads, or steps to attack real systems.
-Focus on defensive code review, risk identification, and remediation guidance.
+Do not provide exploit instructions, weaponized payloads, or steps to attack real systems.
+Focus on defensive code review, risk identification, evidence quality, and remediation guidance.
 
 Project Path: {{project_path}}
 Workflow Workspace: {{workspace_path}}
@@ -21,16 +21,33 @@ Existing architecture.md:
 {{architecture}}
 
 Scan rules:
-- Review the project files listed in Project Overview and infer likely risk areas from names, language, framework, and visible structure.
-- Prioritize concrete code-level risks: injection, authentication/authorization mistakes, insecure secrets handling, unsafe file/path handling, deserialization, command execution, SSRF, XSS, CSRF, dependency/config risks, logging of sensitive data, and missing validation.
-- If the available context is insufficient to prove a vulnerability, mark it as a risk or limitation instead of pretending it is confirmed.
-- Every confirmed or likely finding must have a stable ID: VULN-001, VULN-002, ...
+- Inspect the provided Security Scan Context from output/security-context.md. Treat it as the primary evidence source.
+- Do not stop after saying no confirmed vulnerabilities. First complete the Security Checklist and review each category.
+- Report confirmed, likely, inferred, and hardening findings when they are security-relevant.
+- It is acceptable to use Severity: Info or Low and Confidence: Low for defensive hardening findings when evidence is limited.
+- Only say "No confirmed vulnerabilities found." when the checklist found no confirmed, likely, inferred, or hardening findings.
+- Every finding must have a stable ID: VULN-001, VULN-002, ...
 - Every finding must include Severity, Confidence, Evidence, Impact, and Recommendation.
 - Use severity exactly as one of: Critical, High, Medium, Low, Info.
 - Use confidence exactly as one of: High, Medium, Low.
-- Evidence must be concrete. Prefer file path + function/class/config name + observed code/config behavior. If the issue is inferred, explicitly say it is inferred and why.
-- If no confirmed vulnerabilities are found, explicitly write: No confirmed vulnerabilities found.
-- Keep the report concise but actionable.
+- Evidence must be concrete. Prefer file path + function/class/config name + observed code/config behavior.
+- If the issue is inferred, Evidence must explicitly start with "Inferred:" and explain the signal.
+- Do not invent vulnerabilities that contradict the evidence. When uncertain, lower Confidence instead of pretending certainty.
+- Risk Matrix must always be a complete 6-column Markdown table. Do not put "No confirmed vulnerabilities found" in a single-cell row.
+
+Security categories to check:
+- Secrets and credentials exposure
+- Authentication and authorization
+- Input validation and output encoding
+- SQL/NoSQL/command/template injection
+- Unsafe file/path handling and upload/download
+- Deserialization and dynamic code execution
+- SSRF and outbound HTTP calls
+- XSS, CSRF, CORS, and web security headers
+- Dependency, build, and configuration risks
+- Logging of sensitive data and error disclosure
+- Cryptography, TLS, and randomness
+- Rate limiting, resource exhaustion, and denial of service
 
 Return exactly this Markdown structure:
 
@@ -46,29 +63,47 @@ Status: DONE
 ## Scan Scope
 - Project path.
 - Languages/frameworks detected.
-- Files or areas reviewed from the available project overview.
+- Files or areas reviewed from the available project overview and security context.
 
 ## Method
 - Static code and configuration review based on available project context.
+- Security checklist review across common vulnerability categories.
 - Note that this is not a replacement for SAST/DAST/dependency scanning unless those tools are explicitly run elsewhere.
+
+## Security Checklist
+| Check | Status | Evidence | Notes |
+| --- | --- | --- | --- |
+| Secrets and credentials exposure | Reviewed | <file/path or limitation> | <brief result> |
+| Authentication and authorization | Reviewed | <file/path or limitation> | <brief result> |
+| Input validation and output encoding | Reviewed | <file/path or limitation> | <brief result> |
+| Injection risks | Reviewed | <file/path or limitation> | <brief result> |
+| Unsafe file/path handling | Reviewed | <file/path or limitation> | <brief result> |
+| Deserialization or dynamic execution | Reviewed | <file/path or limitation> | <brief result> |
+| SSRF and outbound HTTP | Reviewed | <file/path or limitation> | <brief result> |
+| Web security controls | Reviewed | <file/path or limitation> | <brief result> |
+| Dependency and configuration risks | Reviewed | <file/path or limitation> | <brief result> |
+| Sensitive logging and error disclosure | Reviewed | <file/path or limitation> | <brief result> |
+
+Allowed Status values are exactly: Reviewed, Finding, Risk, Not applicable, Limited.
 
 ## Findings
 ### VULN-001 - <short title>
 - Severity: Critical | High | Medium | Low | Info
 - Confidence: High | Medium | Low
-- Evidence: <file/path/function/config evidence. Include file path and function/class/config when available. If inferred, state Inferred and why.>
+- Evidence: <file/path/function/config evidence. Include file path and function/class/config when available. If inferred, start with Inferred: and explain why.>
 - Impact: <risk impact>
 - Recommendation: <defensive remediation>
 
-If there are no confirmed findings, write:
+If and only if there are no confirmed, likely, inferred, or hardening findings, write exactly:
 No confirmed vulnerabilities found.
 
 ## Risk Matrix
 | ID | Severity | Confidence | Area | Evidence Summary | Status |
 | --- | --- | --- | --- | --- | --- |
-| VULN-001 | Medium | High | Example area | app/example.py: function_name | Needs review |
+| VULN-001 | Medium | High | Example area | app/example.py: function_name | Needs remediation |
 
-If there are no confirmed findings, include one row that says No confirmed vulnerabilities found.
+If and only if there are no findings, use this complete row format:
+| NONE | Info | High | Reviewed scope | No confirmed vulnerabilities found after checklist review | Closed |
 
 ## Recommendations
 - Prioritized defensive fixes.

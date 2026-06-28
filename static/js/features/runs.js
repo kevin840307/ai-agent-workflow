@@ -163,6 +163,7 @@ export function createRuns(ctx) {
         await runs.follow(run.id);
       } catch (err) {
         ui.byKey("logs").textContent += `Run failed to start: ${err.message}\n`;
+        ctx.features.workflowNotification?.showStartFailure(err);
       } finally {
         ui.byKey("runWorkflow").disabled = false;
       }

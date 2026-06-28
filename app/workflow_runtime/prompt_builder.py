@@ -159,9 +159,20 @@ class PromptBuilder:
             "last_error": failure_feedback,
             "failure_feedback": failure_feedback,
             "step_output": step_output,
+            "security_context": read_text(output_dir / "security-context.md"),
+            "security_candidates": self._read_security_candidate_artifacts(output_dir),
+            "security_findings": read_text(output_dir / "security-findings.md"),
             "project_path": str(run.get("project_path", "")),
             "workspace_path": str(run.get("workspace", "")),
         }
+
+    def _read_security_candidate_artifacts(self, output_dir: Path) -> str:
+        blocks: list[str] = []
+        for path in sorted(output_dir.glob("security-candidates-agent-*.md")):
+            text = read_text(path)
+            if text.strip():
+                blocks.append(f"### output/{path.name}\n\n{text.strip()}")
+        return "\n\n".join(blocks)
 
     def _artifact_dependency_context(
         self,
@@ -185,6 +196,8 @@ class PromptBuilder:
             "test-result.md": "{{test_result}}",
             "build-result.md": "{{build_result}}",
             "final-review.md": "{{final_review}}",
+            "security-context.md": "{{security_context}}",
+            "security-findings.md": "{{security_findings}}",
         }
         blocks: list[str] = []
         for artifact in artifacts:

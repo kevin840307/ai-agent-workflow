@@ -2,31 +2,601 @@
   "sessions": [
     {
       "id": "b90d4de1-2857-4d88-a2f7-0641acc8026a",
-      "qwen_session_id": "b90d4de1-2857-4d88-a2f7-0641acc8026a",
+      "qwen_session_id": "0db56944-a4ff-4ed3-b1cd-a8004df4498c",
       "title": "sadasd",
       "project_path": "C:\\Users\\kevin\\Java\\mock",
       "created_at": "2026-06-28T09:06:53.414689+00:00",
-      "updated_at": "2026-06-28T09:07:01.401795+00:00"
+      "updated_at": "2026-06-28T09:25:04.324020+00:00"
     }
   ],
   "messages": [
     {
-      "id": "bb50864f-4758-47cf-b7b4-8339ad2ee1b4",
+      "id": "e812641d-a8e6-4f05-a733-077f32f085ce",
       "session_id": "b90d4de1-2857-4d88-a2f7-0641acc8026a",
       "role": "user",
       "kind": "requirement",
       "content": "檢查該專案",
-      "created_at": "2026-06-28T09:07:01.400819+00:00"
+      "created_at": "2026-06-28T09:10:05.676313+00:00"
+    },
+    {
+      "id": "a5a0834d-79f3-4803-b764-9f0ad7576341",
+      "session_id": "b90d4de1-2857-4d88-a2f7-0641acc8026a",
+      "role": "user",
+      "kind": "requirement",
+      "content": "檢查該專案",
+      "created_at": "2026-06-28T09:25:04.323044+00:00"
     }
   ],
   "runs": [
     {
-      "id": "55cca923-79f5-47d5-bcf4-50101e5ac959",
+      "id": "03770695-8024-4fca-a90d-a6ec6f19c12c",
       "session_id": "b90d4de1-2857-4d88-a2f7-0641acc8026a",
-      "qwen_session_id": "b90d4de1-2857-4d88-a2f7-0641acc8026a",
+      "qwen_session_id": "0db56944-a4ff-4ed3-b1cd-a8004df4498c",
+      "status": "queued",
+      "error": null,
+      "workspace": "C:\\Users\\kevin\\Java\\mock\\.qwen-workflow\\runs\\session-b90d4de1-2857-4d88-a2f7-0641acc8026a\\run-03770695-8024-4fca-a90d-a6ec6f19c12c",
+      "project_path": "C:\\Users\\kevin\\Java\\mock",
+      "workflow_id": "security-scan",
+      "workflow_folder": "security-scan",
+      "workflow_name": "Security Vulnerability Scan",
+      "skill_root": "~/.qwen/skills",
+      "test_command": null,
+      "steps": [
+        {
+          "key": "collect_security_context",
+          "title": "Collect Security Context",
+          "kind": "python",
+          "type": "python",
+          "agent": "",
+          "status": "passed",
+          "started_at": "2026-06-28T09:25:04.403626+00:00",
+          "ended_at": "2026-06-28T09:25:05.522465+00:00",
+          "error": null,
+          "retry_count": 0,
+          "config": {
+            "id": "security-scan-collect-context",
+            "key": "collect_security_context",
+            "name": "Collect Security Context",
+            "type": "python",
+            "enabled": true,
+            "description": "Collect bounded source/config snippets into output/security-context.md so the AI scan has real code evidence instead of only file names.",
+            "command": "",
+            "templatePath": "prompts/collect_security_context.md",
+            "filename": "security-context.md",
+            "outputFile": "security-context.md",
+            "templateContent": "",
+            "sources": [],
+            "reviewMode": "none",
+            "reviewers": [],
+            "confidenceThreshold": 0.75,
+            "passKeywords": "PASS, APPROVED",
+            "failKeywords": "FAIL, BLOCKED",
+            "aggregatorFunction": "",
+            "maxRetries": 1,
+            "failAction": "same_step",
+            "retryFromStepKey": "collect_security_context",
+            "keepSameSession": true,
+            "injectFailureFeedback": true,
+            "stopAfterFailures": 1,
+            "pauseAfterStep": false,
+            "approvalRequired": false,
+            "approvalMessage": "",
+            "timeoutEnabled": false,
+            "timeoutMinutes": 0,
+            "allowInteraction": false,
+            "expectedFiles": [
+              "security-context.md"
+            ],
+            "validator": "collect_security_context",
+            "contextArtifacts": [],
+            "agent": "",
+            "provider": ""
+          },
+          "max_retries": 1,
+          "retry_from_step_key": "collect_security_context",
+          "fail_action": "same_step",
+          "allow_interaction": false,
+          "pause_after_step": false
+        },
+        {
+          "key": "security_scan_agent_1",
+          "title": "Security Candidate Agent 1",
+          "kind": "agent",
+          "type": "ai",
+          "agent": "qwen",
+          "status": "passed",
+          "started_at": "2026-06-28T09:25:05.533207+00:00",
+          "ended_at": "2026-06-28T09:25:32.301652+00:00",
+          "error": null,
+          "retry_count": 0,
+          "config": {
+            "id": "security-scan-agent-1",
+            "key": "security_scan_agent_1",
+            "name": "Security Candidate Agent 1",
+            "type": "ai",
+            "enabled": true,
+            "description": "Run the same vulnerability candidate scan in an isolated Qwen session and produce one candidate Markdown file.",
+            "command": "",
+            "templatePath": "prompts/00_security_candidate_scan.md",
+            "filename": "security-candidates-agent-1.md",
+            "outputFile": "security-candidates-agent-1.md",
+            "templateContent": "You are one independent AI security candidate agent in a multi-agent consensus workflow.\n\nOutput only Markdown. Do not output JSON. Do not use code fences. Do not ask questions.\nDo not modify project files. Do not output FILE/CONTENT/END_FILE blocks.\nDo not provide exploit instructions, weaponized payloads, or steps to attack real systems.\nFocus on defensive code review, vulnerability candidates, evidence quality, severity, and confidence.\n\nImportant multi-agent rule:\n- You are doing the SAME scan as the other agents, not a different category-specific scan.\n- Use only the provided project context and security context.\n- Ignore previous conclusions in the same project/session; this step should be an independent security review.\n- Produce the same candidate Markdown schema every time so Python can compare and combine agents.\n\nProject Path: {{project_path}}\nWorkflow Workspace: {{workspace_path}}\n\nRequirement:\n{{requirement}}\n\nProject Overview:\n{{project_overview}}\n\nProject Profile:\n{{project_profile}}\n\nExisting architecture.md:\n{{architecture}}\n\nSecurity Scan Context:\n{{security_context}}\n\nScan rules:\n- Inspect the Security Scan Context as the primary evidence source.\n- Review every security checklist category before concluding no findings.\n- Report confirmed, likely, inferred, needs-review, and hardening candidates when security-relevant.\n- Do not invent issues that contradict evidence. When uncertain, lower Confidence instead of pretending certainty.\n- Do not ignore suspicious patterns just because exploitability is uncertain; mark them Needs Review with Low confidence.\n- Every candidate must have a stable candidate ID: CAND-001, CAND-002, ...\n- Every candidate must include Area, File, Function/Class, Evidence, Severity, Confidence, Status, Reason, Impact, and Recommendation.\n- Use Severity exactly as one of: Critical, High, Medium, Low, Info.\n- Use Confidence exactly as one of: High, Medium, Low.\n- Use Status exactly as one of: Confirmed, Likely, Needs Review, Hardening, False Positive, Not Applicable, No Finding.\n- Evidence must be concrete. Prefer file path + function/class/config name + observed code/config behavior.\n- If evidence is inferred, Evidence must explicitly start with \"Inferred:\" and explain the signal.\n- If no candidate is found, still output exactly one CAND-001 with Status: No Finding, Severity: Info, and Confidence based on the reviewed context.\n\nSecurity checklist categories to scan:\n- Secrets and credentials exposure\n- Authentication and authorization\n- Input validation and output encoding\n- SQL/NoSQL/command/template injection\n- Unsafe file/path handling and upload/download\n- Deserialization and dynamic code execution\n- SSRF and outbound HTTP calls\n- XSS, CSRF, CORS, and web security headers\n- Dependency, build, and configuration risks\n- Logging of sensitive data and error disclosure\n- Cryptography, TLS, and randomness\n- Rate limiting, resource exhaustion, and denial of service\n\nReturn exactly this Markdown structure:\n\nStatus: DONE\n\n# Security Candidate Scan\n\n## Scan Summary\n- Agent mode: independent same-task candidate scan\n- Scope reviewed: <brief scope>\n- Overall candidate confidence: High | Medium | Low\n\n## Checklist Coverage\n| Check | Status | Evidence | Notes |\n| --- | --- | --- | --- |\n| Secrets and credentials exposure | Reviewed | <file/path or limitation> | <brief result> |\n| Authentication and authorization | Reviewed | <file/path or limitation> | <brief result> |\n| Input validation and output encoding | Reviewed | <file/path or limitation> | <brief result> |\n| Injection risks | Reviewed | <file/path or limitation> | <brief result> |\n| Unsafe file/path handling | Reviewed | <file/path or limitation> | <brief result> |\n| Deserialization or dynamic execution | Reviewed | <file/path or limitation> | <brief result> |\n| SSRF and outbound HTTP | Reviewed | <file/path or limitation> | <brief result> |\n| Web security controls | Reviewed | <file/path or limitation> | <brief result> |\n| Dependency and configuration risks | Reviewed | <file/path or limitation> | <brief result> |\n| Sensitive logging and error disclosure | Reviewed | <file/path or limitation> | <brief result> |\n| Cryptography, TLS, and randomness | Reviewed | <file/path or limitation> | <brief result> |\n| Resource exhaustion and denial of service | Reviewed | <file/path or limitation> | <brief result> |\n\n## Candidates\n### CAND-001 - <short candidate title>\n- Area: <security area>\n- File: <file path or security-context.md>\n- Function/Class: <function/class/config name or Not applicable>\n- Evidence: <file/path/function/config evidence. If inferred, start with Inferred:.>\n- Severity: Critical | High | Medium | Low | Info\n- Confidence: High | Medium | Low\n- Status: Confirmed | Likely | Needs Review | Hardening | False Positive | Not Applicable | No Finding\n- Reason: <why this is or is not a candidate>\n- Impact: <risk impact>\n- Recommendation: <defensive remediation or review action>\n",
+            "sources": [
+              {
+                "type": "skill_path",
+                "value": "code-review-and-quality"
+              }
+            ],
+            "reviewMode": "none",
+            "reviewers": [],
+            "confidenceThreshold": 0.75,
+            "passKeywords": "PASS, APPROVED",
+            "failKeywords": "FAIL, BLOCKED",
+            "aggregatorFunction": "",
+            "maxRetries": 2,
+            "failAction": "same_step",
+            "retryFromStepKey": "security_scan_agent_1",
+            "keepSameSession": false,
+            "forceFreshQwenSession": true,
+            "injectFailureFeedback": true,
+            "stopAfterFailures": 2,
+            "pauseAfterStep": false,
+            "approvalRequired": false,
+            "approvalMessage": "",
+            "timeoutEnabled": false,
+            "timeoutMinutes": 0,
+            "allowInteraction": false,
+            "expectedFiles": [
+              "security-candidates-agent-1.md"
+            ],
+            "validator": "",
+            "contextArtifacts": [
+              "security-context.md"
+            ],
+            "agent": "qwen",
+            "provider": "qwen"
+          },
+          "max_retries": 2,
+          "retry_from_step_key": "security_scan_agent_1",
+          "fail_action": "same_step",
+          "allow_interaction": false,
+          "pause_after_step": false
+        },
+        {
+          "key": "security_scan_agent_2",
+          "title": "Security Candidate Agent 2",
+          "kind": "agent",
+          "type": "ai",
+          "agent": "qwen",
+          "status": "passed",
+          "started_at": "2026-06-28T09:25:32.312394+00:00",
+          "ended_at": "2026-06-28T09:27:51.825184+00:00",
+          "error": null,
+          "retry_count": 0,
+          "config": {
+            "id": "security-scan-agent-2",
+            "key": "security_scan_agent_2",
+            "name": "Security Candidate Agent 2",
+            "type": "ai",
+            "enabled": true,
+            "description": "Run the same vulnerability candidate scan in an isolated Qwen session and produce one candidate Markdown file.",
+            "command": "",
+            "templatePath": "prompts/00_security_candidate_scan.md",
+            "filename": "security-candidates-agent-2.md",
+            "outputFile": "security-candidates-agent-2.md",
+            "templateContent": "You are one independent AI security candidate agent in a multi-agent consensus workflow.\n\nOutput only Markdown. Do not output JSON. Do not use code fences. Do not ask questions.\nDo not modify project files. Do not output FILE/CONTENT/END_FILE blocks.\nDo not provide exploit instructions, weaponized payloads, or steps to attack real systems.\nFocus on defensive code review, vulnerability candidates, evidence quality, severity, and confidence.\n\nImportant multi-agent rule:\n- You are doing the SAME scan as the other agents, not a different category-specific scan.\n- Use only the provided project context and security context.\n- Ignore previous conclusions in the same project/session; this step should be an independent security review.\n- Produce the same candidate Markdown schema every time so Python can compare and combine agents.\n\nProject Path: {{project_path}}\nWorkflow Workspace: {{workspace_path}}\n\nRequirement:\n{{requirement}}\n\nProject Overview:\n{{project_overview}}\n\nProject Profile:\n{{project_profile}}\n\nExisting architecture.md:\n{{architecture}}\n\nSecurity Scan Context:\n{{security_context}}\n\nScan rules:\n- Inspect the Security Scan Context as the primary evidence source.\n- Review every security checklist category before concluding no findings.\n- Report confirmed, likely, inferred, needs-review, and hardening candidates when security-relevant.\n- Do not invent issues that contradict evidence. When uncertain, lower Confidence instead of pretending certainty.\n- Do not ignore suspicious patterns just because exploitability is uncertain; mark them Needs Review with Low confidence.\n- Every candidate must have a stable candidate ID: CAND-001, CAND-002, ...\n- Every candidate must include Area, File, Function/Class, Evidence, Severity, Confidence, Status, Reason, Impact, and Recommendation.\n- Use Severity exactly as one of: Critical, High, Medium, Low, Info.\n- Use Confidence exactly as one of: High, Medium, Low.\n- Use Status exactly as one of: Confirmed, Likely, Needs Review, Hardening, False Positive, Not Applicable, No Finding.\n- Evidence must be concrete. Prefer file path + function/class/config name + observed code/config behavior.\n- If evidence is inferred, Evidence must explicitly start with \"Inferred:\" and explain the signal.\n- If no candidate is found, still output exactly one CAND-001 with Status: No Finding, Severity: Info, and Confidence based on the reviewed context.\n\nSecurity checklist categories to scan:\n- Secrets and credentials exposure\n- Authentication and authorization\n- Input validation and output encoding\n- SQL/NoSQL/command/template injection\n- Unsafe file/path handling and upload/download\n- Deserialization and dynamic code execution\n- SSRF and outbound HTTP calls\n- XSS, CSRF, CORS, and web security headers\n- Dependency, build, and configuration risks\n- Logging of sensitive data and error disclosure\n- Cryptography, TLS, and randomness\n- Rate limiting, resource exhaustion, and denial of service\n\nReturn exactly this Markdown structure:\n\nStatus: DONE\n\n# Security Candidate Scan\n\n## Scan Summary\n- Agent mode: independent same-task candidate scan\n- Scope reviewed: <brief scope>\n- Overall candidate confidence: High | Medium | Low\n\n## Checklist Coverage\n| Check | Status | Evidence | Notes |\n| --- | --- | --- | --- |\n| Secrets and credentials exposure | Reviewed | <file/path or limitation> | <brief result> |\n| Authentication and authorization | Reviewed | <file/path or limitation> | <brief result> |\n| Input validation and output encoding | Reviewed | <file/path or limitation> | <brief result> |\n| Injection risks | Reviewed | <file/path or limitation> | <brief result> |\n| Unsafe file/path handling | Reviewed | <file/path or limitation> | <brief result> |\n| Deserialization or dynamic execution | Reviewed | <file/path or limitation> | <brief result> |\n| SSRF and outbound HTTP | Reviewed | <file/path or limitation> | <brief result> |\n| Web security controls | Reviewed | <file/path or limitation> | <brief result> |\n| Dependency and configuration risks | Reviewed | <file/path or limitation> | <brief result> |\n| Sensitive logging and error disclosure | Reviewed | <file/path or limitation> | <brief result> |\n| Cryptography, TLS, and randomness | Reviewed | <file/path or limitation> | <brief result> |\n| Resource exhaustion and denial of service | Reviewed | <file/path or limitation> | <brief result> |\n\n## Candidates\n### CAND-001 - <short candidate title>\n- Area: <security area>\n- File: <file path or security-context.md>\n- Function/Class: <function/class/config name or Not applicable>\n- Evidence: <file/path/function/config evidence. If inferred, start with Inferred:.>\n- Severity: Critical | High | Medium | Low | Info\n- Confidence: High | Medium | Low\n- Status: Confirmed | Likely | Needs Review | Hardening | False Positive | Not Applicable | No Finding\n- Reason: <why this is or is not a candidate>\n- Impact: <risk impact>\n- Recommendation: <defensive remediation or review action>\n",
+            "sources": [
+              {
+                "type": "skill_path",
+                "value": "code-review-and-quality"
+              }
+            ],
+            "reviewMode": "none",
+            "reviewers": [],
+            "confidenceThreshold": 0.75,
+            "passKeywords": "PASS, APPROVED",
+            "failKeywords": "FAIL, BLOCKED",
+            "aggregatorFunction": "",
+            "maxRetries": 2,
+            "failAction": "same_step",
+            "retryFromStepKey": "security_scan_agent_2",
+            "keepSameSession": false,
+            "forceFreshQwenSession": true,
+            "injectFailureFeedback": true,
+            "stopAfterFailures": 2,
+            "pauseAfterStep": false,
+            "approvalRequired": false,
+            "approvalMessage": "",
+            "timeoutEnabled": false,
+            "timeoutMinutes": 0,
+            "allowInteraction": false,
+            "expectedFiles": [
+              "security-candidates-agent-2.md"
+            ],
+            "validator": "",
+            "contextArtifacts": [
+              "security-context.md"
+            ],
+            "agent": "qwen",
+            "provider": "qwen"
+          },
+          "max_retries": 2,
+          "retry_from_step_key": "security_scan_agent_2",
+          "fail_action": "same_step",
+          "allow_interaction": false,
+          "pause_after_step": false
+        },
+        {
+          "key": "security_scan_agent_3",
+          "title": "Security Candidate Agent 3",
+          "kind": "agent",
+          "type": "ai",
+          "agent": "qwen",
+          "status": "passed",
+          "started_at": "2026-06-28T09:27:51.835924+00:00",
+          "ended_at": "2026-06-28T09:28:10.499731+00:00",
+          "error": null,
+          "retry_count": 0,
+          "config": {
+            "id": "security-scan-agent-3",
+            "key": "security_scan_agent_3",
+            "name": "Security Candidate Agent 3",
+            "type": "ai",
+            "enabled": true,
+            "description": "Run the same vulnerability candidate scan in an isolated Qwen session and produce one candidate Markdown file.",
+            "command": "",
+            "templatePath": "prompts/00_security_candidate_scan.md",
+            "filename": "security-candidates-agent-3.md",
+            "outputFile": "security-candidates-agent-3.md",
+            "templateContent": "You are one independent AI security candidate agent in a multi-agent consensus workflow.\n\nOutput only Markdown. Do not output JSON. Do not use code fences. Do not ask questions.\nDo not modify project files. Do not output FILE/CONTENT/END_FILE blocks.\nDo not provide exploit instructions, weaponized payloads, or steps to attack real systems.\nFocus on defensive code review, vulnerability candidates, evidence quality, severity, and confidence.\n\nImportant multi-agent rule:\n- You are doing the SAME scan as the other agents, not a different category-specific scan.\n- Use only the provided project context and security context.\n- Ignore previous conclusions in the same project/session; this step should be an independent security review.\n- Produce the same candidate Markdown schema every time so Python can compare and combine agents.\n\nProject Path: {{project_path}}\nWorkflow Workspace: {{workspace_path}}\n\nRequirement:\n{{requirement}}\n\nProject Overview:\n{{project_overview}}\n\nProject Profile:\n{{project_profile}}\n\nExisting architecture.md:\n{{architecture}}\n\nSecurity Scan Context:\n{{security_context}}\n\nScan rules:\n- Inspect the Security Scan Context as the primary evidence source.\n- Review every security checklist category before concluding no findings.\n- Report confirmed, likely, inferred, needs-review, and hardening candidates when security-relevant.\n- Do not invent issues that contradict evidence. When uncertain, lower Confidence instead of pretending certainty.\n- Do not ignore suspicious patterns just because exploitability is uncertain; mark them Needs Review with Low confidence.\n- Every candidate must have a stable candidate ID: CAND-001, CAND-002, ...\n- Every candidate must include Area, File, Function/Class, Evidence, Severity, Confidence, Status, Reason, Impact, and Recommendation.\n- Use Severity exactly as one of: Critical, High, Medium, Low, Info.\n- Use Confidence exactly as one of: High, Medium, Low.\n- Use Status exactly as one of: Confirmed, Likely, Needs Review, Hardening, False Positive, Not Applicable, No Finding.\n- Evidence must be concrete. Prefer file path + function/class/config name + observed code/config behavior.\n- If evidence is inferred, Evidence must explicitly start with \"Inferred:\" and explain the signal.\n- If no candidate is found, still output exactly one CAND-001 with Status: No Finding, Severity: Info, and Confidence based on the reviewed context.\n\nSecurity checklist categories to scan:\n- Secrets and credentials exposure\n- Authentication and authorization\n- Input validation and output encoding\n- SQL/NoSQL/command/template injection\n- Unsafe file/path handling and upload/download\n- Deserialization and dynamic code execution\n- SSRF and outbound HTTP calls\n- XSS, CSRF, CORS, and web security headers\n- Dependency, build, and configuration risks\n- Logging of sensitive data and error disclosure\n- Cryptography, TLS, and randomness\n- Rate limiting, resource exhaustion, and denial of service\n\nReturn exactly this Markdown structure:\n\nStatus: DONE\n\n# Security Candidate Scan\n\n## Scan Summary\n- Agent mode: independent same-task candidate scan\n- Scope reviewed: <brief scope>\n- Overall candidate confidence: High | Medium | Low\n\n## Checklist Coverage\n| Check | Status | Evidence | Notes |\n| --- | --- | --- | --- |\n| Secrets and credentials exposure | Reviewed | <file/path or limitation> | <brief result> |\n| Authentication and authorization | Reviewed | <file/path or limitation> | <brief result> |\n| Input validation and output encoding | Reviewed | <file/path or limitation> | <brief result> |\n| Injection risks | Reviewed | <file/path or limitation> | <brief result> |\n| Unsafe file/path handling | Reviewed | <file/path or limitation> | <brief result> |\n| Deserialization or dynamic execution | Reviewed | <file/path or limitation> | <brief result> |\n| SSRF and outbound HTTP | Reviewed | <file/path or limitation> | <brief result> |\n| Web security controls | Reviewed | <file/path or limitation> | <brief result> |\n| Dependency and configuration risks | Reviewed | <file/path or limitation> | <brief result> |\n| Sensitive logging and error disclosure | Reviewed | <file/path or limitation> | <brief result> |\n| Cryptography, TLS, and randomness | Reviewed | <file/path or limitation> | <brief result> |\n| Resource exhaustion and denial of service | Reviewed | <file/path or limitation> | <brief result> |\n\n## Candidates\n### CAND-001 - <short candidate title>\n- Area: <security area>\n- File: <file path or security-context.md>\n- Function/Class: <function/class/config name or Not applicable>\n- Evidence: <file/path/function/config evidence. If inferred, start with Inferred:.>\n- Severity: Critical | High | Medium | Low | Info\n- Confidence: High | Medium | Low\n- Status: Confirmed | Likely | Needs Review | Hardening | False Positive | Not Applicable | No Finding\n- Reason: <why this is or is not a candidate>\n- Impact: <risk impact>\n- Recommendation: <defensive remediation or review action>\n",
+            "sources": [
+              {
+                "type": "skill_path",
+                "value": "code-review-and-quality"
+              }
+            ],
+            "reviewMode": "none",
+            "reviewers": [],
+            "confidenceThreshold": 0.75,
+            "passKeywords": "PASS, APPROVED",
+            "failKeywords": "FAIL, BLOCKED",
+            "aggregatorFunction": "",
+            "maxRetries": 2,
+            "failAction": "same_step",
+            "retryFromStepKey": "security_scan_agent_3",
+            "keepSameSession": false,
+            "forceFreshQwenSession": true,
+            "injectFailureFeedback": true,
+            "stopAfterFailures": 2,
+            "pauseAfterStep": false,
+            "approvalRequired": false,
+            "approvalMessage": "",
+            "timeoutEnabled": false,
+            "timeoutMinutes": 0,
+            "allowInteraction": false,
+            "expectedFiles": [
+              "security-candidates-agent-3.md"
+            ],
+            "validator": "",
+            "contextArtifacts": [
+              "security-context.md"
+            ],
+            "agent": "qwen",
+            "provider": "qwen"
+          },
+          "max_retries": 2,
+          "retry_from_step_key": "security_scan_agent_3",
+          "fail_action": "same_step",
+          "allow_interaction": false,
+          "pause_after_step": false
+        },
+        {
+          "key": "combine_security_candidates",
+          "title": "Combine Security Candidates",
+          "kind": "python",
+          "type": "python",
+          "agent": "",
+          "status": "passed",
+          "started_at": "2026-06-28T09:28:10.510473+00:00",
+          "ended_at": "2026-06-28T09:28:10.530003+00:00",
+          "error": null,
+          "retry_count": 0,
+          "config": {
+            "id": "security-scan-combine-candidates",
+            "key": "combine_security_candidates",
+            "name": "Combine Security Candidates",
+            "type": "python",
+            "enabled": true,
+            "description": "Python deterministic merge: read all security-candidates-agent-*.md files, filter weak rows, deduplicate, and compute consensus confidence into output/security-findings.md.",
+            "command": "",
+            "templatePath": "prompts/combine_security_candidates.md",
+            "filename": "security-findings.md",
+            "outputFile": "security-findings.md",
+            "templateContent": "",
+            "sources": [],
+            "reviewMode": "none",
+            "reviewers": [],
+            "confidenceThreshold": 0.75,
+            "passKeywords": "PASS, APPROVED",
+            "failKeywords": "FAIL, BLOCKED",
+            "aggregatorFunction": "",
+            "maxRetries": 1,
+            "failAction": "same_step",
+            "retryFromStepKey": "combine_security_candidates",
+            "keepSameSession": true,
+            "injectFailureFeedback": true,
+            "stopAfterFailures": 1,
+            "pauseAfterStep": false,
+            "approvalRequired": false,
+            "approvalMessage": "",
+            "timeoutEnabled": false,
+            "timeoutMinutes": 0,
+            "allowInteraction": false,
+            "expectedFiles": [
+              "security-findings.md"
+            ],
+            "validator": "combine_security_candidates",
+            "contextArtifacts": [
+              "security-candidates-agent-1.md",
+              "security-candidates-agent-2.md",
+              "security-candidates-agent-3.md"
+            ],
+            "agent": "",
+            "provider": ""
+          },
+          "max_retries": 1,
+          "retry_from_step_key": "combine_security_candidates",
+          "fail_action": "same_step",
+          "allow_interaction": false,
+          "pause_after_step": false
+        },
+        {
+          "key": "security_report",
+          "title": "Security Report",
+          "kind": "agent",
+          "type": "ai",
+          "agent": "qwen",
+          "status": "running",
+          "started_at": "2026-06-28T09:29:06.752619+00:00",
+          "ended_at": null,
+          "error": null,
+          "retry_count": 2,
+          "config": {
+            "id": "security-scan-generate-report",
+            "key": "security_report",
+            "name": "Security Report",
+            "type": "ai",
+            "enabled": true,
+            "description": "Generate the final validated security-report.md only from Python-combined security-findings.md.",
+            "command": "",
+            "templatePath": "prompts/01_security_report.md",
+            "filename": "security-report.md",
+            "outputFile": "security-report.md",
+            "templateContent": "You are generating the final security vulnerability report from Python-combined multi-agent findings.\n\nOutput only Markdown. Do not output JSON. Do not use code fences. Do not ask questions.\nDo not modify project files. Do not output FILE/CONTENT/END_FILE blocks.\nDo not provide exploit instructions, weaponized payloads, or steps to attack real systems.\n\nImportant report rules:\n- Use security-findings.md as the source of truth for final findings.\n- Do not create new vulnerabilities that are not present as accepted SEC-### findings.\n- Do not drop accepted SEC-### findings. Every accepted SEC finding must become one VULN finding.\n- Preserve Severity and Confidence from security-findings.md unless you lower confidence due to clearly stated evidence weakness.\n- Every VULN must include Source Finding ID, Severity, Confidence, Evidence, Impact, and Recommendation.\n- If security-findings.md has no accepted findings, produce a complete no-finding report with the required table row format.\n\nProject Path: {{project_path}}\nWorkflow Workspace: {{workspace_path}}\n\nRequirement:\n{{requirement}}\n\nProject Overview:\n{{project_overview}}\n\nProject Profile:\n{{project_profile}}\n\nExisting architecture.md:\n{{architecture}}\n\nSecurity Scan Context:\n{{security_context}}\n\nMulti-Agent Candidate Artifacts:\n{{security_candidates}}\n\nPython-Combined Security Findings:\n{{security_findings}}\n\nPrevious Failure Feedback:\n{{failure_feedback}}\n\nReturn exactly this Markdown structure:\n\nStatus: DONE\n\n# Security Vulnerability Report\n\n## Summary\n- Overall risk level: Critical | High | Medium | Low | Info\n- Overall confidence: High | Medium | Low\n- One-paragraph summary.\n\n## Scan Scope\n- Project path.\n- Languages/frameworks detected.\n- Files or areas reviewed from the available project overview and security context.\n- Multi-agent candidate artifacts reviewed.\n\n## Method\n- Static code and configuration review based on collected project context.\n- Multiple independent same-task AI candidate scans.\n- Python filtering, deduplication, and confidence merging into security-findings.md.\n- Final report generated only from accepted Python-combined findings.\n- Note that this is not a replacement for SAST/DAST/dependency scanning unless those tools are explicitly run elsewhere.\n\n## Security Checklist\n| Check | Status | Evidence | Notes |\n| --- | --- | --- | --- |\n| Secrets and credentials exposure | Reviewed | <file/path or limitation> | <brief result> |\n| Authentication and authorization | Reviewed | <file/path or limitation> | <brief result> |\n| Input validation and output encoding | Reviewed | <file/path or limitation> | <brief result> |\n| Injection risks | Reviewed | <file/path or limitation> | <brief result> |\n| Unsafe file/path handling | Reviewed | <file/path or limitation> | <brief result> |\n| Deserialization or dynamic execution | Reviewed | <file/path or limitation> | <brief result> |\n| SSRF and outbound HTTP | Reviewed | <file/path or limitation> | <brief result> |\n| Web security controls | Reviewed | <file/path or limitation> | <brief result> |\n| Dependency and configuration risks | Reviewed | <file/path or limitation> | <brief result> |\n| Sensitive logging and error disclosure | Reviewed | <file/path or limitation> | <brief result> |\n\nAllowed Status values are exactly: Reviewed, Finding, Risk, Not applicable, Limited.\n\n## Findings\n### VULN-001 - <short title>\n- Source Finding ID: SEC-001\n- Severity: Critical | High | Medium | Low | Info\n- Confidence: High | Medium | Low\n- Evidence: <copy or summarize concrete evidence from SEC-001>\n- Impact: <risk impact>\n- Recommendation: <defensive remediation>\n\nIf and only if there are no accepted SEC findings in security-findings.md, write exactly:\nNo confirmed vulnerabilities found.\n\n## Risk Matrix\n| ID | Source Finding ID | Severity | Confidence | Area | Evidence Summary | Status |\n| --- | --- | --- | --- | --- | --- | --- |\n| VULN-001 | SEC-001 | Medium | High | Example area | app/example.py: function_name | Needs remediation |\n\nIf and only if there are no accepted SEC findings, use this complete row format:\n| NONE | NONE | Info | High | Reviewed scope | No confirmed vulnerabilities found after multi-agent candidate filtering | Closed |\n\n## Recommendations\n- Prioritized defensive fixes.\n- Suggested tests or validation checks.\n\n## Limitations\n- List missing context, files, runtime behavior, dependency lock files, environment data, or assumptions that limit confidence.\n",
+            "sources": [
+              {
+                "type": "skill_path",
+                "value": "code-review-and-quality"
+              }
+            ],
+            "reviewMode": "none",
+            "reviewers": [],
+            "confidenceThreshold": 0.75,
+            "passKeywords": "PASS, APPROVED",
+            "failKeywords": "FAIL, BLOCKED",
+            "aggregatorFunction": "",
+            "maxRetries": 3,
+            "failAction": "same_step",
+            "retryFromStepKey": "security_report",
+            "keepSameSession": true,
+            "injectFailureFeedback": true,
+            "stopAfterFailures": 2,
+            "pauseAfterStep": false,
+            "approvalRequired": false,
+            "approvalMessage": "",
+            "timeoutEnabled": false,
+            "timeoutMinutes": 0,
+            "allowInteraction": false,
+            "expectedFiles": [
+              "security-report.md"
+            ],
+            "validator": "",
+            "contextArtifacts": [
+              "security-context.md",
+              "security-candidates-agent-1.md",
+              "security-candidates-agent-2.md",
+              "security-candidates-agent-3.md",
+              "security-findings.md"
+            ],
+            "agent": "qwen",
+            "provider": "qwen"
+          },
+          "max_retries": 3,
+          "retry_from_step_key": "security_report",
+          "fail_action": "same_step",
+          "allow_interaction": false,
+          "pause_after_step": false
+        },
+        {
+          "key": "validate_security_report",
+          "title": "Validate Security Report",
+          "kind": "python",
+          "type": "python",
+          "agent": "",
+          "status": "pending",
+          "started_at": null,
+          "ended_at": null,
+          "error": null,
+          "retry_count": 0,
+          "config": {
+            "id": "security-scan-validate-report",
+            "key": "validate_security_report",
+            "name": "Validate Security Report",
+            "type": "python",
+            "enabled": true,
+            "description": "Validate output/security-report.md structure, checklist, severity, confidence, evidence, and risk matrix row format.",
+            "command": "",
+            "templatePath": "prompts/validate_security_report.md",
+            "filename": "security-report.md",
+            "outputFile": "security-report.md",
+            "templateContent": "",
+            "sources": [],
+            "reviewMode": "none",
+            "reviewers": [],
+            "confidenceThreshold": 0.75,
+            "passKeywords": "PASS, APPROVED",
+            "failKeywords": "FAIL, BLOCKED",
+            "aggregatorFunction": "",
+            "maxRetries": 2,
+            "failAction": "selected_step",
+            "failActionStepKey": "security_report",
+            "retryFromStepKey": "security_report",
+            "keepSameSession": true,
+            "injectFailureFeedback": true,
+            "stopAfterFailures": 2,
+            "pauseAfterStep": false,
+            "approvalRequired": false,
+            "approvalMessage": "",
+            "timeoutEnabled": false,
+            "timeoutMinutes": 0,
+            "allowInteraction": false,
+            "expectedFiles": [
+              "security-report.md"
+            ],
+            "validator": "validate_security_report",
+            "contextArtifacts": [
+              "security-report.md",
+              "security-findings.md"
+            ],
+            "agent": "",
+            "provider": ""
+          },
+          "max_retries": 2,
+          "retry_from_step_key": "security_report",
+          "fail_action": "selected_step",
+          "allow_interaction": false,
+          "pause_after_step": false
+        }
+      ],
+      "artifacts": [
+        {
+          "id": "03770695-8024-4fca-a90d-a6ec6f19c12c:requirement.md",
+          "name": "requirement.md",
+          "path": "requirement.md",
+          "size": 15,
+          "updated_at": "2026-06-28T09:29:07.955337+00:00"
+        },
+        {
+          "id": "03770695-8024-4fca-a90d-a6ec6f19c12c:input|failure-feedback.md",
+          "name": "failure-feedback.md",
+          "path": "input/failure-feedback.md",
+          "size": 532,
+          "updated_at": "2026-06-28T09:29:07.955337+00:00"
+        },
+        {
+          "id": "03770695-8024-4fca-a90d-a6ec6f19c12c:prompts|skill-context.md",
+          "name": "skill-context.md",
+          "path": "prompts/skill-context.md",
+          "size": 18917,
+          "updated_at": "2026-06-28T09:29:07.955337+00:00"
+        },
+        {
+          "id": "03770695-8024-4fca-a90d-a6ec6f19c12c:.workflow|run-log.md",
+          "name": "run-log.md",
+          "path": ".workflow/run-log.md",
+          "size": 4837,
+          "updated_at": "2026-06-28T09:29:07.955337+00:00"
+        },
+        {
+          "id": "03770695-8024-4fca-a90d-a6ec6f19c12c:.workflow|state.json",
+          "name": "state.json",
+          "path": ".workflow/state.json",
+          "size": 35180,
+          "updated_at": "2026-06-28T09:29:07.956314+00:00"
+        },
+        {
+          "id": "03770695-8024-4fca-a90d-a6ec6f19c12c:output|security-context.md",
+          "name": "security-context.md",
+          "path": "output/security-context.md",
+          "size": 95222,
+          "updated_at": "2026-06-28T09:29:07.956314+00:00"
+        },
+        {
+          "id": "03770695-8024-4fca-a90d-a6ec6f19c12c:prompts|security_scan_agent_1.md",
+          "name": "security_scan_agent_1.md",
+          "path": "prompts/security_scan_agent_1.md",
+          "size": 113129,
+          "updated_at": "2026-06-28T09:29:07.956314+00:00"
+        },
+        {
+          "id": "03770695-8024-4fca-a90d-a6ec6f19c12c:output|security-candidates-agent-1.md",
+          "name": "security-candidates-agent-1.md",
+          "path": "output/security-candidates-agent-1.md",
+          "size": 4652,
+          "updated_at": "2026-06-28T09:29:07.956314+00:00"
+        },
+        {
+          "id": "03770695-8024-4fca-a90d-a6ec6f19c12c:prompts|security_scan_agent_2.md",
+          "name": "security_scan_agent_2.md",
+          "path": "prompts/security_scan_agent_2.md",
+          "size": 113129,
+          "updated_at": "2026-06-28T09:29:07.956314+00:00"
+        },
+        {
+          "id": "03770695-8024-4fca-a90d-a6ec6f19c12c:output|security-candidates-agent-2.md",
+          "name": "security-candidates-agent-2.md",
+          "path": "output/security-candidates-agent-2.md",
+          "size": 47043,
+          "updated_at": "2026-06-28T09:29:07.956314+00:00"
+        },
+        {
+          "id": "03770695-8024-4fca-a90d-a6ec6f19c12c:prompts|security_scan_agent_3.md",
+          "name": "security_scan_agent_3.md",
+          "path": "prompts/security_scan_agent_3.md",
+          "size": 113129,
+          "updated_at": "2026-06-28T09:29:07.957290+00:00"
+        },
+        {
+          "id": "03770695-8024-4fca-a90d-a6ec6f19c12c:output|security-candidates-agent-3.md",
+          "name": "security-candidates-agent-3.md",
+          "path": "output/security-candidates-agent-3.md",
+          "size": 3684,
+          "updated_at": "2026-06-28T09:29:07.957290+00:00"
+        },
+        {
+          "id": "03770695-8024-4fca-a90d-a6ec6f19c12c:output|security-findings.md",
+          "name": "security-findings.md",
+          "path": "output/security-findings.md",
+          "size": 10596,
+          "updated_at": "2026-06-28T09:29:07.957290+00:00"
+        },
+        {
+          "id": "03770695-8024-4fca-a90d-a6ec6f19c12c:prompts|security_report.md",
+          "name": "security_report.md",
+          "path": "prompts/security_report.md",
+          "size": 234842,
+          "updated_at": "2026-06-28T09:29:07.957290+00:00"
+        },
+        {
+          "id": "03770695-8024-4fca-a90d-a6ec6f19c12c:output|security-report.md",
+          "name": "security-report.md",
+          "path": "output/security-report.md",
+          "size": 3333,
+          "updated_at": "2026-06-28T09:29:07.957290+00:00"
+        }
+      ],
+      "created_at": "2026-06-28T09:25:04.364564+00:00",
+      "updated_at": "2026-06-28T09:29:07.957290+00:00",
+      "started_at": "2026-06-28T09:25:04.392883+00:00",
+      "ended_at": null
+    },
+    {
+      "id": "07fb8e07-ee13-448c-9a77-24f86a5533b9",
+      "session_id": "b90d4de1-2857-4d88-a2f7-0641acc8026a",
+      "qwen_session_id": "0db56944-a4ff-4ed3-b1cd-a8004df4498c",
       "status": "done",
       "error": null,
-      "workspace": "C:\\Users\\kevin\\Java\\mock\\.qwen-workflow\\runs\\session-b90d4de1-2857-4d88-a2f7-0641acc8026a\\run-55cca923-79f5-47d5-bcf4-50101e5ac959",
+      "workspace": "C:\\Users\\kevin\\Java\\mock\\.qwen-workflow\\runs\\session-b90d4de1-2857-4d88-a2f7-0641acc8026a\\run-07fb8e07-ee13-448c-9a77-24f86a5533b9",
       "project_path": "C:\\Users\\kevin\\Java\\mock",
       "workflow_id": "security-scan",
       "workflow_folder": "security-scan",
@@ -41,10 +611,10 @@
           "type": "ai",
           "agent": "qwen",
           "status": "passed",
-          "started_at": "2026-06-28T09:07:24.001747+00:00",
-          "ended_at": "2026-06-28T09:07:36.806483+00:00",
+          "started_at": "2026-06-28T09:13:02.677071+00:00",
+          "ended_at": "2026-06-28T09:13:28.409743+00:00",
           "error": null,
-          "retry_count": 1,
+          "retry_count": 2,
           "config": {
             "id": "security-scan-generate-report",
             "key": "security_scan",
@@ -102,8 +672,8 @@
           "type": "python",
           "agent": "",
           "status": "passed",
-          "started_at": "2026-06-28T09:07:36.815272+00:00",
-          "ended_at": "2026-06-28T09:07:36.826013+00:00",
+          "started_at": "2026-06-28T09:13:28.419510+00:00",
+          "ended_at": "2026-06-28T09:13:28.430251+00:00",
           "error": null,
           "retry_count": 0,
           "config": {
@@ -157,59 +727,59 @@
       ],
       "artifacts": [
         {
-          "id": "55cca923-79f5-47d5-bcf4-50101e5ac959:requirement.md",
+          "id": "07fb8e07-ee13-448c-9a77-24f86a5533b9:requirement.md",
           "name": "requirement.md",
           "path": "requirement.md",
           "size": 15,
-          "updated_at": "2026-06-28T09:07:36.846519+00:00"
+          "updated_at": "2026-06-28T09:13:28.449780+00:00"
         },
         {
-          "id": "55cca923-79f5-47d5-bcf4-50101e5ac959:input|failure-feedback.md",
+          "id": "07fb8e07-ee13-448c-9a77-24f86a5533b9:input|failure-feedback.md",
           "name": "failure-feedback.md",
           "path": "input/failure-feedback.md",
-          "size": 345,
-          "updated_at": "2026-06-28T09:07:36.846519+00:00"
+          "size": 1405,
+          "updated_at": "2026-06-28T09:13:28.449780+00:00"
         },
         {
-          "id": "55cca923-79f5-47d5-bcf4-50101e5ac959:prompts|skill-context.md",
+          "id": "07fb8e07-ee13-448c-9a77-24f86a5533b9:prompts|skill-context.md",
           "name": "skill-context.md",
           "path": "prompts/skill-context.md",
           "size": 18917,
-          "updated_at": "2026-06-28T09:07:36.846519+00:00"
+          "updated_at": "2026-06-28T09:13:28.449780+00:00"
         },
         {
-          "id": "55cca923-79f5-47d5-bcf4-50101e5ac959:.workflow|run-log.md",
+          "id": "07fb8e07-ee13-448c-9a77-24f86a5533b9:.workflow|run-log.md",
           "name": "run-log.md",
           "path": ".workflow/run-log.md",
-          "size": 1794,
-          "updated_at": "2026-06-28T09:07:36.846519+00:00"
+          "size": 7091,
+          "updated_at": "2026-06-28T09:13:28.449780+00:00"
         },
         {
-          "id": "55cca923-79f5-47d5-bcf4-50101e5ac959:.workflow|state.json",
+          "id": "07fb8e07-ee13-448c-9a77-24f86a5533b9:.workflow|state.json",
           "name": "state.json",
           "path": ".workflow/state.json",
-          "size": 9959,
-          "updated_at": "2026-06-28T09:07:36.847495+00:00"
+          "size": 9961,
+          "updated_at": "2026-06-28T09:13:28.449780+00:00"
         },
         {
-          "id": "55cca923-79f5-47d5-bcf4-50101e5ac959:prompts|security_scan.md",
+          "id": "07fb8e07-ee13-448c-9a77-24f86a5533b9:prompts|security_scan.md",
           "name": "security_scan.md",
           "path": "prompts/security_scan.md",
-          "size": 16718,
-          "updated_at": "2026-06-28T09:07:36.847495+00:00"
+          "size": 19860,
+          "updated_at": "2026-06-28T09:13:28.449780+00:00"
         },
         {
-          "id": "55cca923-79f5-47d5-bcf4-50101e5ac959:output|security-report.md",
+          "id": "07fb8e07-ee13-448c-9a77-24f86a5533b9:output|security-report.md",
           "name": "security-report.md",
           "path": "output/security-report.md",
-          "size": 1588,
-          "updated_at": "2026-06-28T09:07:36.847495+00:00"
+          "size": 6537,
+          "updated_at": "2026-06-28T09:13:28.449780+00:00"
         }
       ],
-      "created_at": "2026-06-28T09:07:01.434997+00:00",
-      "updated_at": "2026-06-28T09:07:36.847495+00:00",
-      "started_at": "2026-06-28T09:07:01.458508+00:00",
-      "ended_at": "2026-06-28T09:07:36.835778+00:00"
+      "created_at": "2026-06-28T09:10:05.697798+00:00",
+      "updated_at": "2026-06-28T09:13:28.450757+00:00",
+      "started_at": "2026-06-28T09:10:05.719279+00:00",
+      "ended_at": "2026-06-28T09:13:28.439039+00:00"
     }
   ],
   "workflow_configs": []

@@ -2,7 +2,7 @@
   "id": "security-scan",
   "kind": "custom",
   "name": "Security Vulnerability Scan",
-  "description": "Scan project code for security vulnerabilities and generate a validated Markdown report with severity, confidence, and evidence.",
+  "description": "Multi-agent AI security scan: collect code context, run the same vulnerability candidate scan in multiple isolated Qwen sessions, combine/filter with Python, and generate a validated Markdown report with severity, confidence, evidence, and risk matrix.",
   "active": false,
   "protected": false,
   "deletable": true,
@@ -13,14 +13,227 @@
   "updated_at": "2026-06-28T00:00:00+00:00",
   "steps": [
     {
-      "id": "security-scan-generate-report",
-      "key": "security_scan",
-      "name": "Security Scan",
+      "id": "security-scan-collect-context",
+      "key": "collect_security_context",
+      "name": "Collect Security Context",
+      "type": "python",
+      "enabled": true,
+      "description": "Collect bounded source/config snippets into output/security-context.md so the AI scan has real code evidence instead of only file names.",
+      "command": "",
+      "templatePath": "prompts/collect_security_context.md",
+      "filename": "security-context.md",
+      "outputFile": "security-context.md",
+      "templateContent": "",
+      "sources": [],
+      "reviewMode": "none",
+      "reviewers": [],
+      "confidenceThreshold": 0.75,
+      "passKeywords": "PASS, APPROVED",
+      "failKeywords": "FAIL, BLOCKED",
+      "aggregatorFunction": "",
+      "maxRetries": 1,
+      "failAction": "same_step",
+      "retryFromStepKey": "collect_security_context",
+      "keepSameSession": true,
+      "injectFailureFeedback": true,
+      "stopAfterFailures": 1,
+      "pauseAfterStep": false,
+      "approvalRequired": false,
+      "approvalMessage": "",
+      "timeoutEnabled": false,
+      "timeoutMinutes": 0,
+      "allowInteraction": false,
+      "expectedFiles": [
+        "security-context.md"
+      ],
+      "validator": "collect_security_context",
+      "contextArtifacts": []
+    },
+    {
+      "id": "security-scan-agent-1",
+      "key": "security_scan_agent_1",
+      "name": "Security Candidate Agent 1",
       "type": "ai",
       "enabled": true,
-      "description": "Use Qwen to inspect the project context and produce output/security-report.md.",
+      "description": "Run the same vulnerability candidate scan in an isolated Qwen session and produce one candidate Markdown file.",
       "command": "",
-      "templatePath": "prompts/00_security_scan.md",
+      "templatePath": "prompts/00_security_candidate_scan.md",
+      "filename": "security-candidates-agent-1.md",
+      "outputFile": "security-candidates-agent-1.md",
+      "templateContent": "",
+      "sources": [
+        {
+          "type": "skill_path",
+          "value": "code-review-and-quality"
+        }
+      ],
+      "reviewMode": "none",
+      "reviewers": [],
+      "confidenceThreshold": 0.75,
+      "passKeywords": "PASS, APPROVED",
+      "failKeywords": "FAIL, BLOCKED",
+      "aggregatorFunction": "",
+      "maxRetries": 2,
+      "failAction": "same_step",
+      "retryFromStepKey": "security_scan_agent_1",
+      "keepSameSession": false,
+      "forceFreshQwenSession": true,
+      "injectFailureFeedback": true,
+      "stopAfterFailures": 2,
+      "pauseAfterStep": false,
+      "approvalRequired": false,
+      "approvalMessage": "",
+      "timeoutEnabled": false,
+      "timeoutMinutes": 0,
+      "allowInteraction": false,
+      "expectedFiles": [
+        "security-candidates-agent-1.md"
+      ],
+      "validator": "",
+      "contextArtifacts": [
+        "security-context.md"
+      ]
+    },
+    {
+      "id": "security-scan-agent-2",
+      "key": "security_scan_agent_2",
+      "name": "Security Candidate Agent 2",
+      "type": "ai",
+      "enabled": true,
+      "description": "Run the same vulnerability candidate scan in an isolated Qwen session and produce one candidate Markdown file.",
+      "command": "",
+      "templatePath": "prompts/00_security_candidate_scan.md",
+      "filename": "security-candidates-agent-2.md",
+      "outputFile": "security-candidates-agent-2.md",
+      "templateContent": "",
+      "sources": [
+        {
+          "type": "skill_path",
+          "value": "code-review-and-quality"
+        }
+      ],
+      "reviewMode": "none",
+      "reviewers": [],
+      "confidenceThreshold": 0.75,
+      "passKeywords": "PASS, APPROVED",
+      "failKeywords": "FAIL, BLOCKED",
+      "aggregatorFunction": "",
+      "maxRetries": 2,
+      "failAction": "same_step",
+      "retryFromStepKey": "security_scan_agent_2",
+      "keepSameSession": false,
+      "forceFreshQwenSession": true,
+      "injectFailureFeedback": true,
+      "stopAfterFailures": 2,
+      "pauseAfterStep": false,
+      "approvalRequired": false,
+      "approvalMessage": "",
+      "timeoutEnabled": false,
+      "timeoutMinutes": 0,
+      "allowInteraction": false,
+      "expectedFiles": [
+        "security-candidates-agent-2.md"
+      ],
+      "validator": "",
+      "contextArtifacts": [
+        "security-context.md"
+      ]
+    },
+    {
+      "id": "security-scan-agent-3",
+      "key": "security_scan_agent_3",
+      "name": "Security Candidate Agent 3",
+      "type": "ai",
+      "enabled": true,
+      "description": "Run the same vulnerability candidate scan in an isolated Qwen session and produce one candidate Markdown file.",
+      "command": "",
+      "templatePath": "prompts/00_security_candidate_scan.md",
+      "filename": "security-candidates-agent-3.md",
+      "outputFile": "security-candidates-agent-3.md",
+      "templateContent": "",
+      "sources": [
+        {
+          "type": "skill_path",
+          "value": "code-review-and-quality"
+        }
+      ],
+      "reviewMode": "none",
+      "reviewers": [],
+      "confidenceThreshold": 0.75,
+      "passKeywords": "PASS, APPROVED",
+      "failKeywords": "FAIL, BLOCKED",
+      "aggregatorFunction": "",
+      "maxRetries": 2,
+      "failAction": "same_step",
+      "retryFromStepKey": "security_scan_agent_3",
+      "keepSameSession": false,
+      "forceFreshQwenSession": true,
+      "injectFailureFeedback": true,
+      "stopAfterFailures": 2,
+      "pauseAfterStep": false,
+      "approvalRequired": false,
+      "approvalMessage": "",
+      "timeoutEnabled": false,
+      "timeoutMinutes": 0,
+      "allowInteraction": false,
+      "expectedFiles": [
+        "security-candidates-agent-3.md"
+      ],
+      "validator": "",
+      "contextArtifacts": [
+        "security-context.md"
+      ]
+    },
+    {
+      "id": "security-scan-combine-candidates",
+      "key": "combine_security_candidates",
+      "name": "Combine Security Candidates",
+      "type": "python",
+      "enabled": true,
+      "description": "Python deterministic merge: read all security-candidates-agent-*.md files, filter weak rows, deduplicate, and compute consensus confidence into output/security-findings.md.",
+      "command": "",
+      "templatePath": "prompts/combine_security_candidates.md",
+      "filename": "security-findings.md",
+      "outputFile": "security-findings.md",
+      "templateContent": "",
+      "sources": [],
+      "reviewMode": "none",
+      "reviewers": [],
+      "confidenceThreshold": 0.75,
+      "passKeywords": "PASS, APPROVED",
+      "failKeywords": "FAIL, BLOCKED",
+      "aggregatorFunction": "",
+      "maxRetries": 1,
+      "failAction": "same_step",
+      "retryFromStepKey": "combine_security_candidates",
+      "keepSameSession": true,
+      "injectFailureFeedback": true,
+      "stopAfterFailures": 1,
+      "pauseAfterStep": false,
+      "approvalRequired": false,
+      "approvalMessage": "",
+      "timeoutEnabled": false,
+      "timeoutMinutes": 0,
+      "allowInteraction": false,
+      "expectedFiles": [
+        "security-findings.md"
+      ],
+      "validator": "combine_security_candidates",
+      "contextArtifacts": [
+        "security-candidates-agent-1.md",
+        "security-candidates-agent-2.md",
+        "security-candidates-agent-3.md"
+      ]
+    },
+    {
+      "id": "security-scan-generate-report",
+      "key": "security_report",
+      "name": "Security Report",
+      "type": "ai",
+      "enabled": true,
+      "description": "Generate the final validated security-report.md only from Python-combined security-findings.md.",
+      "command": "",
+      "templatePath": "prompts/01_security_report.md",
       "filename": "security-report.md",
       "outputFile": "security-report.md",
       "templateContent": "",
@@ -38,7 +251,7 @@
       "aggregatorFunction": "",
       "maxRetries": 3,
       "failAction": "same_step",
-      "retryFromStepKey": "security_scan",
+      "retryFromStepKey": "security_report",
       "keepSameSession": true,
       "injectFailureFeedback": true,
       "stopAfterFailures": 2,
@@ -52,7 +265,13 @@
         "security-report.md"
       ],
       "validator": "",
-      "contextArtifacts": []
+      "contextArtifacts": [
+        "security-context.md",
+        "security-candidates-agent-1.md",
+        "security-candidates-agent-2.md",
+        "security-candidates-agent-3.md",
+        "security-findings.md"
+      ]
     },
     {
       "id": "security-scan-validate-report",
@@ -60,7 +279,7 @@
       "name": "Validate Security Report",
       "type": "python",
       "enabled": true,
-      "description": "Validate output/security-report.md structure, severity, confidence, evidence, and vulnerability finding format.",
+      "description": "Validate output/security-report.md structure, checklist, severity, confidence, evidence, and risk matrix row format.",
       "command": "",
       "templatePath": "prompts/validate_security_report.md",
       "filename": "security-report.md",
@@ -75,8 +294,8 @@
       "aggregatorFunction": "",
       "maxRetries": 2,
       "failAction": "selected_step",
-      "failActionStepKey": "security_scan",
-      "retryFromStepKey": "security_scan",
+      "failActionStepKey": "security_report",
+      "retryFromStepKey": "security_report",
       "keepSameSession": true,
       "injectFailureFeedback": true,
       "stopAfterFailures": 2,
@@ -91,7 +310,8 @@
       ],
       "validator": "validate_security_report",
       "contextArtifacts": [
-        "security-report.md"
+        "security-report.md",
+        "security-findings.md"
       ]
     }
   ]
