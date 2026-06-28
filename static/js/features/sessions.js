@@ -119,18 +119,23 @@ export function createSessions(ctx) {
       if (!state.activeSessionId) return;
       const session = state.sessions.find((item) => item.id === state.activeSessionId);
       if (!session) return;
-      if (!confirm(`Reset "${session.title || "Project"}" with a new Qwen session?`)) return;
-      const fresh = await api.request("/api/sessions", {
+      if (!confirm(`Reset "${session.title || "Project"}"? This clears messages, runs, retry state, artifacts, and starts a new Qwen session without creating a new project.`)) return;
+
+      ctx.features.eventStream.close();
+      const resetSession = await api.request(`/api/sessions/${state.activeSessionId}/reset`, {
         method: "POST",
-        body: JSON.stringify({
-          project_path: session.project_path,
-          title: session.title || "Project",
-        }),
+        body: JSON.stringify({}),
       });
+
       state.activeRunId = null;
       state.activeRunStatus = null;
-      state.sessions.unshift(fresh);
-      await sessions.select(fresh.id);
+      state.waitingForInput = false;
+      state.lastAskText = "";
+      state.currentArtifacts = [];
+      state.selectedStepKey = null;
+      state.selectedStepArtifactId = null;
+      state.sessions = state.sessions.map((item) => (item.id === resetSession.id ? resetSession : item));
+      await sessions.select(resetSession.id);
     },
   };
 

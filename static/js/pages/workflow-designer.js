@@ -1,31 +1,14 @@
+import {
+  BuiltInPromptParams,
+  FailActions,
+  ReviewModes,
+  SourceTypes,
+  StepTypes,
+  TemplatePresets,
+} from "./workflow-designer-constants.js?v=20260628-reset1";
+
 const STORAGE_KEY = "qwenWorkflow.workflowDesigner.ui.v1";
 const WORKFLOW_API = "/api/workflows";
-
-const StepTypes = [
-  ["ai", "AI Prompt"],
-  ["validation", "Validation Function"],
-  ["review", "Review"],
-  ["gate", "Human Gate"],
-  ["command", "Command Prompt"],
-  ["python", "Python Function"],
-  ["manual", "Manual Approval"],
-];
-
-const SourceTypes = [
-  ["command", "Command"],
-  ["skill_path", "Skill Path"],
-  ["prompt_file", "Prompt File"],
-  ["inline_prompt", "Inline Prompt"],
-  ["context_file", "Context File"],
-  ["artifact", "Previous Artifact"],
-];
-
-const ReviewModes = [
-  ["none", "No AI Review"],
-  ["current_session", "Current Session Review"],
-  ["new_agent", "New Agent Review"],
-  ["multi_agent", "Multi-Agent Review"],
-];
 
 function functionOptions(groupName, fallbackItems, selected) {
   const items = availableWorkflowFunctions[groupName] || [];
@@ -67,35 +50,6 @@ function workflowFunctionCounts() {
   };
 }
 
-const FailActions = [
-  ["same_step", "Retry same step"],
-  ["selected_step", "Retry from selected step"],
-  ["previous_step", "Retry from previous step"],
-  ["stop", "Stop immediately"],
-];
-
-const BuiltInPromptParams = [
-  { key: "requirement", label: "Requirement", description: "Main user input from the runner composer.", sample: "Create a controllable agent workflow UI." },
-  { key: "project_path", label: "Project Path", description: "Current project folder path.", sample: "C:\\Users\\kevin\\sort" },
-  { key: "workspace_path", label: "Workspace Path", description: "Workflow run workspace path.", sample: "runs/workflow-001" },
-  { key: "project_overview", label: "Project Overview", description: "Auto-generated overview of the project files and folders.", sample: "Project files:\n- app/main.py\n- static/js/pages/workflow-designer.js" },
-  { key: "architecture", label: "Architecture", description: "Content of architecture.md from the selected project path.", sample: "# Architecture\nFastAPI backend with static frontend." },
-  { key: "spec", label: "Spec", description: "Rendered content from output/spec.md.", sample: "## Goal\nBuild the requested workflow feature." },
-  { key: "spec_review", label: "Spec Review", description: "Rendered content from output/spec-review.md.", sample: "Status: PASS" },
-  { key: "todo", label: "Todo", description: "Rendered content from output/todo.md.", sample: "## Todo List\n- TODO-001 Implement UI." },
-  { key: "todo_review", label: "Todo Review", description: "Rendered content from output/todo-review.md.", sample: "Status: PASS" },
-  { key: "test_plan", label: "Test Plan", description: "Rendered content from output/test-plan.md.", sample: "## Test Plan\n- TEST-001 Verify build output." },
-  { key: "test_result", label: "Test Result", description: "Rendered content from output/test-result.md.", sample: "Status: FAIL\nAssertionError: expected file missing." },
-  { key: "build_result", label: "Build Result", description: "Rendered content from output/build-result.md.", sample: "FILE: app/main.py\nCONTENT:\n..." },
-  { key: "final_review", label: "Final Review", description: "Rendered content from output/final-review.md.", sample: "Status: PASS" },
-  { key: "raw_spec", label: "Raw Spec", description: "Alias of output/spec.md, kept for older templates.", sample: "## Goal\nBuild the requested workflow feature." },
-  { key: "answers", label: "Answers", description: "User answers collected from previous workflow interaction.", sample: "Use Python and FastAPI." },
-  { key: "guidance", label: "Guidance", description: "User guidance added during the workflow.", sample: "Keep the implementation minimal and maintainable." },
-  { key: "last_error", label: "Last Error", description: "Latest validation, review, timeout, or runner error.", sample: "Missing Acceptance Criteria section." },
-  { key: "failure_feedback", label: "Failure Feedback", description: "Failure feedback accumulated for the retry target step.", sample: "Retry 1/2 from build: tests failed because app/main.py was not updated." },
-  { key: "step_output", label: "Step Output", description: "Current step output text when available.", sample: "Step completed successfully." },
-];
-
 function availablePromptParams() {
   const merged = [];
   const seen = new Set();
@@ -114,84 +68,6 @@ function availablePromptParams() {
   (availableWorkflowFunctions.promptParams || []).forEach(add);
   return merged;
 }
-
-const TemplatePresets = {
-  generate_spec: {
-    path: "prompts/01_spec.md",
-    filename: "spec.md",
-    content: `你是 Qwen CLI，在這個系統中扮演「可重現的產物撰寫器」。請根據下方 Requirement 產生產品規格文件。
-
-FILENAME: spec.md
-
-Project Context:
-- Project Path: {{project_path}}
-- Workflow Workspace: {{workspace_path}}
-
-你的完整回覆會被原封不動存成 spec.md。
-
-硬性輸出契約：
-- 只能輸出 Markdown。
-- 不要輸出 JSON。
-- 不要使用 \`\`\` code fence。
-- 不要解釋你正在做什麼。
-- 忽略此 Qwen session 先前所有對話，只能使用下方 Requirement。
-- 內容必須只根據 Requirement。
-
-Requirement:
-{{requirement}}`,
-  },
-  review_spec: {
-    path: "prompts/02_review_spec.md",
-    filename: "spec-review.md",
-    content: `你是 Qwen CLI，在這個系統中扮演規格審查者。請審查 spec.md 是否符合 Requirement。
-
-FILENAME: spec-review.md
-
-Project Context:
-- Project Path: {{project_path}}
-- Workflow Workspace: {{workspace_path}}
-
-你的完整回覆會被原封不動存成 spec-review.md。
-
-輸出規則：
-- 只能輸出 Markdown。
-- 第一個非標題狀態行必須完全是：
-Status: PASS
-
-如果 spec 不完整或不符合 Requirement，請使用：
-Status: FAIL
-
-Requirement:
-{{requirement}}
-
-Spec:
-{{spec}}`,
-  },
-  generate_todo: {
-    path: "prompts/03_todo.md",
-    filename: "todo.md",
-    content: `你是 Qwen CLI，在這個系統中扮演「可重現的實作計畫撰寫器」。請根據 Requirement 與 Spec 產生 todo plan。
-
-FILENAME: todo.md
-
-Project Context:
-- Project Path: {{project_path}}
-- Workflow Workspace: {{workspace_path}}
-
-你的完整回覆會被原封不動存成 todo.md。
-
-硬性輸出契約：
-- 只能輸出 Markdown。
-- 不要輸出 JSON。
-- 不要使用 \`\`\` code fence。
-
-Requirement:
-{{requirement}}
-
-Spec:
-{{spec}}`,
-  },
-};
 
 let systemWorkflow = Object.freeze({
   id: "system-controlled-qwen",
@@ -414,6 +290,52 @@ function handleDocumentKeydown(event) {
   }
 }
 
+const DesignerActionHandlers = Object.freeze({
+  "delete-workflow": (action) => deleteWorkflow(action.dataset.workflowId),
+  "confirm-delete-workflow": (action) => performDeleteWorkflow(action.dataset.workflowId),
+  "delete-step": (action) => deleteStep(action.dataset.stepId),
+  "confirm-delete-step": (action) => performDeleteStep(action.dataset.stepId),
+  "duplicate-step": (action) => duplicateStep(action.dataset.stepId),
+  "move-step-up": (action) => moveStep(action.dataset.stepId, -1),
+  "move-step-down": (action) => moveStep(action.dataset.stepId, 1),
+  "set-step-density": (action) => setStepDensity(action.dataset.density),
+  "toggle-step-actions": () => toggleStepActionMenu(),
+  "clear-step-filter": () => clearStepFilter(),
+  "open-step-editor": (action) => openStepEditor(action.dataset.stepId),
+  "step-editor-prev": () => switchStepEditor(-1),
+  "step-editor-next": () => switchStepEditor(1),
+  "close-step-editor": () => closeStepEditor(),
+  "open-template-editor": () => openTemplateEditor(),
+  "save-template-editor": () => saveTemplateEditor(),
+  "close-template-editor": () => requestCloseTemplateEditor(),
+  "confirm-close-template-editor": () => closeTemplateEditor({ force: true }),
+  "confirm-load-template-preset": (action) => performLoadSelectedTemplatePreset(action.dataset.templatePath || ""),
+  "insert-param": (action) => insertTemplateParam(action.dataset.param),
+  "load-template-preset": () => loadSelectedTemplatePreset(),
+  "preview-prompt": () => openPromptPreview(),
+  "close-preview": () => closePromptPreview(),
+  "add-source": () => addSource(),
+  "remove-source": (action) => removeArrayItem("sources", Number(action.dataset.index)),
+  "add-reviewer": () => addReviewer(),
+  "remove-reviewer": (action) => removeArrayItem("reviewers", Number(action.dataset.index)),
+  "add-expected-file": () => addExpectedFile(),
+  "remove-expected-file": (action) => removeArrayItem("expectedFiles", Number(action.dataset.index)),
+  "open-import": () => openImportWorkflow(),
+  "validate-import": () => validateImportWorkflowFromUi(),
+  "perform-import": () => performImportWorkflow(),
+  "close-import": () => closeImportWorkflow(),
+  "close-export": () => closeExport(),
+  "confirm-discard-workflow-changes": () => confirmDiscardWorkflowChanges(),
+  "close-confirm": () => closeConfirm(),
+});
+
+function dispatchDesignerAction(action) {
+  const handler = DesignerActionHandlers[action.dataset.designerAction];
+  if (!handler) return false;
+  handler(action);
+  return true;
+}
+
 function handleDocumentClick(event) {
   const navLink = event.target.closest("a.designer-nav-link");
   if (navLink && isWorkflowDirty()) {
@@ -444,42 +366,7 @@ function handleDocumentClick(event) {
       return;
     }
     closeStepContextMenu();
-    if (name === "delete-workflow") deleteWorkflow(action.dataset.workflowId);
-    if (name === "confirm-delete-workflow") performDeleteWorkflow(action.dataset.workflowId);
-    if (name === "delete-step") deleteStep(action.dataset.stepId);
-    if (name === "confirm-delete-step") performDeleteStep(action.dataset.stepId);
-    if (name === "duplicate-step") duplicateStep(action.dataset.stepId);
-    if (name === "move-step-up") moveStep(action.dataset.stepId, -1);
-    if (name === "move-step-down") moveStep(action.dataset.stepId, 1);
-    if (name === "set-step-density") setStepDensity(action.dataset.density);
-    if (name === "toggle-step-actions") toggleStepActionMenu();
-    if (name === "clear-step-filter") clearStepFilter();
-    if (name === "open-step-editor") openStepEditor(action.dataset.stepId);
-    if (name === "step-editor-prev") switchStepEditor(-1);
-    if (name === "step-editor-next") switchStepEditor(1);
-    if (name === "close-step-editor") closeStepEditor();
-    if (name === "open-template-editor") openTemplateEditor();
-    if (name === "save-template-editor") saveTemplateEditor();
-    if (name === "close-template-editor") requestCloseTemplateEditor();
-    if (name === "confirm-close-template-editor") closeTemplateEditor({ force: true });
-    if (name === "confirm-load-template-preset") performLoadSelectedTemplatePreset(action.dataset.templatePath || "");
-    if (name === "insert-param") insertTemplateParam(action.dataset.param);
-    if (name === "load-template-preset") loadSelectedTemplatePreset();
-    if (name === "preview-prompt") openPromptPreview();
-    if (name === "close-preview") closePromptPreview();
-    if (name === "add-source") addSource();
-    if (name === "remove-source") removeArrayItem("sources", Number(action.dataset.index));
-    if (name === "add-reviewer") addReviewer();
-    if (name === "remove-reviewer") removeArrayItem("reviewers", Number(action.dataset.index));
-    if (name === "add-expected-file") addExpectedFile();
-    if (name === "remove-expected-file") removeArrayItem("expectedFiles", Number(action.dataset.index));
-    if (name === "open-import") openImportWorkflow();
-    if (name === "validate-import") validateImportWorkflowFromUi();
-    if (name === "perform-import") performImportWorkflow();
-    if (name === "close-import") closeImportWorkflow();
-    if (name === "close-export") closeExport();
-    if (name === "confirm-discard-workflow-changes") confirmDiscardWorkflowChanges();
-    if (name === "close-confirm") closeConfirm();
+    dispatchDesignerAction(action);
     return;
   }
 
@@ -645,46 +532,6 @@ function renderWorkflowLabels() {
   const readonly = isReadonly();
 
   setText("designerActiveWorkflowName", wf.name);
-  setText("designerActiveWorkflowMeta", readonly ? "System · read only · duplicate to edit" : `${wf.steps.length} steps · editable API workflow · ${wf.folderName || "new folder"}`);
-  setText("designerEditableBadge", readonly ? "READ ONLY" : "EDITABLE");
-  el("designerEditableBadge")?.classList.toggle("passed", !readonly);
-  el("designerEditableBadge")?.classList.toggle("cancelled", readonly);
-  const input = el("workflowNameInput");
-  if (input && input.value !== wf.name) input.value = wf.name;
-  if (input) input.disabled = readonly;
-  setText("designerWorkflowLockHint", readonly ? "Read only" : "Editable");
-  el("designerWorkflowLockHint")?.classList.toggle("locked", readonly);
-
-  const deleteDisabled = readonly ? "disabled" : "";
-  const saveDisabled = readonly ? "disabled" : "";
-  const resetDisabled = readonly ? "disabled" : "";
-  if (el("designerSaveDraft")) el("designerSaveDraft").disabled = readonly;
-  if (el("designerResetDraft")) el("designerResetDraft").disabled = readonly;
-  const actions = el("designerActiveWorkflowMeta");
-  if (actions) actions.dataset.deleteDisabled = deleteDisabled || saveDisabled || resetDisabled;
-  if (el("designerDuplicateCustomWorkflow")) el("designerDuplicateCustomWorkflow").disabled = readonly;
-  if (el("designerDeleteWorkflow")) el("designerDeleteWorkflow").disabled = readonly;
-}
-
-function renderSidebarClean() {
-  const customList = el("designerCustomList");
-  if (!customList) return;
-
-  el("designerSystemWorkflow")?.classList.toggle("active", state.selectedWorkflowId === systemWorkflow.id);
-  customList.innerHTML = state.workflows.map((workflow) => `
-    <div class="designer-workflow-pill ${workflow.id === state.selectedWorkflowId ? "active" : ""}" data-workflow-id="${escapeHtml(workflow.id)}">
-      <strong>${escapeHtml(workflow.name)}</strong>
-      <span>${workflow.steps.length} steps · ${workflow.active ? "active" : "draft"}</span>
-    </div>
-  `).join("");
-}
-
-function renderWorkflowLabelsClean() {
-  const wf = getSelectedWorkflow();
-  if (!wf) return;
-  const readonly = isReadonly();
-
-  setText("designerActiveWorkflowName", wf.name);
   setText(
     "designerActiveWorkflowMeta",
     readonly
@@ -704,87 +551,6 @@ function renderWorkflowLabelsClean() {
   if (el("designerResetDraft")) el("designerResetDraft").disabled = readonly;
   if (el("designerDuplicateCustomWorkflow")) el("designerDuplicateCustomWorkflow").disabled = readonly;
   if (el("designerDeleteWorkflow")) el("designerDeleteWorkflow").disabled = readonly;
-}
-
-function renderStepListClean() {
-  const wf = getSelectedWorkflow();
-  const list = el("designerStepList");
-  if (!wf || !list) return;
-  const readonly = isReadonly();
-  syncStepFilterControls();
-
-  if (!wf.steps.length) {
-    setText("designerStepCount", "0 steps");
-    list.innerHTML = `<div class="designer-empty-state">No steps yet. Add a step to start designing.</div>`;
-    return;
-  }
-
-  const visibleSteps = getVisibleSteps(wf);
-  setText(
-    "designerStepCount",
-    visibleSteps.length === wf.steps.length
-      ? `${wf.steps.length} steps`
-      : `${visibleSteps.length} / ${wf.steps.length} steps`
-  );
-
-  if (!visibleSteps.length) {
-    list.innerHTML = `
-      <div class="designer-empty-state designer-filter-empty">
-        <strong>No matching steps</strong>
-        <span>Try another keyword or type filter.</span>
-        <button type="button" data-designer-action="clear-step-filter">Clear Filter</button>
-      </div>
-    `;
-    return;
-  }
-
-  list.classList.toggle("designer-step-density-dense", state.stepDensity === "dense");
-  list.classList.toggle("designer-step-density-compact", state.stepDensity === "compact");
-  list.classList.toggle("designer-step-density-detail", state.stepDensity === "detail");
-
-  list.innerHTML = visibleSteps.map(({ step, index }) => {
-    const disabled = readonly ? "disabled" : "";
-    const badges = [
-      step.timeoutEnabled ? `<span class="badge running">${step.timeoutMinutes || 0}m</span>` : "",
-      step.pauseAfterStep ? `<span class="badge waiting_input">human</span>` : "",
-      step.validator ? `<span class="badge passed">${escapeHtml(functionMeta("validators", step.validator)?.label || step.validator)}</span>` : "",
-      step.reviewMode !== "none" ? `<span class="badge passed">${escapeHtml(formatReviewMode(step.reviewMode))}</span>` : "",
-    ].filter(Boolean).join("");
-    const detailItems = [
-      ["Key", step.key || "-"],
-      ["Template", step.templatePath || "-"],
-      ["File", step.filename || normalizeFilename(step.outputFile || "-")],
-      ["Retry", `${step.maxRetries ?? 0}${step.retryFromStepKey ? ` → ${step.retryFromStepKey}` : ""}`],
-      ["Agent", step.agent || step.provider || "default"],
-      ["Expected", (step.expectedFiles || []).length ? step.expectedFiles.join(", ") : "-"],
-    ];
-
-    return `
-      <article class="designer-step-card designer-step-card-compact designer-step-card-${escapeHtml(state.stepDensity)} ${escapeHtml(step.type)}-card ${step.id === state.selectedStepId ? "active" : ""} ${step.enabled ? "" : "disabled-step"}" data-step-id="${escapeHtml(step.id)}" draggable="${readonly ? "false" : "true"}" tabindex="0" title="Click to select. Double-click to edit ${escapeHtml(step.name)}">
-        <span class="designer-step-card-main">
-          <span class="designer-step-primary">
-            <span class="designer-step-index">${index + 1}</span>
-            <span class="designer-step-card-title">
-              <strong>${escapeHtml(step.name)}</strong>
-            </span>
-            <span class="designer-step-type ${escapeHtml(step.type)}">${escapeHtml(formatStepType(step.type))}</span>
-          </span>
-          <button type="button" class="designer-step-card-menu" data-designer-action="open-step-context-menu" data-step-id="${escapeHtml(step.id)}" title="Step actions" aria-label="Step actions for ${escapeAttr(step.name || "step")}">⋮</button>
-        </span>
-        <span class="designer-step-card-sub">
-          <span class="designer-step-summary">${escapeHtml(summarizeStep(step))}</span>
-          ${badges ? `<span class="designer-chip-row designer-step-badges">${badges}</span>` : ""}
-        </span>
-        ${state.stepDensity === "detail" ? `
-          <dl class="designer-step-detail-grid">
-            ${detailItems.map(([label, value]) => `
-              <div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(String(value))}</dd></div>
-            `).join("")}
-          </dl>
-        ` : ""}
-      </article>
-    `;
-  }).join("") + renderStepFloatingActions(wf);
 }
 
 function renderStepFloatingActions(wf) {
@@ -1042,10 +808,6 @@ function handleStepDragEnd() {
 }
 
 
-renderSidebar = renderSidebarClean;
-renderWorkflowLabels = renderWorkflowLabelsClean;
-renderStepList = renderStepListClean;
-
 function renderWorkflowEditor() {
   const wf = getSelectedWorkflow();
   if (!wf) return;
@@ -1066,29 +828,80 @@ function renderStepList() {
   const list = el("designerStepList");
   if (!wf || !list) return;
   const readonly = isReadonly();
+  syncStepFilterControls();
 
   if (!wf.steps.length) {
+    setText("designerStepCount", "0 steps");
     list.innerHTML = `<div class="designer-empty-state">No steps yet. Add a step to start designing.</div>`;
     return;
   }
 
-  list.innerHTML = wf.steps.map((step, index) => `
-    <button class="designer-step-card ${step.id === state.selectedStepId ? "active" : ""} ${step.enabled ? "" : "disabled-step"}" data-step-id="${escapeHtml(step.id)}">
-      <span class="designer-step-card-title">
-        <strong>${index + 1}. ${escapeHtml(step.name)}</strong>
-        <span class="designer-step-type ${escapeHtml(step.type)}">${escapeHtml(formatStepType(step.type))}</span>
-      </span>
-      <span class="designer-step-meta">
-        ${step.command ? escapeHtml(step.command) + " · " : ""}${escapeHtml(step.templatePath || "no template")} · retry ${step.maxRetries} · ${step.allowInteraction ? "interactive" : "auto"}
-      </span>
-      <span class="designer-chip-row">
-        ${step.timeoutEnabled ? `<span class="badge running">${step.timeoutMinutes || 0}m timeout</span>` : `<span class="badge">no timeout</span>`}
-        ${step.pauseAfterStep ? `<span class="badge waiting_input">human gate</span>` : ""}
-        ${step.reviewMode !== "none" ? `<span class="badge passed">${escapeHtml(formatReviewMode(step.reviewMode))}</span>` : ""}
-      </span>
-      ${readonly ? "" : `<span class="designer-step-meta">Click to edit. Use Settings panel for actions.</span>`}
-    </button>
-  `).join("");
+  const visibleSteps = getVisibleSteps(wf);
+  setText(
+    "designerStepCount",
+    visibleSteps.length === wf.steps.length
+      ? `${wf.steps.length} steps`
+      : `${visibleSteps.length} / ${wf.steps.length} steps`
+  );
+
+  if (!visibleSteps.length) {
+    list.innerHTML = `
+      <div class="designer-empty-state designer-filter-empty">
+        <strong>No matching steps</strong>
+        <span>Try another keyword or type filter.</span>
+        <button type="button" data-designer-action="clear-step-filter">Clear Filter</button>
+      </div>
+    `;
+    return;
+  }
+
+  list.classList.toggle("designer-step-density-dense", state.stepDensity === "dense");
+  list.classList.toggle("designer-step-density-compact", state.stepDensity === "compact");
+  list.classList.toggle("designer-step-density-detail", state.stepDensity === "detail");
+
+  list.innerHTML = visibleSteps.map(({ step, index }) => {
+    const disabled = readonly ? "disabled" : "";
+    const badges = [
+      step.timeoutEnabled ? `<span class="badge running">${step.timeoutMinutes || 0}m</span>` : "",
+      step.pauseAfterStep ? `<span class="badge waiting_input">human</span>` : "",
+      step.validator ? `<span class="badge passed">${escapeHtml(functionMeta("validators", step.validator)?.label || step.validator)}</span>` : "",
+      step.reviewMode !== "none" ? `<span class="badge passed">${escapeHtml(formatReviewMode(step.reviewMode))}</span>` : "",
+    ].filter(Boolean).join("");
+    const detailItems = [
+      ["Key", step.key || "-"],
+      ["Template", step.templatePath || "-"],
+      ["File", step.filename || normalizeFilename(step.outputFile || "-")],
+      ["Retry", `${step.maxRetries ?? 0}${step.retryFromStepKey ? ` → ${step.retryFromStepKey}` : ""}`],
+      ["Agent", step.agent || step.provider || "default"],
+      ["Expected", (step.expectedFiles || []).length ? step.expectedFiles.join(", ") : "-"],
+    ];
+
+    return `
+      <article class="designer-step-card designer-step-card-compact designer-step-card-${escapeHtml(state.stepDensity)} ${escapeHtml(step.type)}-card ${step.id === state.selectedStepId ? "active" : ""} ${step.enabled ? "" : "disabled-step"}" data-step-id="${escapeHtml(step.id)}" draggable="${readonly ? "false" : "true"}" tabindex="0" title="Click to select. Double-click to edit ${escapeHtml(step.name)}">
+        <span class="designer-step-card-main">
+          <span class="designer-step-primary">
+            <span class="designer-step-index">${index + 1}</span>
+            <span class="designer-step-card-title">
+              <strong>${escapeHtml(step.name)}</strong>
+            </span>
+            <span class="designer-step-type ${escapeHtml(step.type)}">${escapeHtml(formatStepType(step.type))}</span>
+          </span>
+          <button type="button" class="designer-step-card-menu" data-designer-action="open-step-context-menu" data-step-id="${escapeHtml(step.id)}" title="Step actions" aria-label="Step actions for ${escapeAttr(step.name || "step")}">⋮</button>
+        </span>
+        <span class="designer-step-card-sub">
+          <span class="designer-step-summary">${escapeHtml(summarizeStep(step))}</span>
+          ${badges ? `<span class="designer-chip-row designer-step-badges">${badges}</span>` : ""}
+        </span>
+        ${state.stepDensity === "detail" ? `
+          <dl class="designer-step-detail-grid">
+            ${detailItems.map(([label, value]) => `
+              <div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(String(value))}</dd></div>
+            `).join("")}
+          </dl>
+        ` : ""}
+      </article>
+    `;
+  }).join("") + renderStepFloatingActions(wf);
 }
 
 function renderCanvas() {

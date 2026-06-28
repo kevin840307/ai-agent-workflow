@@ -23,6 +23,11 @@ async def delete_session(session_id: str):
     return await project_service.delete_project(session_id)
 
 
+@router.post("/api/sessions/{session_id}/reset")
+async def reset_session(session_id: str):
+    return await project_service.reset_project(session_id)
+
+
 @router.get("/api/sessions/{session_id}/messages")
 async def list_messages(session_id: str):
     return await project_service.list_messages(session_id)

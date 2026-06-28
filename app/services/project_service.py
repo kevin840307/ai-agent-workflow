@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import shutil
 import uuid
 from pathlib import Path
@@ -11,6 +12,48 @@ from app.repositories import store_repository
 
 
 CHAT_HISTORY_LIMIT = 16
+
+
+def _session_run_workspaces(data: dict, session_id: str) -> list[Path]:
+    return [
+        Path(run["workspace"]).resolve()
+        for run in data.get("runs", [])
+        if run.get("session_id") == session_id and run.get("workspace")
+    ]
+
+
+def _remove_session_workspaces(session_id: str, run_workspaces: list[Path]) -> None:
+    session_workspace = (runtime.WORKSPACES_DIR / f"session-{session_id}").resolve()
+    workspace_root = runtime.WORKSPACES_DIR.resolve()
+
+    if session_workspace.exists():
+        if workspace_root not in session_workspace.parents:
+            raise HTTPException(status_code=400, detail="Invalid workspace path")
+        shutil.rmtree(session_workspace)
+
+    for run_workspace in run_workspaces:
+        if not run_workspace.exists() or run_workspace == session_workspace:
+            continue
+        parts = set(run_workspace.parts)
+        if ".qwen-workflow" not in parts or "runs" not in parts:
+            continue
+        shutil.rmtree(run_workspace)
+
+
+async def _cancel_session_runs(run_ids: list[str]) -> None:
+    for run_id in run_ids:
+        proc = runtime.running_processes.get(run_id)
+        if proc and proc.returncode is None:
+            proc.terminate()
+
+    for run_id in run_ids:
+        task = runtime.running_tasks.get(run_id)
+        if task and not task.done():
+            task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
 
 
 async def create_project(body: runtime.CreateSessionRequest | None = None) -> dict:
@@ -34,14 +77,10 @@ async def list_projects() -> list[dict]:
 
 
 async def delete_project(session_id: str) -> dict:
-    session_workspace = (runtime.WORKSPACES_DIR / f"session-{session_id}").resolve()
-    workspace_root = runtime.WORKSPACES_DIR.resolve()
     data = await store_repository.read()
-    run_workspaces = [
-        Path(run["workspace"]).resolve()
-        for run in data.get("runs", [])
-        if run.get("session_id") == session_id and run.get("workspace")
-    ]
+    run_ids = [run["id"] for run in data.get("runs", []) if run.get("session_id") == session_id]
+    run_workspaces = _session_run_workspaces(data, session_id)
+    await _cancel_session_runs(run_ids)
 
     def remove(data):
         if not any(session["id"] == session_id for session in data["sessions"]):
@@ -52,17 +91,34 @@ async def delete_project(session_id: str) -> dict:
         return {"ok": True}
 
     result = await store_repository.mutate(remove)
-    if session_workspace.exists():
-        if workspace_root not in session_workspace.parents:
-            raise HTTPException(status_code=400, detail="Invalid workspace path")
-        shutil.rmtree(session_workspace)
-    for run_workspace in run_workspaces:
-        if not run_workspace.exists() or run_workspace == session_workspace:
-            continue
-        parts = set(run_workspace.parts)
-        if ".qwen-workflow" not in parts or "runs" not in parts:
-            continue
-        shutil.rmtree(run_workspace)
+    _remove_session_workspaces(session_id, run_workspaces)
+    return result
+
+
+async def reset_project(session_id: str) -> dict:
+    data = await store_repository.read()
+    session = next((item for item in data["sessions"] if item["id"] == session_id), None)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    run_ids = [run["id"] for run in data.get("runs", []) if run.get("session_id") == session_id]
+    run_workspaces = _session_run_workspaces(data, session_id)
+    await _cancel_session_runs(run_ids)
+
+    new_qwen_session_id = str(uuid.uuid4())
+
+    def reset(data):
+        target = next((item for item in data["sessions"] if item["id"] == session_id), None)
+        if not target:
+            raise HTTPException(status_code=404, detail="Session not found")
+        target["qwen_session_id"] = new_qwen_session_id
+        target["updated_at"] = runtime.utc_now()
+        data["messages"] = [message for message in data["messages"] if message["session_id"] != session_id]
+        data["runs"] = [run for run in data["runs"] if run["session_id"] != session_id]
+        return dict(target)
+
+    result = await store_repository.mutate(reset)
+    _remove_session_workspaces(session_id, run_workspaces)
     return result
 
 

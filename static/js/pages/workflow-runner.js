@@ -12,7 +12,7 @@ import { createMessages } from "../features/messages.js?v=20260628-artifacts3";
 import { createModal } from "../features/modal.js?v=20260628-artifacts3";
 import { createRequirements } from "../features/requirements.js?v=20260628-artifacts3";
 import { createRuns } from "../features/runs.js?v=20260628-artifacts3";
-import { createSessions } from "../features/sessions.js?v=20260628-artifacts3";
+import { createSessions } from "../features/sessions.js?v=20260628-reset1";
 import { createWorkflows } from "../features/workflows.js?v=20260628-index-nav-dropdown1";
 
 function registerWorkflowRunnerFeatures(ctx) {
