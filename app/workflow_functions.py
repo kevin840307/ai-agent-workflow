@@ -420,36 +420,82 @@ def _optional_field_in_block(block: str, field: str) -> str:
     return match.group(1).strip() if match else ""
 
 
+def _split_markdown_table_line(line: str) -> list[str]:
+    """Split a Markdown table line while tolerating escaped pipes and inline code pipes.
+
+    AI reports often include code snippets like `a | b` in Evidence cells. A raw
+    split("|") treats those snippets as extra columns and causes noisy retries.
+    This parser keeps pipes inside backtick code spans or escaped as \\| inside
+    the current cell.
+    """
+    stripped = line.strip()
+    if stripped.startswith("|"):
+        stripped = stripped[1:]
+    if stripped.endswith("|"):
+        stripped = stripped[:-1]
+
+    cells: list[str] = []
+    current: list[str] = []
+    in_code = False
+    escaped = False
+    for char in stripped:
+        if escaped:
+            current.append(char)
+            escaped = False
+            continue
+        if char == "\\":
+            escaped = True
+            current.append(char)
+            continue
+        if char == "`":
+            in_code = not in_code
+            current.append(char)
+            continue
+        if char == "|" and not in_code:
+            cells.append("".join(current).strip())
+            current = []
+            continue
+        current.append(char)
+    cells.append("".join(current).strip())
+    return cells
+
+
 def _markdown_table_rows(section_text: str) -> list[list[str]]:
     rows: list[list[str]] = []
     for line in section_text.splitlines():
         stripped = line.strip()
         if not stripped.startswith("|") or "|" not in stripped[1:]:
             continue
-        cells = [cell.strip() for cell in stripped.strip("|").split("|")]
+        cells = _split_markdown_table_line(stripped)
         if cells and all(cell.replace("-", "").replace(":", "").strip() == "" for cell in cells):
             continue
         rows.append(cells)
     return rows
 
 
+def _coerce_markdown_table_row(row: list[str], expected_len: int) -> list[str]:
+    if len(row) == expected_len:
+        return row
+    if len(row) > expected_len:
+        # Keep the schema stable and join accidental extra cells into the last
+        # free-text column. This commonly happens when Evidence/Notes contains
+        # an unescaped pipe from source code or markdown.
+        return row[: expected_len - 1] + [" | ".join(row[expected_len - 1:]).strip()]
+    return row + [""] * (expected_len - len(row))
+
+
 def _require_markdown_table(section_name: str, section_text: str, expected_header: list[str], artifact: str) -> list[list[str]]:
     rows = _markdown_table_rows(section_text)
     if not rows:
         raise WorkflowFunctionError(f"{artifact} {section_name} must contain a Markdown table.")
-    header = rows[0]
+    header = _coerce_markdown_table_row(rows[0], len(expected_header))
     if header != expected_header:
         raise WorkflowFunctionError(
             f"{artifact} {section_name} table must use columns: {', '.join(expected_header)}."
         )
-    data_rows = rows[1:]
+    data_rows = [_coerce_markdown_table_row(row, len(expected_header)) for row in rows[1:]]
     if not data_rows:
         raise WorkflowFunctionError(f"{artifact} {section_name} table must contain at least one data row.")
-    for index, row in enumerate(data_rows, start=1):
-        if len(row) != len(expected_header):
-            raise WorkflowFunctionError(
-                f"{artifact} {section_name} row {index} must have {len(expected_header)} columns, got {len(row)}."
-            )
     return data_rows
 
 
@@ -539,6 +585,254 @@ def _security_require_confidence_score(value: str, artifact: str, target: str) -
         )
     return score
 
+SECURITY_VALID_STATUSES = {"Confirmed", "Likely", "Needs Review", "Hardening", "False Positive", "Not Applicable", "No Finding"}
+SECURITY_STATUS_ORDER = ["False Positive", "Not Applicable", "Needs Review", "No Finding", "Confirmed", "Hardening", "Likely"]
+SECURITY_CONFIDENCE_WORD_SCORES = {
+    "very high": 90,
+    "high": 85,
+    "medium": 65,
+    "moderate": 65,
+    "low": 35,
+    "very low": 20,
+}
+
+
+def _security_normalize_status_value(value: str) -> str | None:
+    import re
+
+    raw = (value or "").strip()
+    if not raw:
+        return None
+    compact = re.sub(r"\s+", " ", raw.replace("**", "")).strip()
+    if compact in SECURITY_VALID_STATUSES:
+        return compact
+    lowered = compact.lower()
+    for status in SECURITY_STATUS_ORDER:
+        status_lower = status.lower()
+        if lowered == status_lower:
+            return status
+        if lowered.startswith(status_lower + ":") or lowered.startswith(status_lower + " -") or lowered.startswith(status_lower + " ("):
+            return status
+        if re.search(rf"\b{re.escape(status_lower)}\b", lowered):
+            return status
+    return None
+
+
+def _security_extract_confidence_score_from_text(*values: str) -> int | None:
+    import re
+
+    combined = " ".join((value or "") for value in values).strip()
+    if not combined:
+        return None
+    numeric = re.search(r"(?<!\d)(100|[1-9]?\d)(?:\s*%|\s*/\s*100)?(?!\d)", combined)
+    if numeric:
+        score = int(numeric.group(1))
+        if 0 <= score <= 100:
+            return score
+    lowered = combined.lower()
+    # Check longer phrases first so "very high" is not reduced to "high".
+    for word, score in sorted(SECURITY_CONFIDENCE_WORD_SCORES.items(), key=lambda item: -len(item[0])):
+        if re.search(rf"\b{re.escape(word)}\b", lowered):
+            return score
+    return None
+
+
+def _security_normalize_status_and_confidence(status: str, confidence: str) -> tuple[str | None, str | None, list[str]]:
+    notes: list[str] = []
+    normalized_status = _security_normalize_status_value(status)
+    if normalized_status and normalized_status != (status or "").strip():
+        notes.append(f"normalized Status '{status}' -> '{normalized_status}'")
+
+    parsed_confidence = _security_parse_confidence_score(confidence)
+    if parsed_confidence is not None:
+        return normalized_status, str(parsed_confidence), notes
+
+    extracted = _security_extract_confidence_score_from_text(confidence, status)
+    if extracted is not None:
+        notes.append(f"normalized Confidence Score '{confidence or status}' -> '{extracted}'")
+        return normalized_status, str(extracted), notes
+
+    return normalized_status, None, notes
+
+
+def _replace_or_insert_markdown_field(block: str, field: str, value: str, *, after_fields: list[str] | None = None) -> str:
+    import re
+
+    replacement = f"- {field}: {value}"
+    pattern = rf"(?im)^\s*[-*]?\s*{re.escape(field)}\s*:\s*.*$"
+    if re.search(pattern, block):
+        return re.sub(pattern, replacement, block, count=1)
+
+    lines = block.splitlines()
+    insert_at = 1 if lines else 0
+    after_fields = after_fields or []
+    for index, line in enumerate(lines):
+        for after_field in after_fields:
+            if re.match(rf"(?i)^\s*[-*]?\s*{re.escape(after_field)}\s*:\s*", line):
+                insert_at = index + 1
+    lines.insert(insert_at, replacement)
+    return "\n".join(lines)
+
+
+def _replace_markdown_section_body(text: str, section: str, body: str) -> str:
+    marker = f"## {section}"
+    start = text.find(marker)
+    if start < 0:
+        return text
+    body_start = text.find("\n", start)
+    if body_start < 0:
+        return text
+    body_start += 1
+    next_section = text.find("\n## ", body_start)
+    if next_section < 0:
+        next_section = len(text)
+        suffix = ""
+    else:
+        suffix = text[next_section:]
+    return text[:body_start] + body.rstrip() + "\n" + suffix
+
+
+def _security_confidence_guess_from_score(score: int | None) -> str:
+    if score is None:
+        return "Medium"
+    if score >= 80:
+        return "High"
+    if score >= 50:
+        return "Medium"
+    return "Low"
+
+
+def _security_normalize_confidence_guess_value(value: str) -> str | None:
+    raw = (value or "").strip().replace("**", "")
+    if not raw:
+        return None
+    parsed = _security_parse_confidence_score(raw)
+    if parsed is not None:
+        return _security_confidence_guess_from_score(parsed)
+    lowered = raw.lower()
+    if "very high" in lowered or "high" in lowered:
+        return "High"
+    if "moderate" in lowered or "medium" in lowered:
+        return "Medium"
+    if "very low" in lowered or "low" in lowered:
+        return "Low"
+    return None
+
+
+def _security_confidence_guess_score(value: str, evidence_score: int, *, status: str = "") -> int:
+    guess = _security_normalize_confidence_guess_value(value)
+    if status in {"No Finding", "Not Applicable", "False Positive"}:
+        return 16 if guess in {"High", "Medium"} and evidence_score >= 12 else 10
+    if guess == "High":
+        return 18 if evidence_score >= 18 else 8
+    if guess == "Medium":
+        return 16 if evidence_score >= 12 else 10
+    if guess == "Low":
+        return 14 if evidence_score <= 18 else 10
+    return 6
+
+
+def _normalize_security_candidate_artifact_text(text: str) -> tuple[str, list[str]]:
+    """Repair small AI formatting mistakes before strict scoring.
+
+    This validator no longer trusts an AI-produced final Confidence Score.
+    AI may provide only a qualitative AI Confidence Guess; Python computes the
+    official numeric Confidence Score later during combine_security_candidates.
+    """
+    import re
+
+    notes: list[str] = []
+    result = text
+
+    # Some agents forget the explicit ## Candidates section and place CAND
+    # blocks right after Candidate Index. Insert the missing section rather than
+    # burning retries for a cosmetic heading omission.
+    if "## Candidates" not in result:
+        result, count = re.subn(r"(?m)^(###\s+CAND-\d{3}\b)", r"## Candidates\n\1", result, count=1)
+        if count:
+            notes.append("inserted missing ## Candidates section before first CAND block")
+
+    candidate_index = _markdown_section_body(result, "Candidate Index")
+    rows = _markdown_table_rows(candidate_index)
+    if rows:
+        header = _coerce_markdown_table_row(rows[0], max(len(rows[0]), 6))
+        old_header = ["ID", "Severity", "Confidence Score", "Status", "Area", "Evidence Summary"]
+        new_header = ["ID", "Severity", "AI Confidence Guess", "Status", "Area", "Evidence Summary"]
+        if tuple(header[:6]) in {tuple(old_header), tuple(new_header)}:
+            normalized_rows = [new_header, ["---", "---", "---", "---", "---", "---"]]
+            for row in rows[1:]:
+                row = _coerce_markdown_table_row(row, 6)
+                candidate_id, severity, confidence_guess, status, area, evidence_summary = row[:6]
+                normalized_status, _normalized_confidence, row_notes = _security_normalize_status_and_confidence(status, confidence_guess)
+                if normalized_status:
+                    status = normalized_status
+                guess = _security_normalize_confidence_guess_value(confidence_guess) or "Medium"
+                if guess != confidence_guess:
+                    notes.append(f"{candidate_id}: normalized AI Confidence Guess '{confidence_guess}' -> '{guess}'")
+                notes.extend(f"{candidate_id}: {note}" for note in row_notes if "Confidence Score" not in note)
+                normalized_rows.append([candidate_id, severity, guess, status, area, evidence_summary])
+            table_lines = ["| " + " | ".join(row) + " |" for row in normalized_rows]
+            result = _replace_markdown_section_body(result, "Candidate Index", "\n".join(table_lines))
+
+    matches = list(re.finditer(r"(?m)^###+\s+(CAND-\d{3})\b.*$", result))
+    if not matches:
+        return result, notes
+
+    pieces: list[str] = []
+    cursor = 0
+    for index, match in enumerate(matches):
+        start = match.start()
+        end = matches[index + 1].start() if index + 1 < len(matches) else len(result)
+        pieces.append(result[cursor:start])
+        block = result[start:end]
+        candidate_id = match.group(1)
+        status_value = _optional_field_in_block(block, "Status")
+        ai_guess_value = (
+            _optional_field_in_block(block, "AI Confidence Guess")
+            or _optional_field_in_block(block, "Confidence Guess")
+            or _optional_field_in_block(block, "Confidence")
+            or _optional_field_in_block(block, "Confidence Score")
+        )
+        normalized_status, _unused_numeric, block_notes = _security_normalize_status_and_confidence(status_value, ai_guess_value)
+        if normalized_status:
+            block = _replace_or_insert_markdown_field(block, "Status", normalized_status, after_fields=["AI Confidence Guess", "Severity"])
+        guess = _security_normalize_confidence_guess_value(ai_guess_value) or "Medium"
+        block = _replace_or_insert_markdown_field(block, "AI Confidence Guess", guess, after_fields=["Severity"])
+
+        evidence_value = _optional_field_in_block(block, "Evidence")
+        evidence_lower = evidence_value.lower()
+        if not _optional_field_in_block(block, "Evidence Type"):
+            if evidence_lower.startswith("inferred:"):
+                inferred_type = "Inferred"
+            elif any(token in evidence_value for token in ["`", "()", ":"]) and _security_evidence_has_location(evidence_value):
+                inferred_type = "Direct Code"
+            elif _security_evidence_has_location(evidence_value):
+                inferred_type = "Pattern Match"
+            else:
+                inferred_type = "Inferred"
+            block = _replace_or_insert_markdown_field(block, "Evidence Type", inferred_type, after_fields=["Evidence"])
+            notes.append(f"{candidate_id}: inserted missing Evidence Type '{inferred_type}'")
+        if not _optional_field_in_block(block, "Data Flow Seen"):
+            data_flow = "Partial" if any(token in evidence_lower for token in ["user", "input", "request", "parameter", "args", "body"]) else "No"
+            block = _replace_or_insert_markdown_field(block, "Data Flow Seen", data_flow, after_fields=["Evidence Type"])
+            notes.append(f"{candidate_id}: inserted missing Data Flow Seen '{data_flow}'")
+        if not _optional_field_in_block(block, "Exploitability Seen"):
+            exploitability = "Partial" if (normalized_status or "") in {"Confirmed", "Likely", "Needs Review"} else "No"
+            block = _replace_or_insert_markdown_field(block, "Exploitability Seen", exploitability, after_fields=["Data Flow Seen"])
+            notes.append(f"{candidate_id}: inserted missing Exploitability Seen '{exploitability}'")
+
+        # Remove legacy/conflicting confidence fields. The only AI confidence
+        # field in candidate artifacts is AI Confidence Guess.
+        block = re.sub(r"(?im)^\s*[-*]?\s*Confidence\s*:\s*.*\n?", "", block, count=1)
+        block = re.sub(r"(?im)^\s*[-*]?\s*Confidence Guess\s*:\s*.*\n?", "", block, count=1)
+        block = re.sub(r"(?im)^\s*[-*]?\s*Confidence Score\s*:\s*.*\n?", "", block, count=1)
+        if ai_guess_value and guess != ai_guess_value:
+            notes.append(f"{candidate_id}: normalized AI Confidence Guess '{ai_guess_value}' -> '{guess}'")
+        notes.extend(f"{candidate_id}: {note}" for note in block_notes if "Confidence Score" not in note)
+        pieces.append(block)
+        cursor = end
+    pieces.append(result[cursor:])
+    return "".join(pieces), notes
 
 def _security_confidence_consistency_score(confidence: str, evidence_score: int, *, status: str = "", severity: str = "") -> int:
     confidence_score = _security_parse_confidence_score(confidence)
@@ -675,6 +969,103 @@ def _security_best_severity(values: list[str]) -> str:
     return ranked[0]
 
 
+def _security_evidence_type_base_score(value: str) -> int:
+    normalized = (value or "").strip().lower().replace("_", " ").replace("-", " ")
+    mapping = {
+        "direct code": 45,
+        "direct config": 40,
+        "dependency": 35,
+        "pattern match": 25,
+        "inferred": 10,
+    }
+    if normalized in mapping:
+        return mapping[normalized]
+    if "code" in normalized:
+        return 45
+    if "config" in normalized or "configuration" in normalized:
+        return 40
+    if "dependency" in normalized or "manifest" in normalized or "package" in normalized:
+        return 35
+    if "pattern" in normalized:
+        return 25
+    if "infer" in normalized or "assumption" in normalized:
+        return 10
+    return 0
+
+
+def _security_data_flow_score(value: str) -> int:
+    lowered = (value or "").strip().lower()
+    if lowered in {"yes", "true", "complete", "full"}:
+        return 15
+    if lowered in {"partial", "partially", "limited"}:
+        return 8
+    return 0
+
+
+def _security_exploitability_score(value: str) -> int:
+    lowered = (value or "").strip().lower()
+    if lowered in {"yes", "true", "external", "reachable"}:
+        return 10
+    if lowered in {"partial", "partially", "possible", "limited", "internal"}:
+        return 5
+    if "hardening" in lowered:
+        return 2
+    return 0
+
+
+def _security_quality_bonus(items: list[dict[str, str]], quality_scores: dict[str, dict[str, int | str]]) -> int:
+    totals: list[int] = []
+    for item in items:
+        score = quality_scores.get(item.get("Source Artifact", ""), {}).get("total")
+        if isinstance(score, int):
+            totals.append(score)
+    average = _security_average(totals, 0)
+    if average >= 85:
+        return 5
+    if average >= 75:
+        return 3
+    return 0
+
+
+def _security_python_confidence_score(items: list[dict[str, str]], evidence: str, quality_scores: dict[str, dict[str, int | str]]) -> tuple[int, list[str]]:
+    primary = items[0] if items else {}
+    evidence_type_score = max((_security_evidence_type_base_score(item.get("Evidence Type", "")) for item in items), default=0)
+    if evidence_type_score <= 0:
+        evidence_type_score = min(45, round(_security_evidence_score_value(evidence, status=primary.get("Status", "")) / 30 * 45))
+
+    consensus_count = len(items)
+    if consensus_count >= 3:
+        consensus_score = 25
+    elif consensus_count >= 2:
+        consensus_score = 15
+    else:
+        consensus_score = 5
+
+    data_flow_score = max((_security_data_flow_score(item.get("Data Flow Seen", "")) for item in items), default=0)
+    exploitability_score = max((_security_exploitability_score(item.get("Exploitability Seen", "")) for item in items), default=0)
+    quality_bonus = _security_quality_bonus(items, quality_scores)
+
+    penalty = 0
+    if not _security_evidence_has_location(evidence):
+        penalty += 20
+    if any((item.get("AI Confidence Guess", "").lower() == "high" and _security_evidence_score_value(item.get("Evidence", ""), status=item.get("Status", "")) < 18) for item in items):
+        penalty += 5
+    if primary.get("Severity", "").title() in {"Critical", "High"} and evidence_type_score <= 10:
+        penalty += 10
+
+    score = max(0, min(100, evidence_type_score + consensus_score + data_flow_score + exploitability_score + quality_bonus - penalty))
+    basis = [
+        f"Evidence type score: {evidence_type_score}/45.",
+        f"Multi-agent consensus score: {consensus_score}/25 from {consensus_count} agent(s).",
+        f"Data flow score: {data_flow_score}/15.",
+        f"Exploitability score: {exploitability_score}/10.",
+        f"Agent quality bonus: {quality_bonus}/5.",
+    ]
+    if penalty:
+        basis.append(f"Penalty applied: -{penalty} for weak or inconsistent support.")
+    return score, basis
+
+
 def _security_consensus_confidence(confidences: list[str], evidence: str, consensus_count: int) -> str:
     numeric_scores = [score for score in (_security_parse_confidence_score(value) for value in confidences) if score is not None]
     base_score = _security_average(numeric_scores, 30)
@@ -720,18 +1111,24 @@ def _parse_security_candidates(artifact_name: str, text: str) -> list[dict[str, 
             "Raw Block": block,
         }
         for field in [
-            "Area", "File", "Location", "Function/Class", "Evidence", "Severity", "Severity Guess",
-            "Confidence Score", "Confidence", "Confidence Guess", "Status", "Reason", "Impact", "Recommendation",
+            "Area", "File", "Location", "Function/Class", "Evidence", "Evidence Type",
+            "Data Flow Seen", "Exploitability Seen", "Severity", "Severity Guess",
+            "AI Confidence Guess", "Confidence Score", "Confidence", "Confidence Guess",
+            "Status", "Reason", "Impact", "Recommendation",
         ]:
             value = _optional_field_in_block(block, field)
             if value:
                 item[field] = value
         if "Severity" not in item and "Severity Guess" in item:
             item["Severity"] = item["Severity Guess"]
-        if "Confidence" not in item and "Confidence Score" in item:
-            item["Confidence"] = item["Confidence Score"]
-        if "Confidence" not in item and "Confidence Guess" in item:
-            item["Confidence"] = item["Confidence Guess"]
+        if "AI Confidence Guess" not in item and "Confidence Guess" in item:
+            item["AI Confidence Guess"] = item["Confidence Guess"]
+        if "AI Confidence Guess" not in item and "Confidence" in item:
+            item["AI Confidence Guess"] = item["Confidence"]
+        if "AI Confidence Guess" not in item and "Confidence Score" in item:
+            item["AI Confidence Guess"] = _security_confidence_guess_from_score(_security_parse_confidence_score(item["Confidence Score"]))
+        if "AI Confidence Guess" in item:
+            item["AI Confidence Guess"] = _security_normalize_confidence_guess_value(item["AI Confidence Guess"]) or "Medium"
         if "Location" not in item and "File" in item:
             item["Location"] = item["File"]
         candidates.append(item)
@@ -739,28 +1136,44 @@ def _parse_security_candidates(artifact_name: str, text: str) -> list[dict[str, 
 
 
 def validate_security_candidates(ctx: WorkflowFunctionContext, artifact: str = "security-candidates-agent-1.md") -> None:
-    """Validate one AI security candidate artifact before allowing the workflow to continue.
+    """Validate and score one AI security candidate artifact.
 
-    This is intentionally strict because each security_scan_agent_X step is retried from
-    its own fresh Qwen session when the generated Markdown is malformed.
+    Candidate files may contain qualitative AI confidence guesses only. Python
+    computes official numeric Confidence Score later in combine_security_candidates.
+    Small Markdown formatting mistakes are normalized before strict checks.
     """
     artifact = (artifact or "").strip() or "security-candidates-agent-1.md"
     path = ctx.output_dir / artifact
     text = ctx.read_text(path)
     if not text.strip():
         raise WorkflowFunctionError(f"{artifact} is empty.")
+
+    normalized_text, normalization_notes = _normalize_security_candidate_artifact_text(text)
+    if normalized_text != text:
+        text = normalized_text
+        ctx.write_text(path, text)
+
     if "Status: DONE" not in text:
         raise WorkflowFunctionError(f"{artifact} must contain 'Status: DONE'.")
 
     require_sections(text, ["Scan Summary", "Checklist Coverage", "Candidate Index", "Candidates"], artifact)
 
     summary = _markdown_section_body(text, "Scan Summary")
-    overall_confidence = _optional_field_in_block(summary, "Overall candidate confidence score")
-    if not overall_confidence:
+    overall_guess = (
+        _optional_field_in_block(summary, "Overall evidence confidence guess")
+        or _optional_field_in_block(summary, "Overall candidate confidence guess")
+        or _optional_field_in_block(summary, "Overall candidate confidence score")
+    )
+    if not overall_guess:
         raise WorkflowFunctionError(
-            f"{artifact} Scan Summary must include 'Overall candidate confidence score: <integer 0-100>'."
+            f"{artifact} Scan Summary must include 'Overall evidence confidence guess: High | Medium | Low'."
         )
-    _security_require_confidence_score(overall_confidence, artifact, "Overall candidate confidence score")
+    normalized_overall_guess = _security_normalize_confidence_guess_value(overall_guess)
+    if not normalized_overall_guess:
+        normalized_overall_guess = "Medium"
+        normalization_notes.append(
+            f"normalized invalid Overall evidence confidence guess '{overall_guess}' -> 'Medium'"
+        )
 
     checklist = _markdown_section_body(text, "Checklist Coverage")
     checklist_rows = _require_markdown_table(
@@ -771,7 +1184,7 @@ def validate_security_candidates(ctx: WorkflowFunctionContext, artifact: str = "
     )
     if len(checklist_rows) < 8:
         raise WorkflowFunctionError(f"{artifact} Checklist Coverage must contain at least 8 reviewed security categories.")
-    allowed_check_statuses = {"Reviewed", "Finding", "Risk", "Not applicable", "Limited"}
+    allowed_check_statuses = {"Reviewed", "Finding", "Risk", "Not applicable", "Not Applicable", "Limited"}
     for index, row in enumerate(checklist_rows, start=1):
         check, status, evidence, notes = row
         if not check.strip():
@@ -792,31 +1205,36 @@ def validate_security_candidates(ctx: WorkflowFunctionContext, artifact: str = "
     candidate_index_rows = _require_markdown_table(
         "Candidate Index",
         candidate_index,
-        ["ID", "Severity", "Confidence Score", "Status", "Area", "Evidence Summary"],
+        ["ID", "Severity", "AI Confidence Guess", "Status", "Area", "Evidence Summary"],
         artifact,
     )
     if not candidate_index_rows:
         raise WorkflowFunctionError(f"{artifact} Candidate Index must contain at least one CAND row.")
 
     valid_severities = {"Critical", "High", "Medium", "Low", "Info"}
-    valid_statuses = {"Confirmed", "Likely", "Needs Review", "Hardening", "False Positive", "Not Applicable", "No Finding"}
+    valid_statuses = SECURITY_VALID_STATUSES
+    index_guess_by_id: dict[str, str] = {}
     for index, row in enumerate(candidate_index_rows, start=1):
-        candidate_id, severity, confidence, status, area, evidence_summary = row
+        candidate_id, severity, ai_guess, status, area, evidence_summary = row
         if not candidate_id.startswith("CAND-"):
             raise WorkflowFunctionError(f"{artifact} Candidate Index row {index} must start with a CAND-### ID.")
         if severity not in valid_severities:
             raise WorkflowFunctionError(f"{artifact} Candidate Index row {index} has invalid Severity '{severity}'.")
-        _security_require_confidence_score(confidence, artifact, f"Candidate Index row {index} Confidence Score")
+        normalized_guess = _security_normalize_confidence_guess_value(ai_guess)
+        if not normalized_guess:
+            raise WorkflowFunctionError(
+                f"{artifact} Candidate Index row {index} has invalid AI Confidence Guess '{ai_guess}'. Use High, Medium, or Low."
+            )
         if status not in valid_statuses:
             raise WorkflowFunctionError(f"{artifact} Candidate Index row {index} has invalid Status '{status}'.")
         if not area.strip() or not evidence_summary.strip() or evidence_summary.strip() in {"-", "N/A", "Unknown", "TBD"}:
             raise WorkflowFunctionError(f"{artifact} Candidate Index row {index} must include Area and Evidence Summary.")
+        index_guess_by_id[candidate_id] = normalized_guess
 
     candidates = _parse_security_candidates(artifact, text)
     if not candidates:
         raise WorkflowFunctionError(f"{artifact} must include at least one '### CAND-001 - ...' block.")
 
-    valid_statuses = {"Confirmed", "Likely", "Needs Review", "Hardening", "False Positive", "Not Applicable", "No Finding"}
     candidate_ids = [candidate.get("Candidate ID", "") for candidate in candidates]
     if candidate_ids[0] != "CAND-001":
         raise WorkflowFunctionError(f"{artifact} candidate IDs must start with CAND-001.")
@@ -837,14 +1255,12 @@ def validate_security_candidates(ctx: WorkflowFunctionContext, artifact: str = "
             f"Index: {', '.join(index_ids)}; Blocks: {', '.join(candidate_ids)}."
         )
 
-    index_confidence_by_id = {row[0]: row[2] for row in candidate_index_rows}
-
     for candidate in candidates:
         candidate_id = candidate.get("Candidate ID", "CAND-???")
         raw_block = candidate.get("Raw Block", "")
         for field in [
-            "Area", "File", "Function/Class", "Evidence", "Severity", "Confidence Score",
-            "Status", "Reason", "Impact", "Recommendation",
+            "Area", "File", "Function/Class", "Evidence", "Evidence Type", "Data Flow Seen",
+            "Exploitability Seen", "Severity", "AI Confidence Guess", "Status", "Reason", "Impact", "Recommendation",
         ]:
             _require_field_in_block(artifact, candidate_id, raw_block, field)
 
@@ -854,14 +1270,13 @@ def validate_security_candidates(ctx: WorkflowFunctionContext, artifact: str = "
                 f"{artifact} {candidate_id} has invalid Severity '{severity}'. Use Critical, High, Medium, Low, or Info."
             )
 
-        confidence = (candidate.get("Confidence") or "").strip()
-        confidence_score_value = _security_require_confidence_score(confidence, artifact, f"{candidate_id} Confidence Score")
-        index_confidence = index_confidence_by_id.get(candidate_id, "")
-        index_confidence_value = _security_require_confidence_score(index_confidence, artifact, f"{candidate_id} Candidate Index Confidence Score")
-        if index_confidence_value != confidence_score_value:
+        ai_guess = _security_normalize_confidence_guess_value(candidate.get("AI Confidence Guess", ""))
+        if not ai_guess:
+            raise WorkflowFunctionError(f"{artifact} {candidate_id} must include AI Confidence Guess: High | Medium | Low.")
+        if index_guess_by_id.get(candidate_id) != ai_guess:
             raise WorkflowFunctionError(
-                f"{artifact} {candidate_id} Confidence Score must match Candidate Index. "
-                f"Index={index_confidence}, Block={confidence}."
+                f"{artifact} {candidate_id} AI Confidence Guess must match Candidate Index. "
+                f"Index={index_guess_by_id.get(candidate_id)}, Block={ai_guess}."
             )
 
         status = (candidate.get("Status") or "").strip()
@@ -870,6 +1285,21 @@ def validate_security_candidates(ctx: WorkflowFunctionContext, artifact: str = "
                 f"{artifact} {candidate_id} has invalid Status '{status}'. "
                 "Use Confirmed, Likely, Needs Review, Hardening, False Positive, Not Applicable, or No Finding."
             )
+
+        evidence_type = (candidate.get("Evidence Type") or "").strip()
+        if not _security_evidence_type_base_score(evidence_type):
+            raise WorkflowFunctionError(
+                f"{artifact} {candidate_id} has invalid Evidence Type '{evidence_type}'. "
+                "Use Direct Code, Direct Config, Dependency, Pattern Match, or Inferred."
+            )
+
+        data_flow = (candidate.get("Data Flow Seen") or "").strip()
+        if not _security_data_flow_score(data_flow) and data_flow.lower() not in {"no", "none", "not applicable", "n/a"}:
+            raise WorkflowFunctionError(f"{artifact} {candidate_id} Data Flow Seen must be Yes, Partial, No, or Not applicable.")
+
+        exploitability = (candidate.get("Exploitability Seen") or "").strip()
+        if not _security_exploitability_score(exploitability) and exploitability.lower() not in {"no", "none", "not applicable", "n/a"}:
+            raise WorkflowFunctionError(f"{artifact} {candidate_id} Exploitability Seen must be Yes, Partial, No, or Not applicable.")
 
         evidence = (candidate.get("Evidence") or "").strip()
         if evidence in {"", "-", "N/A", "Unknown", "TBD"}:
@@ -887,23 +1317,26 @@ def validate_security_candidates(ctx: WorkflowFunctionContext, artifact: str = "
             )
 
     candidate_details: list[str] = []
+    if normalization_notes:
+        candidate_details.extend(f"- Format repair: {note}" for note in normalization_notes)
     candidate_evidence_scores: list[int] = []
     candidate_confidence_scores: list[int] = []
     for candidate in candidates:
         candidate_id = candidate.get("Candidate ID", "CAND-???")
         status = (candidate.get("Status") or "").strip()
         severity = (candidate.get("Severity") or "").strip()
-        confidence = (candidate.get("Confidence") or "").strip()
+        ai_guess = _security_normalize_confidence_guess_value(candidate.get("AI Confidence Guess", "")) or "Medium"
         evidence = (candidate.get("Evidence") or "").strip()
         evidence_score = _security_evidence_score_value(evidence, status=status)
-        confidence_score = _security_confidence_consistency_score(
-            confidence, evidence_score, status=status, severity=severity
-        )
-        candidate_evidence_scores.append(evidence_score)
+        evidence_type_score = _security_evidence_type_base_score(candidate.get("Evidence Type", ""))
+        combined_evidence_score = min(30, max(evidence_score, round(evidence_type_score / 45 * 30)))
+        confidence_score = _security_confidence_guess_score(ai_guess, combined_evidence_score, status=status)
+        candidate_evidence_scores.append(combined_evidence_score)
         candidate_confidence_scores.append(confidence_score)
         candidate_details.append(
-            f"- {candidate_id}: Severity={severity}, Confidence={confidence}, Status={status}, "
-            f"EvidenceScore={evidence_score}/30, ConfidenceScore={confidence_score}/20"
+            f"- {candidate_id}: Severity={severity}, AIConfidenceGuess={ai_guess}, Status={status}, "
+            f"EvidenceType={candidate.get('Evidence Type', '')}, EvidenceScore={combined_evidence_score}/30, "
+            f"AIConfidenceConsistency={confidence_score}/20"
         )
 
     checklist_quality_scores: list[int] = []
@@ -922,12 +1355,11 @@ def validate_security_candidates(ctx: WorkflowFunctionContext, artifact: str = "
     consistency_score = 10
     for candidate in candidates:
         severity = (candidate.get("Severity") or "").strip()
-        confidence = (candidate.get("Confidence") or "").strip()
         evidence = (candidate.get("Evidence") or "").strip()
         status = (candidate.get("Status") or "").strip()
+        ai_guess = _security_normalize_confidence_guess_value(candidate.get("AI Confidence Guess", "")) or "Medium"
         evidence_score_for_candidate = _security_evidence_score_value(evidence, status=status)
-        confidence_value = _security_parse_confidence_score(confidence) or 0
-        if confidence_value >= 80 and evidence_score_for_candidate < 18:
+        if ai_guess == "High" and evidence_score_for_candidate < 18:
             consistency_score -= 3
         if severity in {"Critical", "High"} and status in {"Hardening", "No Finding", "Not Applicable"}:
             consistency_score -= 2
@@ -949,9 +1381,9 @@ def validate_security_candidates(ctx: WorkflowFunctionContext, artifact: str = "
     retry_guidance = []
     if failures:
         retry_guidance.extend([
-            "The next agent attempt must keep the exact Markdown schema and improve the weak scoring categories.",
-            "Provide concrete file path, function/class/config, and observed code/config behavior for every non-No-Finding candidate.",
-            "Use Confidence Score 80-100 only when evidence is concrete and directly supported by the security context.",
+            "The next agent attempt must keep the exact Markdown schema and improve weak scoring categories.",
+            "Do not output a final numeric Confidence Score in candidate artifacts; provide AI Confidence Guess plus evidence inputs only.",
+            "Provide Evidence Type, Data Flow Seen, Exploitability Seen, and concrete file/function/config evidence for every non-No-Finding candidate.",
             "Cover at least 12 checklist categories with concrete evidence or explicit limitation notes.",
         ])
     score_report = _render_security_score_report(
@@ -972,7 +1404,6 @@ def validate_security_candidates(ctx: WorkflowFunctionContext, artifact: str = "
             f"evidence {evidence_score}/30; confidence {confidence_score}/20; coverage {coverage_score}/20. "
             f"Open output/{_security_score_artifact_name(artifact)} for details."
         )
-
 
 def combine_security_candidates(ctx: WorkflowFunctionContext) -> None:
     """Merge multiple AI-generated security candidate artifacts into stable normalized findings."""
@@ -1014,8 +1445,11 @@ def combine_security_candidates(ctx: WorkflowFunctionContext) -> None:
             continue
         evidence = candidate.get("Evidence") or ""
         severity = (candidate.get("Severity") or "Info").strip().title()
-        confidence = (candidate.get("Confidence") or "").strip()
-        if severity not in valid_severities or _security_parse_confidence_score(confidence) is None:
+        if severity not in valid_severities:
+            rejected.append(candidate)
+            continue
+        ai_guess = _security_normalize_confidence_guess_value(candidate.get("AI Confidence Guess", ""))
+        if not ai_guess:
             rejected.append(candidate)
             continue
         if not evidence or evidence in {"-", "N/A", "Unknown", "TBD"}:
@@ -1036,7 +1470,7 @@ def combine_security_candidates(ctx: WorkflowFunctionContext) -> None:
         f"- Raw candidates: {len(all_candidates)}",
         f"- Accepted groups: {len(grouped)}",
         f"- Rejected candidates: {len(rejected)}",
-        "- Confidence Score merge rule: repeated same-task agents + concrete evidence raise numeric confidence; weak or inferred evidence remains lower.",
+        "- Confidence Score rule: Python computes the final numeric confidence from evidence type, evidence quality, data flow, exploitability, multi-agent consensus, and agent quality scores.",
         "- Agent quality rule: candidate artifacts must pass Python quality scoring before they can be combined.",
         "",
         "## Agent Quality Scores",
@@ -1066,8 +1500,8 @@ def combine_security_candidates(ctx: WorkflowFunctionContext) -> None:
             area = next((item.get("Area") for item in items if item.get("Area")), "General")
             evidence = next((item.get("Evidence") for item in items if _security_evidence_has_location(item.get("Evidence", ""))), items[0].get("Evidence", ""))
             severity = _security_best_severity([item.get("Severity", "Info") for item in items])
-            confidence = _security_consensus_confidence([item.get("Confidence", "Low") for item in items], evidence, len(items))
-            confidence_value = _security_parse_confidence_score(confidence) or 0
+            confidence_value, confidence_basis = _security_python_confidence_score(items, evidence, quality_scores)
+            confidence = str(confidence_value)
             status = "Likely" if confidence_value >= 50 and severity != "Info" else "Needs Review"
             if severity == "Info":
                 status = "Hardening"
@@ -1081,6 +1515,8 @@ def combine_security_candidates(ctx: WorkflowFunctionContext) -> None:
                 f"- Area: {area}",
                 f"- Severity: {severity}",
                 f"- Confidence Score: {confidence}",
+                "- Confidence Basis:",
+                *[f"  - {basis}" for basis in confidence_basis],
                 f"- Consensus Count: {len(items)}",
                 f"- Agent Quality Scores: {', '.join(str(quality_scores.get(item.get('Source Artifact', ''), {}).get('total', 'unknown')) for item in items)}",
                 f"- Status: {status}",
@@ -1100,7 +1536,7 @@ def combine_security_candidates(ctx: WorkflowFunctionContext) -> None:
                 f"- {item.get('Source Artifact')}:{item.get('Candidate ID')} | "
                 f"Status={item.get('Status', 'Rejected')} | "
                 f"Severity={item.get('Severity', 'Unknown')} | "
-                f"ConfidenceScore={item.get('Confidence', 'Unknown')} | "
+                f"AIConfidenceGuess={item.get('AI Confidence Guess', 'Unknown')} | "
                 f"Evidence={item.get('Evidence', '').strip()[:160] or 'missing'}"
             )
 
@@ -1153,7 +1589,7 @@ def validate_security_report(ctx: WorkflowFunctionContext, artifact: str = "secu
     )
     if len(checklist_rows) < 8:
         raise WorkflowFunctionError(f"{artifact} Security Checklist must contain at least 8 reviewed security categories.")
-    allowed_check_statuses = {"Reviewed", "Finding", "Risk", "Not applicable", "Limited"}
+    allowed_check_statuses = {"Reviewed", "Finding", "Risk", "Not applicable", "Not Applicable", "Limited"}
     for index, row in enumerate(checklist_rows, start=1):
         check, status, evidence, _notes = row
         if not check:

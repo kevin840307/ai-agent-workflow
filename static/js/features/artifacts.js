@@ -176,6 +176,7 @@ export function createArtifacts(ctx) {
               <div class="step-files-actions">
                 <button id="stepFilesOpenArtifactTab" class="mini-button" type="button">Open in Artifacts</button>
                 <button id="stepFilesPreviewToggle" class="mini-button" type="button">Preview</button>
+                <button id="stepFilesCopy" class="mini-button" type="button">Copy</button>
                 <button id="stepFilesDownload" class="mini-button" type="button">Download</button>
               </div>
             </div>
@@ -209,6 +210,7 @@ export function createArtifacts(ctx) {
         markdownPreview: byId("stepFilesMarkdownPreview"),
         openArtifactTab: byId("stepFilesOpenArtifactTab"),
         previewToggle: byId("stepFilesPreviewToggle"),
+        copy: byId("stepFilesCopy"),
         download: byId("stepFilesDownload"),
         close: byId("stepFilesModalClose"),
       };
@@ -237,6 +239,12 @@ export function createArtifacts(ctx) {
       if (els.openArtifactTab) {
         els.openArtifactTab.disabled = !file.id;
         els.openArtifactTab.onclick = () => file.id && artifacts.open(file.id);
+      }
+      if (els.copy) {
+        els.copy.disabled = Boolean(file.error);
+        els.copy.textContent = "Copy";
+        els.copy.classList.remove("active");
+        els.copy.onclick = () => artifacts.copyStepFile(file);
       }
       if (els.download) {
         els.download.disabled = Boolean(file.error);
@@ -269,6 +277,40 @@ export function createArtifacts(ctx) {
       if (els.previewToggle) {
         els.previewToggle.textContent = previewMode ? "Source" : "Preview";
         els.previewToggle.classList.toggle("active", previewMode);
+      }
+    },
+
+    async copyStepFile(file) {
+      if (!file || file.error) return;
+      const els = artifacts.ensureStepFilesModal();
+      const content = file.content || "";
+      try {
+        if (navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(content);
+        } else {
+          const textarea = document.createElement("textarea");
+          textarea.value = content;
+          textarea.setAttribute("readonly", "");
+          textarea.style.position = "fixed";
+          textarea.style.opacity = "0";
+          document.body.appendChild(textarea);
+          textarea.select();
+          document.execCommand("copy");
+          textarea.remove();
+        }
+        if (els.copy) {
+          els.copy.textContent = "Copied";
+          els.copy.classList.add("active");
+          window.setTimeout(() => {
+            if (!els.backdrop.hidden && stepFilesModal.files[stepFilesModal.activeIndex] === file) {
+              els.copy.textContent = "Copy";
+              els.copy.classList.remove("active");
+            }
+          }, 1200);
+        }
+      } catch (err) {
+        console.warn("Failed to copy step file", err);
+        if (els.copy) els.copy.textContent = "Copy failed";
       }
     },
 
@@ -306,6 +348,11 @@ export function createArtifacts(ctx) {
         els.previewToggle.disabled = true;
         els.previewToggle.textContent = "Preview";
         els.previewToggle.classList.remove("active");
+      }
+      if (els.copy) {
+        els.copy.disabled = true;
+        els.copy.textContent = "Copy";
+        els.copy.classList.remove("active");
       }
       if (els.download) els.download.disabled = true;
       if (els.markdownPreview) {

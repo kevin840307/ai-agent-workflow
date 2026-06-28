@@ -28,7 +28,7 @@ export function createEvents(ctx) {
       });
       ui.on("workflowDropdownMenu", "click", (event) => {
         const option = event.target.closest(".workflow-dropdown-option");
-        if (!option) return;
+        if (!option || option.disabled || option.getAttribute("aria-disabled") === "true") return;
         event.stopPropagation();
         ctx.features.workflows.select(option.dataset.workflowId);
       });

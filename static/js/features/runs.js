@@ -162,10 +162,12 @@ export function createRuns(ctx) {
         }
         await runs.follow(run.id);
       } catch (err) {
+        state.activeRunStatus = null;
         ui.byKey("logs").textContent += `Run failed to start: ${err.message}\n`;
         ctx.features.workflowNotification?.showStartFailure(err);
       } finally {
         ui.byKey("runWorkflow").disabled = false;
+        ctx.features.composer.updatePrimaryAction();
       }
     },
 
