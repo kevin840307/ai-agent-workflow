@@ -96,7 +96,11 @@ def expected_file_candidates(run: dict[str, Any], rel_path: str) -> list[Path]:
     workspace = Path(run["workspace"])
     output_dir = workspace / "output"
     project_dir = Path(run.get("project_path") or workspace)
-    normalized = rel_path.strip().replace("\\", "/").lstrip("/")
+    raw_path = rel_path.strip()
+    absolute_path = Path(raw_path).expanduser()
+    if absolute_path.is_absolute():
+        return [absolute_path]
+    normalized = raw_path.replace("\\", "/").lstrip("/")
     candidates: list[Path] = []
     if normalized.startswith("output/"):
         candidates.append(workspace / normalized)

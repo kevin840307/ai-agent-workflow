@@ -6,6 +6,8 @@ Do not provide exploit instructions, weaponized payloads, or steps to attack rea
 
 Important report rules:
 - Use security-findings.md as the source of truth for final findings.
+- Your output must start with `Status: DONE` as the first non-empty line.
+- Do not output `artifact: ...`, candidate validation score reports, or copied score artifact content.
 - Do not create new vulnerabilities that are not present as accepted SEC-### findings.
 - Do not drop accepted SEC-### findings. Every accepted SEC finding must become one VULN finding.
 - Preserve Severity and Python-computed numeric Confidence Score from security-findings.md unless you lower the numeric confidence score due to clearly stated evidence weakness.

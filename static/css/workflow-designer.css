@@ -280,6 +280,12 @@ body[data-page="workflow-designer"] {
   gap: 10px;
 }
 
+.designer-workflow-path-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
 .designer-workflow-description-input {
   min-height: 74px;
   font-size: 13px;
@@ -610,6 +616,11 @@ body[data-page="workflow-designer"] {
   align-items: center;
 }
 
+.designer-source-row .designer-path-help,
+.designer-expected-row .designer-path-help {
+  grid-column: 1 / -1;
+}
+
 .designer-reviewer-row {
   grid-template-columns: minmax(0, 1fr) 76px auto;
   align-items: center;
@@ -618,6 +629,12 @@ body[data-page="workflow-designer"] {
 .designer-expected-row {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
+}
+
+.designer-path-help {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
 }
 
 .designer-empty-state {

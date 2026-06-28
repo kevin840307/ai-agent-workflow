@@ -7,11 +7,13 @@ Focus on defensive code review, vulnerability candidates, evidence quality, seve
 
 Important multi-agent rule:
 - You are doing the SAME scan as the other agents, not a different category-specific scan.
-- This prompt intentionally does NOT embed source file contents. Use Project Path as the source of truth and inspect the project directly from that path.
+- Use Project Path as the source of truth when direct file access is available.
+- This prompt also includes bounded Security Context from the workflow. If direct file tools are unavailable, base your review on those excerpts and clearly state the limitation in Evidence/Notes.
 - Ignore previous conclusions in the same project/session; this step should be an independent security review.
 - Produce the same candidate Markdown schema every time so Python can compare and combine agents.
 - A Python validator will score this document. Weak evidence, weak coverage, or invalid schema will fail this step and retry the same agent.
 - Do NOT output final numeric Confidence Score. Python computes the official numeric Confidence Score later.
+- Never include retry feedback, prompt text, or instruction text in the artifact.
 
 Project Path: {{project_path}}
 Workflow Workspace: {{workspace_path}}
@@ -19,8 +21,12 @@ Workflow Workspace: {{workspace_path}}
 Requirement:
 {{requirement}}
 
+Security Context:
+{{security_context}}
+
 Project inspection rules:
-- Inspect files under Project Path directly. Do not rely on pre-expanded file content from the prompt.
+- Inspect files under Project Path directly when possible.
+- If direct file inspection is unavailable, use the Security Context excerpts above as your bounded evidence source.
 - Do not modify, create, delete, or format project files.
 - Scan source code, configuration, dependency manifests, routing/controllers, auth logic, database access, file handling, logging, and environment/config usage.
 - Exclude generated/cache/vendor/workflow folders and binary artifacts.
@@ -52,6 +58,7 @@ Scan rules:
 - If no candidate is found, still output exactly one CAND-001 with Status: No Finding, Severity: Info, Evidence Type: Inferred, and AI Confidence Guess based on reviewed scope.
 - In Markdown tables, do not include the `|` pipe character inside any cell. Replace pipes in code snippets with `/` or describe the snippet outside the table.
 - Never write `N/A`, `Unknown`, `TBD`, or `-` in Checklist Coverage Evidence or Notes. If no concrete evidence exists, write a clear limitation sentence starting with `Limitation:`.
+- Do not copy placeholder/example text literally. Replace every placeholder with project evidence or with a clear Limitation sentence.
 
 Security checklist categories to scan:
 - Secrets and credentials exposure
@@ -98,23 +105,24 @@ Status: DONE
 ## Candidate Index
 | ID | Severity | AI Confidence Guess | Status | Area | Evidence Summary |
 | --- | --- | --- | --- | --- | --- |
-| CAND-001 | Critical | High | Confirmed | Example area | path/to/file.ext:function or config evidence |
+| CAND-001 | Info | Medium | No Finding | Reviewed scope | Limitation: no confirmed vulnerability candidate found in reviewed excerpts |
 
 Every row in Candidate Index must use AI Confidence Guess: High, Medium, or Low only.
+Every Candidate Index AI Confidence Guess value must exactly match the matching candidate block AI Confidence Guess value.
 Do not include Confidence Score in this file.
 
 ## Candidates
-### CAND-001 - <short candidate title>
-- Area: <security area>
-- File: <file path from Project Path or Not applicable>
-- Function/Class: <function/class/config name or Not applicable>
-- Evidence: <file/path/function/config evidence from Project Path. If inferred, start with Inferred:.>
-- Evidence Type: Direct Code
-- Data Flow Seen: Partial
-- Exploitability Seen: Partial
-- Severity: High
+### CAND-001 - No confirmed vulnerability candidate
+- Area: Reviewed scope
+- File: Not applicable
+- Function/Class: Not applicable
+- Evidence: Inferred: reviewed the provided Security Context excerpts and no concrete vulnerability candidate was confirmed.
+- Evidence Type: Inferred
+- Data Flow Seen: Not applicable
+- Exploitability Seen: Not applicable
+- Severity: Info
 - AI Confidence Guess: Medium
-- Status: Likely
-- Reason: <why this is or is not a candidate>
-- Impact: <risk impact>
-- Recommendation: <defensive remediation or review action>
+- Status: No Finding
+- Reason: No confirmed vulnerability candidate was identified from the available evidence.
+- Impact: No confirmed vulnerable behavior from available evidence.
+- Recommendation: Continue manual review or provide more source context for higher confidence.

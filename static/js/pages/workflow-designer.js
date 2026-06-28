@@ -451,6 +451,7 @@ function updateFromInput(input) {
     wf[input.dataset.workflowField] = value;
     markWorkflowDirty();
     renderWorkflowLabels();
+    renderSettings();
     return;
   }
 
@@ -549,6 +550,12 @@ function renderWorkflowLabels() {
   const descriptionInput = el("workflowDescriptionInput");
   if (descriptionInput && descriptionInput.value !== (wf.description || "")) descriptionInput.value = wf.description || "";
   if (descriptionInput) descriptionInput.disabled = readonly;
+  const skillRootInput = el("workflowSkillRootInput");
+  if (skillRootInput && skillRootInput.value !== (wf.skillRoot || "")) skillRootInput.value = wf.skillRoot || "";
+  if (skillRootInput) skillRootInput.disabled = readonly;
+  const promptRootInput = el("workflowPromptRootInput");
+  if (promptRootInput && promptRootInput.value !== (wf.promptRoot || "")) promptRootInput.value = wf.promptRoot || "";
+  if (promptRootInput) promptRootInput.disabled = readonly;
   setText("designerWorkflowLockHint", readonly ? "Read only" : "Editable");
   el("designerWorkflowLockHint")?.classList.toggle("locked", readonly);
 
@@ -1132,6 +1139,53 @@ function expectedFilesPreview(step) {
   `;
 }
 
+function isAbsoluteLikePath(value = "") {
+  const text = String(value || "").trim();
+  return /^[a-zA-Z]:[\\/]/.test(text) || text.startsWith("/") || text.startsWith("~/") || text.startsWith("\\\\");
+}
+
+function sourcePathSummary() {
+  const wf = getSelectedWorkflow();
+  const skillRoot = wf?.skillRoot || "~/.qwen/skills";
+  return `Skill Path accepts absolute paths. Relative skill paths resolve from Skill Root (${skillRoot}), then Project Path. Prompt File resolves inside this workflow bundle.`;
+}
+
+function describeSourcePath(source = {}) {
+  const type = String(source.type || "").trim();
+  const value = String(source.value || "").trim();
+  if (!value) return "No path/value set.";
+  const wf = getSelectedWorkflow();
+  if (type === "skill_path") {
+    if (isAbsoluteLikePath(value)) return "Skill path: absolute path, used directly.";
+    return `Skill path: relative to Skill Root (${wf?.skillRoot || "~/.qwen/skills"}), with Project Path fallback.`;
+  }
+  if (type === "prompt_file") {
+    return "Prompt file: resolved inside this workflow folder, usually under prompts/.";
+  }
+  if (type === "context_file") {
+    if (isAbsoluteLikePath(value)) return "Context file: absolute path, used directly when available.";
+    return "Context file: checked under Project Path, workflow workspace, then app root.";
+  }
+  if (type === "artifact") {
+    return "Artifact: checked under workflow output/ and workspace.";
+  }
+  if (type === "command") return "Command source: prepended as a slash command when configured.";
+  if (type === "inline_prompt") return "Inline prompt: inserted as text context.";
+  return "Source value passed to backend workflow context.";
+}
+
+function describeExpectedFilePath(value = "") {
+  const text = String(value || "").trim();
+  if (!text) return "No expected file path set.";
+  const normalized = text.replace(/\\/g, "/");
+  if (isAbsoluteLikePath(text)) return "Absolute path: checked exactly at this file location.";
+  if (normalized.startsWith("output/")) return "Workflow output path: checked under this run workspace.";
+  if (normalized.startsWith("input/") || normalized.startsWith("prompts/") || normalized.startsWith(".workflow/")) {
+    return "Workflow workspace path: checked under this run workspace.";
+  }
+  return "Relative artifact: checked in output/, workspace, then Project Path.";
+}
+
 function renderSources(step, disabled, readonly) {
   const diagnostics = getTemplateDiagnostics(step);
   const unknown = diagnostics.unknown.length ? `
@@ -1186,8 +1240,10 @@ function renderSources(step, disabled, readonly) {
             </select>
             <input class="designer-input" value="${escapeAttr(source.value || "")}" data-array-collection="sources" data-index="${index}" data-array-field="value" ${disabled} />
             <button class="designer-danger" data-designer-action="remove-source" data-index="${index}" ${disabled}>×</button>
+            <div class="designer-path-help">${escapeHtml(describeSourcePath(source))}</div>
           </div>
         `).join("") : `<div class="designer-empty-state">No extra sources. Template params are provided by backend runtime context.</div>`}
+        <div class="designer-form-hint">${escapeHtml(sourcePathSummary())}</div>
       </div>
       <div class="designer-footer-actions">
         <button data-designer-action="preview-prompt">Preview Rendered Prompt</button>
@@ -1297,10 +1353,12 @@ function renderAdvanced(step, disabled, readonly) {
         </div>
         ${step.expectedFiles.length ? step.expectedFiles.map((file, index) => `
           <div class="designer-expected-row">
-            <input class="designer-input" value="${escapeAttr(file)}" data-array-collection="expectedFiles" data-index="${index}" data-array-field="value" ${disabled} />
+            <input class="designer-input" value="${escapeAttr(file)}" placeholder="output/report.md, report.md, or C:\\path\\report.md" data-array-collection="expectedFiles" data-index="${index}" data-array-field="value" ${disabled} />
             <button class="designer-danger" data-designer-action="remove-expected-file" data-index="${index}" ${disabled}>×</button>
+            <div class="designer-path-help">${escapeHtml(describeExpectedFilePath(file))}</div>
           </div>
         `).join("") : `<div class="designer-empty-state">No expected files configured.</div>`}
+        <div class="designer-form-hint">Relative names are checked in output/, workspace, then Project Path. Use output/, input/, prompts/, or an absolute path when you need an exact location.</div>
       </div>
     </div>
   `;
@@ -1513,19 +1571,39 @@ function findTemplatePreset(path = "") {
   return Object.values(TemplatePresets).find((preset) => preset.path === path) || null;
 }
 
+function templateFileNameFromPath(path = "") {
+  const normalized = String(path || "").replace(/\\/g, "/").trim();
+  return normalized.split("/").filter(Boolean).pop() || "";
+}
+
+function templatePathFromFileName(name = "") {
+  const cleaned = String(name || "")
+    .replace(/\\/g, "/")
+    .split("/")
+    .filter(Boolean)
+    .pop()
+    ?.replace(/[<>:"|?*]/g, "")
+    .trim() || "";
+  if (!cleaned) return "";
+  const withExtension = /\.[a-z0-9]+$/i.test(cleaned) ? cleaned : `${cleaned}.md`;
+  return `prompts/${withExtension}`;
+}
+
 function loadSelectedTemplatePreset() {
   if (!templateEditorDraft || isReadonly()) return;
+  const presetSelect = document.querySelector("[data-template-preset-path]");
+  const selectedPresetPath = presetSelect?.value || templateEditorDraft.templatePath;
   if (isTemplateDraftDirty()) {
     openTemplateUnsavedConfirm({
       title: "Replace current edits?",
       message: "Loading a template will replace the unsaved prompt content in this editor.",
       confirmLabel: "Load Template",
       action: "confirm-load-template-preset",
-      templatePath: templateEditorDraft.templatePath,
+      templatePath: selectedPresetPath,
     });
     return;
   }
-  performLoadSelectedTemplatePreset(templateEditorDraft.templatePath);
+  performLoadSelectedTemplatePreset(selectedPresetPath);
 }
 
 function performLoadSelectedTemplatePreset(templatePath = "") {
@@ -1540,10 +1618,12 @@ function performLoadSelectedTemplatePreset(templatePath = "") {
   templateEditorDraft.templatePath = preset.path || nextPath;
   templateEditorDraft.filename = preset.filename || templateEditorDraft.filename || "result.md";
   templateEditorDraft.templateContent = preset.content || templateEditorDraft.templateContent || "";
-  const pathSelect = document.querySelector('[data-template-draft-field="templatePath"]');
+  const pathInput = document.querySelector('[data-template-draft-field="templateName"]');
+  const presetSelect = document.querySelector("[data-template-preset-path]");
   const filenameInput = document.querySelector('[data-template-draft-field="filename"]');
   const editor = el("designerTemplateEditor");
-  if (pathSelect) pathSelect.value = templateEditorDraft.templatePath;
+  if (pathInput) pathInput.value = templateFileNameFromPath(templateEditorDraft.templatePath);
+  if (presetSelect) presetSelect.value = templateEditorDraft.templatePath;
   if (filenameInput) filenameInput.value = templateEditorDraft.filename;
   if (editor) editor.value = templateEditorDraft.templateContent;
   closeConfirm();
@@ -1573,6 +1653,13 @@ function updateTemplateDraft(input) {
   if (!templateEditorDraft || isReadonly()) return;
   const field = input.dataset.templateDraftField;
   const value = readInputValue(input);
+
+  if (field === "templateName") {
+    templateEditorDraft.templatePath = templatePathFromFileName(value);
+    renderDraftPromptDiagnostics();
+    renderTemplateDirtyState();
+    return;
+  }
 
   if (field === "templatePath" && input.dataset.templateAutoload === "true") {
     const previousPath = templateEditorDraft.templatePath || "";
@@ -1746,9 +1833,14 @@ function openTemplateEditor() {
       </div>
       <div class="designer-template-modal-meta">
         <label class="designer-form-row">
-          <span class="designer-label">Template File</span>
+          <span class="designer-label">Template File Name</span>
+          <input class="designer-input" value="${escapeAttr(templateFileNameFromPath(templateEditorDraft.templatePath))}" placeholder="my-step.md" data-template-draft-field="templateName" ${disabled} />
+          <span class="designer-form-hint">Saved in this workflow's prompts/ folder. Subfolders and absolute paths are not used here.</span>
+        </label>
+        <label class="designer-form-row">
+          <span class="designer-label">Load Preset</span>
           <div class="designer-template-picker-row">
-            <select class="designer-select" data-template-draft-field="templatePath" data-template-autoload="true" ${disabled}>
+            <select class="designer-select" data-template-preset-path ${disabled}>
               ${templatePresetOptions(templateEditorDraft.templatePath)}
             </select>
             <button type="button" data-designer-action="load-template-preset" ${disabled}>Load</button>
@@ -1797,7 +1889,7 @@ function saveTemplateEditor() {
   if (!templateEditorDraft || isReadonly()) return closeTemplateEditor();
   const step = getSelectedStep();
   if (!step || step.id !== templateEditorDraft.stepId) return closeTemplateEditor();
-  step.templatePath = templateEditorDraft.templatePath || "";
+  step.templatePath = templateEditorDraft.templatePath || templatePathFromFileName(step.key || "step");
   step.filename = normalizeFilename(templateEditorDraft.filename || detectFilename(templateEditorDraft.templateContent || ""));
   step.templateContent = templateEditorDraft.templateContent || "";
   markWorkflowDirty();

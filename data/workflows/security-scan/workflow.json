@@ -389,12 +389,6 @@
       ],
       "validator": "",
       "contextArtifacts": [
-        "security-candidates-agent-1.md",
-        "security-candidates-agent-1-score.md",
-        "security-candidates-agent-2.md",
-        "security-candidates-agent-2-score.md",
-        "security-candidates-agent-3.md",
-        "security-candidates-agent-3-score.md",
         "security-findings.md"
       ]
     },

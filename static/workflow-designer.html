@@ -88,6 +88,16 @@
                 <label class="designer-label" for="workflowDescriptionInput">Description</label>
                 <textarea id="workflowDescriptionInput" class="designer-textarea designer-workflow-description-input" rows="3" placeholder="Describe what this workflow is for..."></textarea>
               </div>
+              <div class="designer-workflow-path-grid">
+                <label class="designer-form-row">
+                  <span class="designer-label">Skill Root</span>
+                  <input id="workflowSkillRootInput" class="designer-input" data-workflow-field="skillRoot" placeholder="~/.qwen/skills" />
+                </label>
+                <label class="designer-form-row">
+                  <span class="designer-label">Prompt Root</span>
+                  <input id="workflowPromptRootInput" class="designer-input" data-workflow-field="promptRoot" placeholder="prompts/" />
+                </label>
+              </div>
             </div>
             <div class="designer-editor-actions">
               <span id="designerWorkflowDirtyBadge" class="badge passed">Saved</span>
