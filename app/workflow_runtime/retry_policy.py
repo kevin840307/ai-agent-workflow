@@ -16,8 +16,9 @@ def retry_target_for_step(step_record: dict[str, Any], steps: list[dict[str, Any
     3. current failed step.
     """
     config = step_record.get("config") or {}
+    available_keys = {step.get("key") for step in steps}
     configured_retry_from = step_record.get("retry_from_step_key") or config.get("retryFromStepKey")
-    if configured_retry_from:
+    if configured_retry_from and configured_retry_from in available_keys:
         return str(configured_retry_from)
 
     fail_action = step_record.get("fail_action") or config.get("failAction") or "same_step"
@@ -27,7 +28,7 @@ def retry_target_for_step(step_record: dict[str, Any], steps: list[dict[str, Any
         return steps[current_index - 1]["key"]
     if fail_action == "selected_step":
         selected = config.get("failActionStepKey") or config.get("selectedStepKey") or config.get("retryFromStepKey")
-        return str(selected) if selected else step_record.get("key")
+        return str(selected) if selected and selected in available_keys else step_record.get("key")
     return step_record.get("key")
 
 

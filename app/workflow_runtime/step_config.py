@@ -2,9 +2,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.workflow_definitions import DEFAULT_WORKFLOW_STEPS as STEPS
-from app.workflow_definitions import RETRY_FROM, USER_QUESTION_ALLOWED_STEPS
-
 
 def step_kind_from_type(step_type: str) -> str:
     """Normalize UI/workflow step type into runtime kind.
@@ -30,27 +27,7 @@ def step_kind_from_type(step_type: str) -> str:
 
 def initial_steps(workflow_steps: list[dict[str, Any]] | None = None) -> list[dict[str, Any]]:
     if workflow_steps is None:
-        workflow_steps = [
-            {
-                "key": step.key,
-                "name": step.title,
-                "type": {
-                    "qwen": "ai",
-                    "agent": "agent",
-                    "validator": "validation",
-                    "gate": "gate",
-                    "test": "python",
-                }.get(step.kind, step.kind),
-                "agent": "qwen" if step.kind in {"qwen", "agent"} else "",
-                "filename": step.artifact or "",
-                "outputFile": step.artifact or "",
-                "maxRetries": 2,
-                "retryFromStepKey": RETRY_FROM.get(step.key, ""),
-                "allowInteraction": step.key in USER_QUESTION_ALLOWED_STEPS,
-                "enabled": True,
-            }
-            for step in STEPS
-        ]
+        workflow_steps = []
     steps: list[dict[str, Any]] = []
     for index, workflow_step in enumerate(workflow_steps):
         if workflow_step.get("enabled") is False:

@@ -1,4 +1,4 @@
-import {
+﻿import {
   BuiltInPromptParams,
   FailActions,
   ReviewModes,
@@ -73,28 +73,17 @@ let systemWorkflow = Object.freeze({
   id: "system-controlled-qwen",
   kind: "system",
   name: "Controlled Qwen Workflow",
-  description: "Built-in workflow: Requirement → Spec → Todo → Build → Test → Review.",
+  description: "Built-in workflow loaded from backend configuration.",
   active: true,
-  skillRoot: "skills/",
+  skillRoot: "",
   promptRoot: "prompts/",
-  steps: [
-    createStep({ name: "Prepare Project", key: "prepare_project", type: "python", description: "Prepare project context and files.", expectedFiles: ["context/project.md"] }),
-    createStep({ name: "Generate Spec", key: "generate_spec", type: "ai", command: "/spec", sources: [{ type: "command", value: "/spec" }, { type: "skill_path", value: "skills/spec.md" }], expectedFiles: ["output/spec.md"] }),
-    createStep({ name: "Validate Spec", key: "validate_spec", type: "validation", validator: "validate_spec", expectedFiles: ["output/spec.md"] }),
-    createStep({ name: "Review Spec", key: "review_spec", type: "review", reviewMode: "current_session", command: "", passKeywords: "PASS, APPROVED", failKeywords: "FAIL, BLOCKED" }),
-    createStep({ name: "Spec Gate", key: "spec_gate", type: "gate", pauseAfterStep: true, approvalRequired: true, approvalMessage: "Review output/spec.md before continuing." }),
-    createStep({ name: "Generate Todo", key: "generate_todo", type: "ai", command: "/plan", sources: [{ type: "command", value: "/plan" }, { type: "artifact", value: "output/spec.md" }], expectedFiles: ["output/todo.md"] }),
-    createStep({ name: "Build", key: "build", type: "ai", sources: [{ type: "prompt_file", value: "prompts/build.md" }], expectedFiles: ["build_result.md"] }),
-    createStep({ name: "Run Test", key: "run_test", type: "python", validator: "run_pytest", expectedFiles: ["test_result.md"] }),
-    createStep({ name: "Final Review", key: "final_review", type: "review", reviewMode: "multi_agent", reviewers: [{ agent: "qwen-reviewer", prompt: "prompts/final_review.md", weight: 1 }], confidenceThreshold: 0.75 }),
-    createStep({ name: "Final Gate", key: "final_gate", type: "gate", pauseAfterStep: true, approvalRequired: true }),
-  ],
+  steps: [],
 });
 
 let state = {
   workflows: [],
   selectedWorkflowId: systemWorkflow.id,
-  selectedStepId: systemWorkflow.steps[0].id,
+  selectedStepId: null,
   activeTab: "basic",
   stepFilter: "",
   stepTypeFilter: "all",

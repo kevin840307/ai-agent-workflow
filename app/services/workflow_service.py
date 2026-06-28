@@ -66,6 +66,10 @@ async def create_workflow_run(session_id: str, body: runtime.CreateRunRequest) -
     if not requirement:
         raise HTTPException(status_code=400, detail="Requirement is required")
 
+    steps = runtime.initial_steps(workflow.get("steps", []))
+    if not steps:
+        raise HTTPException(status_code=400, detail="Workflow has no enabled steps.")
+
     run_id = str(uuid.uuid4())
     project_dir = Path(project_path)
     run_dir = project_dir / ".qwen-workflow" / "runs" / f"session-{session_id}" / f"run-{run_id}"
@@ -85,8 +89,9 @@ async def create_workflow_run(session_id: str, body: runtime.CreateRunRequest) -
         "workflow_id": workflow["id"],
         "workflow_folder": workflow.get("folderName") or workflow["id"],
         "workflow_name": workflow.get("name") or workflow["id"],
+        "skill_root": workflow.get("skillRoot") or "",
         "test_command": body.test_command,
-        "steps": runtime.initial_steps(workflow.get("steps", [])),
+        "steps": steps,
         "artifacts": [],
         "created_at": runtime.utc_now(),
         "updated_at": runtime.utc_now(),

@@ -13,19 +13,6 @@ from .questions import interaction_instruction
 from .step_utils import bool_config
 
 
-DEFAULT_CONTEXT_ARTIFACTS: dict[str, list[str]] = {
-    # Each step still uses its prompt template, but these artifacts are force-injected
-    # when they exist so a custom/missing placeholder cannot accidentally drop context.
-    "review_spec": ["spec.md"],
-    "generate_todo": ["spec.md", "spec-review.md"],
-    "repair_todo": ["spec.md", "todo.md", "todo.raw.md"],
-    "review_todo": ["spec.md", "spec-review.md", "todo.md"],
-    "generate_tests": ["spec.md", "todo.md", "todo-review.md"],
-    "build": ["spec.md", "spec-review.md", "todo.md", "todo-review.md", "test-plan.md"],
-    "final_review": ["spec.md", "todo.md", "test-plan.md", "build-result.md", "test-result.md"],
-}
-
-
 def workflow_prompt_path(name: str, run: dict[str, Any] | None = None) -> Path:
     workflow_folder = (run or {}).get("workflow_folder") or (run or {}).get("workflow_id") or SYSTEM_WORKFLOW_ID
     normalized = name.replace("\\", "/").lstrip("/")
@@ -77,7 +64,7 @@ class PromptBuilder:
         profile = project_profile(project_dir)
 
         skill_root = step_config.get("skillRoot") or run.get("skill_root") or str(DEFAULT_SKILL_PATH)
-        skill_context, skill_files = load_skill_context(str(skill_root), step_key, requirement)
+        skill_context, skill_files = load_skill_context(self._configured_skill_paths(step_config, str(skill_root), project_dir, run))
 
         values = self._template_values(run, output_dir, project_dir, requirement, architecture, profile, answers, guidance, failure_feedback, step_config)
         prompt_template = read_text(workflow_prompt_path(prompt_name, run))
@@ -214,7 +201,7 @@ class PromptBuilder:
         if raw is None:
             raw = step_config.get("dependsOnArtifacts")
         if raw is None:
-            raw = DEFAULT_CONTEXT_ARTIFACTS.get(step_key, [])
+            raw = []
         if isinstance(raw, str):
             raw = [part.strip() for part in raw.split(",")]
         if not isinstance(raw, list):
@@ -264,10 +251,44 @@ class PromptBuilder:
                     continue
                 text = read_text(workflow_prompt_path(value, run))
             elif source_type == "skill_path":
-                text = self._read_first_existing([Path(value).expanduser(), DEFAULT_SKILL_PATH / value, project_dir / value])
+                # Skill files are loaded into the dedicated agent profile wrapper
+                # so they do not get duplicated in generic source context.
+                continue
             if text.strip():
                 blocks.append(f"### {label}\n\n{text.strip()}")
         return "\n\n".join(blocks)
+
+    def _configured_skill_paths(self, step_config: dict[str, Any], skill_root: str, project_dir: Path, run: dict[str, Any]) -> list[str]:
+        raw_values: list[str] = []
+        for key in ["skillPath", "skillPaths"]:
+            raw = step_config.get(key)
+            if isinstance(raw, str):
+                raw_values.extend(part.strip() for part in raw.split(","))
+            elif isinstance(raw, list):
+                raw_values.extend(str(item or "").strip() for item in raw)
+        for source in step_config.get("sources") or []:
+            if not isinstance(source, dict):
+                continue
+            if str(source.get("type") or "").strip() == "skill_path":
+                raw_values.append(str(source.get("value") or "").strip())
+
+        paths: list[str] = []
+        for value in raw_values:
+            if not value:
+                continue
+            candidate = Path(value).expanduser()
+            if candidate.is_absolute() or value.startswith("~/"):
+                paths.append(str(candidate))
+                continue
+            root = Path(skill_root).expanduser()
+            if root.is_absolute() or skill_root.startswith("~/"):
+                paths.append(str(root / value))
+            else:
+                workflow_folder = run.get("workflow_folder") or run.get("workflow_id") or SYSTEM_WORKFLOW_ID
+                paths.append(str(WORKFLOW_BUNDLES_DIR / workflow_folder / root / value))
+                paths.append(str(project_dir / root / value))
+            paths.append(str(project_dir / value))
+        return list(dict.fromkeys(paths))
 
     def _read_artifact_source(self, run: dict[str, Any], output_dir: Path, value: str) -> str:
         normalized = value.replace("\\", "/").lstrip("/")

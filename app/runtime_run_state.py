@@ -165,27 +165,6 @@ class RunState:
                 "input/guidance.md",
                 "input/failure-feedback.md",
                 "prompts/skill-context.md",
-                "prompts/prepare_project.md",
-                "prompts/generate_spec.md",
-                "prompts/repair_spec.md",
-                "prompts/review_spec.md",
-                "prompts/generate_todo.md",
-                "prompts/repair_todo.md",
-                "prompts/review_todo.md",
-                "prompts/generate_tests.md",
-                "prompts/build.md",
-                "prompts/final_review.md",
-                "output/architecture.md",
-                "output/spec.raw.md",
-                "output/spec.md",
-                "output/spec-review.md",
-                "output/todo.raw.md",
-                "output/todo.md",
-                "output/todo-review.md",
-                "output/build-result.md",
-                "output/test-plan.md",
-                "output/test-result.md",
-                "output/final-review.md",
                 ".workflow/run-log.md",
                 ".workflow/state.json",
             ]
@@ -205,12 +184,22 @@ class RunState:
                 add_rel(config.get("outputFile") or config.get("filename"))
                 for expected in config.get("expectedFiles") or []:
                     add_rel(expected)
+                for artifact in config.get("contextArtifacts") or config.get("dependsOnArtifacts") or []:
+                    add_rel(artifact)
                 output_file = str(config.get("outputFile") or config.get("filename") or "").strip()
                 if output_file:
                     stem = Path(output_file).stem
                     suffix = Path(output_file).suffix or ".md"
                     for index, _reviewer in enumerate(config.get("reviewers") or [], start=1):
                         add_rel(f"{stem}.reviewer-{index}{suffix}")
+
+            for folder_name in ["input", "prompts", "output", ".workflow"]:
+                folder = run_dir / folder_name
+                if not folder.exists():
+                    continue
+                for path in folder.rglob("*"):
+                    if path.is_file():
+                        add_rel(str(path.relative_to(run_dir)).replace("\\", "/"))
 
             deduped = list(dict.fromkeys(rels))
             run["artifacts"] = [artifact_record(run["id"], run_dir, rel) for rel in deduped if (run_dir / rel).exists()]

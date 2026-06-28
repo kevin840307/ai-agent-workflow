@@ -1,24 +1,27 @@
 export function createRuns(ctx) {
-  const { api, constants, state, ui } = ctx;
-  const { WORKFLOW_STEPS } = constants;
+  const { api, state, ui } = ctx;
 
   const runs = {
     clearPanels() {
       ui.byKey("currentStep").textContent = "Idle";
-      ui.byKey("progressText").textContent = `0 / ${WORKFLOW_STEPS.length}`;
+      ui.byKey("progressText").textContent = "0 / 0";
       ui.byKey("resultText").textContent = "Waiting";
       ctx.features.interactions.hide();
-      runs.renderStepSkeleton();
+      runs.renderStepSkeleton([]);
       ui.byKey("qwenLive").textContent = "No Qwen output yet.";
       ui.byKey("logs").textContent = "";
       ui.byKey("artifacts").innerHTML = "";
       ui.byKey("artifactContent").textContent = "";
     },
 
-    renderStepSkeleton() {
+    renderStepSkeleton(stepTitles = []) {
       const steps = ui.byKey("steps");
       steps.innerHTML = "";
-      WORKFLOW_STEPS.forEach((title) => {
+      if (!stepTitles.length) {
+        steps.innerHTML = `<div class="message system">No workflow run loaded.</div>`;
+        return;
+      }
+      stepTitles.forEach((title) => {
         const row = document.createElement("div");
         row.className = "step";
         row.innerHTML = `

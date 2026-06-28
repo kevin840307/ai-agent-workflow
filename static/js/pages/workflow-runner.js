@@ -1,5 +1,5 @@
-import { createAppContext } from "../core/context.js?v=20260628-index-nav-dropdown1";
-import { createArtifacts } from "../features/artifacts.js?v=20260628-artifacts4";
+import { createAppContext } from "../core/context.js?v=20260628-workflow-config1";
+import { createArtifacts } from "../features/artifacts.js?v=20260628-workflow-config1";
 import { createChat } from "../features/chat.js?v=20260628-artifacts3";
 import { createComposer } from "../features/composer.js?v=20260628-retry-stop1";
 import { createConfig } from "../features/config.js?v=20260628-artifacts3";
@@ -11,7 +11,7 @@ import { createLayout } from "../features/layout.js?v=20260628-artifacts3";
 import { createMessages } from "../features/messages.js?v=20260628-artifacts3";
 import { createModal } from "../features/modal.js?v=20260628-artifacts3";
 import { createRequirements } from "../features/requirements.js?v=20260628-retry-stop1";
-import { createRuns } from "../features/runs.js?v=20260628-retry-stop1";
+import { createRuns } from "../features/runs.js?v=20260628-workflow-config1";
 import { createSessions } from "../features/sessions.js?v=20260628-reset1";
 import { createWorkflows } from "../features/workflows.js?v=20260628-index-nav-dropdown1";
 

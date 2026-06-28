@@ -92,43 +92,10 @@ class WorkflowActions:
         await self.run_agent_step(run, step_key, prompt_name, artifact, allow_interaction=allow_interaction, agent_name="qwen")
 
     async def validate_or_repair_spec(self, run: dict[str, Any], output_dir: Path) -> None:
-        try:
-            self.functions.validate_spec(output_dir)
-            return
-        except ValidationError as exc:
-            raw = read_text(output_dir / "spec.md")
-            write_text(output_dir / "spec.raw.md", raw)
-            await self.refresh_artifacts(run["id"])
-            await self.log(run, f"validate_spec: failed first pass, attempting repair: {exc}")
-
-        try:
-            await self.run_agent_step(run, "repair_spec", "08_repair_spec.md", "spec.md")
-            self.functions.validate_spec(output_dir)
-        except (WorkflowError, ValidationError) as exc:
-            await self.log(run, f"validate_spec: repair failed, writing deterministic fallback: {exc}")
-            requirement = read_text(Path(run["workspace"]) / "requirement.md")
-            write_text(output_dir / "spec.md", synthesize_spec_from_requirement(requirement))
-            await self.refresh_artifacts(run["id"])
-            self.functions.validate_spec(output_dir)
+        self.functions.validate_spec(output_dir)
 
     async def validate_or_repair_todo(self, run: dict[str, Any], output_dir: Path) -> None:
-        try:
-            self.functions.validate_todo(output_dir)
-            return
-        except ValidationError as exc:
-            raw = read_text(output_dir / "todo.md")
-            write_text(output_dir / "todo.raw.md", raw)
-            await self.refresh_artifacts(run["id"])
-            await self.log(run, f"validate_todo: failed first pass, attempting repair: {exc}")
-
-        await self.run_agent_step(run, "repair_todo", "09_repair_todo.md", "todo.md")
-        try:
-            self.functions.validate_todo(output_dir)
-        except ValidationError as exc:
-            await self.log(run, f"validate_todo: repair failed, writing deterministic fallback: {exc}")
-            write_text(output_dir / "todo.md", synthesize_todo_from_spec(output_dir))
-            await self.refresh_artifacts(run["id"])
-            self.functions.validate_todo(output_dir)
+        self.functions.validate_todo(output_dir)
 
     async def generate_spec_step(
         self,

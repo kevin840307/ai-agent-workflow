@@ -1,6 +1,7 @@
 You are doing the final workflow review.
 
 Output only Markdown. Do not output JSON. Do not use code fences. Do not ask the user questions.
+Use exactly one of the two structures below. Do not add extra sections.
 
 Requirement:
 {{requirement}}
@@ -32,5 +33,14 @@ Status: PASS
 
 ## Summary
 - Implementation and tests satisfy the spec.
+Confidence: 1.0
+
+Use this exact structure when failing:
+
+Status: FAIL
+
+## Summary
+- Explain the concrete issue to fix.
+Confidence: 1.0
 
 Use Status: FAIL if the test result failed, if tests do not cover the current Requirement, if build output appears to implement a different or stale requirement, if the implementation/test artifacts ignore the existing Project Profile or Architecture, or if the artifacts clearly do not satisfy the acceptance criteria.

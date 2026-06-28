@@ -21,7 +21,16 @@
       "filename": "architecture.md",
       "outputFile": "architecture.md",
       "templateContent": "",
-      "sources": [],
+      "sources": [
+        {
+          "type": "skill_path",
+          "value": "spec-driven-development"
+        },
+        {
+          "type": "skill_path",
+          "value": "code-review-and-quality"
+        }
+      ],
       "reviewMode": "none",
       "reviewers": [],
       "confidenceThreshold": 0.75,
@@ -58,7 +67,12 @@
       "filename": "spec.md",
       "outputFile": "spec.md",
       "templateContent": "",
-      "sources": [],
+      "sources": [
+        {
+          "type": "skill_path",
+          "value": "spec-driven-development"
+        }
+      ],
       "reviewMode": "none",
       "reviewers": [],
       "confidenceThreshold": 0.75,
@@ -103,7 +117,7 @@
       "failKeywords": "FAIL, BLOCKED",
       "aggregatorFunction": "",
       "maxRetries": 10,
-      "failAction": "same_step",
+      "failAction": "selected_step",
       "retryFromStepKey": "generate_spec",
       "keepSameSession": true,
       "injectFailureFeedback": true,
@@ -130,7 +144,16 @@
       "filename": "spec-review.md",
       "outputFile": "spec-review.md",
       "templateContent": "",
-      "sources": [],
+      "sources": [
+        {
+          "type": "skill_path",
+          "value": "code-review-and-quality"
+        },
+        {
+          "type": "skill_path",
+          "value": "doubt-driven-development"
+        }
+      ],
       "reviewMode": "current_session",
       "reviewers": [],
       "confidenceThreshold": 0.75,
@@ -138,7 +161,7 @@
       "failKeywords": "FAIL, BLOCKED",
       "aggregatorFunction": "",
       "maxRetries": 10,
-      "failAction": "same_step",
+      "failAction": "selected_step",
       "retryFromStepKey": "generate_spec",
       "keepSameSession": true,
       "injectFailureFeedback": true,
@@ -177,7 +200,7 @@
       "failKeywords": "FAIL, BLOCKED",
       "aggregatorFunction": "",
       "maxRetries": 10,
-      "failAction": "same_step",
+      "failAction": "selected_step",
       "retryFromStepKey": "generate_spec",
       "keepSameSession": true,
       "injectFailureFeedback": true,
@@ -204,7 +227,12 @@
       "filename": "todo.md",
       "outputFile": "todo.md",
       "templateContent": "",
-      "sources": [],
+      "sources": [
+        {
+          "type": "skill_path",
+          "value": "planning-and-task-breakdown"
+        }
+      ],
       "reviewMode": "none",
       "reviewers": [],
       "confidenceThreshold": 0.75,
@@ -252,7 +280,7 @@
       "failKeywords": "FAIL, BLOCKED",
       "aggregatorFunction": "",
       "maxRetries": 10,
-      "failAction": "same_step",
+      "failAction": "selected_step",
       "retryFromStepKey": "generate_todo",
       "keepSameSession": true,
       "injectFailureFeedback": true,
@@ -282,7 +310,16 @@
       "filename": "todo-review.md",
       "outputFile": "todo-review.md",
       "templateContent": "",
-      "sources": [],
+      "sources": [
+        {
+          "type": "skill_path",
+          "value": "code-review-and-quality"
+        },
+        {
+          "type": "skill_path",
+          "value": "doubt-driven-development"
+        }
+      ],
       "reviewMode": "current_session",
       "reviewers": [],
       "confidenceThreshold": 0.75,
@@ -290,7 +327,7 @@
       "failKeywords": "FAIL, BLOCKED",
       "aggregatorFunction": "",
       "maxRetries": 10,
-      "failAction": "same_step",
+      "failAction": "selected_step",
       "retryFromStepKey": "generate_todo",
       "keepSameSession": true,
       "injectFailureFeedback": true,
@@ -331,7 +368,7 @@
       "failKeywords": "FAIL, BLOCKED",
       "aggregatorFunction": "",
       "maxRetries": 10,
-      "failAction": "same_step",
+      "failAction": "selected_step",
       "retryFromStepKey": "generate_todo",
       "keepSameSession": true,
       "injectFailureFeedback": true,
@@ -358,7 +395,12 @@
       "filename": "test-plan.md",
       "outputFile": "test-plan.md",
       "templateContent": "",
-      "sources": [],
+      "sources": [
+        {
+          "type": "skill_path",
+          "value": "test-driven-development"
+        }
+      ],
       "reviewMode": "none",
       "reviewers": [],
       "confidenceThreshold": 0.75,
@@ -399,7 +441,12 @@
       "filename": "build-result.md",
       "outputFile": "build-result.md",
       "templateContent": "",
-      "sources": [],
+      "sources": [
+        {
+          "type": "skill_path",
+          "value": "incremental-implementation"
+        }
+      ],
       "reviewMode": "none",
       "reviewers": [],
       "confidenceThreshold": 0.75,
@@ -442,7 +489,16 @@
       "filename": "test-result.md",
       "outputFile": "test-result.md",
       "templateContent": "",
-      "sources": [],
+      "sources": [
+        {
+          "type": "skill_path",
+          "value": "test-driven-development"
+        },
+        {
+          "type": "skill_path",
+          "value": "debugging-and-error-recovery"
+        }
+      ],
       "reviewMode": "none",
       "reviewers": [],
       "confidenceThreshold": 0.75,
@@ -450,7 +506,7 @@
       "failKeywords": "FAIL, BLOCKED",
       "aggregatorFunction": "",
       "maxRetries": 10,
-      "failAction": "same_step",
+      "failAction": "selected_step",
       "retryFromStepKey": "build",
       "keepSameSession": true,
       "injectFailureFeedback": true,
@@ -482,7 +538,16 @@
       "filename": "final-review.md",
       "outputFile": "final-review.md",
       "templateContent": "",
-      "sources": [],
+      "sources": [
+        {
+          "type": "skill_path",
+          "value": "shipping-and-launch"
+        },
+        {
+          "type": "skill_path",
+          "value": "code-review-and-quality"
+        }
+      ],
       "reviewMode": "new_agent",
       "reviewers": [],
       "confidenceThreshold": 0.75,
@@ -490,8 +555,8 @@
       "failKeywords": "FAIL, BLOCKED",
       "aggregatorFunction": "",
       "maxRetries": 10,
-      "failAction": "same_step",
-      "retryFromStepKey": "final_review",
+      "failAction": "selected_step",
+      "retryFromStepKey": "build",
       "keepSameSession": false,
       "injectFailureFeedback": true,
       "stopAfterFailures": 3,
@@ -533,7 +598,7 @@
       "failKeywords": "FAIL, BLOCKED",
       "aggregatorFunction": "",
       "maxRetries": 10,
-      "failAction": "same_step",
+      "failAction": "selected_step",
       "retryFromStepKey": "final_review",
       "keepSameSession": true,
       "injectFailureFeedback": true,

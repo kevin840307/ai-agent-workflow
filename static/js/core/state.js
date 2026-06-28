@@ -16,20 +16,3 @@ export const AppState = {
   workflows: [],
   selectedWorkflowId: "system-controlled-qwen",
 };
-
-export const WORKFLOW_STEPS = [
-  "Prepare Project",
-  "Generate Spec",
-  "Validate Spec",
-  "Review Spec",
-  "Spec Gate",
-  "Generate Todo",
-  "Validate Todo",
-  "Review Todo",
-  "Todo Gate",
-  "Generate Tests",
-  "Build",
-  "Run Test",
-  "Final Review",
-  "Final Gate",
-];

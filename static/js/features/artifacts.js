@@ -13,35 +13,32 @@ export function createArtifacts(ctx) {
     stepArtifactPaths(step = {}) {
       const config = step.config || {};
       const output = config.outputFile || config.filename || "";
-      const byKey = {
-        prepare_project: ["output/architecture.md", "prompts/prepare_project.md"],
-        generate_spec: ["output/spec.md", "output/spec.raw.md", "prompts/generate_spec.md", "prompts/repair_spec.md"],
-        validate_spec: ["output/spec.md", "output/spec.raw.md", "prompts/repair_spec.md", "input/failure-feedback.md"],
-        review_spec: ["output/spec-review.md", "prompts/review_spec.md"],
-        spec_gate: ["output/spec-review.md"],
-        generate_todo: ["output/todo.md", "output/todo.raw.md", "prompts/generate_todo.md", "prompts/repair_todo.md"],
-        validate_todo: ["output/todo.md", "output/todo.raw.md", "prompts/repair_todo.md", "input/failure-feedback.md"],
-        review_todo: ["output/todo-review.md", "prompts/review_todo.md"],
-        todo_gate: ["output/todo-review.md"],
-        generate_tests: ["output/test-plan.md", "prompts/generate_tests.md"],
-        build: ["output/build-result.md", "prompts/build.md", "output/test-result.md"],
-        run_test: ["output/test-result.md", "input/failure-feedback.md"],
-        final_review: ["output/final-review.md", "prompts/final_review.md", "output/test-result.md"],
-        final_gate: ["output/final-review.md"],
-      };
       const paths = [
-        ...(byKey[step.key] || []),
+        ...(config.contextArtifacts || []),
+        ...(config.dependsOnArtifacts || []),
+        ...(config.expectedFiles || []),
         output ? `output/${output}` : "",
         `prompts/${step.key}.md`,
+        "input/failure-feedback.md",
       ].filter(Boolean);
-      return [...new Set(paths)];
+      return [...new Set(paths.map((path) => {
+        const value = String(path || "").replace(/\\/g, "/");
+        if (value.startsWith("output/") || value.startsWith("input/") || value.startsWith("prompts/") || value.startsWith(".workflow/")) return value;
+        return `output/${value}`;
+      }))];
     },
 
     artifactsForStep(step = {}, artifactList = state.currentArtifacts) {
       const paths = artifacts.stepArtifactPaths(step);
-      return paths
+      const direct = paths
         .map((path) => artifactList.find((artifact) => artifact.path === path))
         .filter(Boolean);
+      const key = String(step.key || "").toLowerCase();
+      const inferred = artifactList.filter((artifact) => {
+        const path = String(artifact.path || "").toLowerCase();
+        return key && (path === `prompts/${key}.md` || path.includes(`/${key}`) || path.includes(key.replace(/_/g, "-")));
+      });
+      return [...new Map([...direct, ...inferred].map((artifact) => [artifact.id, artifact])).values()];
     },
 
     async load(artifactId) {

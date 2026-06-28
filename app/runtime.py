@@ -53,7 +53,7 @@ from app.workflow_runtime.step_utils import format_exception, step_artifact_name
 store = Store(
     STORE_FILE,
     default_project_path=lambda: load_settings()["qwen"].get("project_path") or str(ROOT),
-    default_steps=lambda: initial_steps(),
+    default_steps=lambda: [],
 )
 
 bus = EventBus()

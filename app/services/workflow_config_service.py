@@ -10,7 +10,7 @@ from pathlib import Path
 from fastapi import HTTPException
 
 from app import runtime
-from app.workflow_definitions import AVAILABLE_WORKFLOW_FUNCTIONS, system_workflow_config
+from app.workflow_functions import AVAILABLE_WORKFLOW_FUNCTIONS
 
 
 SYSTEM_WORKFLOW_ID = "system-controlled-qwen"
@@ -307,22 +307,27 @@ def system_workflow_with_folder() -> dict:
     ensure_bundle_dirs(SYSTEM_WORKFLOW_ID)
     target = workflow_file(SYSTEM_WORKFLOW_ID)
     existing = read_workflow_file(target)
-    if existing:
-        existing["folderName"] = SYSTEM_WORKFLOW_ID
-        existing["kind"] = "system"
-        existing["protected"] = True
-        existing["deletable"] = False
-        existing.setdefault("active", True)
-        existing = normalize_workflow_steps(existing)
-        ensure_workflow_prompt_files(SYSTEM_WORKFLOW_ID, existing)
-        return read_prompt_files(existing, SYSTEM_WORKFLOW_ID)
+    if not existing:
+        raise HTTPException(
+            status_code=500,
+            detail=f"System workflow bundle is missing: {target}",
+        )
+    existing["folderName"] = SYSTEM_WORKFLOW_ID
+    existing["kind"] = "system"
+    existing["protected"] = True
+    existing["deletable"] = False
+    existing.setdefault("active", True)
+    existing = normalize_workflow_steps(existing)
+    ensure_workflow_prompt_files(SYSTEM_WORKFLOW_ID, existing)
+    return read_prompt_files(existing, SYSTEM_WORKFLOW_ID)
 
-    workflow = normalize_workflow_steps(system_workflow_config())
-    workflow["folderName"] = SYSTEM_WORKFLOW_ID
-    seed_prompts_from_root(SYSTEM_WORKFLOW_ID, workflow)
-    stored = write_prompt_files(workflow)
-    target.write_text(json.dumps(stored, indent=2, ensure_ascii=False), encoding="utf-8")
-    return read_prompt_files(stored, SYSTEM_WORKFLOW_ID)
+
+def stored_system_workflow_config() -> dict:
+    workflow = system_workflow_with_folder()
+    workflow.pop("templateContent", None)
+    for step in workflow.get("steps", []):
+        step["templateContent"] = ""
+    return workflow
 
 
 def ensure_system_workflow() -> None:
@@ -330,7 +335,7 @@ def ensure_system_workflow() -> None:
 
 
 def sample_workflow_config() -> dict:
-    workflow = deepcopy(system_workflow_config())
+    workflow = deepcopy(stored_system_workflow_config())
     now = runtime.utc_now()
     workflow.update(
         {

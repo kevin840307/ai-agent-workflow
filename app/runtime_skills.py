@@ -4,7 +4,6 @@ import re
 from pathlib import Path
 
 from app.runtime_paths import DEFAULT_SKILL_PATH, read_text
-from app.workflow_definitions import SKILLS_BY_STEP
 
 
 def resolve_skill_file(skill_path: str | None) -> Path | None:
@@ -50,31 +49,17 @@ def parse_skill_meta(skill_file: Path) -> dict[str, str]:
     return {"name": name, "description": description, "path": str(skill_file)}
 
 
-def select_skill_files(skill_path: str | None, step_key: str, requirement: str) -> list[Path]:
-    files = discover_skill_files(skill_path)
-    if not files:
-        return []
-    wanted = set(SKILLS_BY_STEP.get(step_key, []))
-    requirement_lower = requirement.lower()
-    selected = []
-    for skill_file in files:
-        meta = parse_skill_meta(skill_file)
-        haystack = f"{meta['name']} {meta['description']} {skill_file.parent.name}".lower()
-        if meta["name"] in wanted or skill_file.parent.name in wanted:
-            selected.append(skill_file)
-            continue
-        if any(token and token in haystack for token in wanted):
-            selected.append(skill_file)
-            continue
-        if any(token in requirement_lower and token in haystack for token in ["test", "review", "spec", "plan", "debug", "ship"]):
-            selected.append(skill_file)
-    return selected[:6]
-
-
-def load_skill_context(skill_path: str | None, step_key: str, requirement: str) -> tuple[str, list[Path]]:
-    skill_files = select_skill_files(skill_path, step_key, requirement)
+def load_skill_context(skill_paths: list[str] | str | None) -> tuple[str, list[Path]]:
+    if isinstance(skill_paths, str):
+        skill_paths = [skill_paths]
+    if not skill_paths:
+        return "", []
+    skill_files: list[Path] = []
+    for skill_path in skill_paths:
+        skill_files.extend(discover_skill_files(skill_path))
+    skill_files = sorted(dict.fromkeys(skill_files))[:12]
     if not skill_files:
-        return f"WARNING: no matching skill files found under: {DEFAULT_SKILL_PATH}", []
+        return f"WARNING: no configured skill files found. Checked: {', '.join(skill_paths) or DEFAULT_SKILL_PATH}", []
     chunks = []
     for skill_file in skill_files:
         chunks.append(f"<!-- Skill: {skill_file} -->\n\n{read_text(skill_file)}")
