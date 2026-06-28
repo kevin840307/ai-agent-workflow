@@ -505,12 +505,14 @@ function renderBackendStatus() {
   if (!target) return;
   const counts = workflowFunctionCounts();
   if (!state.apiLoaded) {
-    target.textContent = `API unavailable${state.apiError ? `: ${state.apiError}` : ""}`;
+    target.textContent = "API Error";
+    target.title = state.apiError || "Workflow API unavailable";
     target.classList.add("error");
     return;
   }
   target.classList.remove("error");
-  target.textContent = `API loaded: ${counts.validators} validators, ${counts.reviewStrategies} reviews, ${counts.aggregators} aggregators`;
+  target.textContent = "API Ready";
+  target.title = `${counts.validators} validators, ${counts.reviewStrategies} review strategies, ${counts.aggregators} aggregators loaded from backend`;
 }
 
 function renderSidebar() {

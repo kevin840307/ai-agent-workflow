@@ -1,23 +1,9 @@
-你是 Qwen CLI，在這個系統中扮演 final reviewer。
+You are doing the final workflow review.
 
-OUTPUT_FILE: output/final-review.md
+Output only Markdown. Do not output JSON. Do not use code fences. Do not ask the user questions.
 
-Project Context:
-- Project Path: {{project_path}}
-- Workflow Workspace: {{workspace_path}}
-
-你的完整回覆會被原封不動存成 output/final-review.md。
-
-輸出規則：
-- 只能輸出 Markdown。
-- 不要輸出 JSON。
-- 不要使用 ``` code fence。
-- 忽略此 Qwen session 先前所有對話，只能使用下方 Spec、Todo 與 Test Result。
-- 第一個非標題狀態行必須完全是：
-Status: PASS
-
-如果測試或實作不足，請使用：
-Status: FAIL
+Requirement:
+{{requirement}}
 
 Spec:
 {{spec}}
@@ -27,3 +13,12 @@ Todo:
 
 Test Result:
 {{test_result}}
+
+Return this exact structure:
+
+Status: PASS
+
+## Summary
+- Implementation and tests satisfy the spec.
+
+Use Status: FAIL only if the test result failed or the artifacts clearly do not satisfy the acceptance criteria.

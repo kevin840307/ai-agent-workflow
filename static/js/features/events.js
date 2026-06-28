@@ -21,6 +21,7 @@ export function createEvents(ctx) {
       ui.on("qwenAuthType", "change", () => ctx.features.config.saveQwenConfig());
       ui.on("qwenReuseSession", "change", () => ctx.features.config.saveQwenConfig());
       ui.on("maxRetries", "change", () => ctx.features.config.saveQwenConfig());
+      ui.on("workflowSelect", "change", (event) => ctx.features.workflows.select(event.target.value));
       ui.on("saveRequirement", "click", () => ctx.features.requirements.save());
       ui.on("runWorkflow", "click", () => ctx.features.chat.submit());
       ui.on("modeWorkflow", "click", () => ctx.features.chat.setMode("workflow"));
@@ -28,6 +29,7 @@ export function createEvents(ctx) {
       ui.on("retryRun", "click", () => ctx.features.runs.retry());
       ui.on("addGuidance", "click", () => ctx.features.runs.addGuidance());
       ui.on("newProject", "click", () => ctx.features.sessions.create());
+      ui.on("resetSession", "click", () => ctx.features.sessions.resetActive());
 
       document.addEventListener("click", (event) => {
         const header = document.querySelector(".header");

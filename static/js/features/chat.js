@@ -9,8 +9,10 @@ export function createChat(ctx) {
 
       const workflowButton = ui.byKey("modeWorkflow");
       const chatButton = ui.byKey("modeChat");
+      const workflowPicker = ui.byKey("workflowPicker");
       if (workflowButton) workflowButton.classList.toggle("active", state.runMode === "workflow");
       if (chatButton) chatButton.classList.toggle("active", state.runMode === "chat");
+      if (workflowPicker) workflowPicker.hidden = state.runMode !== "workflow";
 
       ctx.features.composer.updatePrimaryAction();
       ctx.features.messages.renderEmptyState();

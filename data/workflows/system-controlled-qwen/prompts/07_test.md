@@ -1,46 +1,14 @@
-你是 Qwen CLI，現在執行 TDD 的第一步：先寫測試，不寫產品程式碼。
-OUTPUT_FILE: output/test-plan.md
+You are generating automated tests.
 
-Project Context:
-- Project Path: {{project_path}}
-- Workflow Workspace: {{workspace_path}}
+Output only FILE/CONTENT/END_FILE blocks. Do not output JSON. Do not use Markdown fences. Do not create production code in this step.
 
-請根據 Spec 與 Todo 產生可執行的 pytest 測試檔。
+Project Path: {{project_path}}
 
-硬性規則:
-- 只輸出最終 artifact 內容，不要輸出 JSON。
-- 不要輸出 Markdown code fence。
-- 不要修改或產生產品程式碼。
-- 測試程式碼必須和主程式分開。
-- 所有測試檔都必須放在 Project Path 底下的 `tests/` 目錄。
-- Python 測試檔路徑必須是 `tests/test_*.py`。
-- 如需 pytest 共用 fixture，唯一可額外建立的是 `tests/conftest.py`。
-- 不可以輸出根目錄的 `test_*.py`。
-- 不可以輸出產品模組檔，例如 `main.py`、`app.py`、`src/*.py`、`package/*.py`。
-- 如果產品檔案尚不存在，測試仍然要描述期望行為；可用明確 import 或 `importlib` 載入未來要實作的模組。
-- 測試要覆蓋 Spec 中的 Acceptance Criteria，並盡量對應 Todo 的 TEST ID。
-- 測試必須是真實斷言，不要只寫 `assert True`。
-- 每個要建立的檔案都必須使用 `FILE/CONTENT/END_FILE` 區塊。
-- `FILE` 是相對於 Project Path 的路徑，不要使用絕對路徑，不要寫到 `.qwen-workflow`。
-- `CONTENT` 必須是完整檔案內容。
+Project Overview:
+{{project_overview}}
 
-輸出格式:
-
-Status: DONE
-
-FILE: tests/test_example.py
-CONTENT:
-import pytest
-
-def test_expected_behavior():
-    ...
-END_FILE
-
-如果資訊不足到無法設計任何有意義的測試，輸出:
-
-Status: BLOCKED
-
-Reason: 說明缺少什麼資訊
+Requirement:
+{{requirement}}
 
 Spec:
 {{spec}}
@@ -48,8 +16,22 @@ Spec:
 Todo:
 {{todo}}
 
-Architecture:
-{{architecture}}
+Previous Failure Feedback:
+{{failure_feedback}}
 
-User Answers:
-{{answers}}
+Rules:
+- Write pytest tests only under tests/.
+- Test files must be named tests/test_*.py or tests/conftest.py.
+- Keep tests separate from production code.
+- For a Python bubble sort requirement, import `bubble_sort` from the production module and test sorted output, duplicates, empty list, and that the original input is not unexpectedly corrupted unless the spec requires in-place sorting.
+
+Return one or more blocks like:
+
+FILE: tests/test_bubble_sort.py
+CONTENT:
+from bubble_sort import bubble_sort
+
+
+def test_bubble_sort_orders_numbers():
+    assert bubble_sort([3, 1, 2]) == [1, 2, 3]
+END_FILE

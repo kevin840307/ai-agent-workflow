@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from app.workflow_functions import AVAILABLE_WORKFLOW_FUNCTIONS
+
 
 @dataclass(frozen=True)
 class Step:
@@ -137,62 +139,3 @@ def system_workflow_config() -> dict:
 
 DEFAULT_SKILL_ROOT_PLACEHOLDER = "~/.qwen/skills"
 
-
-AVAILABLE_WORKFLOW_FUNCTIONS = {
-    "validators": [
-        {
-            "id": "validate_spec",
-            "label": "Validate Spec",
-            "description": "Check required spec sections and AC IDs.",
-        },
-        {
-            "id": "validate_todo",
-            "label": "Validate Todo",
-            "description": "Check todo sections, TEST IDs, and AC coverage.",
-        },
-        {
-            "id": "require_status_pass",
-            "label": "Require Status PASS",
-            "description": "Gate helper for review artifacts that must contain Status: PASS.",
-        },
-        {
-            "id": "run_pytest",
-            "label": "Run Pytest",
-            "description": "Run the configured Python test command.",
-        },
-    ],
-    "reviewStrategies": [
-        {
-            "id": "current_session",
-            "label": "Current Session Review",
-            "description": "Reuse the current Qwen session for review.",
-        },
-        {
-            "id": "new_agent",
-            "label": "New Agent Review",
-            "description": "Run review in a fresh Qwen session.",
-        },
-        {
-            "id": "multi_agent",
-            "label": "Multi-Agent Review",
-            "description": "Run one or more reviewer agents and aggregate their results.",
-        },
-    ],
-    "aggregators": [
-        {
-            "id": "keyword_confidence",
-            "label": "Keyword + Confidence",
-            "description": "Combine pass/fail keywords with a confidence threshold.",
-        },
-        {
-            "id": "majority_vote",
-            "label": "Majority Vote",
-            "description": "Pass when most reviewers pass.",
-        },
-        {
-            "id": "all_must_pass",
-            "label": "All Must Pass",
-            "description": "Pass only when every reviewer passes.",
-        },
-    ],
-}

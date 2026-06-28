@@ -87,6 +87,16 @@ export function createSessions(ctx) {
     },
 
     async create() {
+      const title = await ctx.features.modal.openInput({
+        title: "New Project",
+        description: "Name this project so it is easy to find later.",
+        label: "Project title",
+        defaultValue: "",
+        placeholder: "Example: Bubble Sort",
+        hint: "You can rename by creating a new project with a clearer title.",
+        confirmText: "Next",
+      });
+      if (!title) return;
       const projectPath = await ctx.features.modal.openInput({
         title: "New Project",
         description: "Create a project session by selecting the source folder Qwen should work with.",
@@ -99,10 +109,28 @@ export function createSessions(ctx) {
       if (!projectPath) return;
       const session = await api.request("/api/sessions", {
         method: "POST",
-        body: JSON.stringify({ project_path: projectPath }),
+        body: JSON.stringify({ project_path: projectPath, title }),
       });
       state.sessions.unshift(session);
       await sessions.select(session.id);
+    },
+
+    async resetActive() {
+      if (!state.activeSessionId) return;
+      const session = state.sessions.find((item) => item.id === state.activeSessionId);
+      if (!session) return;
+      if (!confirm(`Reset "${session.title || "Project"}" with a new Qwen session?`)) return;
+      const fresh = await api.request("/api/sessions", {
+        method: "POST",
+        body: JSON.stringify({
+          project_path: session.project_path,
+          title: session.title || "Project",
+        }),
+      });
+      state.activeRunId = null;
+      state.activeRunStatus = null;
+      state.sessions.unshift(fresh);
+      await sessions.select(fresh.id);
     },
   };
 

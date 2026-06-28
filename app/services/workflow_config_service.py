@@ -138,7 +138,15 @@ def write_workflow_file(workflow: dict) -> None:
 
 def list_custom_workflow_files() -> list[Path]:
     ensure_workflow_dir()
-    return sorted(WORKFLOWS_DIR.glob("*/workflow.json"))
+    paths: list[Path] = []
+    for path in sorted(WORKFLOWS_DIR.glob("*/workflow.json")):
+        if path.parent.name == SYSTEM_WORKFLOW_ID:
+            continue
+        workflow = read_workflow_file(path)
+        if workflow and (workflow.get("id") == SYSTEM_WORKFLOW_ID or workflow.get("kind") == "system"):
+            continue
+        paths.append(path)
+    return paths
 
 
 def find_workflow_path(workflow_id: str) -> Path | None:
@@ -245,12 +253,22 @@ def ensure_workflow_prompt_files(folder_name: str, workflow: dict) -> dict:
 
 
 def system_workflow_with_folder() -> dict:
+    ensure_bundle_dirs(SYSTEM_WORKFLOW_ID)
+    target = workflow_file(SYSTEM_WORKFLOW_ID)
+    existing = read_workflow_file(target)
+    if existing:
+        existing["folderName"] = SYSTEM_WORKFLOW_ID
+        existing["kind"] = "system"
+        existing["protected"] = True
+        existing["deletable"] = False
+        existing.setdefault("active", True)
+        ensure_workflow_prompt_files(SYSTEM_WORKFLOW_ID, existing)
+        return read_prompt_files(existing, SYSTEM_WORKFLOW_ID)
+
     workflow = system_workflow_config()
     workflow["folderName"] = SYSTEM_WORKFLOW_ID
-    ensure_bundle_dirs(SYSTEM_WORKFLOW_ID)
     seed_prompts_from_root(SYSTEM_WORKFLOW_ID, workflow)
     stored = write_prompt_files(workflow)
-    target = workflow_file(SYSTEM_WORKFLOW_ID)
     target.write_text(json.dumps(stored, indent=2, ensure_ascii=False), encoding="utf-8")
     return read_prompt_files(stored, SYSTEM_WORKFLOW_ID)
 

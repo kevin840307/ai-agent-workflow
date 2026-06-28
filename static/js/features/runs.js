@@ -13,6 +13,7 @@ export function createRuns(ctx) {
       ui.byKey("logs").textContent = "";
       ui.byKey("artifacts").innerHTML = "";
       ui.byKey("artifactContent").textContent = "";
+      ctx.features.artifacts.renderStepPreview(null, null);
     },
 
     renderStepSkeleton() {
@@ -40,7 +41,8 @@ export function createRuns(ctx) {
       const running = run.steps.find((step) => step.status === "running");
       const failed = run.steps.find((step) => step.status === "failed" || step.status === "waiting_input");
 
-      ui.byKey("runMeta").textContent = ui.shortPath(run.project_path || session?.project_path || "");
+      const workflowName = run.workflow_name ? ` · ${run.workflow_name}` : "";
+      ui.byKey("runMeta").textContent = `${ui.shortPath(run.project_path || session?.project_path || "")}${workflowName}`;
       ui.byKey("runStatusMeta").textContent = run.status.toUpperCase();
       ui.byKey("currentStep").textContent = running?.title || failed?.title || (run.status === "done" ? "Complete" : "Idle");
       ui.byKey("progressText").textContent = `${passed} / ${run.steps.length}`;
@@ -49,8 +51,14 @@ export function createRuns(ctx) {
       ui.byKey("addGuidance").disabled = false;
       ctx.features.composer.updatePrimaryAction(run);
 
+      const selectedStep = run.steps.find((step) => step.key === state.selectedStepKey)
+        || run.steps.find((step) => step.status === "running" || step.status === "failed" || step.status === "waiting_input")
+        || run.steps.find((step) => step.status === "passed")
+        || run.steps[0];
+      state.selectedStepKey = selectedStep?.key || null;
       runs.renderSteps(run);
       ctx.features.artifacts.render(run.artifacts || []);
+      ctx.features.artifacts.renderStepPreview(run, selectedStep);
       ctx.features.interactions.render(run);
     },
 
@@ -59,27 +67,45 @@ export function createRuns(ctx) {
       steps.innerHTML = "";
       run.steps.forEach((step) => {
         const row = document.createElement("div");
-        row.className = "step";
+        row.className = `step${state.selectedStepKey === step.key ? " selected" : ""}`;
         const retry = step.retry_count ? `<span class="retry-count">retry ${step.retry_count}</span>` : "";
         const error = step.error ? `<small>${ui.escapeHtml(step.error)}</small>` : "";
-        const promptArtifact = (run.artifacts || []).find((artifact) => artifact.path === `prompts/${step.key}.md`);
-        const promptButton = promptArtifact ? `<button class="mini-button" data-artifact-id="${ui.escapeHtml(promptArtifact.id)}">Prompt</button>` : "";
+        const relatedArtifacts = ctx.features.artifacts.artifactsForStep(step, run.artifacts || []);
+        const shortArtifactName = (path = "") => path.startsWith("output/") ? path.slice("output/".length) : path;
+        const artifactHint = relatedArtifacts.length
+          ? `<div class="step-artifact-hint">${relatedArtifacts.slice(0, 3).map((artifact) => `<span>${ui.escapeHtml(shortArtifactName(artifact.path))}</span>`).join("")}</div>`
+          : "";
         row.innerHTML = `
-          <div class="step-title"><span>${ui.escapeHtml(step.title)}</span>${retry}</div>
+          <div class="step-title"><span>${ui.escapeHtml(step.title)}</span>${retry}${artifactHint}</div>
           <div class="step-message">${error}</div>
           <div class="step-actions">
-            ${promptButton}
+            ${relatedArtifacts.length ? `<button class="mini-button inspect-step" data-step-key="${ui.escapeHtml(step.key)}">Files ${relatedArtifacts.length}</button>` : ""}
             <button class="mini-button guide-step" data-step-key="${ui.escapeHtml(step.key)}">Guide</button>
             <button class="mini-button retry-step" data-step-key="${ui.escapeHtml(step.key)}">Retry</button>
             <span class="badge ${step.status}">${step.status}</span>
           </div>
         `;
-        const prompt = row.querySelector("[data-artifact-id]");
-        if (prompt) prompt.onclick = () => ctx.features.artifacts.open(prompt.dataset.artifactId);
+        row.onclick = (event) => {
+          if (event.target.closest("button")) return;
+          runs.selectStep(run, step.key);
+        };
+        const inspect = row.querySelector(".inspect-step");
+        if (inspect) inspect.onclick = () => runs.selectStep(run, step.key);
         row.querySelector(".guide-step").onclick = () => runs.addGuidance(step.key);
         row.querySelector(".retry-step").onclick = () => runs.retry(step.key);
         steps.appendChild(row);
       });
+    },
+
+    selectStep(run, stepKey) {
+      const step = run.steps.find((item) => item.key === stepKey);
+      if (!step) return;
+      state.selectedStepKey = step.key;
+      document.querySelectorAll(".step").forEach((row) => row.classList.remove("selected"));
+      const rows = [...document.querySelectorAll(".step")];
+      const index = run.steps.findIndex((item) => item.key === step.key);
+      if (rows[index]) rows[index].classList.add("selected");
+      ctx.features.artifacts.renderStepPreview(run, step);
     },
 
     async loadLatest() {
@@ -124,7 +150,7 @@ export function createRuns(ctx) {
         ui.byKey("qwenLive").textContent = "Waiting for Qwen process...\n";
         const run = await api.request(`/api/sessions/${state.activeSessionId}/workflow-runs`, {
           method: "POST",
-          body: JSON.stringify({}),
+          body: JSON.stringify({ workflow_id: state.selectedWorkflowId }),
         });
         if (["queued", "running", "waiting_input"].includes(run.status)) {
           ui.byKey("logs").textContent += `Attached to run ${run.id}\n`;

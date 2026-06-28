@@ -170,6 +170,62 @@ body[data-page="workflow-designer"] {
   flex-wrap: wrap;
 }
 
+.designer-action-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--panel);
+}
+
+.designer-topbar-actions .designer-action-group button {
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  min-height: 34px;
+  box-shadow: none;
+}
+
+.designer-topbar-actions .designer-action-group button:first-child {
+  border-top-left-radius: var(--radius-md);
+  border-bottom-left-radius: var(--radius-md);
+}
+
+.designer-topbar-actions .designer-action-group button:last-child {
+  border-top-right-radius: var(--radius-md);
+  border-bottom-right-radius: var(--radius-md);
+}
+
+.designer-topbar-actions .designer-action-group button + button {
+  border-left: 1px solid var(--line);
+}
+
+.designer-topbar-actions .designer-action-group .primary {
+  border-left-color: rgba(255, 255, 255, 0.30);
+}
+
+.designer-api-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 8px;
+  border: 1px solid rgba(15, 118, 110, 0.24);
+  border-radius: 999px;
+  background: #effaf7;
+  color: var(--accent-dark);
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.designer-api-status.error {
+  border-color: rgba(174, 55, 55, 0.28);
+  background: #fff1f1;
+  color: var(--danger);
+}
+
 .designer-overview {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1416,5 +1472,57 @@ button.designer-param-chip:hover:not(:disabled) {
     justify-content: flex-start;
     flex-wrap: wrap;
     min-width: 0;
+  }
+}
+
+/* Final top area normalization after removing the system overview card. */
+.designer-topbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+}
+
+.designer-topbar > div:first-child {
+  min-width: 0;
+}
+
+.designer-topbar-actions {
+  justify-content: flex-end;
+  max-width: 520px;
+}
+
+.designer-api-status {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.designer-overview {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.designer-workflow-summary-card {
+  width: 100%;
+}
+
+.designer-card-main-row {
+  grid-template-columns: minmax(220px, 1fr) auto;
+}
+
+@media (max-width: 980px) {
+  .designer-topbar {
+    grid-template-columns: 1fr;
+  }
+
+  .designer-topbar-actions {
+    justify-content: flex-start;
+    max-width: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .designer-card-main-row {
+    grid-template-columns: 1fr;
   }
 }

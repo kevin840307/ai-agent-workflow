@@ -9,6 +9,7 @@ from fastapi import HTTPException
 
 from app import runtime
 from app.repositories import store_repository
+from app.services import workflow_config_service
 
 
 ACTIVE_RUN_STATUSES = {"queued", "running", "waiting_input"}
@@ -39,11 +40,14 @@ async def create_workflow_run(session_id: str, body: runtime.CreateRunRequest) -
     session = next((session for session in data["sessions"] if session["id"] == session_id), None)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
+    workflow = await workflow_config_service.get_workflow(body.workflow_id or workflow_config_service.SYSTEM_WORKFLOW_ID)
+    project_path = str(runtime.resolve_project_path(body.project_path or session.get("project_path") or str(runtime.ROOT)))
     active_run = next(
         (
             run
             for run in data.get("runs", [])
-            if run.get("session_id") == session_id and run.get("status") in ACTIVE_RUN_STATUSES
+            if str(runtime.resolve_project_path(run.get("project_path") or str(runtime.ROOT))) == project_path
+            and run.get("status") in ACTIVE_RUN_STATUSES
         ),
         None,
     )
@@ -56,13 +60,12 @@ async def create_workflow_run(session_id: str, body: runtime.CreateRunRequest) -
             for msg in data["messages"]
             if msg["session_id"] == session_id
             and msg["role"] == "user"
-            and msg.get("kind") != "chat"
+            and msg.get("kind", "requirement") == "requirement"
         ]
         requirement = messages[-1]["content"] if messages else None
     if not requirement:
         raise HTTPException(status_code=400, detail="Requirement is required")
 
-    project_path = str(runtime.resolve_project_path(body.project_path or session.get("project_path") or str(runtime.ROOT)))
     run_id = str(uuid.uuid4())
     project_dir = Path(project_path)
     run_dir = project_dir / ".qwen-workflow" / "runs" / f"session-{session_id}" / f"run-{run_id}"
@@ -79,8 +82,11 @@ async def create_workflow_run(session_id: str, body: runtime.CreateRunRequest) -
         "error": None,
         "workspace": str(run_dir),
         "project_path": project_path,
+        "workflow_id": workflow["id"],
+        "workflow_folder": workflow.get("folderName") or workflow["id"],
+        "workflow_name": workflow.get("name") or workflow["id"],
         "test_command": body.test_command,
-        "steps": runtime.initial_steps(),
+        "steps": runtime.initial_steps(workflow.get("steps", [])),
         "artifacts": [],
         "created_at": runtime.utc_now(),
         "updated_at": runtime.utc_now(),
@@ -109,8 +115,9 @@ async def retry_run(run_id: str, body: runtime.RetryRunRequest | None = None) ->
         (
             item
             for item in data.get("runs", [])
-            if item.get("session_id") == run.get("session_id")
-            and item.get("id") != run_id
+            if item.get("id") != run_id
+            and str(runtime.resolve_project_path(item.get("project_path") or str(runtime.ROOT)))
+            == str(runtime.resolve_project_path(run.get("project_path") or str(runtime.ROOT)))
             and item.get("status") in ACTIVE_RUN_STATUSES
         ),
         None,
@@ -125,6 +132,7 @@ async def retry_run(run_id: str, body: runtime.RetryRunRequest | None = None) ->
     else:
         failed_index = next((index for index, step in enumerate(run["steps"]) if step["status"] in {"failed", "waiting_input"}), None)
         start_index = failed_index if failed_index is not None else 0
+    await runtime.reset_retry_counts_from(run_id, start_index)
     await runtime.reset_steps_from(run_id, start_index)
     start_workflow_task(run_id, start_index=start_index)
     return await get_run(run_id)
@@ -192,7 +200,7 @@ async def submit_answers(run_id: str, body: runtime.SubmitAnswersRequest) -> dic
         f"{content}\n\n"
     )
     runtime.write_text(answers_path, previous + ("\n" if previous.strip() else "") + entry)
-    await runtime.append_session_message(run["session_id"], "user", content)
+    await runtime.append_session_message(run["session_id"], "user", content, kind="answer")
     await runtime.log(run, f"{step_key}: user submitted reply")
     await runtime.refresh_artifacts(run_id)
     await runtime.reset_steps_from(run_id, start_index)

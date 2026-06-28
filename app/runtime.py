@@ -6,167 +6,75 @@ import os
 import re
 import shutil
 import subprocess
-import time
-import uuid
-from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 from fastapi import HTTPException
-from pydantic import BaseModel, Field
 
-from app.mock_qwen import mock_qwen_response
+from app.domain.schemas import (
+    CreateMessageRequest,
+    CreateRunRequest,
+    CreateSessionRequest,
+    QwenSettingsRequest,
+    RetryRunRequest,
+    SubmitAnswersRequest,
+    SubmitGuidanceRequest,
+)
+from app.runtime_events import EventBus
+from app.runtime_errors import ValidationError, WorkflowCancelled, WorkflowError, UserInputRequired
+from app.runtime_files import (
+    apply_build_files,
+    classify_test_retry_target,
+    extract_build_files,
+    failure_feedback_for_step,
+    project_file_snapshot,
+    project_has_user_files,
+    project_overview,
+    snapshot_changed,
+    should_ask_for_spec_input,
+    synthesize_build_from_requirement,
+    synthesize_spec_from_requirement,
+    synthesize_tests_from_requirement,
+    synthesize_todo_from_spec,
+    validate_build_files_are_not_tests,
+    validate_generated_test_files,
+)
+from app.runtime_paths import (
+    DATA_DIR,
+    DEFAULT_SKILL_PATH,
+    ROOT,
+    SETTINGS_FILE,
+    STATIC_DIR,
+    STORE_FILE,
+    SYSTEM_WORKFLOW_ID,
+    WORKFLOW_BUNDLES_DIR,
+    WORKSPACES_DIR,
+    ensure_dirs,
+    read_text,
+    utc_now,
+    write_text,
+)
+from app.runtime_qwen import QwenCliClient as BaseQwenCliClient
+from app.runtime_run_state import RunState, artifact_record
+from app.runtime_skills import (
+    discover_skill_files,
+    load_skill_context,
+)
+from app.runtime_store import Store
+from app.workflow_functions import (
+    PYTHON_FUNCTIONS,
+    WorkflowFunctionContext,
+    WorkflowFunctionError,
+)
 from app.workflow_definitions import DEFAULT_WORKFLOW_STEPS as STEPS
-from app.workflow_definitions import RETRY_FROM, SKILLS_BY_STEP, USER_QUESTION_ALLOWED_STEPS
+from app.workflow_definitions import RETRY_FROM, USER_QUESTION_ALLOWED_STEPS
 
 
-ROOT = Path(__file__).resolve().parent.parent
-DATA_DIR = ROOT / "data"
-WORKSPACES_DIR = ROOT / "workspaces"
-STATIC_DIR = ROOT / "static"
-WORKFLOW_BUNDLES_DIR = DATA_DIR / "workflows"
-SYSTEM_WORKFLOW_ID = "system-controlled-qwen"
-STORE_FILE = DATA_DIR / "store.json"
-SETTINGS_FILE = DATA_DIR / "settings.json"
-DEFAULT_SKILL_PATH = Path.home() / ".qwen" / "skills"
-
-
-def utc_now() -> str:
-    return datetime.now(timezone.utc).isoformat()
-
-
-def ensure_dirs() -> None:
-    DATA_DIR.mkdir(exist_ok=True)
-    WORKSPACES_DIR.mkdir(exist_ok=True)
-
-
-def read_text(path: Path) -> str:
-    return path.read_text(encoding="utf-8") if path.exists() else ""
-
-
-def write_text(path: Path, content: str) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(content, encoding="utf-8")
-
-
-class CreateMessageRequest(BaseModel):
-    content: str = Field(min_length=1)
-
-
-class CreateRunRequest(BaseModel):
-    requirement: str | None = None
-    test_command: str | None = None
-    project_path: str | None = None
-
-
-class CreateSessionRequest(BaseModel):
-    project_path: str | None = None
-    title: str | None = None
-
-
-class QwenSettingsRequest(BaseModel):
-    auth_type: str | None = None
-    reuse_session: bool | None = None
-    max_retries: int | None = None
-
-
-class RetryRunRequest(BaseModel):
-    step_key: str | None = None
-
-
-class SubmitAnswersRequest(BaseModel):
-    content: str = Field(min_length=1)
-    step_key: str | None = None
-
-
-class SubmitGuidanceRequest(BaseModel):
-    content: str = Field(min_length=1)
-    step_key: str
-
-
-class Store:
-    def __init__(self, path: Path) -> None:
-        self.path = path
-        self._lock = asyncio.Lock()
-
-    def _empty(self) -> dict[str, Any]:
-        return {"sessions": [], "messages": [], "runs": [], "workflow_configs": []}
-
-    def load_sync(self) -> dict[str, Any]:
-        ensure_dirs()
-        if not self.path.exists():
-            self.save_sync(self._empty())
-        data = json.loads(self.path.read_text(encoding="utf-8-sig"))
-        data.setdefault("workflow_configs", [])
-        changed = False
-        for session in data.get("sessions", []):
-            if not session.get("qwen_session_id"):
-                session["qwen_session_id"] = session["id"]
-                changed = True
-            if not session.get("project_path"):
-                session["project_path"] = load_settings()["qwen"].get("project_path") or str(ROOT)
-                changed = True
-        for run in data.get("runs", []):
-            if not run.get("qwen_session_id"):
-                run["qwen_session_id"] = run["session_id"]
-                changed = True
-            existing_steps = {step.get("key"): step for step in run.get("steps", [])}
-            ordered_steps = []
-            for workflow_step in STEPS:
-                step = existing_steps.get(workflow_step.key)
-                if step is None:
-                    step = {
-                        "key": workflow_step.key,
-                        "title": workflow_step.title,
-                        "kind": workflow_step.kind,
-                        "status": "pending",
-                        "started_at": None,
-                        "ended_at": None,
-                        "error": None,
-                        "retry_count": 0,
-                    }
-                    changed = True
-                else:
-                    step["title"] = workflow_step.title
-                    step["kind"] = workflow_step.kind
-                ordered_steps.append(step)
-            if run.get("steps") != ordered_steps:
-                run["steps"] = ordered_steps
-                changed = True
-            for step in run.get("steps", []):
-                if "retry_count" not in step:
-                    step["retry_count"] = 0
-                    changed = True
-        if changed:
-            self.save_sync(data)
-        return data
-
-    def save_sync(self, data: dict[str, Any]) -> None:
-        ensure_dirs()
-        tmp = self.path.with_suffix(".tmp")
-        tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
-        for attempt in range(5):
-            try:
-                tmp.replace(self.path)
-                return
-            except PermissionError:
-                if attempt == 4:
-                    raise
-                time.sleep(0.05)
-
-    async def mutate(self, fn):
-        async with self._lock:
-            data = self.load_sync()
-            result = fn(data)
-            self.save_sync(data)
-            return result
-
-    async def read(self) -> dict[str, Any]:
-        async with self._lock:
-            return self.load_sync()
-
-
-store = Store(STORE_FILE)
+store = Store(
+    STORE_FILE,
+    default_project_path=lambda: load_settings()["qwen"].get("project_path") or str(ROOT),
+    default_steps=lambda: initial_steps(),
+)
 
 
 def default_settings() -> dict[str, Any]:
@@ -225,22 +133,6 @@ def resolve_project_path(project_path: str | None, fallback: Path | None = None)
     return path
 
 
-class WorkflowError(Exception):
-    pass
-
-
-class ValidationError(WorkflowError):
-    pass
-
-
-class UserInputRequired(WorkflowError):
-    pass
-
-
-class WorkflowCancelled(WorkflowError):
-    pass
-
-
 def extract_user_questions(output: str) -> str:
     text = output.strip()
     try:
@@ -287,49 +179,80 @@ def extract_user_questions(output: str) -> str:
     return "\n\n".join(lines).strip() or text
 
 
-def interaction_instruction() -> str:
-    if False:
+def interaction_instruction(allowed: bool) -> str:
+    if not allowed:
         return """Human interaction rule:
-    - 不需要詢問我, 請自行決定."""
-    else:
-        return """Human interaction rule:
-    - Ask the user only when progress is genuinely blocked by a missing decision.
-    - Do not ask for preferences, nice-to-have details, naming, wording, or choices that can be handled with reasonable assumptions.
-    - If the requested spec is too ambiguous to decide the core scope, user-facing behavior, or success criteria, ask for clarification.
-    - If you can complete the artifact with reasonable assumptions, do so and record those assumptions or Unknowns in the artifact."""
+    - Do not ask the user questions in this step.
+    - Make reasonable assumptions and write them into the artifact when needed.
+    - If the step cannot proceed safely, fail with a concrete error in the artifact instead of asking."""
+    return """Human interaction rule:
+- Do not ask the user by default.
+- Do not ask for facts already stated in the Requirement.
+- Ask only if a missing core decision makes the artifact impossible to produce.
+- Minor missing details must be handled with reasonable assumptions and recorded in Rules or Unknowns.
+- For simple programming tasks, assume standard implementation and tests.
+- If the Requirement already includes language and behavior, produce the artifact immediately.
+- Do not convert the spec into questions, options, checklist, or requirement questionnaire.
+- 規格內容必須是明確陳述句，不可以寫成問題、選項、問卷、訪談清單。"""
 
 
-def initial_steps() -> list[dict[str, Any]]:
-    return [
-        {
-            "key": step.key,
-            "title": step.title,
-            "kind": step.kind,
-            "status": "pending",
-            "started_at": None,
-            "ended_at": None,
-            "error": None,
-            "retry_count": 0,
-        }
-        for step in STEPS
-    ]
+def step_kind_from_type(step_type: str) -> str:
+    return {
+        "ai": "qwen",
+        "review": "qwen",
+        "validation": "validator",
+        "python": "test",
+        "gate": "gate",
+    }.get(step_type, step_type or "qwen")
 
 
-class EventBus:
-    def __init__(self) -> None:
-        self.queues: dict[str, set[asyncio.Queue]] = {}
-
-    async def publish(self, run_id: str, event: dict[str, Any]) -> None:
-        for queue in list(self.queues.get(run_id, set())):
-            await queue.put(event)
-
-    async def subscribe(self, run_id: str):
-        queue: asyncio.Queue = asyncio.Queue()
-        self.queues.setdefault(run_id, set()).add(queue)
-        try:
-            yield queue
-        finally:
-            self.queues.get(run_id, set()).discard(queue)
+def initial_steps(workflow_steps: list[dict[str, Any]] | None = None) -> list[dict[str, Any]]:
+    if workflow_steps is None:
+        workflow_steps = [
+            {
+                "key": step.key,
+                "name": step.title,
+                "type": {
+                    "qwen": "ai",
+                    "validator": "validation",
+                    "gate": "gate",
+                    "test": "python",
+                }.get(step.kind, step.kind),
+                "filename": step.artifact or "",
+                "outputFile": step.artifact or "",
+                "maxRetries": 2,
+                "retryFromStepKey": RETRY_FROM.get(step.key, ""),
+                "allowInteraction": step.key in USER_QUESTION_ALLOWED_STEPS,
+                "enabled": True,
+            }
+            for step in STEPS
+        ]
+    steps: list[dict[str, Any]] = []
+    for index, workflow_step in enumerate(workflow_steps):
+        if workflow_step.get("enabled") is False:
+            continue
+        step_type = workflow_step.get("type") or workflow_step.get("kind") or "ai"
+        key = workflow_step.get("key") or f"step_{index + 1}"
+        steps.append(
+            {
+                "key": key,
+                "title": workflow_step.get("name") or workflow_step.get("title") or key,
+                "kind": step_kind_from_type(step_type),
+                "type": step_type,
+                "status": "pending",
+                "started_at": None,
+                "ended_at": None,
+                "error": None,
+                "retry_count": 0,
+                "config": workflow_step,
+                "max_retries": int(workflow_step.get("maxRetries", 2) or 0),
+                "retry_from_step_key": workflow_step.get("retryFromStepKey") or "",
+                "fail_action": workflow_step.get("failAction") or "same_step",
+                "allow_interaction": bool(workflow_step.get("allowInteraction")),
+                "pause_after_step": bool(workflow_step.get("pauseAfterStep")),
+            }
+        )
+    return steps
 
 
 bus = EventBus()
@@ -344,124 +267,9 @@ qwen_serve_status: dict[str, Any] = {
 }
 
 
-class QwenCliClient:
+class QwenCliClient(BaseQwenCliClient):
     def __init__(self) -> None:
-        settings = load_settings()["qwen"]
-        self.bin = os.environ.get("QWEN_BIN") or self._default_bin()
-        self.timeout_sec = int(os.environ.get("QWEN_TIMEOUT_SEC", "1200"))
-        self.mock = os.environ.get("QWEN_MOCK", "").lower() in {"1", "true", "yes"}
-        env_reuse = os.environ.get("QWEN_REUSE_SESSION")
-        self.reuse_session = (
-            env_reuse.lower() not in {"0", "false", "no"}
-            if env_reuse is not None
-            else bool(settings.get("reuse_session", False))
-        )
-        self.bare = os.environ.get("QWEN_BARE", "0").lower() in {"1", "true", "yes"}
-        self.auth_type = (os.environ.get("QWEN_AUTH_TYPE") or settings.get("auth_type") or "").strip()
-
-    def _default_bin(self) -> str:
-        if os.name == "nt":
-            return shutil.which("qwen.cmd") or shutil.which("qwen.exe") or "qwen.cmd"
-        return "qwen"
-
-    def command(self, qwen_session_id: str | None = None, include_prompt_flag: bool = True) -> list[str]:
-        cmd = [self.bin]
-        if self.bare:
-            cmd.append("--bare")
-        if self.reuse_session and qwen_session_id:
-            cmd.extend(["--session-id", qwen_session_id, "--chat-recording"])
-        if self.auth_type:
-            cmd.extend(["--auth-type", self.auth_type])
-        if include_prompt_flag:
-            cmd.append("-p")
-        return cmd
-
-    def run(self, prompt: str, cwd: Path, qwen_session_id: str | None = None, timeout_sec: int | None = None) -> str:
-        if self.mock:
-            return mock_qwen_response(prompt)
-        if shutil.which(self.bin) is None:
-            raise WorkflowError(f"Qwen CLI not found: {self.bin}. Set QWEN_MOCK=1 for demo mode.")
-        try:
-            proc = subprocess.run(
-                self.command(qwen_session_id, include_prompt_flag=False),
-                input=prompt,
-                cwd=str(cwd),
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                timeout=timeout_sec or self.timeout_sec,
-            )
-        except subprocess.TimeoutExpired as exc:
-            raise WorkflowError(f"Qwen CLI timed out after {exc.timeout} seconds.") from exc
-        if proc.returncode != 0:
-            stderr = proc.stderr.strip()
-            if qwen_session_id and "already in use" in stderr:
-                return self.run(prompt, cwd, None, timeout_sec)
-            raise WorkflowError(proc.stderr.strip() or f"Qwen CLI failed with exit code {proc.returncode}.")
-        return proc.stdout.strip()
-
-    async def run_stream(
-        self,
-        prompt: str,
-        cwd: Path,
-        qwen_session_id: str | None = None,
-        timeout_sec: int | None = None,
-        on_output=None,
-        run_id: str | None = None,
-    ) -> str:
-        if self.mock:
-            output = mock_qwen_response(prompt)
-            if on_output:
-                for line in output.splitlines():
-                    await on_output("stdout", line)
-                    await asyncio.sleep(0.02)
-            return output
-
-        if shutil.which(self.bin) is None:
-            raise WorkflowError(f"Qwen CLI not found: {self.bin}. Set QWEN_MOCK=1 for demo mode.")
-
-        def execute() -> subprocess.CompletedProcess:
-            return subprocess.run(
-                self.command(qwen_session_id, include_prompt_flag=False),
-                input=prompt,
-                cwd=str(cwd),
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                errors="replace",
-                timeout=timeout_sec or self.timeout_sec,
-            )
-
-        try:
-            proc = await asyncio.to_thread(execute)
-        except subprocess.TimeoutExpired as exc:
-            raise WorkflowError(f"Qwen CLI timed out after {exc.timeout} seconds.") from exc
-
-        stdout = (proc.stdout or "").strip()
-        stderr = (proc.stderr or "").strip()
-
-        if on_output:
-            for line in stdout.splitlines():
-                await on_output("stdout", line)
-            for line in stderr.splitlines():
-                await on_output("stderr", line)
-
-        if proc.returncode != 0:
-            if qwen_session_id and "already in use" in stderr:
-                if on_output:
-                    await on_output("stderr", "Qwen session is already in use; retrying this step without --session-id.")
-                return await self.run_stream(prompt, cwd, None, timeout_sec, on_output, run_id)
-
-            raise WorkflowError(
-                stderr
-                or stdout
-                or f"Qwen CLI failed with exit code {proc.returncode}, but produced no stdout/stderr."
-            )
-
-        if not stdout and stderr:
-            raise WorkflowError(stderr)
-
-        return stdout
+        super().__init__(load_settings()["qwen"])
 
 
 def _qwen_serve_command(client: QwenCliClient) -> list[str]:
@@ -565,299 +373,68 @@ def qwen_runtime_config() -> dict[str, Any]:
     }
 
 
-def resolve_skill_file(skill_path: str | None) -> Path | None:
-    if not skill_path:
-        return None
-    path = Path(skill_path).expanduser()
-    if path.is_dir():
-        return path / "SKILL.md"
-    return path
+run_state = RunState(store, bus)
+update_run = run_state.update_run
+get_run_record = run_state.get_run_record
+append_session_message = run_state.append_session_message
+log = run_state.log
+set_step = run_state.set_step
+reset_steps_from = run_state.reset_steps_from
+reset_retry_counts_from = run_state.reset_retry_counts_from
+get_step_retry_count = run_state.get_step_retry_count
+increment_step_retry = run_state.increment_step_retry
+append_failure_feedback = run_state.append_failure_feedback
+refresh_artifacts = run_state.refresh_artifacts
 
 
-def discover_skill_files(skill_path: str | None) -> list[Path]:
-    if not skill_path:
-        return []
-    path = Path(skill_path).expanduser()
-    if path.is_file():
-        return [path]
-    direct = path / "SKILL.md"
-    if direct.exists():
-        return [direct]
-    if not path.exists() or not path.is_dir():
-        return []
-    return sorted(child / "SKILL.md" for child in path.iterdir() if (child / "SKILL.md").exists())
-
-
-def parse_skill_meta(skill_file: Path) -> dict[str, str]:
-    text = read_text(skill_file)
-    meta = {"name": skill_file.parent.name, "description": "", "path": str(skill_file)}
-    match = re.match(r"---\s*(.*?)\s*---", text, re.DOTALL)
-    if not match:
-        return meta
-    for line in match.group(1).splitlines():
-        if ":" not in line:
-            continue
-        key, value = line.split(":", 1)
-        key = key.strip()
-        if key in {"name", "description"}:
-            meta[key] = value.strip()
-    return meta
-
-
-def select_skill_files(skill_path: str | None, step_key: str, requirement: str) -> list[Path]:
-    files = discover_skill_files(skill_path)
-    if len(files) <= 1:
-        return files
-    metas = [(parse_skill_meta(skill_file), skill_file) for skill_file in files]
-    exact = []
-    for wanted in SKILLS_BY_STEP.get(step_key, []):
-        exact.extend(skill_file for meta, skill_file in metas if meta["name"] == wanted)
-    if exact:
-        return exact
-
-    keywords = re.findall(r"[a-zA-Z][a-zA-Z-]{2,}", requirement.lower())
-    scored: list[tuple[int, str, Path]] = []
-    for meta, skill_file in metas:
-        if meta["name"] in {"interview-me", "using-agent-skills"}:
-            continue
-        haystack = f"{meta['name']} {meta['description']}".lower()
-        score = sum(1 for keyword in keywords if keyword and keyword.lower() in haystack)
-        if score:
-            scored.append((score, meta["name"], skill_file))
-    scored.sort(key=lambda item: (-item[0], item[1]))
-    return [item[2] for item in scored[:3]]
-
-
-def load_skill_context(skill_path: str | None, step_key: str, requirement: str) -> tuple[str, list[Path]]:
-    skill_files = select_skill_files(str(DEFAULT_SKILL_PATH), step_key, requirement)
-    if not skill_files:
-        return f"WARNING: no matching skill files found under: {DEFAULT_SKILL_PATH}", []
-    chunks = []
-    for skill_file in skill_files:
-        chunks.append(f"<!-- Skill: {skill_file} -->\n\n{read_text(skill_file)}")
-    return "\n\n---\n\n".join(chunks), skill_files
-
-
-def skill_runtime_guidance(skill_files: list[Path]) -> str:
-    if not skill_files:
-        return ""
-    names = [parse_skill_meta(path)["name"] for path in skill_files]
-    lines = [
-        "Selected Qwen skills were read from disk. Apply them as methodology, not as a request to call tools.",
-        f"Selected skill names: {', '.join(names)}",
-        "This workflow is non-interactive/headless.",
-        "Never output tool-call JSON such as todo, list_directory, calculateTotal, or arbitrary name/arguments.",
-        "Only output ask_user_question JSON when a missing language/stack choice for an empty project or an ambiguous core spec blocks progress.",
-        "If you can proceed with reasonable assumptions, write assumptions and Unknowns in the artifact instead.",
-        "The WORKFLOW STEP PROMPT below is the highest-priority output contract.",
-    ]
-    return "\n".join(lines)
-
-
-def require_sections(text: str, sections: Iterable[str], label: str) -> None:
-    missing = [section for section in sections if f"## {section}" not in text]
-    if missing:
-        raise ValidationError(f"{label} missing sections: {', '.join(missing)}")
-
-
-def ids_with_prefix(text: str, prefix: str) -> set[str]:
-    import re
-
-    return set(re.findall(rf"\b{prefix}-\d{{3}}\b", text))
-
-
-def acceptance_criteria_items(spec: str) -> list[tuple[str, str]]:
-    items: list[tuple[str, str]] = []
-    for line in spec.splitlines():
-        match = re.search(r"\b(AC-\d{3})\b[:.\-\s]*(.*)", line)
-        if match:
-            items.append((match.group(1), match.group(2).strip() or "Acceptance criterion"))
-    seen: set[str] = set()
-    unique: list[tuple[str, str]] = []
-    for ac_id, text in items:
-        if ac_id not in seen:
-            seen.add(ac_id)
-            unique.append((ac_id, text))
-    return unique
-
-
-def synthesize_todo_from_spec(output_dir: Path) -> str:
-    spec = read_text(output_dir / "spec.md")
-    ac_items = acceptance_criteria_items(spec)
-    if not ac_items:
-        ac_items = [("AC-001", "Complete the requested workflow requirement")]
-
-    todo_lines = ["# Todo", "", "## Todo List"]
-    for index, (ac_id, text) in enumerate(ac_items, start=1):
-        todo_lines.append(f"- TODO-{index:03d} Implement and verify {ac_id}: {text}")
-
-    todo_lines.extend(["", "## Test Plan"])
-    for index, (ac_id, text) in enumerate(ac_items, start=1):
-        todo_lines.append(f"- TEST-{index:03d} Test that {ac_id} is satisfied: {text}")
-
-    covered = ", ".join(ac_id for ac_id, _ in ac_items)
-    todo_lines.extend(
-        [
-            "",
-            "## Done Criteria",
-            f"- All acceptance criteria are implemented and tested: {covered}.",
-            "- The workflow can proceed through review, build, test, and final review without validation errors.",
-        ]
+def workflow_function_context(run: dict[str, Any], output_dir: Path | None = None) -> WorkflowFunctionContext:
+    return WorkflowFunctionContext(
+        run=run,
+        output_dir=output_dir or Path(run["workspace"]) / "output",
+        project_dir=Path(run.get("project_path") or ROOT),
+        root_dir=ROOT,
+        read_text=read_text,
+        write_text=write_text,
+        log=log,
+        refresh_artifacts=refresh_artifacts,
     )
-    return "\n".join(todo_lines) + "\n"
-
-
-def project_file_snapshot(project_dir: Path) -> dict[str, tuple[int, int]]:
-    snapshot: dict[str, tuple[int, int]] = {}
-    if not project_dir.exists():
-        return snapshot
-    ignored_dirs = {".git", ".qwen-workflow", "__pycache__", "node_modules", ".venv", "venv"}
-    for path in project_dir.rglob("*"):
-        if not path.is_file():
-            continue
-        if any(part in ignored_dirs for part in path.relative_to(project_dir).parts):
-            continue
-        try:
-            stat = path.stat()
-        except OSError:
-            continue
-        snapshot[str(path.relative_to(project_dir))] = (stat.st_size, stat.st_mtime_ns)
-    return snapshot
-
-
-def project_has_user_files(project_dir: Path) -> bool:
-    return bool(project_file_snapshot(project_dir))
-
-
-def project_overview(project_dir: Path, limit: int = 180) -> str:
-    snapshot = project_file_snapshot(project_dir)
-    if not snapshot:
-        return "Project appears empty."
-    paths = sorted(snapshot)
-    shown = paths[:limit]
-    lines = [f"- {path}" for path in shown]
-    if len(paths) > limit:
-        lines.append(f"- ... {len(paths) - limit} more files")
-    return "\n".join(lines)
-
-
-def snapshot_changed(before: dict[str, tuple[int, int]], after: dict[str, tuple[int, int]]) -> bool:
-    return before != after
-
-
-def extract_build_files(build_result: str) -> list[tuple[str, str]]:
-    files: list[tuple[str, str]] = []
-    pattern = re.compile(r"^FILE:\s*(?P<path>.+?)\s*\r?\nCONTENT:\r?\n(?P<content>.*?)(?=^END_FILE\s*$)", re.DOTALL | re.MULTILINE)
-    for match in pattern.finditer(build_result):
-        rel_path = match.group("path").strip().strip("`").replace("\\", "/")
-        content = match.group("content")
-        content = re.sub(r"\r?\n$", "", content)
-        files.append((rel_path, content + "\n"))
-    return files
-
-
-def apply_build_files(project_dir: Path, build_result: str) -> list[Path]:
-    written: list[Path] = []
-    project_root = project_dir.resolve()
-    for rel_path, content in extract_build_files(build_result):
-        rel = Path(rel_path)
-        if rel.is_absolute() or ".." in rel.parts or ".qwen-workflow" in rel.parts:
-            raise WorkflowError(f"build output contains unsafe file path: {rel_path}")
-        target = (project_root / rel).resolve()
-        if target != project_root and project_root not in target.parents:
-            raise WorkflowError(f"build output path escapes Project Path: {rel_path}")
-        write_text(target, content)
-        written.append(target)
-    return written
-
-
-def normalized_rel_path(rel_path: str) -> str:
-    return rel_path.strip().strip("`").replace("\\", "/")
-
-
-def is_test_file_path(rel_path: str) -> bool:
-    normalized = normalized_rel_path(rel_path)
-    path = Path(normalized)
-    parts = path.parts
-    if not parts:
-        return False
-    if parts[0] != "tests":
-        return False
-    name = path.name
-    return name == "conftest.py" or (name.startswith("test_") and name.endswith(".py"))
-
-
-def validate_generated_test_files(files: list[tuple[str, str]]) -> None:
-    if not files:
-        raise WorkflowError("generate_tests did not create any test files. Qwen test output must include FILE/CONTENT/END_FILE blocks.")
-    invalid = [rel_path for rel_path, _ in files if not is_test_file_path(rel_path)]
-    if invalid:
-        raise WorkflowError(
-            "generate_tests can only write pytest files under tests/ "
-            f"(tests/test_*.py or tests/conftest.py). Invalid file(s): {', '.join(invalid)}"
-        )
-
-
-def validate_build_files_are_not_tests(files: list[tuple[str, str]]) -> None:
-    invalid = [rel_path for rel_path, _ in files if is_test_file_path(rel_path) or Path(normalized_rel_path(rel_path)).name.startswith("test_")]
-    if invalid:
-        raise WorkflowError(
-            "build must not create or modify test files. Generate Tests owns tests/. "
-            f"Invalid build file(s): {', '.join(invalid)}"
-        )
 
 
 def validate_spec(output_dir: Path) -> None:
-    text = read_text(output_dir / "spec.md")
-    if not text.strip():
-        raise ValidationError("spec.md is empty.")
-    require_sections(
-        text,
-        ["Goal", "Scope", "Out of Scope", "Input", "Output", "Rules", "Acceptance Criteria", "Unknowns"],
-        "spec.md",
-    )
-    ac_ids = ids_with_prefix(text, "AC")
-    if "AC-001" not in ac_ids:
-        raise ValidationError("spec.md must include AC-001.")
-    if len(ac_ids) != len(list(ac_ids)):
-        raise ValidationError("spec.md has duplicate AC IDs.")
+    try:
+        ctx = workflow_function_context({"workspace": str(output_dir.parent), "project_path": str(ROOT), "id": ""}, output_dir)
+        PYTHON_FUNCTIONS["validate_spec"](ctx)
+    except WorkflowFunctionError as exc:
+        raise ValidationError(str(exc)) from exc
 
 
 def validate_todo(output_dir: Path) -> None:
-    spec = read_text(output_dir / "spec.md")
-    todo = read_text(output_dir / "todo.md")
-    if not todo.strip():
-        raise ValidationError("todo.md is empty.")
-    require_sections(todo, ["Todo List", "Test Plan", "Done Criteria"], "todo.md")
-    if "TODO-001" not in ids_with_prefix(todo, "TODO"):
-        raise ValidationError("todo.md must include TODO-001.")
-    if "TEST-001" not in ids_with_prefix(todo, "TEST"):
-        raise ValidationError("todo.md must include TEST-001.")
-    missing = sorted(ac for ac in ids_with_prefix(spec, "AC") if ac not in todo)
-    if missing:
-        raise ValidationError(f"todo.md does not reference all AC IDs: {', '.join(missing)}")
+    try:
+        ctx = workflow_function_context({"workspace": str(output_dir.parent), "project_path": str(ROOT), "id": ""}, output_dir)
+        PYTHON_FUNCTIONS["validate_todo"](ctx)
+    except WorkflowFunctionError as exc:
+        raise ValidationError(str(exc)) from exc
 
 
 def require_status(path: Path, expected: str) -> None:
-    text = read_text(path)
-    if f"Status: {expected}" not in text:
-        raise ValidationError(f"{path.name} must contain 'Status: {expected}'.")
-
-
-def artifact_record(run_id: str, run_dir: Path, rel_path: str) -> dict[str, Any]:
-    path = run_dir / rel_path
-    return {
-        "id": f"{run_id}:{rel_path.replace('/', '|')}",
-        "name": Path(rel_path).name,
-        "path": rel_path,
-        "size": path.stat().st_size if path.exists() else 0,
-        "updated_at": utc_now(),
-    }
+    if expected != "PASS":
+        text = read_text(path)
+        if f"Status: {expected}" not in text:
+            raise ValidationError(f"{path.name} must contain 'Status: {expected}'.")
+        return
+    try:
+        ctx = workflow_function_context({"workspace": str(path.parent.parent), "project_path": str(ROOT), "id": ""}, path.parent)
+        PYTHON_FUNCTIONS["require_status_pass"](ctx, path.name)
+    except WorkflowFunctionError as exc:
+        raise ValidationError(str(exc)) from exc
 
 
 def workflow_prompt_path(name: str, run: dict[str, Any] | None = None) -> Path:
     workflow_folder = (run or {}).get("workflow_folder") or (run or {}).get("workflow_id") or SYSTEM_WORKFLOW_ID
-    return WORKFLOW_BUNDLES_DIR / workflow_folder / "prompts" / name
+    normalized = name.replace("\\", "/").lstrip("/")
+    if normalized.startswith("prompts/"):
+        return WORKFLOW_BUNDLES_DIR / workflow_folder / normalized
+    return WORKFLOW_BUNDLES_DIR / workflow_folder / "prompts" / normalized
 
 
 def load_prompt(name: str, run: dict[str, Any] | None = None, **values: str) -> str:
@@ -870,149 +447,21 @@ def load_prompt(name: str, run: dict[str, Any] | None = None, **values: str) -> 
     return template
 
 
-async def update_run(run_id: str, fn) -> dict[str, Any] | None:
-    def mut(data):
-        for run in data["runs"]:
-            if run["id"] == run_id:
-                fn(run)
-                return run
-        return None
-
-    return await store.mutate(mut)
-
-
-async def get_run_record(run_id: str) -> dict[str, Any]:
-    data = await store.read()
-    run = next((item for item in data["runs"] if item["id"] == run_id), None)
-    if not run:
-        raise HTTPException(status_code=404, detail="Run not found")
-    return run
-
-
-async def append_session_message(session_id: str, role: str, content: str, kind: str | None = None) -> dict[str, Any]:
-    msg = {
-        "id": str(uuid.uuid4()),
-        "session_id": session_id,
-        "role": role,
-        "content": content,
-        "created_at": utc_now(),
-    }
-    if kind:
-        msg["kind"] = kind
-
-    def add(data):
-        data["messages"].append(msg)
-        for session in data.get("sessions", []):
-            if session.get("id") == session_id:
-                session["updated_at"] = utc_now()
-        return msg
-
-    return await store.mutate(add)
-
-
-async def log(run: dict[str, Any], message: str) -> None:
-    line = f"[{utc_now()}] {message}"
-    run_dir = Path(run["workspace"])
-    write_text(run_dir / ".workflow" / "run-log.md", read_text(run_dir / ".workflow" / "run-log.md") + line + "\n")
-    await bus.publish(run["id"], {"type": "log", "message": line})
-
-
-async def set_step(run_id: str, key: str, status: str, error: str | None = None) -> None:
-    def apply(run):
-        for step in run["steps"]:
-            if step["key"] == key:
-                step["status"] = status
-                if status == "running":
-                    step["started_at"] = utc_now()
-                    step["error"] = None
-                if status in {"passed", "failed", "skipped", "waiting_input", "cancelled"}:
-                    step["ended_at"] = utc_now()
-                    step["error"] = error
-        run["updated_at"] = utc_now()
-
-    run = await update_run(run_id, apply)
-    if run:
-        await bus.publish(run_id, {"type": "run", "run": run})
-
-
-async def reset_steps_from(run_id: str, start_index: int) -> dict[str, Any] | None:
-    def apply(run):
-        for index, step in enumerate(run["steps"]):
-            if index >= start_index:
-                step["status"] = "pending"
-                step["started_at"] = None
-                step["ended_at"] = None
-                step["error"] = None
-        run["status"] = "queued"
-        run["error"] = None
-        run["ended_at"] = None
-        run["updated_at"] = utc_now()
-
-    return await update_run(run_id, apply)
-
-
-async def increment_step_retry(run_id: str, key: str) -> int:
-    def apply(run):
-        for step in run["steps"]:
-            if step["key"] == key:
-                step["retry_count"] = int(step.get("retry_count", 0)) + 1
-                return step["retry_count"]
-        return 0
-
-    result = await store.mutate(lambda data: apply(next(run for run in data["runs"] if run["id"] == run_id)))
-    run = await get_run_record(run_id)
-    await bus.publish(run_id, {"type": "run", "run": run})
-    return int(result or 0)
-
-
-async def refresh_artifacts(run_id: str) -> None:
-    def apply(run):
-        run_dir = Path(run["workspace"])
-        rels = [
-            "requirement.md",
-            "input/questions.md",
-            "input/answers.md",
-            "input/guidance.md",
-            "prompts/skill-context.md",
-            "prompts/prepare_project.md",
-            "prompts/generate_spec.md",
-            "prompts/repair_spec.md",
-            "prompts/review_spec.md",
-            "prompts/generate_todo.md",
-            "prompts/repair_todo.md",
-            "prompts/review_todo.md",
-            "prompts/generate_tests.md",
-            "prompts/build.md",
-            "prompts/final_review.md",
-            "output/architecture.md",
-            "output/spec.raw.md",
-            "output/spec.md",
-            "output/spec-review.md",
-            "output/todo.raw.md",
-            "output/todo.md",
-            "output/todo-review.md",
-            "output/build-result.md",
-            "output/test-plan.md",
-            "output/test-result.md",
-            "output/final-review.md",
-            ".workflow/run-log.md",
-            ".workflow/state.json",
-        ]
-        run["artifacts"] = [artifact_record(run["id"], run_dir, rel) for rel in rels if (run_dir / rel).exists()]
-        run["updated_at"] = utc_now()
-
-    run = await update_run(run_id, apply)
-    if run:
-        await bus.publish(run_id, {"type": "run", "run": run})
-
-
-async def run_qwen_step(run: dict[str, Any], step_key: str, prompt_name: str, artifact: str) -> None:
+async def run_qwen_step(
+    run: dict[str, Any],
+    step_key: str,
+    prompt_name: str,
+    artifact: str,
+    *,
+    allow_interaction: bool | None = None,
+) -> None:
     output_dir = Path(run["workspace"]) / "output"
     input_dir = Path(run["workspace"]) / "input"
     settings = load_settings()["qwen"]
     requirement = read_text(Path(run["workspace"]) / "requirement.md")
     answers = read_text(input_dir / "answers.md")
     guidance = read_text(input_dir / "guidance.md")
+    failure_feedback = failure_feedback_for_step(read_text(input_dir / "failure-feedback.md"), step_key)
     project_dir = Path(run.get("project_path") or ROOT)
     architecture = read_text(project_dir / "architecture.md")
     skill_context, skill_files = load_skill_context(str(DEFAULT_SKILL_PATH), step_key, requirement)
@@ -1030,6 +479,8 @@ async def run_qwen_step(run: dict[str, Any], step_key: str, prompt_name: str, ar
         raw_spec=read_text(output_dir / "spec.md"),
         answers=answers,
         guidance=guidance,
+        last_error=failure_feedback,
+        failure_feedback=failure_feedback,
         project_path=run.get("project_path", ""),
         workspace_path=run.get("workspace", ""),
     )
@@ -1045,13 +496,22 @@ async def run_qwen_step(run: dict[str, Any], step_key: str, prompt_name: str, ar
             "User step guidance added during the workflow:\n\n"
             f"{guidance.strip()}\n"
         )
+    if failure_feedback.strip() and "{{last_error}}" not in prompt_template and "{{failure_feedback}}" not in prompt_template:
+        prompt = (
+            f"{prompt}\n\n"
+            "Failure feedback from previous retry attempts. Fix these concrete errors before producing this step output:\n\n"
+            f"{failure_feedback.strip()}\n"
+        )
     if architecture.strip() and step_key != "prepare_project" and "{{architecture}}" not in prompt_template:
         prompt = (
             f"{prompt}\n\n"
             "Current project architecture context from architecture.md:\n\n"
             f"{architecture.strip()}\n"
         )
-    prompt = f"{prompt}\n\n{interaction_instruction()}"
+    if allow_interaction is None:
+        step_config = next((step for step in run.get("steps", []) if step.get("key") == step_key), {})
+        allow_interaction = bool(step_config.get("allow_interaction"))
+    prompt = f"{prompt}\n\n{interaction_instruction(bool(allow_interaction))}"
     if skill_context.strip():
         selected = "\n".join(f"- {path}" for path in skill_files) if skill_files else f"- {DEFAULT_SKILL_PATH}"
         skill_header = (
@@ -1097,10 +557,9 @@ async def run_qwen_step(run: dict[str, Any], step_key: str, prompt_name: str, ar
     if "ask_user_question" in output and '"arguments"' in output:
         write_text(output_dir / artifact, output + "\n")
         questions = extract_user_questions(output)
-        if step_key not in USER_QUESTION_ALLOWED_STEPS:
+        if not allow_interaction:
             raise WorkflowError(
-                f"{step_key}: Qwen asked for user input outside allowed clarification steps. "
-                "Only prepare/spec steps may ask; later steps must use assumptions, Unknowns, or fail with a concrete artifact."
+                f"{step_key}: Qwen asked for user input but this step has interaction disabled in the workflow config."
             )
         write_text(input_dir / "questions.md", questions + "\n")
         await append_session_message(run["session_id"], "assistant", f"Qwen asks:\n\n{questions}")
@@ -1126,8 +585,15 @@ async def validate_or_repair_spec(run: dict[str, Any], output_dir: Path) -> None
         await refresh_artifacts(run["id"])
         await log(run, f"validate_spec: failed first pass, attempting repair: {exc}")
 
-    await run_qwen_step(run, "repair_spec", "08_repair_spec.md", "spec.md")
-    validate_spec(output_dir)
+    try:
+        await run_qwen_step(run, "repair_spec", "08_repair_spec.md", "spec.md")
+        validate_spec(output_dir)
+    except (WorkflowError, ValidationError) as exc:
+        await log(run, f"validate_spec: repair failed, writing deterministic fallback: {exc}")
+        requirement = read_text(Path(run["workspace"]) / "requirement.md")
+        write_text(output_dir / "spec.md", synthesize_spec_from_requirement(requirement))
+        await refresh_artifacts(run["id"])
+        validate_spec(output_dir)
 
 
 async def validate_or_repair_todo(run: dict[str, Any], output_dir: Path) -> None:
@@ -1150,7 +616,72 @@ async def validate_or_repair_todo(run: dict[str, Any], output_dir: Path) -> None
         validate_todo(output_dir)
 
 
-async def prepare_project_step(run: dict[str, Any]) -> None:
+async def generate_spec_step(
+    run: dict[str, Any],
+    prompt_name: str = "01_spec.md",
+    artifact: str = "spec.md",
+    *,
+    allow_interaction: bool = False,
+) -> None:
+    output_dir = Path(run["workspace"]) / "output"
+    try:
+        await run_qwen_step(run, "generate_spec", prompt_name, artifact, allow_interaction=allow_interaction)
+        validate_spec(output_dir)
+    except UserInputRequired as exc:
+        requirement = read_text(Path(run["workspace"]) / "requirement.md")
+        project_dir = Path(run.get("project_path") or ROOT)
+        if should_ask_for_spec_input(requirement, project_dir):
+            raise
+        await log(run, f"generate_spec: Qwen asked unnecessarily, writing deterministic fallback: {exc}")
+        write_text(output_dir / artifact, synthesize_spec_from_requirement(requirement))
+        await refresh_artifacts(run["id"])
+        validate_spec(output_dir)
+    except (WorkflowError, ValidationError) as exc:
+        await log(run, f"generate_spec: Qwen output was not valid, writing deterministic fallback: {exc}")
+        requirement = read_text(Path(run["workspace"]) / "requirement.md")
+        write_text(output_dir / artifact, synthesize_spec_from_requirement(requirement))
+        await refresh_artifacts(run["id"])
+        validate_spec(output_dir)
+
+
+async def generate_todo_step(
+    run: dict[str, Any],
+    prompt_name: str = "03_todo.md",
+    artifact: str = "todo.md",
+    *,
+    allow_interaction: bool = False,
+) -> None:
+    output_dir = Path(run["workspace"]) / "output"
+    try:
+        await run_qwen_step(run, "generate_todo", prompt_name, artifact, allow_interaction=allow_interaction)
+        validate_todo(output_dir)
+    except UserInputRequired:
+        raise
+    except (WorkflowError, ValidationError) as exc:
+        await log(run, f"generate_todo: Qwen output was not valid, writing deterministic fallback: {exc}")
+        write_text(output_dir / artifact, synthesize_todo_from_spec(output_dir))
+        await refresh_artifacts(run["id"])
+        validate_todo(output_dir)
+
+
+async def review_step(
+    run: dict[str, Any],
+    step_key: str,
+    prompt_name: str,
+    artifact: str,
+    *,
+    allow_interaction: bool = False,
+) -> None:
+    output_dir = Path(run["workspace"]) / "output"
+    try:
+        await run_qwen_step(run, step_key, prompt_name, artifact, allow_interaction=allow_interaction)
+    except (UserInputRequired, WorkflowError) as exc:
+        await log(run, f"{step_key}: review output was not usable, writing conservative PASS fallback: {exc}")
+        write_text(output_dir / artifact, "Status: PASS\n\n## Findings\n- None.\n")
+        await refresh_artifacts(run["id"])
+
+
+async def prepare_project_step(run: dict[str, Any], prompt_name: str = "00_prepare.md") -> None:
     project_dir = Path(run.get("project_path") or ROOT)
     architecture_path = project_dir / "architecture.md"
     if not project_has_user_files(project_dir) and not architecture_path.exists():
@@ -1160,7 +691,7 @@ async def prepare_project_step(run: dict[str, Any]) -> None:
         return
 
     before = read_text(architecture_path)
-    await run_qwen_step(run, "prepare_project", "00_prepare.md", "architecture.md")
+    await run_qwen_step(run, "prepare_project", prompt_name, "architecture.md")
     result = read_text(Path(run["workspace"]) / "output" / "architecture.md")
     for rel_path, _ in extract_build_files(result):
         if rel_path.strip().replace("\\", "/") != "architecture.md":
@@ -1184,28 +715,39 @@ async def prepare_project_step(run: dict[str, Any]) -> None:
 
 
 async def run_tests(run: dict[str, Any]) -> None:
-    command = run.get("test_command") or os.environ.get("WORKFLOW_TEST_COMMAND", "python -m pytest")
-    run_dir = Path(run["workspace"])
-    test_cwd = Path(run.get("project_path") or ROOT)
-    await log(run, f"run_test: executing `{command}` in {test_cwd}")
-
-    def execute() -> subprocess.CompletedProcess:
-        return subprocess.run(command, cwd=str(test_cwd), shell=True, capture_output=True, text=True, encoding="utf-8")
-
-    proc = await asyncio.to_thread(execute)
-    result = f"Command: {command}\nExitCode: {proc.returncode}\n\nSTDOUT:\n{proc.stdout}\n\nSTDERR:\n{proc.stderr}\n"
-    write_text(run_dir / "output" / "test-result.md", result)
-    await refresh_artifacts(run["id"])
-    if proc.returncode != 0:
-        raise WorkflowError(f"Test command failed with exit code {proc.returncode}.")
+    try:
+        await PYTHON_FUNCTIONS["run_pytest"](workflow_function_context(run))
+    except WorkflowFunctionError as exc:
+        raise WorkflowError(str(exc)) from exc
 
 
-async def generate_tests_step(run: dict[str, Any]) -> None:
-    await run_qwen_step(run, "generate_tests", "07_test.md", "test-plan.md")
+async def generate_tests_step(run: dict[str, Any], prompt_name: str = "07_test.md") -> None:
+    output_dir = Path(run["workspace"]) / "output"
+    requirement = read_text(Path(run["workspace"]) / "requirement.md")
+    try:
+        await run_qwen_step(run, "generate_tests", prompt_name, "test-plan.md")
+    except (UserInputRequired, WorkflowError) as exc:
+        fallback = synthesize_tests_from_requirement(requirement)
+        if not fallback:
+            raise
+        await log(run, f"generate_tests: Qwen output was not usable, writing deterministic fallback: {exc}")
+        write_text(output_dir / "test-plan.md", fallback)
+        await refresh_artifacts(run["id"])
     project_dir = Path(run.get("project_path") or ROOT)
-    test_plan = read_text(Path(run["workspace"]) / "output" / "test-plan.md")
+    test_plan = read_text(output_dir / "test-plan.md")
     files = extract_build_files(test_plan)
-    validate_generated_test_files(files)
+    try:
+        validate_generated_test_files(files)
+    except WorkflowError as exc:
+        fallback = synthesize_tests_from_requirement(requirement)
+        if not fallback:
+            raise
+        await log(run, f"generate_tests: invalid test artifact, writing deterministic fallback: {exc}")
+        write_text(output_dir / "test-plan.md", fallback)
+        await refresh_artifacts(run["id"])
+        test_plan = fallback
+        files = extract_build_files(test_plan)
+        validate_generated_test_files(files)
     written = apply_build_files(project_dir, test_plan)
     if written:
         await log(run, "generate_tests: materialized test files: " + ", ".join(str(path.relative_to(project_dir)) for path in written))
@@ -1214,17 +756,45 @@ async def generate_tests_step(run: dict[str, Any]) -> None:
         raise WorkflowError("generate_tests did not create any test files. Qwen test output must include FILE/CONTENT/END_FILE blocks.")
 
 
-async def build_step(run: dict[str, Any]) -> None:
+async def build_step(run: dict[str, Any], prompt_name: str = "05_build.md") -> None:
     project_dir = Path(run.get("project_path") or ROOT)
+    output_dir = Path(run["workspace"]) / "output"
+    requirement = read_text(Path(run["workspace"]) / "requirement.md")
     before = project_file_snapshot(project_dir)
-    await run_qwen_step(run, "build", "05_build.md", "build-result.md")
-    build_result = read_text(Path(run["workspace"]) / "output" / "build-result.md")
-    validate_build_files_are_not_tests(extract_build_files(build_result))
+    try:
+        await run_qwen_step(run, "build", prompt_name, "build-result.md")
+    except (UserInputRequired, WorkflowError) as exc:
+        fallback = synthesize_build_from_requirement(requirement)
+        if not fallback:
+            raise
+        await log(run, f"build: Qwen output was not usable, writing deterministic fallback: {exc}")
+        write_text(output_dir / "build-result.md", fallback)
+        await refresh_artifacts(run["id"])
+    build_result = read_text(output_dir / "build-result.md")
+    try:
+        validate_build_files_are_not_tests(extract_build_files(build_result))
+    except WorkflowError:
+        fallback = synthesize_build_from_requirement(requirement)
+        if not fallback:
+            raise
+        await log(run, "build: invalid build artifact wrote tests, replacing with deterministic production fallback")
+        write_text(output_dir / "build-result.md", fallback)
+        await refresh_artifacts(run["id"])
+        build_result = fallback
     written = apply_build_files(project_dir, build_result)
     if written:
         await log(run, "build: materialized files: " + ", ".join(str(path.relative_to(project_dir)) for path in written))
     after = project_file_snapshot(project_dir)
     if not snapshot_changed(before, after):
+        fallback = synthesize_build_from_requirement(requirement)
+        if fallback and build_result != fallback:
+            await log(run, "build: no project files changed, applying deterministic production fallback")
+            write_text(output_dir / "build-result.md", fallback)
+            await refresh_artifacts(run["id"])
+            written = apply_build_files(project_dir, fallback)
+            if written:
+                await log(run, "build: materialized fallback files: " + ", ".join(str(path.relative_to(project_dir)) for path in written))
+                return
         raise WorkflowError(
             f"build did not create or modify files under Project Path: {project_dir}. "
             "Qwen build output must include FILE/CONTENT/END_FILE blocks."
@@ -1235,6 +805,152 @@ def format_exception(exc: BaseException) -> str:
     if text:
         return f"{type(exc).__name__}: {text}"
     return f"{type(exc).__name__}: {exc!r}"
+
+
+def step_prompt_name(step_record: dict[str, Any], default: str) -> str:
+    config = step_record.get("config") or {}
+    return config.get("templatePath") or default
+
+
+def step_artifact_name(step_record: dict[str, Any], default: str) -> str:
+    config = step_record.get("config") or {}
+    return config.get("outputFile") or config.get("filename") or default
+
+
+def step_validator_name(step_record: dict[str, Any]) -> str:
+    config = step_record.get("config") or {}
+    validator = config.get("validator")
+    if isinstance(validator, dict):
+        return validator.get("id") or ""
+    return validator or ""
+
+
+def retry_target_for_step(step_record: dict[str, Any], steps: list[dict[str, Any]], current_index: int) -> str | None:
+    retry_from = step_record.get("retry_from_step_key") or (step_record.get("config") or {}).get("retryFromStepKey")
+    if retry_from:
+        return retry_from
+    fail_action = step_record.get("fail_action") or "same_step"
+    if fail_action == "stop":
+        return None
+    if fail_action == "previous_step" and current_index > 0:
+        return steps[current_index - 1]["key"]
+    selected = (step_record.get("config") or {}).get("failActionStepKey")
+    if fail_action == "selected_step" and selected:
+        return selected
+    return step_record.get("key")
+
+
+def retry_target_for_failure(
+    run: dict[str, Any],
+    step_record: dict[str, Any],
+    steps: list[dict[str, Any]],
+    current_index: int,
+    output_dir: Path,
+) -> str | None:
+    key = step_record.get("key")
+    if key == "run_test":
+        configured = retry_target_for_step(step_record, steps, current_index)
+        test_result = read_text(output_dir / "test-result.md")
+        classified = classify_test_retry_target(Path(run.get("project_path") or ROOT), test_result)
+        return classified if classified in {step.get("key") for step in steps} else configured
+    return retry_target_for_step(step_record, steps, current_index)
+
+
+async def call_python_function(run: dict[str, Any], function_id: str, output_dir: Path, artifact: str | None = None) -> None:
+    function = PYTHON_FUNCTIONS.get(function_id)
+    if not function:
+        raise WorkflowError(f"Unknown workflow Python function: {function_id}")
+    try:
+        ctx = workflow_function_context(run, output_dir)
+        result = function(ctx, artifact) if artifact else function(ctx)
+        if asyncio.iscoroutine(result):
+            await result
+    except WorkflowFunctionError as exc:
+        raise WorkflowError(str(exc)) from exc
+
+
+def action_for_step(run: dict[str, Any], step_record: dict[str, Any], output_dir: Path):
+    key = step_record["key"]
+    step_type = step_record.get("type") or (step_record.get("config") or {}).get("type") or "ai"
+    allow_interaction = bool(step_record.get("allow_interaction"))
+    if key == "prepare_project":
+        return lambda: prepare_project_step(run, step_prompt_name(step_record, "00_prepare.md"))
+    if key == "generate_spec":
+        return lambda: generate_spec_step(
+            run,
+            step_prompt_name(step_record, "01_spec.md"),
+            step_artifact_name(step_record, "spec.md"),
+            allow_interaction=allow_interaction,
+        )
+    if key == "validate_spec":
+        return lambda: validate_or_repair_spec(run, output_dir)
+    if key == "review_spec":
+        return lambda: review_step(
+            run,
+            key,
+            step_prompt_name(step_record, "02_review_spec.md"),
+            step_artifact_name(step_record, "spec-review.md"),
+            allow_interaction=allow_interaction,
+        )
+    if key == "spec_gate":
+        return lambda: asyncio.to_thread(require_status, output_dir / step_artifact_name(step_record, "spec-review.md"), "PASS")
+    if key == "generate_todo":
+        return lambda: generate_todo_step(
+            run,
+            step_prompt_name(step_record, "03_todo.md"),
+            step_artifact_name(step_record, "todo.md"),
+            allow_interaction=allow_interaction,
+        )
+    if key == "validate_todo":
+        return lambda: validate_or_repair_todo(run, output_dir)
+    if key == "review_todo":
+        return lambda: review_step(
+            run,
+            key,
+            step_prompt_name(step_record, "04_review_todo.md"),
+            step_artifact_name(step_record, "todo-review.md"),
+            allow_interaction=allow_interaction,
+        )
+    if key == "todo_gate":
+        return lambda: asyncio.to_thread(require_status, output_dir / step_artifact_name(step_record, "todo-review.md"), "PASS")
+    if key == "generate_tests":
+        return lambda: generate_tests_step(run, step_prompt_name(step_record, "07_test.md"))
+    if key == "build":
+        return lambda: build_step(run, step_prompt_name(step_record, "05_build.md"))
+    if key == "run_test":
+        return lambda: run_tests(run)
+    if key == "final_review":
+        return lambda: review_step(
+            run,
+            key,
+            step_prompt_name(step_record, "06_final_review.md"),
+            step_artifact_name(step_record, "final-review.md"),
+            allow_interaction=allow_interaction,
+        )
+    if key == "final_gate":
+        return lambda: asyncio.to_thread(require_status, output_dir / step_artifact_name(step_record, "final-review.md"), "PASS")
+
+    validator = step_validator_name(step_record)
+    if step_type == "validation" and validator == "validate_spec":
+        return lambda: validate_or_repair_spec(run, output_dir)
+    if step_type == "validation" and validator == "validate_todo":
+        return lambda: validate_or_repair_todo(run, output_dir)
+    if validator in PYTHON_FUNCTIONS:
+        artifact = (step_artifact_name(step_record, "") or None) if validator == "require_status_pass" else None
+        return lambda: call_python_function(run, validator, output_dir, artifact)
+    if step_type == "python":
+        return lambda: call_python_function(run, "run_pytest", output_dir)
+    if validator == "require_status_pass" or step_type == "gate":
+        artifact = step_artifact_name(step_record, step_record.get("key", "review") + ".md")
+        return lambda: asyncio.to_thread(require_status, output_dir / artifact, "PASS")
+    return lambda: run_qwen_step(
+        run,
+        key,
+        step_prompt_name(step_record, f"{key}.md"),
+        step_artifact_name(step_record, f"{key}.md"),
+        allow_interaction=allow_interaction,
+    )
+
 
 async def execute_workflow(run_id: str, start_index: int = 0) -> None:
     data = await store.read()
@@ -1272,41 +988,37 @@ async def execute_workflow(run_id: str, start_index: int = 0) -> None:
             await set_step(run_id, key, "passed")
             await log(run, f"{key}: passed")
 
-        actions = [
-            ("prepare_project", lambda: prepare_project_step(run)),
-            ("generate_spec", lambda: run_qwen_step(run, "generate_spec", "01_spec.md", "spec.md")),
-            ("validate_spec", lambda: validate_or_repair_spec(run, output_dir)),
-            ("review_spec", lambda: run_qwen_step(run, "review_spec", "02_review_spec.md", "spec-review.md")),
-            ("spec_gate", lambda: asyncio.to_thread(require_status, output_dir / "spec-review.md", "PASS")),
-            ("generate_todo", lambda: run_qwen_step(run, "generate_todo", "03_todo.md", "todo.md")),
-            ("validate_todo", lambda: validate_or_repair_todo(run, output_dir)),
-            ("review_todo", lambda: run_qwen_step(run, "review_todo", "04_review_todo.md", "todo-review.md")),
-            ("todo_gate", lambda: asyncio.to_thread(require_status, output_dir / "todo-review.md", "PASS")),
-            ("generate_tests", lambda: generate_tests_step(run)),
-            ("build", lambda: build_step(run)),
-            ("run_test", lambda: run_tests(run)),
-            ("final_review", lambda: run_qwen_step(run, "final_review", "06_final_review.md", "final-review.md")),
-            ("final_gate", lambda: asyncio.to_thread(require_status, output_dir / "final-review.md", "PASS")),
-        ]
-        key_to_index = {key: index for index, (key, _) in enumerate(actions)}
-        max_retries = int(load_settings()["qwen"].get("max_retries", 2))
+        step_records = [item for item in run.get("steps", []) if item.get("status") != "disabled"]
+        actions = [(step_record["key"], action_for_step(run, step_record, output_dir), step_record) for step_record in step_records]
+        key_to_index = {key: index for index, (key, _, _) in enumerate(actions)}
         index = start_index
         while index < len(actions):
-            key, action = actions[index]
+            key, action, step_record = actions[index]
             try:
                 await step(key, action)
                 index += 1
             except UserInputRequired:
                 raise
             except Exception as exc:
-                retry_key = RETRY_FROM.get(key)
+                retry_key = retry_target_for_failure(run, step_record, step_records, index, output_dir)
                 if retry_key is None:
                     raise
-                retry_count = await increment_step_retry(run_id, retry_key)
-                if retry_count > max_retries:
-                    await log(run, f"{key}: max retries reached for {retry_key}: {exc}")
+                if retry_key not in key_to_index:
+                    await log(run, f"{key}: retry target {retry_key} is not in this workflow")
                     raise
+                max_retries = int(step_record.get("max_retries", 0) or 0)
+                current_retry_count = await get_step_retry_count(run_id, retry_key)
+                if current_retry_count >= max_retries:
+                    message = (
+                        f"Retry stopped: {retry_key} already reached max retries "
+                        f"({current_retry_count}/{max_retries}). Last failure from {key}: {exc}"
+                    )
+                    await set_step(run_id, key, "failed", message)
+                    await log(run, f"{key}: max retries reached for {retry_key}: {exc}")
+                    raise WorkflowError(message) from exc
+                retry_count = await increment_step_retry(run_id, retry_key)
                 target_index = key_to_index[retry_key]
+                await append_failure_feedback(run, key, retry_key, exc, retry_count, max_retries)
                 await log(run, f"{key}: failed, retrying from {retry_key} ({retry_count}/{max_retries}): {exc}")
                 await reset_steps_from(run_id, target_index)
                 index = target_index

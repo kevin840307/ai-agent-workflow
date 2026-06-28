@@ -43,36 +43,14 @@
             <p>Configure custom workflows, prompts, skills, review strategy, retry, timeout, and human gates.</p>
           </div>
           <div class="designer-topbar-actions">
-            <span id="designerBackendStatus" class="designer-api-status">Loading API...</span>
-            <button id="designerImportWorkflow">Import JSON</button>
-            <button id="designerNewWorkflow" class="primary">＋ New Workflow</button>
+            <div class="designer-action-group" aria-label="Workflow actions">
+              <button id="designerNewWorkflow" class="primary">＋ New Workflow</button>
+            </div>
+            <span id="designerBackendStatus" class="designer-api-status" title="Loading workflow API...">API...</span>
           </div>
         </header>
 
         <section class="designer-overview">
-          <article class="designer-overview-card system designer-workflow-summary-card">
-            <div class="designer-card-content">
-              <div class="designer-card-title-row">
-                <span class="designer-eyebrow">System workflow</span>
-                <span class="badge">SYSTEM</span>
-                <span class="badge cancelled">READ ONLY</span>
-              </div>
-              <div class="designer-card-main-row">
-                <h2>Controlled Qwen Workflow</h2>
-                <div class="designer-card-actions system-actions">
-                  <button id="designerViewSystem">View</button>
-                  <button id="designerDuplicateWorkflow" class="primary">Duplicate as Custom</button>
-                </div>
-              </div>
-              <p>Built-in protected workflow. View it as the baseline, or duplicate it to create an editable custom workflow.</p>
-              <div class="designer-card-meta-row">
-                <span>Protected</span>
-                <span>Cannot delete</span>
-                <span>Duplicate to customize</span>
-              </div>
-            </div>
-          </article>
-
           <article class="designer-overview-card custom designer-workflow-summary-card">
             <div class="designer-card-content">
               <div class="designer-card-title-row">
@@ -83,6 +61,7 @@
                 <h2 id="designerActiveWorkflowName">My Custom Workflow</h2>
                 <div class="designer-card-actions custom-actions">
                   <button id="designerDuplicateCustomWorkflow">Duplicate</button>
+                  <button id="designerImportWorkflow">Import</button>
                   <button id="designerExportWorkflow">Export JSON</button>
                   <button id="designerDeleteWorkflow" class="designer-danger-button">Delete</button>
                 </div>
@@ -147,6 +126,6 @@
       </main>
     </div>
 
-    <script type="module" src="/static/js/main.js"></script>
+    <script type="module" src="/static/js/main.js?v=20260628-ui2"></script>
   </body>
 </html>

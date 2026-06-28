@@ -87,7 +87,6 @@ async def create_message(session_id: str, body: runtime.CreateMessageRequest) ->
         data["messages"].append(msg)
         for session in data["sessions"]:
             if session["id"] == session_id:
-                session["title"] = body.content.strip()[:60] or session["title"]
                 session["updated_at"] = runtime.utc_now()
         return msg
 

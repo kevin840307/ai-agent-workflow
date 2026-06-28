@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
@@ -28,6 +28,9 @@
           <p id="runMeta">No active run</p>
         </div>
         <div class="header-tools">
+          <button id="resetSession" class="header-icon reset-session" title="Reset session" aria-label="Reset session">
+            <span class="icon-mark">Reset</span>
+          </button>
           <button id="toggleSettings" class="header-icon" title="Qwen settings" aria-label="Qwen settings" aria-expanded="false">
             <span class="icon-mark">⚙</span>
           </button>
@@ -86,6 +89,10 @@
                 <button id="modeChat" class="mode-option" type="button">Chat</button>
               </div>
               <span id="composerMode" class="composer-mode">Requirement</span>
+              <label class="workflow-picker" id="workflowPicker">
+                <span>Workflow</span>
+                <select id="workflowSelect"></select>
+              </label>
               <button id="saveRequirement" class="composer-tool save-tool" title="Save draft" aria-label="Save draft">Save</button>
               <button id="retryRun" class="composer-tool" title="Retry workflow" aria-label="Retry workflow" disabled>↻</button>
               <button id="addGuidance" class="composer-tool" title="Add guidance" aria-label="Add guidance" disabled>＋</button>
@@ -108,7 +115,20 @@
       </div>
 
       <section id="stepsPanel" class="panel active">
-        <div id="steps" class="steps"></div>
+        <div class="step-panel-layout">
+          <div id="steps" class="steps"></div>
+          <aside class="step-artifact-viewer" aria-label="Selected step artifact">
+            <div class="step-artifact-head">
+              <div>
+                <span>Step Artifact</span>
+                <strong id="stepArtifactTitle">Select a step</strong>
+              </div>
+              <button id="openArtifactTab" class="mini-button" type="button" disabled>Open</button>
+            </div>
+            <div id="stepArtifactList" class="step-artifact-list"></div>
+            <pre id="stepArtifactContent" class="step-artifact-content">Click a step to inspect its prompt, output, and related artifacts.</pre>
+          </aside>
+        </div>
       </section>
       <section id="qwenPanel" class="panel">
         <pre id="qwenLive" class="console">No Qwen output yet.</pre>
@@ -146,6 +166,7 @@
       </div>
     </div>
 
-    <script type="module" src="/static/js/main.js"></script>
+    <script type="module" src="/static/js/main.js?v=20260628-artifacts3"></script>
   </body>
 </html>
+

@@ -9,8 +9,12 @@ export const AppState = {
   activeRunStatus: null,
   lastAskText: "",
   currentArtifacts: [],
+  selectedStepKey: null,
+  selectedStepArtifactId: null,
   runMode: "workflow",
   chatBusy: false,
+  workflows: [],
+  selectedWorkflowId: "system-controlled-qwen",
 };
 
 export const WORKFLOW_STEPS = [
