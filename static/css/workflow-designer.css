@@ -274,6 +274,38 @@ body[data-page="workflow-designer"] {
   overflow: hidden;
 }
 
+
+.designer-workflow-title-fields {
+  display: grid;
+  gap: 10px;
+}
+
+.designer-workflow-description-input {
+  min-height: 74px;
+  font-size: 13px;
+  font-weight: 500;
+  background: #ffffff;
+}
+
+.designer-active-workflow-description {
+  margin: 6px 0 0;
+  color: var(--muted);
+  line-height: 1.45;
+  max-width: 760px;
+}
+
+.designer-workflow-pill .designer-workflow-pill-description {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+  white-space: normal;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
 .designer-editor-head {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;

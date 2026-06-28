@@ -5,7 +5,7 @@
   SourceTypes,
   StepTypes,
   TemplatePresets,
-} from "./workflow-designer-constants.js?v=20260628-reset1";
+} from "./workflow-designer-constants.js?v=20260628-designer-desc1";
 
 const STORAGE_KEY = "qwenWorkflow.workflowDesigner.ui.v1";
 const WORKFLOW_API = "/api/workflows";
@@ -236,6 +236,17 @@ function bindEvents() {
       const wf = getSelectedWorkflow();
       if (!wf || isReadonly()) return;
       wf.name = nameInput.value;
+      markWorkflowDirty();
+      renderWorkflowLabels();
+    });
+  }
+
+  const descriptionInput = el("workflowDescriptionInput");
+  if (descriptionInput) {
+    descriptionInput.addEventListener("input", () => {
+      const wf = getSelectedWorkflow();
+      if (!wf || isReadonly()) return;
+      wf.description = descriptionInput.value;
       markWorkflowDirty();
       renderWorkflowLabels();
     });
@@ -511,6 +522,7 @@ function renderSidebar() {
     <div class="designer-workflow-pill ${workflow.id === state.selectedWorkflowId ? "active" : ""}" data-workflow-id="${escapeHtml(workflow.id)}">
       <strong>${escapeHtml(workflow.name)}</strong>
       <span>${workflow.steps.length} steps · ${workflow.active ? "active" : "draft"}</span>
+      <span class="designer-workflow-pill-description">${escapeHtml(workflow.description || "No description.")}</span>
     </div>
   `).join("");
 }
@@ -530,9 +542,13 @@ function renderWorkflowLabels() {
   setText("designerEditableBadge", readonly ? "READ ONLY" : "EDITABLE");
   el("designerEditableBadge")?.classList.toggle("passed", !readonly);
   el("designerEditableBadge")?.classList.toggle("cancelled", readonly);
+  setText("designerActiveWorkflowDescription", wf.description || "No description.");
   const input = el("workflowNameInput");
   if (input && input.value !== wf.name) input.value = wf.name;
   if (input) input.disabled = readonly;
+  const descriptionInput = el("workflowDescriptionInput");
+  if (descriptionInput && descriptionInput.value !== (wf.description || "")) descriptionInput.value = wf.description || "";
+  if (descriptionInput) descriptionInput.disabled = readonly;
   setText("designerWorkflowLockHint", readonly ? "Read only" : "Editable");
   el("designerWorkflowLockHint")?.classList.toggle("locked", readonly);
 
@@ -540,6 +556,7 @@ function renderWorkflowLabels() {
   if (el("designerResetDraft")) el("designerResetDraft").disabled = readonly;
   if (el("designerDuplicateCustomWorkflow")) el("designerDuplicateCustomWorkflow").disabled = readonly;
   if (el("designerDeleteWorkflow")) el("designerDeleteWorkflow").disabled = readonly;
+  renderSidebar();
 }
 
 function renderStepFloatingActions(wf) {

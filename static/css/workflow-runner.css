@@ -1319,16 +1319,21 @@ body.artifact-modal-open {
 }
 
 .workflow-preview-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 14px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
   min-width: 0;
   padding: 14px 14px 11px;
   border-bottom: 1px solid rgba(226, 232, 240, 0.96);
 }
 
+.workflow-preview-card.compact .workflow-preview-head {
+  border-bottom: 0;
+}
+
 .workflow-preview-title-wrap {
+  display: grid;
+  gap: 5px;
   min-width: 0;
 }
 
@@ -1336,7 +1341,7 @@ body.artifact-modal-open {
   display: inline-flex;
   align-items: center;
   min-height: 20px;
-  margin-bottom: 5px;
+  margin-bottom: 0;
   padding: 1px 8px;
   border: 1px solid rgba(15, 118, 110, 0.18);
   border-radius: 999px;
@@ -1350,26 +1355,26 @@ body.artifact-modal-open {
 
 .workflow-preview-title-wrap strong {
   display: block;
-  overflow: hidden;
+  min-width: 0;
   color: var(--text);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
   font-size: 15px;
   line-height: 1.25;
 }
 
 .workflow-preview-title-wrap p {
-  margin: 4px 0 0;
+  margin: 0;
+  width: 100%;
   color: var(--muted);
   font-size: 12px;
-  line-height: 1.4;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
 }
 
 .workflow-preview-meta {
   display: inline-flex;
-  flex: 0 0 auto;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: flex-start;
   flex-wrap: wrap;
   gap: 6px;
 }
@@ -1465,15 +1470,6 @@ body.artifact-modal-open {
 }
 
 @media (max-width: 760px) {
-  .workflow-preview-head {
-    flex-direction: column;
-    gap: 10px;
-  }
-
-  .workflow-preview-meta {
-    justify-content: flex-start;
-  }
-
   .workflow-preview-step {
     grid-template-columns: 28px minmax(0, 1fr);
   }
@@ -1483,4 +1479,43 @@ body.artifact-modal-open {
     justify-self: start;
     max-width: 100%;
   }
+}
+
+/* Hide preview details while a workflow is active. This uses body status classes
+   so it still works even if the preview is not re-rendered after Run starts. */
+body.run-running .workflow-preview-title-wrap p,
+body.run-running .workflow-preview-steps,
+body.run-waiting .workflow-preview-title-wrap p,
+body.run-waiting .workflow-preview-steps {
+  display: none !important;
+}
+
+body.run-running .workflow-preview-card,
+body.run-waiting .workflow-preview-card {
+  border-color: rgba(245, 158, 11, 0.36);
+  background:
+    radial-gradient(circle at top left, rgba(245, 158, 11, 0.09), transparent 30%),
+    linear-gradient(180deg, #fffaf0, #ffffff);
+}
+
+body.run-running .workflow-preview-head,
+body.run-waiting .workflow-preview-head {
+  border-bottom: 0;
+}
+
+body.run-running .workflow-preview-meta::after,
+body.run-waiting .workflow-preview-meta::after {
+  content: "Running";
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #fff3d8;
+  color: #9a3412;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  white-space: nowrap;
 }

@@ -48,7 +48,6 @@ export function createComposer(ctx) {
       const input = ui.byKey("messageInput");
       const runButton = ui.byKey("runWorkflow");
       const saveButton = ui.byKey("saveRequirement");
-      ctx.features.workflows?.renderLockState?.();
       if (state.runMode === "chat") {
         if (input) input.placeholder = "Ask Qwen about this project...";
         if (runButton) {
@@ -82,7 +81,6 @@ export function createComposer(ctx) {
       const saveButton = ui.byKey("saveRequirement");
       const retryButton = ui.byKey("retryRun");
       const guidanceButton = ui.byKey("addGuidance");
-      ctx.features.workflows?.renderLockState?.();
 
       if (state.runMode === "chat") {
         if (input) input.placeholder = "Ask Qwen about this project...";

@@ -1,3 +1,5 @@
+import { LocalStore, StorageKeys } from "./storage.js?v=20260628-selection-persist1";
+
 export const AppState = {
   sessions: [],
   activeSessionId: null,
@@ -11,8 +13,8 @@ export const AppState = {
   currentArtifacts: [],
   selectedStepKey: null,
   selectedStepArtifactId: null,
-  runMode: "workflow",
+  runMode: LocalStore.getString(StorageKeys.runMode, "workflow") === "chat" ? "chat" : "workflow",
   chatBusy: false,
   workflows: [],
-  selectedWorkflowId: "system-controlled-qwen",
+  selectedWorkflowId: LocalStore.getString(StorageKeys.selectedWorkflowId, "system-controlled-qwen") || "system-controlled-qwen",
 };

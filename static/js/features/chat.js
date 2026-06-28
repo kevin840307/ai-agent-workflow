@@ -1,9 +1,12 @@
+import { LocalStore, StorageKeys } from "../core/storage.js?v=20260628-selection-persist1";
+
 export function createChat(ctx) {
   const { api, state, ui } = ctx;
 
   const chat = {
     setMode(mode) {
       state.runMode = mode === "chat" ? "chat" : "workflow";
+      LocalStore.setString(StorageKeys.runMode, state.runMode);
       document.body.classList.toggle("chat-mode", state.runMode === "chat");
       document.body.classList.toggle("workflow-mode", state.runMode === "workflow");
 

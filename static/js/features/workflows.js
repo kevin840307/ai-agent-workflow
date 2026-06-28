@@ -1,3 +1,5 @@
+import { LocalStore, StorageKeys } from "../core/storage.js?v=20260628-selection-persist1";
+
 export function createWorkflows(ctx) {
   const { api, state, ui } = ctx;
 
@@ -57,6 +59,7 @@ export function createWorkflows(ctx) {
       state.workflows = flattenWorkflows(payload);
       if (!state.workflows.some((workflow) => workflow.id === state.selectedWorkflowId)) {
         state.selectedWorkflowId = state.workflows[0]?.id || "system-controlled-qwen";
+        LocalStore.setString(StorageKeys.selectedWorkflowId, state.selectedWorkflowId);
       }
       workflows.render();
     },
@@ -149,20 +152,8 @@ export function createWorkflows(ctx) {
       const steps = enabledSteps(workflow);
       const locked = isLocked();
       const description = workflow.description || "This workflow will be used for the next run.";
-      preview.innerHTML = `
-        <div class="workflow-preview-card${locked ? " locked" : ""}">
-          <div class="workflow-preview-head">
-            <div class="workflow-preview-title-wrap">
-              <span class="workflow-preview-eyebrow">Run with preview</span>
-              <strong>${ui.escapeHtml(workflowLabel(workflow))}</strong>
-              <p>${ui.escapeHtml(description)}</p>
-            </div>
-            <div class="workflow-preview-meta">
-              <span>${steps.length} enabled</span>
-              <span>${allSteps.length} total</span>
-              ${locked ? `<span class="workflow-preview-lock">Locked</span>` : ""}
-            </div>
-          </div>
+      const descriptionHtml = locked ? "" : `<p>${ui.escapeHtml(description)}</p>`;
+      const stepsHtml = locked ? "" : `
           <div class="workflow-preview-steps" aria-label="Selected workflow steps">
             ${steps.map((step, index) => `
               <div class="workflow-preview-step">
@@ -174,7 +165,22 @@ export function createWorkflows(ctx) {
                 <span class="workflow-preview-step-output">${ui.escapeHtml(outputLabel(step))}</span>
               </div>
             `).join("")}
+          </div>`;
+      preview.innerHTML = `
+        <div class="workflow-preview-card${locked ? " locked compact" : ""}">
+          <div class="workflow-preview-head">
+            <div class="workflow-preview-title-wrap">
+              <span class="workflow-preview-eyebrow">Run with preview</span>
+              <strong>${ui.escapeHtml(workflowLabel(workflow))}</strong>
+              ${descriptionHtml}
+            </div>
+            <div class="workflow-preview-meta">
+              <span>${steps.length} enabled</span>
+              <span>${allSteps.length} total</span>
+              ${locked ? `<span class="workflow-preview-lock">Running</span>` : ""}
+            </div>
           </div>
+          ${stepsHtml}
         </div>
       `;
     },
@@ -185,6 +191,7 @@ export function createWorkflows(ctx) {
         return;
       }
       state.selectedWorkflowId = workflowId || "system-controlled-qwen";
+      LocalStore.setString(StorageKeys.selectedWorkflowId, state.selectedWorkflowId);
       workflows.render();
       workflows.toggleDropdown(false);
     },

@@ -40,7 +40,7 @@ export function createSessions(ctx) {
       ui.byKey("runMeta").textContent = "No active run";
       ui.byKey("runStatusMeta").textContent = "No active run";
       ui.byKey("messageInput").value = "";
-      ui.byKey("runWorkflow").disabled = true;
+      ctx.features.composer.updatePrimaryAction();
       ui.byKey("retryRun").disabled = true;
       ui.byKey("addGuidance").disabled = true;
       ui.byKey("messages").innerHTML = "";
@@ -64,13 +64,16 @@ export function createSessions(ctx) {
     async select(sessionId) {
       state.activeSessionId = sessionId;
       state.activeRunId = null;
+      state.activeRunStatus = null;
+      state.waitingForInput = false;
       ctx.features.eventStream.close();
       sessions.renderList();
       const session = state.sessions.find((item) => item.id === sessionId);
       sessions.renderHeader(session);
-      ui.byKey("runWorkflow").disabled = false;
+      ctx.features.composer.updatePrimaryAction();
       await ctx.features.messages.load();
       await ctx.features.runs.loadLatest();
+      ctx.features.composer.updatePrimaryAction();
     },
 
     async delete(event, sessionId) {

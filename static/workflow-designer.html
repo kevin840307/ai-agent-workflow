@@ -67,6 +67,7 @@
                 </div>
               </div>
               <p id="designerActiveWorkflowMeta">Editable · API workflow</p>
+              <p id="designerActiveWorkflowDescription" class="designer-active-workflow-description">No description.</p>
               <div class="designer-card-meta-row">
                 <span>API-backed</span>
                 <span>Folder-based config</span>
@@ -78,9 +79,15 @@
 
         <section class="designer-editor">
           <div class="designer-editor-head">
-            <div>
-              <label class="designer-label" for="workflowNameInput">Workflow Name</label>
-              <input id="workflowNameInput" class="designer-title-input" />
+            <div class="designer-workflow-title-fields">
+              <div>
+                <label class="designer-label" for="workflowNameInput">Workflow Name</label>
+                <input id="workflowNameInput" class="designer-title-input" />
+              </div>
+              <div>
+                <label class="designer-label" for="workflowDescriptionInput">Description</label>
+                <textarea id="workflowDescriptionInput" class="designer-textarea designer-workflow-description-input" rows="3" placeholder="Describe what this workflow is for..."></textarea>
+              </div>
             </div>
             <div class="designer-editor-actions">
               <span id="designerWorkflowDirtyBadge" class="badge passed">Saved</span>

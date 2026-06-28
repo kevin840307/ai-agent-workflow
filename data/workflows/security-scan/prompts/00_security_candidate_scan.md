@@ -49,6 +49,7 @@ Scan rules:
 - If evidence is inferred, Evidence must explicitly start with "Inferred:" and explain the project signal.
 - If no candidate is found, still output exactly one CAND-001 with Status: No Finding, Severity: Info, Evidence Type: Inferred, and AI Confidence Guess based on reviewed scope.
 - In Markdown tables, do not include the `|` pipe character inside any cell. Replace pipes in code snippets with `/` or describe the snippet outside the table.
+- Never write `N/A`, `Unknown`, `TBD`, or `-` in Checklist Coverage Evidence or Notes. If no concrete evidence exists, write a clear limitation sentence starting with `Limitation:`.
 
 Security checklist categories to scan:
 - Secrets and credentials exposure
@@ -79,18 +80,18 @@ Status: DONE
 ## Checklist Coverage
 | Check | Status | Evidence | Notes |
 | --- | --- | --- | --- |
-| Secrets and credentials exposure | Reviewed | <file/path or limitation> | <brief result> |
-| Authentication and authorization | Reviewed | <file/path or limitation> | <brief result> |
-| Input validation and output encoding | Reviewed | <file/path or limitation> | <brief result> |
-| Injection risks | Reviewed | <file/path or limitation> | <brief result> |
-| Unsafe file/path handling | Reviewed | <file/path or limitation> | <brief result> |
-| Deserialization or dynamic execution | Reviewed | <file/path or limitation> | <brief result> |
-| SSRF and outbound HTTP | Reviewed | <file/path or limitation> | <brief result> |
-| Web security controls | Reviewed | <file/path or limitation> | <brief result> |
-| Dependency and configuration risks | Reviewed | <file/path or limitation> | <brief result> |
-| Sensitive logging and error disclosure | Reviewed | <file/path or limitation> | <brief result> |
-| Cryptography, TLS, and randomness | Reviewed | <file/path or limitation> | <brief result> |
-| Resource exhaustion and denial of service | Reviewed | <file/path or limitation> | <brief result> |
+| Secrets and credentials exposure | Reviewed | <file/path or Limitation: no related evidence identified> | <brief result or Limitation: no confirmed finding identified> |
+| Authentication and authorization | Reviewed | <file/path or Limitation: no related evidence identified> | <brief result or Limitation: no confirmed finding identified> |
+| Input validation and output encoding | Reviewed | <file/path or Limitation: no related evidence identified> | <brief result or Limitation: no confirmed finding identified> |
+| Injection risks | Reviewed | <file/path or Limitation: no related evidence identified> | <brief result or Limitation: no confirmed finding identified> |
+| Unsafe file/path handling | Reviewed | <file/path or Limitation: no related evidence identified> | <brief result or Limitation: no confirmed finding identified> |
+| Deserialization or dynamic execution | Reviewed | <file/path or Limitation: no related evidence identified> | <brief result or Limitation: no confirmed finding identified> |
+| SSRF and outbound HTTP | Reviewed | <file/path or Limitation: no related evidence identified> | <brief result or Limitation: no confirmed finding identified> |
+| Web security controls | Reviewed | <file/path or Limitation: no related evidence identified> | <brief result or Limitation: no confirmed finding identified> |
+| Dependency and configuration risks | Reviewed | <file/path or Limitation: no related evidence identified> | <brief result or Limitation: no confirmed finding identified> |
+| Sensitive logging and error disclosure | Reviewed | <file/path or Limitation: no related evidence identified> | <brief result or Limitation: no confirmed finding identified> |
+| Cryptography, TLS, and randomness | Reviewed | <file/path or Limitation: no related evidence identified> | <brief result or Limitation: no confirmed finding identified> |
+| Resource exhaustion and denial of service | Reviewed | <file/path or Limitation: no related evidence identified> | <brief result or Limitation: no confirmed finding identified> |
 
 ## Candidate Index
 | ID | Severity | AI Confidence Guess | Status | Area | Evidence Summary |

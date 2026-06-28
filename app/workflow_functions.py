@@ -719,6 +719,27 @@ def _security_normalize_confidence_guess_value(value: str) -> str | None:
     return None
 
 
+def _security_is_placeholder_text(value: str) -> bool:
+    cleaned = (value or "").strip().strip("`*_ ")
+    return cleaned.lower() in {"", "-", "n/a", "na", "none", "unknown", "tbd", "not found"}
+
+
+def _security_is_limitation_text(value: str) -> bool:
+    lowered = (value or "").strip().lower()
+    return any(token in lowered for token in [
+        "limitation:", "not found", "not observed", "not identified", "not detected",
+        "no concrete", "no evidence", "no related", "no relevant", "not applicable",
+        "does not appear", "not present", "未發現", "未找到", "未識別", "不適用", "沒有"
+    ])
+
+
+def _security_limit_text(check: str, target: str = "evidence") -> str:
+    base = (check or "this checklist item").strip() or "this checklist item"
+    if target == "notes":
+        return f"Limitation: no confirmed finding was identified for {base} in the scanned project path."
+    return f"Limitation: no concrete file/config evidence identified for {base} in the scanned project path."
+
+
 def _security_confidence_guess_score(value: str, evidence_score: int, *, status: str = "") -> int:
     guess = _security_normalize_confidence_guess_value(value)
     if status in {"No Finding", "Not Applicable", "False Positive"}:
@@ -743,6 +764,24 @@ def _normalize_security_candidate_artifact_text(text: str) -> tuple[str, list[st
 
     notes: list[str] = []
     result = text
+
+    checklist_section = _markdown_section_body(result, "Checklist Coverage")
+    checklist_rows = _markdown_table_rows(checklist_section)
+    if checklist_rows:
+        header = _coerce_markdown_table_row(checklist_rows[0], 4)
+        if header[:4] == ["Check", "Status", "Evidence", "Notes"]:
+            normalized_rows = [["Check", "Status", "Evidence", "Notes"], ["---", "---", "---", "---"]]
+            for row_index, row in enumerate(checklist_rows[1:], start=1):
+                check, status, evidence, note_text = _coerce_markdown_table_row(row, 4)[:4]
+                if _security_is_placeholder_text(evidence):
+                    evidence = _security_limit_text(check, "evidence")
+                    notes.append(f"Checklist row {row_index}: replaced placeholder Evidence with limitation text")
+                if _security_is_placeholder_text(note_text):
+                    note_text = _security_limit_text(check, "notes")
+                    notes.append(f"Checklist row {row_index}: replaced placeholder Notes with limitation text")
+                normalized_rows.append([check, status, evidence, note_text])
+            table_lines = ["| " + " | ".join(row) + " |" for row in normalized_rows]
+            result = _replace_markdown_section_body(result, "Checklist Coverage", "\n".join(table_lines))
 
     # Some agents forget the explicit ## Candidates section and place CAND
     # blocks right after Candidate Index. Insert the missing section rather than
@@ -1194,12 +1233,14 @@ def validate_security_candidates(ctx: WorkflowFunctionContext, artifact: str = "
                 f"{artifact} Checklist Coverage row {index} has invalid Status '{status}'. "
                 "Use Reviewed, Finding, Risk, Not applicable, or Limited."
             )
-        if not evidence.strip() or evidence.strip() in {"-", "N/A", "Unknown", "TBD"}:
+        if _security_is_placeholder_text(evidence) and not _security_is_limitation_text(notes):
             raise WorkflowFunctionError(
                 f"{artifact} Checklist Coverage row {index} must include concrete evidence, a file/config reference, or a stated limitation."
             )
-        if not notes.strip() or notes.strip() in {"-", "N/A", "Unknown", "TBD"}:
-            raise WorkflowFunctionError(f"{artifact} Checklist Coverage row {index} must include Notes.")
+        if _security_is_placeholder_text(notes) and not _security_is_limitation_text(evidence):
+            raise WorkflowFunctionError(
+                f"{artifact} Checklist Coverage row {index} must include Notes or a stated limitation."
+            )
 
     candidate_index = _markdown_section_body(text, "Candidate Index")
     candidate_index_rows = _require_markdown_table(
