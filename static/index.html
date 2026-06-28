@@ -1,10 +1,10 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Qwen Workflow</title>
-    <link rel="stylesheet" href="/static/styles.css" />
+    <link rel="stylesheet" href="/static/styles.css?v=20260628-index-composer3" />
   </head>
   <body data-page="workflow-runner">
     <!-- App region: Project sessions -->
@@ -81,18 +81,22 @@
 
       <section class="compose-panel">
         <div class="composer-box" id="composerBox">
-          <textarea id="messageInput" placeholder="Describe what to build..." rows="2"></textarea>
-          <div class="composer-footer">
-            <div class="composer-left">
+          <div class="composer-topbar">
+            <div class="composer-run-mode">
               <div class="mode-switch" role="group" aria-label="Run mode">
                 <button id="modeWorkflow" class="mode-option active" type="button">Workflow</button>
                 <button id="modeChat" class="mode-option" type="button">Chat</button>
               </div>
               <span id="composerMode" class="composer-mode">Requirement</span>
-              <label class="workflow-picker" id="workflowPicker">
-                <span>Workflow</span>
-                <select id="workflowSelect"></select>
-              </label>
+            </div>
+            <label class="workflow-picker" id="workflowPicker">
+              <span>Run with</span>
+              <select id="workflowSelect"></select>
+            </label>
+          </div>
+          <textarea id="messageInput" placeholder="Describe what to build..." rows="2"></textarea>
+          <div class="composer-footer">
+            <div class="composer-left">
               <button id="saveRequirement" class="composer-tool save-tool" title="Save draft" aria-label="Save draft">Save</button>
               <button id="retryRun" class="composer-tool" title="Retry workflow" aria-label="Retry workflow" disabled>↻</button>
               <button id="addGuidance" class="composer-tool" title="Add guidance" aria-label="Add guidance" disabled>＋</button>
