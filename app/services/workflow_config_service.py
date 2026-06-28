@@ -22,10 +22,12 @@ WORKFLOW_ASSET_DIRS = ("prompts", "skills", "functions")
 
 PROMPT_FILE_BY_STEP_KEY = {
     "prepare_project": "00_prepare.md",
+    "reason_requirement": "00_reason_requirement.md",
     "generate_spec": "01_spec.md",
     "review_spec": "02_review_spec.md",
     "generate_todo": "03_todo.md",
     "review_todo": "04_review_todo.md",
+    "reason_build": "04_reason_build.md",
     "build": "05_build.md",
     "final_review": "06_final_review.md",
     "generate_tests": "07_test.md",

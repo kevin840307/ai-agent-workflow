@@ -10,6 +10,7 @@ from fastapi import HTTPException
 from app import runtime
 from app.repositories import store_repository
 from app.workflow_runtime.agents import AgentRequest
+from app.workflow_runtime.qwen_serve import forget_qwen_serve_session
 
 
 CHAT_HISTORY_LIMIT = 16
@@ -79,9 +80,13 @@ async def list_projects() -> list[dict]:
 
 async def delete_project(session_id: str) -> dict:
     data = await store_repository.read()
+    session = next((item for item in data.get("sessions", []) if item.get("id") == session_id), None)
+    old_qwen_session_id = (session or {}).get("qwen_session_id") or session_id
     run_ids = [run["id"] for run in data.get("runs", []) if run.get("session_id") == session_id]
     run_workspaces = _session_run_workspaces(data, session_id)
     await _cancel_session_runs(run_ids)
+    forget_qwen_serve_session(old_qwen_session_id)
+    forget_qwen_serve_session(session_id)
 
     def remove(data):
         if not any(session["id"] == session_id for session in data["sessions"]):
@@ -102,9 +107,12 @@ async def reset_project(session_id: str) -> dict:
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
 
+    old_qwen_session_id = session.get("qwen_session_id") or session_id
     run_ids = [run["id"] for run in data.get("runs", []) if run.get("session_id") == session_id]
     run_workspaces = _session_run_workspaces(data, session_id)
     await _cancel_session_runs(run_ids)
+    forget_qwen_serve_session(old_qwen_session_id)
+    forget_qwen_serve_session(session_id)
 
     new_qwen_session_id = str(uuid.uuid4())
 

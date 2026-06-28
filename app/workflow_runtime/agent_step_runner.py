@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Any, Awaitable, Callable
 
@@ -56,18 +57,25 @@ class AgentStepRunner:
             allow_interaction=allow_interaction,
             agent_name=agent_name,
         )
+        prompt_text = self._harden_prompt_for_step(step_key, prompt_result.prompt)
         cwd = Path(run.get("project_path") or run["workspace"])
-        session_id = None if fresh_session else self._session_id_for_agent(run, agent_name)
+        base_session_id = self._session_id_for_agent(run, agent_name)
+        # Qwen serve should keep one Qwen session per project/app session.
+        # Some old workflow steps used fresh_session/new_agent for review, but
+        # passing None makes serve create unrelated or default sessions and can
+        # collide with the active project session.  Non-Qwen adapters keep the
+        # previous fresh_session behavior.
+        session_id = base_session_id if agent_name == "qwen" else (None if fresh_session else base_session_id)
         request = AgentRequest(
             run_id=run["id"],
             step_key=step_key,
-            prompt=prompt_result.prompt,
+            prompt=prompt_text,
             cwd=cwd,
             session_id=session_id,
         )
         display_cmd = agent.command_preview(request)
         await self.log(run, f"{step_key}: agent={agent_name}, command=`{display_cmd}`, cwd={cwd}")
-        await self.log(run, f"{step_key}: prompt length={len(prompt_result.prompt)} chars, passed by file={prompt_result.relative_prompt_path}")
+        await self.log(run, f"{step_key}: prompt length={len(prompt_text)} chars, passed by file={prompt_result.relative_prompt_path}")
         if prompt_result.skill_files:
             await self.log(run, f"{step_key}: selected skills: {', '.join(path.parent.name for path in prompt_result.skill_files)}")
         await self.log(run, f"{step_key}: prompt saved to {prompt_result.relative_prompt_path}")
@@ -76,6 +84,11 @@ class AgentStepRunner:
 
         async def publish_agent_output(stream: str, text: str) -> None:
             if not text:
+                return
+            if stream == "stdout" and not self._show_agent_stdout():
+                # Agent stdout is the artifact body.  It is still captured and
+                # written to output/*.md, but hiding it from the live console keeps
+                # large FILE/CONTENT blocks and token streams from flooding logs.
                 return
             await self.bus.publish(run["id"], {"type": "agent_output", "agent": agent_name, "step": step_key, "stream": stream, "text": text})
             # Legacy UI compatibility while migrating frontend event names.
@@ -108,6 +121,26 @@ class AgentStepRunner:
         await self.log(run, f"{step_key}: wrote output/{artifact}")
         await self.refresh_artifacts(run["id"])
         return output
+
+
+    @staticmethod
+    def _show_agent_stdout() -> bool:
+        return os.environ.get("QWEN_WORKFLOW_SHOW_AGENT_STDOUT", "0").lower() in {"1", "true", "yes", "on"}
+
+    @staticmethod
+    def _harden_prompt_for_step(step_key: str, prompt: str) -> str:
+        if step_key != "build":
+            return prompt
+        guard = """
+
+Build output guard:
+- You are in the Build step. Output production code FILE/CONTENT/END_FILE blocks only.
+- Do not output, copy, rewrite, summarize, or include any test file blocks from Test Plan.
+- Do not write paths under tests/ and do not write files named test_*.py.
+- If Test Plan contains FILE/CONTENT/END_FILE blocks, treat them as read-only requirements only.
+- Your final answer must include at least one non-test production file that implements the current Requirement.
+"""
+        return prompt.rstrip() + guard
 
     def _session_id_for_agent(self, run: dict[str, Any], agent_name: str) -> str | None:
         provider_sessions = run.get("agent_session_ids") or {}

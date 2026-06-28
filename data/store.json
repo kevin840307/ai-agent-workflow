@@ -1,36 +1,37 @@
 {
   "sessions": [
     {
-      "id": "d7395637-200c-40fa-b122-343a1021db5c",
-      "qwen_session_id": "d7395637-200c-40fa-b122-343a1021db5c",
-      "title": "泡沫",
+      "id": "88b4a5bd-5767-4281-b59b-47a95b5dc360",
+      "qwen_session_id": "3ccc7023-0910-4d2d-ab67-6776325791ae",
+      "title": "sdasd",
       "project_path": "C:\\Users\\kevin\\sort",
-      "created_at": "2026-06-28T05:42:19.574608+00:00",
-      "updated_at": "2026-06-28T05:42:22.662072+00:00"
+      "created_at": "2026-06-28T08:03:28.204648+00:00",
+      "updated_at": "2026-06-28T08:45:09.758529+00:00"
     }
   ],
   "messages": [
     {
-      "id": "9e4bc5d0-0b6a-4580-b696-61f4e2bcc025",
-      "session_id": "d7395637-200c-40fa-b122-343a1021db5c",
+      "id": "1c8ce3dc-78ae-464e-8e0f-31923603bab8",
+      "session_id": "88b4a5bd-5767-4281-b59b-47a95b5dc360",
       "role": "user",
       "kind": "requirement",
       "content": "使用Python新增一個快速排序法",
-      "created_at": "2026-06-28T05:42:22.661096+00:00"
+      "created_at": "2026-06-28T08:45:09.758529+00:00"
     }
   ],
   "runs": [
     {
-      "id": "903193e6-f27d-4dcc-b623-90e0d90a1bf1",
-      "session_id": "d7395637-200c-40fa-b122-343a1021db5c",
-      "qwen_session_id": "d7395637-200c-40fa-b122-343a1021db5c",
+      "id": "04a2dfa3-a9d4-49d5-b6de-fe43f753040f",
+      "session_id": "88b4a5bd-5767-4281-b59b-47a95b5dc360",
+      "qwen_session_id": "3ccc7023-0910-4d2d-ab67-6776325791ae",
       "status": "failed",
-      "error": "WorkflowError: Retry stopped: generate_tests already reached max retries (10/10). Last failure from generate_tests: ^C",
-      "workspace": "C:\\Users\\kevin\\sort\\.qwen-workflow\\runs\\session-d7395637-200c-40fa-b122-343a1021db5c\\run-903193e6-f27d-4dcc-b623-90e0d90a1bf1",
+      "error": "WorkflowError: Retry stopped: generate_tests already reached max retries (10/10). Last failure from generate_tests: generate_tests did not create any test files. Agent test output must include FILE/CONTENT/END_FILE blocks.",
+      "workspace": "C:\\Users\\kevin\\sort\\.qwen-workflow\\runs\\session-88b4a5bd-5767-4281-b59b-47a95b5dc360\\run-04a2dfa3-a9d4-49d5-b6de-fe43f753040f",
       "project_path": "C:\\Users\\kevin\\sort",
       "workflow_id": "system-controlled-qwen",
       "workflow_folder": "system-controlled-qwen",
       "workflow_name": "Controlled Qwen Workflow",
+      "skill_root": "~/.qwen/skills",
       "test_command": null,
       "steps": [
         {
@@ -40,10 +41,10 @@
           "type": "ai",
           "agent": "qwen",
           "status": "passed",
-          "started_at": "2026-06-28T05:42:27.754190+00:00",
-          "ended_at": "2026-06-28T05:42:40.547409+00:00",
+          "started_at": "2026-06-28T08:45:09.846475+00:00",
+          "ended_at": "2026-06-28T08:45:22.005748+00:00",
           "error": null,
-          "retry_count": 1,
+          "retry_count": 0,
           "config": {
             "id": "system-prepare_project",
             "key": "prepare_project",
@@ -55,8 +56,17 @@
             "templatePath": "prompts/00_prepare.md",
             "filename": "architecture.md",
             "outputFile": "architecture.md",
-            "templateContent": "You are preparing project architecture context.\n\nOutput only FILE/CONTENT/END_FILE blocks or direct Markdown with `Status: DONE`. Do not output JSON. Do not use code fences. Do not ask questions.\n\nProject Path: {{project_path}}\nWorkflow Workspace: {{workspace_path}}\n\nRequirement:\n{{requirement}}\n\nProject Overview:\n{{project_overview}}\n\nExisting architecture.md:\n{{architecture}}\n\nRules:\n- If the project already has files, summarize the current architecture and update architecture.md if needed.\n- If architecture.md already exists and is accurate, keep it concise and current.\n- Do not write under `.qwen-workflow`.\n- Only create or update `architecture.md`.\n\nReturn this exact file block:\n\nFILE: architecture.md\nCONTENT:\n# Architecture\n\n## Overview\n\n## Project Structure\n\n## Runtime And Entry Points\n\n## Data Flow\n\n## Testing Strategy\n\n## Conventions\n\n## Unknowns\n\n## Update Notes\nEND_FILE\n",
-            "sources": [],
+            "templateContent": "You are preparing project architecture context.\n\nOutput only FILE/CONTENT/END_FILE blocks or direct Markdown with `Status: DONE`. Do not output JSON. Do not use code fences. Do not ask questions.\n\nProject Path: {{project_path}}\nWorkflow Workspace: {{workspace_path}}\n\nRequirement:\n{{requirement}}\n\nProject Overview:\n{{project_overview}}\n\nProject Profile:\n{{project_profile}}\n\nExisting architecture.md:\n{{architecture}}\n\nRules:\n- If the project already has files, summarize the current architecture and update architecture.md if needed.\n- If architecture.md already exists and is accurate, keep it concise and current.\n- Record the detected primary language, framework/runtime, test framework, module layout, entry points, naming conventions, and where production code and tests live.\n- If the workflow is adding a second or later feature, preserve the existing architecture and explain how new features should be added consistently.\n- Do not write under `.qwen-workflow`.\n- Only create or update `architecture.md`.\n\nReturn this exact file block:\n\nFILE: architecture.md\nCONTENT:\n# Architecture\n\n## Overview\n\n## Project Structure\n\n## Runtime And Entry Points\n\n## Data Flow\n\n## Testing Strategy\n\n## Conventions\n\n## Unknowns\n\n## Update Notes\nEND_FILE\n",
+            "sources": [
+              {
+                "type": "skill_path",
+                "value": "spec-driven-development"
+              },
+              {
+                "type": "skill_path",
+                "value": "code-review-and-quality"
+              }
+            ],
             "reviewMode": "none",
             "reviewers": [],
             "confidenceThreshold": 0.75,
@@ -90,16 +100,83 @@
           "pause_after_step": false
         },
         {
+          "key": "reason_requirement",
+          "title": "Reason Requirement",
+          "kind": "agent",
+          "type": "ai",
+          "agent": "qwen",
+          "status": "passed",
+          "started_at": "2026-06-28T08:45:38.504855+00:00",
+          "ended_at": "2026-06-28T08:45:50.242457+00:00",
+          "error": null,
+          "retry_count": 2,
+          "config": {
+            "id": "system-reason_requirement",
+            "key": "reason_requirement",
+            "name": "Reason Requirement",
+            "type": "ai",
+            "enabled": true,
+            "description": "",
+            "command": "",
+            "templatePath": "prompts/00_reason_requirement.md",
+            "filename": "reasoning.md",
+            "outputFile": "reasoning.md",
+            "templateContent": "You are producing a reasoning artifact for this workflow.\n\nOutput only Markdown. Do not output JSON. Do not use code fences. Do not ask questions.\nDo not output implementation code. Do not output FILE/CONTENT/END_FILE blocks.\nDo not modify project files. This step only writes `output/reasoning.md`.\n\nProject Path: {{project_path}}\nWorkflow Workspace: {{workspace_path}}\n\nProject Overview:\n{{project_overview}}\n\nProject Profile:\n{{project_profile}}\n\nArchitecture:\n{{architecture}}\n\nRequirement:\n{{requirement}}\n\nUser Guidance:\n{{guidance}}\n\nPrevious Failure Feedback:\n{{failure_feedback}}\n\nCreate a concise reasoning artifact that helps later Spec, Todo, Test, and Build steps stay aligned with the current requirement and existing project.\n\nUse exactly these sections, in this exact order:\n\nStatus: DONE\n\n## Requirement Understanding\n- Summarize the concrete user goal as statements, not questions.\n\n## Existing Project Evidence\n- List observed files, language, framework, runtime, tests, and layout evidence from Project Overview / Project Profile / Architecture.\n\n## Implementation Direction\n- Explain the recommended direction that fits the existing project.\n\n## Files Likely To Change\n- Production files:\n- Test files:\n\n## Constraints\n- List rules later steps must follow.\n- Keep production code and tests owned by separate workflow steps.\n- Build must not create or modify tests/ files.\n\n## Assumptions\n- List reasonable non-blocking assumptions. If none, write \"- None.\".\n\n## Risks\n- List concrete risks later steps should avoid.\n",
+            "sources": [
+              {
+                "type": "skill_path",
+                "value": "spec-driven-development"
+              },
+              {
+                "type": "skill_path",
+                "value": "code-review-and-quality"
+              }
+            ],
+            "reviewMode": "none",
+            "reviewers": [],
+            "confidenceThreshold": 0.75,
+            "passKeywords": "PASS, APPROVED",
+            "failKeywords": "FAIL, BLOCKED",
+            "aggregatorFunction": "",
+            "maxRetries": 3,
+            "failAction": "same_step",
+            "retryFromStepKey": "reason_requirement",
+            "keepSameSession": true,
+            "injectFailureFeedback": true,
+            "stopAfterFailures": 2,
+            "pauseAfterStep": false,
+            "approvalRequired": false,
+            "approvalMessage": "",
+            "timeoutEnabled": false,
+            "timeoutMinutes": 0,
+            "allowInteraction": false,
+            "expectedFiles": [
+              "reasoning.md"
+            ],
+            "validator": "",
+            "contextArtifacts": [
+              "architecture.md"
+            ],
+            "agent": "qwen",
+            "provider": "qwen"
+          },
+          "max_retries": 3,
+          "retry_from_step_key": "reason_requirement",
+          "fail_action": "same_step",
+          "allow_interaction": false,
+          "pause_after_step": false
+        },
+        {
           "key": "generate_spec",
           "title": "Generate Spec",
           "kind": "agent",
           "type": "ai",
           "agent": "qwen",
           "status": "passed",
-          "started_at": "2026-06-28T05:43:02.373845+00:00",
-          "ended_at": "2026-06-28T05:43:13.804661+00:00",
+          "started_at": "2026-06-28T08:45:50.258082+00:00",
+          "ended_at": "2026-06-28T08:46:03.759476+00:00",
           "error": null,
-          "retry_count": 1,
+          "retry_count": 0,
           "config": {
             "id": "system-generate_spec",
             "key": "generate_spec",
@@ -111,8 +188,13 @@
             "templatePath": "prompts/01_spec.md",
             "filename": "spec.md",
             "outputFile": "spec.md",
-            "templateContent": "You are generating the workflow artifact `output/spec.md`.\n\nOutput only Markdown. Do not output JSON. Do not use code fences. Do not call tools.\n\nIf the requirement is clear enough to continue, do not ask questions. For simple coding tasks, make reasonable assumptions and record them in Unknowns or Rules. Ask the user only when a missing decision makes the project impossible to specify.\nIgnore previous Qwen session tasks. The Requirement below is the source of truth. Do not reuse older filenames, functions, features, or test plans unless the current Requirement asks for them.\n\nProject Path: {{project_path}}\nWorkflow Workspace: {{workspace_path}}\n\nRequirement:\n{{requirement}}\n\nUser Guidance:\n{{guidance}}\n\nPrevious Failure Feedback:\n{{failure_feedback}}\n\nWrite a concise spec with exactly these section headings:\n\n## Goal\nState the user goal.\n\n## Scope\nList what will be implemented.\n\n## Out of Scope\nList what will not be implemented.\n\n## Input\nList expected inputs and existing project context.\n\n## Output\nList expected files, behavior, or artifacts.\n\n## Rules\nList implementation constraints. Mention tests must be separate from production code.\n\n## Acceptance Criteria\nUse stable IDs. Include at least AC-001.\n- AC-001: ...\n- AC-002: ...\n\n## Unknowns\nList only non-blocking unknowns. If none, write \"- None blocking.\"\n",
-            "sources": [],
+            "templateContent": "You are generating the workflow artifact `output/spec.md`.\n\nOutput only Markdown. Do not output JSON. Do not use code fences. Do not call tools.\nUse a deterministic format: no title before the first `##` heading, no extra sections, no timestamps, no conversational text.\n\nIf the requirement is clear enough to continue, do not ask questions. For simple coding tasks, make reasonable assumptions and record them in Unknowns or Rules. Ask the user only when a missing decision makes the project impossible to specify.\nIgnore previous Qwen session tasks. The Requirement below is the source of truth. Do not reuse older filenames, functions, features, or test plans unless the current Requirement asks for them.\n\nProject Path: {{project_path}}\nWorkflow Workspace: {{workspace_path}}\n\nProject Overview:\n{{project_overview}}\n\nProject Profile:\n{{project_profile}}\n\nArchitecture:\n{{architecture}}\n\nRequirement Reasoning:\n{{reasoning}}\n\nRequirement:\n{{requirement}}\n\nUser Guidance:\n{{guidance}}\n\nPrevious Failure Feedback:\n{{failure_feedback}}\n\nWrite a concise spec with exactly these section headings, in this exact order:\n\n## Goal\n- One bullet beginning with the concrete user goal.\n\n## Scope\n- Bullet list of what will be implemented.\n\n## Out of Scope\n- Bullet list of what will not be implemented.\n\n## Input\n- Bullet list of expected inputs and existing project context.\n\n## Output\n- Bullet list of expected files, behavior, or artifacts.\n\n## Rules\n- Bullet list of implementation constraints. Use Requirement Reasoning as guidance, but keep the current Requirement as source of truth. Mention tests must be separate from production code. If Project Profile or Architecture shows an existing project language, framework, or folder structure, require the implementation to extend it instead of creating an unrelated structure.\n\n## Acceptance Criteria\nUse stable sequential IDs. Include at least AC-001. Keep IDs stable across retries for the same requirement.\n- AC-001: ...\n- AC-002: ...\n\n## Unknowns\n- List only non-blocking unknowns. If none, write \"- None blocking.\"\n",
+            "sources": [
+              {
+                "type": "skill_path",
+                "value": "spec-driven-development"
+              }
+            ],
             "reviewMode": "none",
             "reviewers": [],
             "confidenceThreshold": 0.75,
@@ -135,7 +217,10 @@
               "spec.md"
             ],
             "validator": "",
-            "contextArtifacts": [],
+            "contextArtifacts": [
+              "architecture.md",
+              "reasoning.md"
+            ],
             "agent": "qwen",
             "provider": "qwen"
           },
@@ -152,8 +237,8 @@
           "type": "validation",
           "agent": "",
           "status": "passed",
-          "started_at": "2026-06-28T05:43:13.820285+00:00",
-          "ended_at": "2026-06-28T05:43:13.836885+00:00",
+          "started_at": "2026-06-28T08:46:03.778027+00:00",
+          "ended_at": "2026-06-28T08:46:03.797559+00:00",
           "error": null,
           "retry_count": 0,
           "config": {
@@ -176,7 +261,7 @@
             "failKeywords": "FAIL, BLOCKED",
             "aggregatorFunction": "",
             "maxRetries": 10,
-            "failAction": "same_step",
+            "failAction": "selected_step",
             "retryFromStepKey": "generate_spec",
             "keepSameSession": true,
             "injectFailureFeedback": true,
@@ -195,7 +280,7 @@
           },
           "max_retries": 10,
           "retry_from_step_key": "generate_spec",
-          "fail_action": "same_step",
+          "fail_action": "selected_step",
           "allow_interaction": false,
           "pause_after_step": false
         },
@@ -206,8 +291,8 @@
           "type": "ai",
           "agent": "qwen",
           "status": "passed",
-          "started_at": "2026-06-28T05:43:13.853486+00:00",
-          "ended_at": "2026-06-28T05:43:20.665036+00:00",
+          "started_at": "2026-06-28T08:46:03.813183+00:00",
+          "ended_at": "2026-06-28T08:46:11.838882+00:00",
           "error": null,
           "retry_count": 0,
           "config": {
@@ -221,8 +306,17 @@
             "templatePath": "prompts/02_review_spec.md",
             "filename": "spec-review.md",
             "outputFile": "spec-review.md",
-            "templateContent": "You are reviewing `output/spec.md`.\n\nOutput only Markdown. Do not output JSON. Do not use code fences. Do not ask the user questions.\n\nRequirement:\n{{requirement}}\n\nSpec:\n{{spec}}\n\nReturn this exact structure:\n\nStatus: PASS\n\n## Findings\n- None.\n\nIf the spec is missing required sections, has no AC-001, contradicts the requirement, or asks questions instead of making reasonable assumptions, use:\n\nStatus: FAIL\n\n## Findings\n- Explain the concrete issue to fix.\n",
-            "sources": [],
+            "templateContent": "You are reviewing `output/spec.md`.\n\nOutput only Markdown. Do not output JSON. Do not use code fences. Do not ask the user questions.\nUse exactly one of the two structures below. Do not add extra sections.\n\nRequirement:\n{{requirement}}\n\nSpec:\n{{spec}}\n\nReturn this exact structure:\n\nStatus: PASS\n\n## Findings\n- None.\nConfidence: 1.0\n\nIf the spec is missing required sections, has no AC-001, contradicts the requirement, or asks questions instead of making reasonable assumptions, use:\n\nStatus: FAIL\n\n## Findings\n- Explain the concrete issue to fix.\nConfidence: 1.0\n",
+            "sources": [
+              {
+                "type": "skill_path",
+                "value": "code-review-and-quality"
+              },
+              {
+                "type": "skill_path",
+                "value": "doubt-driven-development"
+              }
+            ],
             "reviewMode": "current_session",
             "reviewers": [],
             "confidenceThreshold": 0.75,
@@ -230,7 +324,7 @@
             "failKeywords": "FAIL, BLOCKED",
             "aggregatorFunction": "",
             "maxRetries": 10,
-            "failAction": "same_step",
+            "failAction": "selected_step",
             "retryFromStepKey": "generate_spec",
             "keepSameSession": true,
             "injectFailureFeedback": true,
@@ -253,7 +347,7 @@
           },
           "max_retries": 10,
           "retry_from_step_key": "generate_spec",
-          "fail_action": "same_step",
+          "fail_action": "selected_step",
           "allow_interaction": false,
           "pause_after_step": false
         },
@@ -264,8 +358,8 @@
           "type": "gate",
           "agent": "",
           "status": "passed",
-          "started_at": "2026-06-28T05:43:20.683591+00:00",
-          "ended_at": "2026-06-28T05:43:20.708050+00:00",
+          "started_at": "2026-06-28T08:46:11.854505+00:00",
+          "ended_at": "2026-06-28T08:46:11.876965+00:00",
           "error": null,
           "retry_count": 0,
           "config": {
@@ -288,7 +382,7 @@
             "failKeywords": "FAIL, BLOCKED",
             "aggregatorFunction": "",
             "maxRetries": 10,
-            "failAction": "same_step",
+            "failAction": "selected_step",
             "retryFromStepKey": "generate_spec",
             "keepSameSession": true,
             "injectFailureFeedback": true,
@@ -307,7 +401,7 @@
           },
           "max_retries": 10,
           "retry_from_step_key": "generate_spec",
-          "fail_action": "same_step",
+          "fail_action": "selected_step",
           "allow_interaction": false,
           "pause_after_step": true
         },
@@ -318,10 +412,10 @@
           "type": "ai",
           "agent": "qwen",
           "status": "passed",
-          "started_at": "2026-06-28T05:43:51.668534+00:00",
-          "ended_at": "2026-06-28T05:44:02.016091+00:00",
+          "started_at": "2026-06-28T08:46:11.895518+00:00",
+          "ended_at": "2026-06-28T08:46:21.880802+00:00",
           "error": null,
-          "retry_count": 2,
+          "retry_count": 0,
           "config": {
             "id": "system-generate_todo",
             "key": "generate_todo",
@@ -333,8 +427,13 @@
             "templatePath": "prompts/03_todo.md",
             "filename": "todo.md",
             "outputFile": "todo.md",
-            "templateContent": "You are generating the workflow artifact `output/todo.md`.\n\nOutput only Markdown. Do not output JSON. Do not use code fences. Do not ask the user questions.\n\nRequirement:\n{{requirement}}\n\nSpec:\n{{spec}}\n\nPrevious Failure Feedback:\n{{failure_feedback}}\n\nCreate an implementation todo from the Spec. Reference every AC ID from the spec. Do not introduce a different language/framework than the Requirement or existing Project Overview implies.\n\nUse exactly these section headings:\n\n## Todo List\n- TODO-001: ...\n\n## Test Plan\n- TEST-001: ...\n\n## Done Criteria\n- Reference all AC IDs explicitly.\n",
-            "sources": [],
+            "templateContent": "You are generating the workflow artifact `output/todo.md`.\n\nOutput only Markdown. Do not output JSON. Do not use code fences. Do not ask the user questions.\nUse a deterministic format: no title before the first `##` heading, no extra sections, no timestamps, no conversational text.\n\nRequirement:\n{{requirement}}\n\nProject Profile:\n{{project_profile}}\n\nArchitecture:\n{{architecture}}\n\nSpec:\n{{spec}}\n\nPrevious Failure Feedback:\n{{failure_feedback}}\n\nCreate an implementation todo from the Spec. Reference every AC ID from the spec. Do not introduce a different language/framework than the Requirement, Project Profile, or Architecture implies. If the project already has source files, plan changes in that same module layout.\n\nUse exactly these section headings, in this exact order:\n\n## Todo List\n- TODO-001: Implement ... (covers AC-001)\n\n## Test Plan\n- TEST-001: Verify ... (covers AC-001)\n\n## Done Criteria\n- Reference all AC IDs explicitly.\n\nRules:\n- Use stable sequential TODO IDs and TEST IDs.\n- Every AC ID from the spec must appear at least once in Todo List and at least once in Test Plan.\n- Keep todo wording concrete and implementation-oriented.\n",
+            "sources": [
+              {
+                "type": "skill_path",
+                "value": "planning-and-task-breakdown"
+              }
+            ],
             "reviewMode": "none",
             "reviewers": [],
             "confidenceThreshold": 0.75,
@@ -358,6 +457,7 @@
             ],
             "validator": "",
             "contextArtifacts": [
+              "reasoning.md",
               "spec.md",
               "spec-review.md"
             ],
@@ -377,8 +477,8 @@
           "type": "validation",
           "agent": "",
           "status": "passed",
-          "started_at": "2026-06-28T05:44:02.032692+00:00",
-          "ended_at": "2026-06-28T05:44:02.054684+00:00",
+          "started_at": "2026-06-28T08:46:21.901856+00:00",
+          "ended_at": "2026-06-28T08:46:21.922722+00:00",
           "error": null,
           "retry_count": 0,
           "config": {
@@ -401,7 +501,7 @@
             "failKeywords": "FAIL, BLOCKED",
             "aggregatorFunction": "",
             "maxRetries": 10,
-            "failAction": "same_step",
+            "failAction": "selected_step",
             "retryFromStepKey": "generate_todo",
             "keepSameSession": true,
             "injectFailureFeedback": true,
@@ -423,7 +523,7 @@
           },
           "max_retries": 10,
           "retry_from_step_key": "generate_todo",
-          "fail_action": "same_step",
+          "fail_action": "selected_step",
           "allow_interaction": false,
           "pause_after_step": false
         },
@@ -434,8 +534,8 @@
           "type": "ai",
           "agent": "qwen",
           "status": "passed",
-          "started_at": "2026-06-28T05:44:02.079096+00:00",
-          "ended_at": "2026-06-28T05:44:09.278922+00:00",
+          "started_at": "2026-06-28T08:46:21.944712+00:00",
+          "ended_at": "2026-06-28T08:46:31.125075+00:00",
           "error": null,
           "retry_count": 0,
           "config": {
@@ -449,8 +549,17 @@
             "templatePath": "prompts/04_review_todo.md",
             "filename": "todo-review.md",
             "outputFile": "todo-review.md",
-            "templateContent": "You are reviewing `output/todo.md`.\n\nOutput only Markdown. Do not output JSON. Do not use code fences. Do not ask the user questions.\n\nSpec:\n{{spec}}\n\nTodo:\n{{todo}}\n\nReturn this exact structure:\n\nStatus: PASS\n\n## Findings\n- None.\n\nIf the todo is missing TODO-001, TEST-001, or does not reference every AC ID from the spec, use:\n\nStatus: FAIL\n\n## Findings\n- Explain the concrete issue to fix.\n",
-            "sources": [],
+            "templateContent": "You are reviewing `output/todo.md`.\n\nOutput only Markdown. Do not output JSON. Do not use code fences. Do not ask the user questions.\nUse exactly one of the two structures below. Do not add extra sections.\n\nSpec:\n{{spec}}\n\nTodo:\n{{todo}}\n\nReturn this exact structure:\n\nStatus: PASS\n\n## Findings\n- None.\nConfidence: 1.0\n\nIf the todo is missing TODO-001, TEST-001, or does not reference every AC ID from the spec, use:\n\nStatus: FAIL\n\n## Findings\n- Explain the concrete issue to fix.\nConfidence: 1.0\n",
+            "sources": [
+              {
+                "type": "skill_path",
+                "value": "code-review-and-quality"
+              },
+              {
+                "type": "skill_path",
+                "value": "doubt-driven-development"
+              }
+            ],
             "reviewMode": "current_session",
             "reviewers": [],
             "confidenceThreshold": 0.75,
@@ -458,7 +567,7 @@
             "failKeywords": "FAIL, BLOCKED",
             "aggregatorFunction": "",
             "maxRetries": 10,
-            "failAction": "same_step",
+            "failAction": "selected_step",
             "retryFromStepKey": "generate_todo",
             "keepSameSession": true,
             "injectFailureFeedback": true,
@@ -483,7 +592,7 @@
           },
           "max_retries": 10,
           "retry_from_step_key": "generate_todo",
-          "fail_action": "same_step",
+          "fail_action": "selected_step",
           "allow_interaction": false,
           "pause_after_step": false
         },
@@ -494,8 +603,8 @@
           "type": "gate",
           "agent": "",
           "status": "passed",
-          "started_at": "2026-06-28T05:44:09.300404+00:00",
-          "ended_at": "2026-06-28T05:44:09.323380+00:00",
+          "started_at": "2026-06-28T08:46:31.142711+00:00",
+          "ended_at": "2026-06-28T08:46:31.166656+00:00",
           "error": null,
           "retry_count": 0,
           "config": {
@@ -518,7 +627,7 @@
             "failKeywords": "FAIL, BLOCKED",
             "aggregatorFunction": "",
             "maxRetries": 10,
-            "failAction": "same_step",
+            "failAction": "selected_step",
             "retryFromStepKey": "generate_todo",
             "keepSameSession": true,
             "injectFailureFeedback": true,
@@ -537,7 +646,7 @@
           },
           "max_retries": 10,
           "retry_from_step_key": "generate_todo",
-          "fail_action": "same_step",
+          "fail_action": "selected_step",
           "allow_interaction": false,
           "pause_after_step": true
         },
@@ -548,9 +657,9 @@
           "type": "ai",
           "agent": "qwen",
           "status": "failed",
-          "started_at": "2026-06-28T05:45:55.379217+00:00",
-          "ended_at": "2026-06-28T05:45:59.716835+00:00",
-          "error": "Retry stopped: generate_tests already reached max retries (10/10). Last failure from generate_tests: ^C",
+          "started_at": "2026-06-28T08:49:15.766212+00:00",
+          "ended_at": "2026-06-28T08:49:34.694528+00:00",
+          "error": "Retry stopped: generate_tests already reached max retries (10/10). Last failure from generate_tests: generate_tests did not create any test files. Agent test output must include FILE/CONTENT/END_FILE blocks.",
           "retry_count": 10,
           "config": {
             "id": "system-generate_tests",
@@ -563,8 +672,13 @@
             "templatePath": "prompts/07_test.md",
             "filename": "test-plan.md",
             "outputFile": "test-plan.md",
-            "templateContent": "You are generating automated tests.\n\nOutput only FILE/CONTENT/END_FILE blocks. Do not output JSON. Do not use Markdown fences. Do not create production code in this step.\n\nProject Path: {{project_path}}\n\nProject Overview:\n{{project_overview}}\n\nRequirement:\n{{requirement}}\n\nSpec:\n{{spec}}\n\nTodo:\n{{todo}}\n\nPrevious Failure Feedback:\n{{failure_feedback}}\n\nRules:\n- Generate tests according to Requirement + Spec + Todo.\n- The current Requirement is the source of truth. Do not reuse stale tests from a previous run.\n- Match the existing project test framework when it is clear from Project Overview.\n- For Python projects, write pytest tests only under tests/.\n- Test files must be named tests/test_*.py or tests/conftest.py.\n- Keep tests separate from production code.\n- Tests must target the current Requirement and Acceptance Criteria, not only behavior that already existed before this run.\n- When feasible, write tests that would fail before the requested implementation and pass after it.\n- Use test file, import, class, and function names derived from the current Requirement and existing architecture.\n\nReturn one or more blocks like:\n\nFILE: tests/test_example.py\nCONTENT:\nfrom src.example import example\n\n\ndef test_example_behavior():\n    assert example()\nEND_FILE\n",
-            "sources": [],
+            "templateContent": "You are generating automated tests.\n\nOutput only FILE/CONTENT/END_FILE blocks. Do not output JSON. Do not use Markdown fences. Do not create production code in this step.\n\nProject Path: {{project_path}}\n\nProject Overview:\n{{project_overview}}\n\nProject Profile:\n{{project_profile}}\n\nArchitecture:\n{{architecture}}\n\nRequirement:\n{{requirement}}\n\nSpec:\n{{spec}}\n\nTodo:\n{{todo}}\n\nPrevious Failure Feedback:\n{{failure_feedback}}\n\nRules:\n- Generate tests according to Requirement + Spec + Todo.\n- The current Requirement is the source of truth. Do not reuse stale tests from a previous run.\n- Match the existing project test framework when it is clear from Project Overview.\n- For Python projects, write pytest tests only under tests/.\n- Test files must be named tests/test_*.py or tests/conftest.py.\n- Import production code from actual existing module paths shown in Project Profile / Architecture. Prefer the dominant Source roots by usage. Do not invent `src.*` imports unless `src` is the dominant source root or Architecture explicitly says to use it.\n- Keep tests separate from production code.\n- Tests must target the current Requirement and Acceptance Criteria, not only behavior that already existed before this run.\n- When feasible, write tests that would fail before the requested implementation and pass after it.\n- Use test file, import, class, and function names derived from the current Requirement and existing architecture.\n\nReturn one or more blocks like:\n\nFILE: tests/test_example.py\nCONTENT:\nfrom src.example import example\n\n\ndef test_example_behavior():\n    assert example()\nEND_FILE\n",
+            "sources": [
+              {
+                "type": "skill_path",
+                "value": "test-driven-development"
+              }
+            ],
             "reviewMode": "none",
             "reviewers": [],
             "confidenceThreshold": 0.75,
@@ -588,6 +702,7 @@
             ],
             "validator": "",
             "contextArtifacts": [
+              "reasoning.md",
               "spec.md",
               "todo.md",
               "todo-review.md"
@@ -597,6 +712,76 @@
           },
           "max_retries": 10,
           "retry_from_step_key": "generate_tests",
+          "fail_action": "same_step",
+          "allow_interaction": false,
+          "pause_after_step": false
+        },
+        {
+          "key": "reason_build",
+          "title": "Reason Build",
+          "kind": "agent",
+          "type": "ai",
+          "agent": "qwen",
+          "status": "pending",
+          "started_at": null,
+          "ended_at": null,
+          "error": null,
+          "retry_count": 1,
+          "config": {
+            "id": "system-reason_build",
+            "key": "reason_build",
+            "name": "Reason Build",
+            "type": "ai",
+            "enabled": true,
+            "description": "",
+            "command": "",
+            "templatePath": "prompts/04_reason_build.md",
+            "filename": "build-reasoning.md",
+            "outputFile": "build-reasoning.md",
+            "templateContent": "You are producing a build reasoning artifact for this workflow.\n\nOutput only Markdown. Do not output JSON. Do not use code fences. Do not ask questions.\nDo not output implementation code. Do not output FILE/CONTENT/END_FILE blocks.\nDo not modify project files. This step only writes `output/build-reasoning.md`.\nDo not create tests in this step.\n\nProject Path: {{project_path}}\nWorkflow Workspace: {{workspace_path}}\n\nProject Overview:\n{{project_overview}}\n\nProject Profile:\n{{project_profile}}\n\nArchitecture:\n{{architecture}}\n\nRequirement:\n{{requirement}}\n\nRequirement Reasoning:\n{{reasoning}}\n\nSpec:\n{{spec}}\n\nTodo:\n{{todo}}\n\nTest Plan:\n{{test_plan}}\n\nPrevious Failure Feedback:\n{{failure_feedback}}\n\nCreate a concise implementation reasoning artifact for the Build step.\n\nUse exactly these sections, in this exact order:\n\nStatus: DONE\n\n## Target Production Files\n- List only production files that Build should create or modify.\n\n## Forbidden Files\n- List files or folders Build must not create or modify.\n- Include tests/ when tests already belong to Generate Tests.\n\n## Implementation Plan\n- Step-by-step production implementation plan.\n\n## Acceptance Criteria Mapping\n- Map AC IDs from Spec to production changes.\n\n## Test Awareness\n- Summarize what generated tests expect, without writing test code.\n\n## Retry Guidance\n- If there is failure feedback, explain what the next Build attempt must fix.\n- If there is no failure feedback, write \"- None.\".\n",
+            "sources": [
+              {
+                "type": "skill_path",
+                "value": "incremental-implementation"
+              },
+              {
+                "type": "skill_path",
+                "value": "code-review-and-quality"
+              }
+            ],
+            "reviewMode": "none",
+            "reviewers": [],
+            "confidenceThreshold": 0.75,
+            "passKeywords": "PASS, APPROVED",
+            "failKeywords": "FAIL, BLOCKED",
+            "aggregatorFunction": "",
+            "maxRetries": 3,
+            "failAction": "same_step",
+            "retryFromStepKey": "reason_build",
+            "keepSameSession": true,
+            "injectFailureFeedback": true,
+            "stopAfterFailures": 2,
+            "pauseAfterStep": false,
+            "approvalRequired": false,
+            "approvalMessage": "",
+            "timeoutEnabled": false,
+            "timeoutMinutes": 0,
+            "allowInteraction": false,
+            "expectedFiles": [
+              "build-reasoning.md"
+            ],
+            "validator": "",
+            "contextArtifacts": [
+              "reasoning.md",
+              "spec.md",
+              "todo.md",
+              "test-plan.md"
+            ],
+            "agent": "qwen",
+            "provider": "qwen"
+          },
+          "max_retries": 3,
+          "retry_from_step_key": "reason_build",
           "fail_action": "same_step",
           "allow_interaction": false,
           "pause_after_step": false
@@ -623,8 +808,13 @@
             "templatePath": "prompts/05_build.md",
             "filename": "build-result.md",
             "outputFile": "build-result.md",
-            "templateContent": "You are implementing production code in the selected Project Path.\n\nOutput only FILE/CONTENT/END_FILE blocks. Do not output JSON. Do not use Markdown fences. Do not create tests in this step.\n\nProject Path: {{project_path}}\n\nProject Overview:\n{{project_overview}}\n\nArchitecture:\n{{architecture}}\n\nRequirement:\n{{requirement}}\n\nSpec:\n{{spec}}\n\nTodo:\n{{todo}}\n\nTest Plan:\n{{test_plan}}\n\nTest Result / Failure Feedback:\n{{test_result}}\n\n{{failure_feedback}}\n\nRules:\n- Implement according to Requirement + Spec + Todo + Test Plan. Do not invent a different product or language.\n- The current Requirement is the source of truth. Do not reuse stale output from a previous run.\n- Match the existing project language, framework, file naming, and folder structure from Project Overview / Architecture.\n- If the project already has files, modify/create files in the same language as the existing project.\n- Do not switch languages unless the Requirement or Spec explicitly asks for a language migration.\n- Create or modify production files only.\n- Do not write files under tests/.\n- If the project is empty, create a minimal structure that matches the requested language or the language implied by the requirement.\n- If the requirement asks to add a new capability, create or modify production files that clearly implement that capability; do not make unrelated edits that only satisfy existing tests.\n- Use clear file, class, and function names derived from the current Requirement and existing architecture.\n- Keep code small and readable.\n\nReturn one or more blocks like:\n\nFILE: src/example.py\nCONTENT:\ndef example():\n    ...\nEND_FILE\n",
-            "sources": [],
+            "templateContent": "You are implementing production code in the selected Project Path.\n\nOutput only FILE/CONTENT/END_FILE blocks. Do not output JSON. Do not use Markdown fences. Do not create tests in this step.\n\nProject Path: {{project_path}}\n\nProject Overview:\n{{project_overview}}\n\nProject Profile:\n{{project_profile}}\n\nArchitecture:\n{{architecture}}\n\nRequirement:\n{{requirement}}\n\nSpec:\n{{spec}}\n\nTodo:\n{{todo}}\n\nTest Plan:\n{{test_plan}}\n\nBuild Reasoning:\n{{build_reasoning}}\n\nTest Result / Failure Feedback:\n{{test_result}}\n\n{{failure_feedback}}\n\nRules:\n- Implement according to Requirement + Spec + Todo + Test Plan + Build Reasoning. Do not invent a different product or language.\n- The current Requirement is the source of truth. Do not reuse stale output from a previous run.\n- Match the existing project language, framework, file naming, and folder structure from Project Overview / Architecture.\n- If the project already has files, modify/create files in the same language as the existing project.\n- If Project Profile lists existing source files, choose target production files that fit the dominant Source roots by usage. Do not create a new `src/` directory unless `src` is the dominant source root or Architecture explicitly says to use it.\n- Do not switch languages unless the Requirement or Spec explicitly asks for a language migration.\n- Create or modify production files only. Prefer the Target Production Files listed in Build Reasoning when present.\n- Do not write files under tests/. Do not copy FILE/CONTENT/END_FILE blocks from Test Plan into Build output.\n- If the project is empty, create a minimal structure that matches the requested language or the language implied by the requirement.\n- If the requirement asks to add a new capability, create or modify production files that clearly implement that capability; do not make unrelated edits that only satisfy existing tests.\n- Use clear file, class, and function names derived from the current Requirement and existing architecture.\n- Keep code small and readable.\n\nReturn one or more blocks like:\n\nFILE: src/example.py\nCONTENT:\ndef example():\n    ...\nEND_FILE\n",
+            "sources": [
+              {
+                "type": "skill_path",
+                "value": "incremental-implementation"
+              }
+            ],
             "reviewMode": "none",
             "reviewers": [],
             "confidenceThreshold": 0.75,
@@ -648,11 +838,13 @@
             ],
             "validator": "",
             "contextArtifacts": [
+              "reasoning.md",
               "spec.md",
               "spec-review.md",
               "todo.md",
               "todo-review.md",
-              "test-plan.md"
+              "test-plan.md",
+              "build-reasoning.md"
             ],
             "agent": "qwen",
             "provider": "qwen"
@@ -686,7 +878,16 @@
             "filename": "test-result.md",
             "outputFile": "test-result.md",
             "templateContent": "",
-            "sources": [],
+            "sources": [
+              {
+                "type": "skill_path",
+                "value": "test-driven-development"
+              },
+              {
+                "type": "skill_path",
+                "value": "debugging-and-error-recovery"
+              }
+            ],
             "reviewMode": "none",
             "reviewers": [],
             "confidenceThreshold": 0.75,
@@ -694,7 +895,7 @@
             "failKeywords": "FAIL, BLOCKED",
             "aggregatorFunction": "",
             "maxRetries": 10,
-            "failAction": "same_step",
+            "failAction": "selected_step",
             "retryFromStepKey": "build",
             "keepSameSession": true,
             "injectFailureFeedback": true,
@@ -718,7 +919,7 @@
           },
           "max_retries": 10,
           "retry_from_step_key": "build",
-          "fail_action": "same_step",
+          "fail_action": "selected_step",
           "allow_interaction": false,
           "pause_after_step": false
         },
@@ -744,8 +945,17 @@
             "templatePath": "prompts/06_final_review.md",
             "filename": "final-review.md",
             "outputFile": "final-review.md",
-            "templateContent": "You are doing the final workflow review.\n\nOutput only Markdown. Do not output JSON. Do not use code fences. Do not ask the user questions.\n\nRequirement:\n{{requirement}}\n\nSpec:\n{{spec}}\n\nTodo:\n{{todo}}\n\nTest Result:\n{{test_result}}\n\nTest Plan:\n{{test_plan}}\n\nBuild Result:\n{{build_result}}\n\nReturn this exact structure:\n\nStatus: PASS\n\n## Summary\n- Implementation and tests satisfy the spec.\n\nUse Status: FAIL if the test result failed, if tests do not cover the current Requirement, if build output appears to implement a different or stale requirement, or if the artifacts clearly do not satisfy the acceptance criteria.\n",
-            "sources": [],
+            "templateContent": "You are doing the final workflow review.\n\nOutput only Markdown. Do not output JSON. Do not use code fences. Do not ask the user questions.\nUse exactly one of the two structures below. Do not add extra sections.\n\nRequirement:\n{{requirement}}\n\nProject Profile:\n{{project_profile}}\n\nArchitecture:\n{{architecture}}\n\nSpec:\n{{spec}}\n\nTodo:\n{{todo}}\n\nTest Result:\n{{test_result}}\n\nTest Plan:\n{{test_plan}}\n\nBuild Result:\n{{build_result}}\n\nReturn this exact structure:\n\nStatus: PASS\n\n## Summary\n- Implementation and tests satisfy the spec.\nConfidence: 1.0\n\nUse this exact structure when failing:\n\nStatus: FAIL\n\n## Summary\n- Explain the concrete issue to fix.\nConfidence: 1.0\n\nUse Status: FAIL if the test result failed, if tests do not cover the current Requirement, if build output appears to implement a different or stale requirement, if the implementation/test artifacts ignore the existing Project Profile or Architecture, or if the artifacts clearly do not satisfy the acceptance criteria.\n",
+            "sources": [
+              {
+                "type": "skill_path",
+                "value": "shipping-and-launch"
+              },
+              {
+                "type": "skill_path",
+                "value": "code-review-and-quality"
+              }
+            ],
             "reviewMode": "new_agent",
             "reviewers": [],
             "confidenceThreshold": 0.75,
@@ -753,8 +963,8 @@
             "failKeywords": "FAIL, BLOCKED",
             "aggregatorFunction": "",
             "maxRetries": 10,
-            "failAction": "same_step",
-            "retryFromStepKey": "final_review",
+            "failAction": "selected_step",
+            "retryFromStepKey": "build",
             "keepSameSession": false,
             "injectFailureFeedback": true,
             "stopAfterFailures": 3,
@@ -769,9 +979,11 @@
             ],
             "validator": "",
             "contextArtifacts": [
+              "reasoning.md",
               "spec.md",
               "todo.md",
               "test-plan.md",
+              "build-reasoning.md",
               "build-result.md",
               "test-result.md"
             ],
@@ -779,8 +991,8 @@
             "provider": "qwen"
           },
           "max_retries": 10,
-          "retry_from_step_key": "final_review",
-          "fail_action": "same_step",
+          "retry_from_step_key": "build",
+          "fail_action": "selected_step",
           "allow_interaction": false,
           "pause_after_step": false
         },
@@ -815,7 +1027,7 @@
             "failKeywords": "FAIL, BLOCKED",
             "aggregatorFunction": "",
             "maxRetries": 10,
-            "failAction": "same_step",
+            "failAction": "selected_step",
             "retryFromStepKey": "final_review",
             "keepSameSession": true,
             "injectFailureFeedback": true,
@@ -834,157 +1046,185 @@
           },
           "max_retries": 10,
           "retry_from_step_key": "final_review",
-          "fail_action": "same_step",
+          "fail_action": "selected_step",
           "allow_interaction": false,
           "pause_after_step": true
         }
       ],
       "artifacts": [
         {
-          "id": "903193e6-f27d-4dcc-b623-90e0d90a1bf1:requirement.md",
+          "id": "04a2dfa3-a9d4-49d5-b6de-fe43f753040f:requirement.md",
           "name": "requirement.md",
           "path": "requirement.md",
           "size": 39,
-          "updated_at": "2026-06-28T05:45:59.749787+00:00"
+          "updated_at": "2026-06-28T08:49:34.734565+00:00"
         },
         {
-          "id": "903193e6-f27d-4dcc-b623-90e0d90a1bf1:input|failure-feedback.md",
+          "id": "04a2dfa3-a9d4-49d5-b6de-fe43f753040f:input|failure-feedback.md",
           "name": "failure-feedback.md",
           "path": "input/failure-feedback.md",
-          "size": 4541,
-          "updated_at": "2026-06-28T05:45:59.750763+00:00"
+          "size": 4393,
+          "updated_at": "2026-06-28T08:49:34.734565+00:00"
         },
         {
-          "id": "903193e6-f27d-4dcc-b623-90e0d90a1bf1:prompts|skill-context.md",
+          "id": "04a2dfa3-a9d4-49d5-b6de-fe43f753040f:prompts|skill-context.md",
           "name": "skill-context.md",
           "path": "prompts/skill-context.md",
           "size": 15439,
-          "updated_at": "2026-06-28T05:45:59.750763+00:00"
+          "updated_at": "2026-06-28T08:49:34.734565+00:00"
         },
         {
-          "id": "903193e6-f27d-4dcc-b623-90e0d90a1bf1:prompts|prepare_project.md",
-          "name": "prepare_project.md",
-          "path": "prompts/prepare_project.md",
-          "size": 4424,
-          "updated_at": "2026-06-28T05:45:59.750763+00:00"
-        },
-        {
-          "id": "903193e6-f27d-4dcc-b623-90e0d90a1bf1:prompts|generate_spec.md",
-          "name": "generate_spec.md",
-          "path": "prompts/generate_spec.md",
-          "size": 4115,
-          "updated_at": "2026-06-28T05:45:59.750763+00:00"
-        },
-        {
-          "id": "903193e6-f27d-4dcc-b623-90e0d90a1bf1:prompts|review_spec.md",
-          "name": "review_spec.md",
-          "path": "prompts/review_spec.md",
-          "size": 3758,
-          "updated_at": "2026-06-28T05:45:59.750763+00:00"
-        },
-        {
-          "id": "903193e6-f27d-4dcc-b623-90e0d90a1bf1:prompts|generate_todo.md",
-          "name": "generate_todo.md",
-          "path": "prompts/generate_todo.md",
-          "size": 3315,
-          "updated_at": "2026-06-28T05:45:59.750763+00:00"
-        },
-        {
-          "id": "903193e6-f27d-4dcc-b623-90e0d90a1bf1:prompts|review_todo.md",
-          "name": "review_todo.md",
-          "path": "prompts/review_todo.md",
-          "size": 3520,
-          "updated_at": "2026-06-28T05:45:59.750763+00:00"
-        },
-        {
-          "id": "903193e6-f27d-4dcc-b623-90e0d90a1bf1:prompts|generate_tests.md",
-          "name": "generate_tests.md",
-          "path": "prompts/generate_tests.md",
-          "size": 7972,
-          "updated_at": "2026-06-28T05:45:59.750763+00:00"
-        },
-        {
-          "id": "903193e6-f27d-4dcc-b623-90e0d90a1bf1:prompts|build.md",
-          "name": "build.md",
-          "path": "prompts/build.md",
-          "size": 5563,
-          "updated_at": "2026-06-28T05:45:59.750763+00:00"
-        },
-        {
-          "id": "903193e6-f27d-4dcc-b623-90e0d90a1bf1:output|architecture.md",
-          "name": "architecture.md",
-          "path": "output/architecture.md",
-          "size": 1204,
-          "updated_at": "2026-06-28T05:45:59.750763+00:00"
-        },
-        {
-          "id": "903193e6-f27d-4dcc-b623-90e0d90a1bf1:output|spec.md",
-          "name": "spec.md",
-          "path": "output/spec.md",
-          "size": 1202,
-          "updated_at": "2026-06-28T05:45:59.750763+00:00"
-        },
-        {
-          "id": "903193e6-f27d-4dcc-b623-90e0d90a1bf1:output|spec-review.md",
-          "name": "spec-review.md",
-          "path": "output/spec-review.md",
-          "size": 38,
-          "updated_at": "2026-06-28T05:45:59.750763+00:00"
-        },
-        {
-          "id": "903193e6-f27d-4dcc-b623-90e0d90a1bf1:output|todo.md",
-          "name": "todo.md",
-          "path": "output/todo.md",
-          "size": 897,
-          "updated_at": "2026-06-28T05:45:59.750763+00:00"
-        },
-        {
-          "id": "903193e6-f27d-4dcc-b623-90e0d90a1bf1:output|todo-review.md",
-          "name": "todo-review.md",
-          "path": "output/todo-review.md",
-          "size": 38,
-          "updated_at": "2026-06-28T05:45:59.750763+00:00"
-        },
-        {
-          "id": "903193e6-f27d-4dcc-b623-90e0d90a1bf1:output|build-result.md",
-          "name": "build-result.md",
-          "path": "output/build-result.md",
-          "size": 287,
-          "updated_at": "2026-06-28T05:45:59.750763+00:00"
-        },
-        {
-          "id": "903193e6-f27d-4dcc-b623-90e0d90a1bf1:output|test-plan.md",
-          "name": "test-plan.md",
-          "path": "output/test-plan.md",
-          "size": 23,
-          "updated_at": "2026-06-28T05:45:59.751738+00:00"
-        },
-        {
-          "id": "903193e6-f27d-4dcc-b623-90e0d90a1bf1:output|test-result.md",
-          "name": "test-result.md",
-          "path": "output/test-result.md",
-          "size": 1178,
-          "updated_at": "2026-06-28T05:45:59.751738+00:00"
-        },
-        {
-          "id": "903193e6-f27d-4dcc-b623-90e0d90a1bf1:.workflow|run-log.md",
+          "id": "04a2dfa3-a9d4-49d5-b6de-fe43f753040f:.workflow|run-log.md",
           "name": "run-log.md",
           "path": ".workflow/run-log.md",
-          "size": 18914,
-          "updated_at": "2026-06-28T05:45:59.751738+00:00"
+          "size": 17879,
+          "updated_at": "2026-06-28T08:49:34.734565+00:00"
         },
         {
-          "id": "903193e6-f27d-4dcc-b623-90e0d90a1bf1:.workflow|state.json",
+          "id": "04a2dfa3-a9d4-49d5-b6de-fe43f753040f:.workflow|state.json",
           "name": "state.json",
           "path": ".workflow/state.json",
-          "size": 37723,
-          "updated_at": "2026-06-28T05:45:59.751738+00:00"
+          "size": 51206,
+          "updated_at": "2026-06-28T08:49:34.735542+00:00"
+        },
+        {
+          "id": "04a2dfa3-a9d4-49d5-b6de-fe43f753040f:prompts|prepare_project.md",
+          "name": "prepare_project.md",
+          "path": "prompts/prepare_project.md",
+          "size": 5297,
+          "updated_at": "2026-06-28T08:49:34.735542+00:00"
+        },
+        {
+          "id": "04a2dfa3-a9d4-49d5-b6de-fe43f753040f:output|architecture.md",
+          "name": "architecture.md",
+          "path": "output/architecture.md",
+          "size": 1473,
+          "updated_at": "2026-06-28T08:49:34.735542+00:00"
+        },
+        {
+          "id": "04a2dfa3-a9d4-49d5-b6de-fe43f753040f:prompts|reason_requirement.md",
+          "name": "reason_requirement.md",
+          "path": "prompts/reason_requirement.md",
+          "size": 6767,
+          "updated_at": "2026-06-28T08:49:34.735542+00:00"
+        },
+        {
+          "id": "04a2dfa3-a9d4-49d5-b6de-fe43f753040f:output|reasoning.md",
+          "name": "reasoning.md",
+          "path": "output/reasoning.md",
+          "size": 1397,
+          "updated_at": "2026-06-28T08:49:34.735542+00:00"
+        },
+        {
+          "id": "04a2dfa3-a9d4-49d5-b6de-fe43f753040f:prompts|generate_spec.md",
+          "name": "generate_spec.md",
+          "path": "prompts/generate_spec.md",
+          "size": 8439,
+          "updated_at": "2026-06-28T08:49:34.735542+00:00"
+        },
+        {
+          "id": "04a2dfa3-a9d4-49d5-b6de-fe43f753040f:output|spec.md",
+          "name": "spec.md",
+          "path": "output/spec.md",
+          "size": 1148,
+          "updated_at": "2026-06-28T08:49:34.735542+00:00"
+        },
+        {
+          "id": "04a2dfa3-a9d4-49d5-b6de-fe43f753040f:prompts|review_spec.md",
+          "name": "review_spec.md",
+          "path": "prompts/review_spec.md",
+          "size": 4683,
+          "updated_at": "2026-06-28T08:49:34.736518+00:00"
+        },
+        {
+          "id": "04a2dfa3-a9d4-49d5-b6de-fe43f753040f:output|spec-review.md",
+          "name": "spec-review.md",
+          "path": "output/spec-review.md",
+          "size": 112,
+          "updated_at": "2026-06-28T08:49:34.736518+00:00"
+        },
+        {
+          "id": "04a2dfa3-a9d4-49d5-b6de-fe43f753040f:prompts|generate_todo.md",
+          "name": "generate_todo.md",
+          "path": "prompts/generate_todo.md",
+          "size": 6731,
+          "updated_at": "2026-06-28T08:49:34.736518+00:00"
+        },
+        {
+          "id": "04a2dfa3-a9d4-49d5-b6de-fe43f753040f:output|todo.md",
+          "name": "todo.md",
+          "path": "output/todo.md",
+          "size": 438,
+          "updated_at": "2026-06-28T08:49:34.736518+00:00"
+        },
+        {
+          "id": "04a2dfa3-a9d4-49d5-b6de-fe43f753040f:prompts|review_todo.md",
+          "name": "review_todo.md",
+          "path": "prompts/review_todo.md",
+          "size": 5285,
+          "updated_at": "2026-06-28T08:49:34.736518+00:00"
+        },
+        {
+          "id": "04a2dfa3-a9d4-49d5-b6de-fe43f753040f:output|todo-review.md",
+          "name": "todo-review.md",
+          "path": "output/todo-review.md",
+          "size": 87,
+          "updated_at": "2026-06-28T08:49:34.736518+00:00"
+        },
+        {
+          "id": "04a2dfa3-a9d4-49d5-b6de-fe43f753040f:prompts|generate_tests.md",
+          "name": "generate_tests.md",
+          "path": "prompts/generate_tests.md",
+          "size": 11201,
+          "updated_at": "2026-06-28T08:49:34.736518+00:00"
+        },
+        {
+          "id": "04a2dfa3-a9d4-49d5-b6de-fe43f753040f:output|test-plan.md",
+          "name": "test-plan.md",
+          "path": "output/test-plan.md",
+          "size": 2477,
+          "updated_at": "2026-06-28T08:49:34.737495+00:00"
+        },
+        {
+          "id": "04a2dfa3-a9d4-49d5-b6de-fe43f753040f:prompts|reason_build.md",
+          "name": "reason_build.md",
+          "path": "prompts/reason_build.md",
+          "size": 8508,
+          "updated_at": "2026-06-28T08:49:34.737495+00:00"
+        },
+        {
+          "id": "04a2dfa3-a9d4-49d5-b6de-fe43f753040f:output|build-reasoning.md",
+          "name": "build-reasoning.md",
+          "path": "output/build-reasoning.md",
+          "size": 984,
+          "updated_at": "2026-06-28T08:49:34.737495+00:00"
+        },
+        {
+          "id": "04a2dfa3-a9d4-49d5-b6de-fe43f753040f:prompts|build.md",
+          "name": "build.md",
+          "path": "prompts/build.md",
+          "size": 10102,
+          "updated_at": "2026-06-28T08:49:34.737495+00:00"
+        },
+        {
+          "id": "04a2dfa3-a9d4-49d5-b6de-fe43f753040f:output|build-result.md",
+          "name": "build-result.md",
+          "path": "output/build-result.md",
+          "size": 1450,
+          "updated_at": "2026-06-28T08:49:34.737495+00:00"
+        },
+        {
+          "id": "04a2dfa3-a9d4-49d5-b6de-fe43f753040f:output|test-result.md",
+          "name": "test-result.md",
+          "path": "output/test-result.md",
+          "size": 1767,
+          "updated_at": "2026-06-28T08:49:34.737495+00:00"
         }
       ],
-      "created_at": "2026-06-28T05:42:22.704060+00:00",
-      "updated_at": "2026-06-28T05:45:59.751738+00:00",
-      "started_at": "2026-06-28T05:42:22.734332+00:00",
-      "ended_at": "2026-06-28T05:45:59.740528+00:00"
+      "created_at": "2026-06-28T08:45:09.803476+00:00",
+      "updated_at": "2026-06-28T08:49:34.737495+00:00",
+      "started_at": "2026-06-28T08:45:09.834756+00:00",
+      "ended_at": "2026-06-28T08:49:34.718942+00:00"
     }
   ],
   "workflow_configs": []

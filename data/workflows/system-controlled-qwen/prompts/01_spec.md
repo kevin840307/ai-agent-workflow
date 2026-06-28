@@ -18,6 +18,9 @@ Project Profile:
 Architecture:
 {{architecture}}
 
+Requirement Reasoning:
+{{reasoning}}
+
 Requirement:
 {{requirement}}
 
@@ -45,7 +48,7 @@ Write a concise spec with exactly these section headings, in this exact order:
 - Bullet list of expected files, behavior, or artifacts.
 
 ## Rules
-- Bullet list of implementation constraints. Mention tests must be separate from production code. If Project Profile or Architecture shows an existing project language, framework, or folder structure, require the implementation to extend it instead of creating an unrelated structure.
+- Bullet list of implementation constraints. Use Requirement Reasoning as guidance, but keep the current Requirement as source of truth. Mention tests must be separate from production code. If Project Profile or Architecture shows an existing project language, framework, or folder structure, require the implementation to extend it instead of creating an unrelated structure.
 
 ## Acceptance Criteria
 Use stable sequential IDs. Include at least AC-001. Keep IDs stable across retries for the same requirement.

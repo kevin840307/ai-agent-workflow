@@ -56,6 +56,54 @@
       "contextArtifacts": []
     },
     {
+      "id": "system-reason_requirement",
+      "key": "reason_requirement",
+      "name": "Reason Requirement",
+      "type": "ai",
+      "enabled": true,
+      "description": "",
+      "command": "",
+      "templatePath": "prompts/00_reason_requirement.md",
+      "filename": "reasoning.md",
+      "outputFile": "reasoning.md",
+      "templateContent": "",
+      "sources": [
+        {
+          "type": "skill_path",
+          "value": "spec-driven-development"
+        },
+        {
+          "type": "skill_path",
+          "value": "code-review-and-quality"
+        }
+      ],
+      "reviewMode": "none",
+      "reviewers": [],
+      "confidenceThreshold": 0.75,
+      "passKeywords": "PASS, APPROVED",
+      "failKeywords": "FAIL, BLOCKED",
+      "aggregatorFunction": "",
+      "maxRetries": 3,
+      "failAction": "same_step",
+      "retryFromStepKey": "reason_requirement",
+      "keepSameSession": true,
+      "injectFailureFeedback": true,
+      "stopAfterFailures": 2,
+      "pauseAfterStep": false,
+      "approvalRequired": false,
+      "approvalMessage": "",
+      "timeoutEnabled": false,
+      "timeoutMinutes": 0,
+      "allowInteraction": false,
+      "expectedFiles": [
+        "reasoning.md"
+      ],
+      "validator": "",
+      "contextArtifacts": [
+        "architecture.md"
+      ]
+    },
+    {
       "id": "system-generate_spec",
       "key": "generate_spec",
       "name": "Generate Spec",
@@ -95,7 +143,10 @@
         "spec.md"
       ],
       "validator": "",
-      "contextArtifacts": []
+      "contextArtifacts": [
+        "architecture.md",
+        "reasoning.md"
+      ]
     },
     {
       "id": "system-validate_spec",
@@ -256,6 +307,7 @@
       ],
       "validator": "",
       "contextArtifacts": [
+        "reasoning.md",
         "spec.md",
         "spec-review.md"
       ]
@@ -424,9 +476,61 @@
       ],
       "validator": "",
       "contextArtifacts": [
+        "reasoning.md",
         "spec.md",
         "todo.md",
         "todo-review.md"
+      ]
+    },
+    {
+      "id": "system-reason_build",
+      "key": "reason_build",
+      "name": "Reason Build",
+      "type": "ai",
+      "enabled": true,
+      "description": "",
+      "command": "",
+      "templatePath": "prompts/04_reason_build.md",
+      "filename": "build-reasoning.md",
+      "outputFile": "build-reasoning.md",
+      "templateContent": "",
+      "sources": [
+        {
+          "type": "skill_path",
+          "value": "incremental-implementation"
+        },
+        {
+          "type": "skill_path",
+          "value": "code-review-and-quality"
+        }
+      ],
+      "reviewMode": "none",
+      "reviewers": [],
+      "confidenceThreshold": 0.75,
+      "passKeywords": "PASS, APPROVED",
+      "failKeywords": "FAIL, BLOCKED",
+      "aggregatorFunction": "",
+      "maxRetries": 3,
+      "failAction": "same_step",
+      "retryFromStepKey": "reason_build",
+      "keepSameSession": true,
+      "injectFailureFeedback": true,
+      "stopAfterFailures": 2,
+      "pauseAfterStep": false,
+      "approvalRequired": false,
+      "approvalMessage": "",
+      "timeoutEnabled": false,
+      "timeoutMinutes": 0,
+      "allowInteraction": false,
+      "expectedFiles": [
+        "build-reasoning.md"
+      ],
+      "validator": "",
+      "contextArtifacts": [
+        "reasoning.md",
+        "spec.md",
+        "todo.md",
+        "test-plan.md"
       ]
     },
     {
@@ -470,11 +574,13 @@
       ],
       "validator": "",
       "contextArtifacts": [
+        "reasoning.md",
         "spec.md",
         "spec-review.md",
         "todo.md",
         "todo-review.md",
-        "test-plan.md"
+        "test-plan.md",
+        "build-reasoning.md"
       ]
     },
     {
@@ -571,9 +677,11 @@
       ],
       "validator": "",
       "contextArtifacts": [
+        "reasoning.md",
         "spec.md",
         "todo.md",
         "test-plan.md",
+        "build-reasoning.md",
         "build-result.md",
         "test-result.md"
       ]

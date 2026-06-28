@@ -8,11 +8,13 @@ from typing import Any, Awaitable, Callable
 from app.runtime_errors import UserInputRequired, ValidationError, WorkflowError
 from app.runtime_files import (
     apply_build_files,
+    apply_extracted_files,
     extract_build_files,
     project_file_snapshot,
     project_has_user_files,
     should_ask_for_spec_input,
     snapshot_changed,
+    split_build_files,
     synthesize_spec_from_requirement,
     synthesize_todo_from_spec,
     validate_build_files_are_not_tests,
@@ -415,15 +417,26 @@ class WorkflowActions:
         except UserInputRequired:
             raise
         build_result = read_text(output_dir / artifact)
-        validate_build_files_are_not_tests(extract_build_files(build_result))
-        written = apply_build_files(project_dir, build_result)
+        build_files = extract_build_files(build_result)
+        production_files, ignored_test_files = split_build_files(build_files)
+        if ignored_test_files:
+            ignored = ", ".join(rel_path for rel_path, _ in ignored_test_files)
+            if production_files:
+                await self.log(run, f"build: ignored test file block(s) owned by generate_tests: {ignored}")
+            else:
+                raise WorkflowError(
+                    "build output only contained test file blocks. Build must output production files only. "
+                    f"Invalid build file(s): {ignored}"
+                )
+        validate_build_files_are_not_tests(production_files)
+        written = apply_extracted_files(project_dir, production_files, output_label="build output")
         if written:
             await self.log(run, "build: materialized files: " + ", ".join(str(path.relative_to(project_dir)) for path in written))
         after = project_file_snapshot(project_dir)
         if not snapshot_changed(before, after):
             raise WorkflowError(
-                f"build did not create or modify files under Project Path: {project_dir}. "
-                "Agent build output must include FILE/CONTENT/END_FILE blocks."
+                f"build did not create or modify production files under Project Path: {project_dir}. "
+                "Agent build output must include non-test FILE/CONTENT/END_FILE blocks."
             )
 
     def action_for_step(self, run: dict[str, Any], step_record: dict[str, Any], output_dir: Path):

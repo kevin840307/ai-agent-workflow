@@ -365,19 +365,23 @@ def extract_build_files(build_result: str) -> list[tuple[str, str]]:
     return files
 
 
-def apply_build_files(project_dir: Path, build_result: str) -> list[Path]:
+def apply_extracted_files(project_dir: Path, files: list[tuple[str, str]], *, output_label: str = "build output") -> list[Path]:
     written: list[Path] = []
     project_root = project_dir.resolve()
-    for rel_path, content in extract_build_files(build_result):
+    for rel_path, content in files:
         rel = Path(rel_path)
         if rel.is_absolute() or ".." in rel.parts or ".qwen-workflow" in rel.parts:
-            raise WorkflowError(f"build output contains unsafe file path: {rel_path}")
+            raise WorkflowError(f"{output_label} contains unsafe file path: {rel_path}")
         target = (project_root / rel).resolve()
         if target != project_root and project_root not in target.parents:
-            raise WorkflowError(f"build output path escapes Project Path: {rel_path}")
+            raise WorkflowError(f"{output_label} path escapes Project Path: {rel_path}")
         write_text(target, content)
         written.append(target)
     return written
+
+
+def apply_build_files(project_dir: Path, build_result: str) -> list[Path]:
+    return apply_extracted_files(project_dir, extract_build_files(build_result))
 
 
 def normalized_rel_path(rel_path: str) -> str:
@@ -407,8 +411,25 @@ def validate_generated_test_files(files: list[tuple[str, str]]) -> None:
         )
 
 
+def is_build_test_file_path(rel_path: str) -> bool:
+    normalized = normalized_rel_path(rel_path)
+    return is_test_file_path(normalized) or Path(normalized).name.startswith("test_")
+
+
+def split_build_files(files: list[tuple[str, str]]) -> tuple[list[tuple[str, str]], list[tuple[str, str]]]:
+    production_files: list[tuple[str, str]] = []
+    test_files: list[tuple[str, str]] = []
+    for file_block in files:
+        rel_path, _ = file_block
+        if is_build_test_file_path(rel_path):
+            test_files.append(file_block)
+        else:
+            production_files.append(file_block)
+    return production_files, test_files
+
+
 def validate_build_files_are_not_tests(files: list[tuple[str, str]]) -> None:
-    invalid = [rel_path for rel_path, _ in files if is_test_file_path(rel_path) or Path(normalized_rel_path(rel_path)).name.startswith("test_")]
+    invalid = [rel_path for rel_path, _ in files if is_build_test_file_path(rel_path)]
     if invalid:
         raise WorkflowError(
             "build must not create or modify test files. Generate Tests owns tests/. "

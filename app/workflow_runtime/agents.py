@@ -115,7 +115,7 @@ class QwenAdapter:
                 )
                 return AgentResult(output=output, session_id=request.session_id, raw_output=output)
             except Exception as exc:
-                fallback_enabled = os.environ.get("QWEN_SERVE_FALLBACK_CLI", "1").lower() not in {"0", "false", "no", "off"}
+                fallback_enabled = os.environ.get("QWEN_SERVE_FALLBACK_CLI", "0").lower() not in {"0", "false", "no", "off"}
                 if not fallback_enabled:
                     raise
                 if on_output:
@@ -147,7 +147,7 @@ class QwenAdapter:
             "auth_type": self.client.auth_type or None,
             "timeout_sec": self.client.timeout_sec,
             "exists": self.client.mock or shutil.which(self.client.bin) is not None,
-            "fallback": "cli",
+            "fallback": os.environ.get("QWEN_SERVE_FALLBACK_CLI", "0"),
         }
 
 
