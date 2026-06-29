@@ -5,12 +5,18 @@ export function installTemplateEditor(ctx) {
     el,
     escapeAttr,
     escapeHtml,
+    availablePromptParams,
+    closeStepContextMenu,
+    ensureActiveTabForStep,
+    formatStepType,
     getSelectedStep,
     getSelectedWorkflow,
     isReadonly,
     markWorkflowDirty,
     normalizeFilename,
     options,
+    readInputValue,
+    saveUiState,
     state,
     toast,
   } = ctx;
@@ -22,6 +28,7 @@ export function installTemplateEditor(ctx) {
   function render() { return ctx.render(); }
   function renderWorkflowViewOnly() { return ctx.renderWorkflowViewOnly(); }
   function renderTabs(step) { return ctx.renderTabs(step); }
+  function renderSettings() { return ctx.renderSettings(); }
   function closeConfirm() { return ctx.closeConfirm(); }
 
 function getAvailableParamKeys() {

@@ -1,5 +1,5 @@
-import { BuiltInPromptParams } from "../workflow-designer-constants.js?v=20260628-designer-desc1";
-import { escapeHtml, options } from "./utils.js?v=20260629-static-modules2";
+import { BuiltInPromptParams } from "../workflow-designer-constants.js?v=20260629-static-modules5";
+import { escapeHtml, options } from "./utils.js?v=20260629-static-modules5";
 
 function functionOptionsFor(catalog, groupName, fallbackItems, selected) {
   const items = catalog[groupName] || [];

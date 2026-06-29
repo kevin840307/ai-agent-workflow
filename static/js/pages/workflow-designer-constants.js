@@ -1,4 +1,4 @@
-﻿// Shared static data for the workflow designer.
+// Shared static data for the workflow designer.
 // Keep large option/preset lists out of workflow-designer.js so the page logic
 // stays focused on state, rendering, and event handling.
 
@@ -61,60 +61,105 @@ export const TemplatePresets = {
   generate_spec: {
     path: "prompts/01_spec.md",
     filename: "spec.md",
-    content: `雿 selected Agent嚗?頂蝯曹葉?格?????拇撖怠???寞?銝 Requirement ?Ｙ??Ｗ?閬?辣??
-FILENAME: spec.md
+    content: `你是 Qwen CLI，在這個系統中扮演「可重現的產物撰寫器」。請根據下方 Requirement 產生產品規格文件。
+
+OUTPUT_FILE: output/spec.md
 
 Project Context:
 - Project Path: {{project_path}}
 - Workflow Workspace: {{workspace_path}}
 
-雿?摰???◤??銝?摮? spec.md??
-蝖祆扯撓?箏?蝝?
-- ?芾頛詨 Markdown??- 銝?頛詨 JSON??- 銝?雿輻 \`\`\` code fence??- 銝?閫??雿迤?典?隞暻潦?- 敹賜甇?agent session ?????閰梧??芾雿輻銝 Requirement??- ?批捆敹??芣??Requirement??
+你的完整回覆會被原封不動存成 output/spec.md。
+
+硬性輸出契約：
+- 只能輸出 Markdown。
+- 不要輸出 JSON。
+- 不要使用 \`\`\` code fence。
+- 不要解釋你正在做什麼。
+- 忽略此 Qwen session 先前所有對話，只能使用下方 Requirement。
+- 不要描述 Qwen CLI、Codex 工具、plan mode、ask-user 工具，或無關的任務管理產品。
+- 內容必須只根據 Requirement。
+- 必須依照以下英文 section heading，且順序完全相同：
+  ## Goal
+  ## Scope
+  ## Out of Scope
+  ## Input
+  ## Output
+  ## Rules
+  ## Acceptance Criteria
+  ## Unknowns
+- Acceptance Criteria 必須使用 AC-001、AC-002、AC-003 這種 ID 格式。
+- 至少要包含 AC-001。
+- 不要寫 implementation todo。
+
 Requirement:
-{{requirement}}`,
+{{requirement}}
+`,
   },
   review_spec: {
     path: "prompts/02_review_spec.md",
     filename: "spec-review.md",
-    content: `雿 selected Agent嚗?頂蝯曹葉?格?閬撖拇??撖拇 spec.md ?臬蝚血? Requirement??
-FILENAME: spec-review.md
+    content: `你是 Qwen CLI，在這個系統中扮演規格審查者。請審查 output/spec.md 是否符合 Requirement。
+
+OUTPUT_FILE: output/spec-review.md
 
 Project Context:
 - Project Path: {{project_path}}
 - Workflow Workspace: {{workspace_path}}
 
-雿?摰???◤??銝?摮? spec-review.md??
-頛詨閬?嚗?- ?芾頛詨 Markdown??- 蝚砌???璅????敹?摰?荔?
+你的完整回覆會被原封不動存成 output/spec-review.md。
+
+輸出規則：
+- 只能輸出 Markdown。
+- 不要輸出 JSON。
+- 不要使用 \`\`\` code fence。
+- 忽略此 Qwen session 先前所有對話，只能使用下方 Requirement 與 Spec。
+- 第一個非標題狀態行必須完全是：
 Status: PASS
 
-憒? spec 銝??湔?銝泵??Requirement嚗?雿輻嚗?Status: FAIL
+如果 spec 不完整或不符合 Requirement，請使用：
+Status: FAIL
 
 Requirement:
 {{requirement}}
 
 Spec:
-{{spec}}`,
+{{spec}}
+`,
   },
   generate_todo: {
     path: "prompts/03_todo.md",
     filename: "todo.md",
-    content: `雿 selected Agent嚗?頂蝯曹葉?格????祕雿??急撖怠???寞? Requirement ??Spec ?Ｙ? todo plan??
-FILENAME: todo.md
+    content: `你是 Qwen CLI，在這個系統中扮演「可重現的實作計畫撰寫器」。請根據 Requirement 與 Spec 產生 todo plan。
+
+OUTPUT_FILE: output/todo.md
 
 Project Context:
 - Project Path: {{project_path}}
 - Workflow Workspace: {{workspace_path}}
 
-雿?摰???◤??銝?摮? todo.md??
-蝖祆扯撓?箏?蝝?
-- ?芾頛詨 Markdown??- 銝?頛詨 JSON??- 銝?雿輻 \`\`\` code fence??
+你的完整回覆會被原封不動存成 output/todo.md。
+
+硬性輸出契約：
+- 只能輸出 Markdown。
+- 不要輸出 JSON。
+- 不要使用 \`\`\` code fence。
+- 不要解釋你正在做什麼。
+- 忽略此 Qwen session 先前所有對話，只能使用下方 Requirement 與 Spec。
+- 必須依照以下英文 section heading，且順序完全相同：
+  ## Todo List
+  ## Test Plan
+  ## Done Criteria
+- Todo ID 必須使用 TODO-001 格式。
+- Test ID 必須使用 TEST-001 格式。
+- spec 中每一個 AC ID 都必須在 todo 內容中被引用。
+- 不要修改或重寫 spec。
+
 Requirement:
 {{requirement}}
 
 Spec:
-{{spec}}`,
+{{spec}}
+`,
   },
 };
-
-

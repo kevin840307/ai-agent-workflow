@@ -67,8 +67,6 @@ class OpenCodeCliAdapter:
                 for line in output.splitlines():
                     await on_output("stdout", line)
             return AgentResult(output=output, session_id=request.session_id, raw_output=output)
-        if shutil.which(self.bin) is None:
-            raise WorkflowError(f"OpenCode CLI not found: {self.bin}. Set OPENCODE_MOCK=1 for demo mode.")
         env = os.environ.copy()
         if self.config_dir:
             env["OPENCODE_CONFIG_DIR"] = str(self.config_dir)

@@ -4,7 +4,7 @@ import {
   SourceTypes,
   StepTypes,
   TemplatePresets,
-} from "../workflow-designer-constants.js?v=20260628-designer-desc1";
+} from "../workflow-designer-constants.js?v=20260629-static-modules5";
 import {
   clone,
   el,
@@ -18,7 +18,7 @@ import {
   readInputValue,
   setText,
   toast,
-} from "./utils.js?v=20260629-static-architecture1";
+} from "./utils.js?v=20260629-static-modules5";
 import {
   createStep,
   createWorkflow,
@@ -30,18 +30,18 @@ import {
   normalizeFunctionId,
   normalizeStep,
   normalizeWorkflow,
-} from "./model.js?v=20260629-static-architecture1";
+} from "./model.js?v=20260629-static-modules5";
 import {
   availablePromptParamsFor,
   functionHelpFor,
   functionMetaFor,
   functionOptionsFor,
   workflowFunctionCountsFor,
-} from "./function-catalog.js?v=20260629-static-modules2";
-import { installLayoutRenderer } from "./layout-renderer.js?v=20260629-static-modules2";
-import { installStepSettingsRenderer } from "./step-settings-renderer.js?v=20260629-static-modules2";
-import { installTemplateEditor } from "./template-editor.js?v=20260629-static-modules2";
-import { installImportExportTools } from "./import-export.js?v=20260629-static-modules2";
+} from "./function-catalog.js?v=20260629-static-modules5";
+import { installLayoutRenderer } from "./layout-renderer.js?v=20260629-static-modules5";
+import { installStepSettingsRenderer } from "./step-settings-renderer.js?v=20260629-static-modules5";
+import { installTemplateEditor } from "./template-editor.js?v=20260629-static-modules5";
+import { installImportExportTools } from "./import-export.js?v=20260629-static-modules5";
 
 const STORAGE_KEY = "qwenWorkflow.workflowDesigner.ui.v1";
 const WORKFLOW_API = "/api/workflows";
@@ -861,15 +861,22 @@ const templateEditor = installTemplateEditor({
   el,
   escapeAttr,
   escapeHtml,
+  availablePromptParams,
+  closeStepContextMenu,
+  ensureActiveTabForStep,
+  formatStepType,
   getSelectedStep,
   getSelectedWorkflow,
   isReadonly,
   markWorkflowDirty,
   normalizeFilename,
   options,
+  readInputValue,
   render: () => render(),
+  renderSettings: () => renderSettings(),
   renderTabs: (step) => renderTabs(step),
   renderWorkflowViewOnly: () => renderWorkflowViewOnly(),
+  saveUiState,
   state,
   toast,
 });
@@ -973,6 +980,7 @@ function exportWorkflow() { return importExportTools.exportWorkflow(); }
 function closeExport() { return importExportTools.closeExport(); }
 function isStepEditorModalOpen() { return templateEditor.isStepEditorModalOpen(); }
 function render() { return layoutRenderer.render(); }
+function renderSettings() { return stepSettingsRenderer.renderSettings(); }
 function renderWorkflowLabels() { return layoutRenderer.renderWorkflowLabels(); }
 function renderWorkflowViewOnly() { return layoutRenderer.renderWorkflowViewOnly(); }
 function renderTabs(step) { return layoutRenderer.renderTabs(step); }

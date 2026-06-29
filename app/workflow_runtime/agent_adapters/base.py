@@ -61,6 +61,8 @@ async def run_process_stream(
         )
     except NotImplementedError:
         return await _run_process_threaded(command, cwd, env=env, on_output=on_output, timeout_sec=timeout_sec)
+    except FileNotFoundError as exc:
+        raise WorkflowError(f"Agent CLI not found: {command[0]}. Set the matching *_MOCK=1 env var for demo mode.") from exc
     stdout_chunks: list[str] = []
     stderr_chunks: list[str] = []
 
@@ -126,6 +128,8 @@ async def _run_process_threaded(
 
     try:
         proc = await asyncio.to_thread(execute)
+    except FileNotFoundError as exc:
+        raise WorkflowError(f"Agent CLI not found: {command[0]}. Set the matching *_MOCK=1 env var for demo mode.") from exc
     except subprocess.TimeoutExpired as exc:
         raise WorkflowError(f"Agent process timed out after {exc.timeout} seconds: {' '.join(command)}") from exc
 
