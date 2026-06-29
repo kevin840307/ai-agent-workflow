@@ -16,7 +16,7 @@ from app.runtime_modules import api as runtime
 from app.domain.schemas import CreateRunRequest
 from app.main import app
 from app.runtime_modules.qwen import QwenCliClient
-from app.runtime_modules.store import Store
+from app.persistence.json_store import Store
 from app.services import workflow_config_service, workflow_service
 
 

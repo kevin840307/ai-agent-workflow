@@ -6,7 +6,7 @@ from typing import Any
 
 from fastapi import HTTPException
 
-from app.runtime_modules.paths import ROOT, SETTINGS_FILE, ensure_dirs, write_text
+from app.core.paths import ROOT, SETTINGS_FILE, ensure_dirs, write_text
 
 
 def default_settings() -> dict[str, Any]:

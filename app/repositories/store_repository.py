@@ -1,13 +1,1 @@
-from __future__ import annotations
-
-from typing import Any, Callable
-
-from app.runtime_modules import api as runtime
-
-
-async def read() -> dict[str, Any]:
-    return await runtime.store.read()
-
-
-async def mutate(fn: Callable[[dict[str, Any]], Any]) -> Any:
-    return await runtime.store.mutate(fn)
+from app.persistence.repositories.store import *  # noqa: F401,F403

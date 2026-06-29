@@ -9,9 +9,9 @@ from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.runtime_modules import api as runtime
-from app.runtime_modules.api_errors import http_exception_handler, validation_exception_handler
-from app.runtime_modules.metrics import metrics
-from app.controllers import artifact_controller, config_controller, maintenance_controller, project_controller, workflow_config_controller, workflow_controller
+from app.api.errors import http_exception_handler, validation_exception_handler
+from app.api.routes import artifacts, config, maintenance, projects, workflow_runs, workflows
+from app.core.metrics import metrics
 from app.services import workflow_config_service
 
 
@@ -67,9 +67,9 @@ async def get_metrics():
 
 app.mount("/static", StaticFiles(directory=runtime.STATIC_DIR), name="static")
 
-app.include_router(config_controller.router)
-app.include_router(project_controller.router)
-app.include_router(workflow_config_controller.router)
-app.include_router(workflow_controller.router)
-app.include_router(artifact_controller.router)
-app.include_router(maintenance_controller.router)
+app.include_router(config.router)
+app.include_router(projects.router)
+app.include_router(workflows.router)
+app.include_router(workflow_runs.router)
+app.include_router(artifacts.router)
+app.include_router(maintenance.router)

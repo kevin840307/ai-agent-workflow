@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import os
 import tempfile
@@ -12,7 +12,7 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 from app.runtime_modules import api as runtime
-from app.mock_qwen import mock_qwen_response
+from app.testing.mock_agent import mock_qwen_response
 from app.runtime_modules.files import apply_extracted_files, extract_build_files, validate_build_files_are_not_tests, validate_generated_test_files
 from app.services import workflow_config_service
 

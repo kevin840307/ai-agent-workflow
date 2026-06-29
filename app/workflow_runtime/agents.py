@@ -4,7 +4,7 @@ from typing import Any, Callable
 
 from app.runtime_modules.errors import WorkflowError
 
-from .agent_adapters import (
+from app.workflow.agents import (
     AgentClient,
     AgentOutputCallback,
     AgentRequest,
@@ -32,7 +32,7 @@ PROVIDER_TYPE_ALIASES = {
 class AgentManager:
     """Resolve workflow steps to provider adapters.
 
-    Provider implementations live under ``workflow_runtime/agent_adapters`` so
+    Provider implementations live under ``app.workflow.agents.providers`` so
     adding a new agent does not require editing the workflow engine itself.
     """
 

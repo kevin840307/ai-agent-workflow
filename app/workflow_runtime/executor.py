@@ -6,8 +6,8 @@ from pathlib import Path
 from typing import Any, Awaitable, Callable
 
 from app.runtime_modules.errors import UserInputRequired, WorkflowError
-from app.runtime_modules.paths import utc_now, write_text
-from app.runtime_modules.metrics import metrics, now
+from app.core.paths import utc_now, write_text
+from app.core.metrics import metrics, now
 
 from .actions import WorkflowActions
 from .retry_policy import retry_target_for_failure

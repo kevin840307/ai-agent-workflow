@@ -175,7 +175,7 @@ END_FILE
                     raise WorkflowError("Agent process failed with exit code 1: opencode run --session missing-session\nError: Session not found")
                 return "fresh answer", ""
 
-            with patch("app.workflow_runtime.agent_adapters.opencode.run_process_stream", new=AsyncMock(side_effect=fake_process)):
+            with patch("app.workflow.agents.providers.opencode.run_process_stream", new=AsyncMock(side_effect=fake_process)):
                 result = await adapter.run_stream(request)
 
             self.assertEqual(result.output, "fresh answer")

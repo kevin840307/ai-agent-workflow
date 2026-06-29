@@ -25,7 +25,7 @@ class StaticArchitectureContractTests(unittest.TestCase):
             "static/js/pages/workflow-designer/step-settings-renderer.js",
             "static/js/pages/workflow-designer/template-editor.js",
             "static/js/pages/workflow-designer/utils.js",
-            "static/js/components/sidebar.js",
+            "static/js/shared/sidebar.js",
             "static/css/sidebar.css",
         ]
         for rel_path in expected:
@@ -59,7 +59,7 @@ class StaticArchitectureContractTests(unittest.TestCase):
             "static/js/pages/workflow-designer/function-catalog.js": 200,
             "static/js/pages/workflow-designer/model.js": 200,
             "static/js/pages/workflow-designer/utils.js": 200,
-            "static/js/components/sidebar.js": 120,
+            "static/js/shared/sidebar.js": 120,
         }
         for rel_path, max_lines in limits.items():
             with self.subTest(rel_path=rel_path):

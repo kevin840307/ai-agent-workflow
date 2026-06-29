@@ -7,7 +7,7 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
-from app.mock_qwen import mock_qwen_response
+from app.testing.mock_agent import mock_qwen_response
 from app.runtime_modules.errors import WorkflowError
 
 

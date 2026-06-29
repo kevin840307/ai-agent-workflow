@@ -20,7 +20,7 @@ from app.runtime_modules.files import (
     validate_build_files_are_not_tests,
     validate_generated_test_files,
 )
-from app.runtime_modules.paths import ROOT, read_text, write_text
+from app.core.paths import ROOT, read_text, write_text
 from app.workflow_functions import PYTHON_FUNCTIONS, WorkflowFunctionError
 
 from .agent_step_runner import AgentStepRunner

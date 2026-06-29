@@ -10,7 +10,7 @@ from unittest.mock import patch
 from fastapi import HTTPException
 
 from app.services import artifact_service, workflow_service
-from app.runtime_modules.paths import atomic_write_text
+from app.core.paths import atomic_write_text
 from app.workflow_functions import _security_heuristic_candidates_from_context
 from app.workflow_runtime.step_config import initial_steps
 
@@ -100,8 +100,8 @@ Status: DONE
                     raise PermissionError(5, "Access is denied")
                 return real_replace(src, dst)
 
-            with patch("app.runtime_modules.paths.os.replace", side_effect=flaky_replace), patch(
-                "app.runtime_modules.paths.time.sleep", return_value=None
+            with patch("app.core.paths.os.replace", side_effect=flaky_replace), patch(
+                "app.core.paths.time.sleep", return_value=None
             ):
                 atomic_write_text(path, '{"ok": true}')
 

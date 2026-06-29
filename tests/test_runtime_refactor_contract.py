@@ -12,11 +12,21 @@ class RuntimeRefactorContractTests(unittest.TestCase):
             "app.runtime_modules.errors",
             "app.runtime_modules.events",
             "app.runtime_modules.files",
-            "app.runtime_modules.paths",
+            "app.core.paths",
+            "app.core.locks",
+            "app.core.metrics",
+            "app.api.errors",
+            "app.api.routes.artifacts",
+            "app.api.routes.config",
+            "app.api.routes.maintenance",
+            "app.api.routes.projects",
+            "app.api.routes.workflow_runs",
+            "app.api.routes.workflows",
+            "app.testing.mock_agent",
             "app.runtime_modules.qwen",
             "app.runtime_modules.run_state",
             "app.runtime_modules.skills",
-            "app.runtime_modules.store",
+            "app.persistence.json_store",
         ]
         for module_name in modules:
             with self.subTest(module_name=module_name):
@@ -49,10 +59,26 @@ class RuntimeRefactorContractTests(unittest.TestCase):
             self.assertTrue(hasattr(runtime_api, name), f"runtime api missing export: {name}")
 
     def test_runtime_paths_keep_project_root_after_module_move(self) -> None:
-        paths = importlib.import_module("app.runtime_modules.paths")
+        paths = importlib.import_module("app.core.paths")
         self.assertEqual(Path(paths.ROOT), Path(__file__).resolve().parents[1])
         self.assertEqual(paths.WORKSPACES_DIR, paths.ROOT / "workspaces")
         self.assertEqual(paths.STORE_FILE, paths.ROOT / "data" / "store.json")
+
+    def test_compatibility_facades_point_to_new_core_modules(self) -> None:
+        checks = [
+            ("app.runtime_modules.paths", "app.core.paths", "ROOT"),
+            ("app.runtime_modules.locks", "app.core.locks", "project_run_creation_lock"),
+            ("app.runtime_modules.metrics", "app.core.metrics", "metrics"),
+            ("app.runtime_modules.api_errors", "app.api.errors", "error_payload"),
+            ("app.mock_qwen", "app.testing.mock_agent", "mock_qwen_response"),
+            ("app.controllers.project_controller", "app.api.routes.projects", "router"),
+            ("app.controllers.workflow_controller", "app.api.routes.workflow_runs", "router"),
+        ]
+        for old_name, new_name, attr in checks:
+            with self.subTest(old_name=old_name, new_name=new_name):
+                old_module = importlib.import_module(old_name)
+                new_module = importlib.import_module(new_name)
+                self.assertIs(getattr(old_module, attr), getattr(new_module, attr))
 
     def test_legacy_runtime_files_are_removed_or_empty_deletion_markers(self) -> None:
         repo = Path(__file__).resolve().parents[1]
@@ -124,18 +150,19 @@ class RuntimeRefactorContractTests(unittest.TestCase):
 
     def test_agent_provider_code_is_split_by_adapter(self) -> None:
         repo = Path(__file__).resolve().parents[1]
-        adapter_dir = repo / "app" / "workflow_runtime" / "agent_adapters"
+        adapter_dir = repo / "app" / "workflow" / "agents"
+        provider_dir = adapter_dir / "providers"
         expected_files = [
             adapter_dir / "base.py",
-            adapter_dir / "qwen.py",
-            adapter_dir / "opencode.py",
+            provider_dir / "qwen.py",
+            provider_dir / "opencode.py",
         ]
         for path in expected_files:
             with self.subTest(path=path.name):
                 self.assertTrue(path.exists(), f"missing agent adapter: {path}")
 
-        qwen_source = (adapter_dir / "qwen.py").read_text(encoding="utf-8")
-        opencode_source = (adapter_dir / "opencode.py").read_text(encoding="utf-8")
+        qwen_source = (provider_dir / "qwen.py").read_text(encoding="utf-8")
+        opencode_source = (provider_dir / "opencode.py").read_text(encoding="utf-8")
         schema_source = (repo / "app" / "domain" / "schemas.py").read_text(encoding="utf-8")
 
         self.assertNotIn("OpenCode", qwen_source)

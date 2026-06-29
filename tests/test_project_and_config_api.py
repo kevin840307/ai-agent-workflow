@@ -8,7 +8,7 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 
 from app.main import app
-from app.runtime_modules.paths import SETTINGS_FILE
+from app.core.paths import SETTINGS_FILE
 from app.workflow_runtime.agents import AgentResult
 
 

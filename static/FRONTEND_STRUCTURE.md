@@ -6,7 +6,6 @@ The frontend is static HTML/CSS/JS served by FastAPI. It intentionally keeps DOM
 index.html                  # workflow runner + chat page
 workflow-designer.html      # workflow configuration page
 styles.css                  # CSS entry, imports css/*
-app.js                      # compatibility module entry
 
 css/
   tokens.css
@@ -26,6 +25,10 @@ js/
     dom.js                  # DOM ids and helpers
     state.js                # shared runtime state
     storage.js              # UI-only preferences
+  shared/
+    sidebar.js              # shared runner/designer sidebar behavior
+  components/
+    sidebar.js              # compatibility facade for the old sidebar path
   features/
     artifacts.js
     chat.js
@@ -82,6 +85,7 @@ Module responsibilities:
 - `model.js`: owns workflow/step creation, default values, normalization, and filename/template defaults.
 - `utils.js`: owns shared DOM helpers, escaping, option rendering, cloning, ids, and toast UI.
 - `workflow-designer-constants.js`: owns static option lists and prompt template presets.
+- `shared/sidebar.js`: owns shared sidebar active-link and collapse behavior.
 
 Size guardrails:
 

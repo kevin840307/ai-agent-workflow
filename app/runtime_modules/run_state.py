@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from app.runtime_modules.paths import read_text, utc_now, write_text
+from app.core.paths import read_text, utc_now, write_text
 
 MAX_RUN_LOG_CHARS = 250_000
 

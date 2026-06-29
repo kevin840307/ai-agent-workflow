@@ -28,10 +28,11 @@ This document defines the target backend/frontend architecture for the next refa
 - Workflow persistence, run state, logs, events, and artifacts are split but still accessed through broad runtime facades.
 - Frontend runner is feature-split, but many features still share one mutable context object.
 - Workflow Designer is split into modules, but `controller.js` remains the orchestration hotspot.
-- There are likely obsolete files or docs:
+- Obsolete files removed in the first refactor pass:
   - `static/app.js`
-  - patch notes such as `README_PATCH.md`, `README_CONTEXT_PATCH.md`, `README_PROMPT_TEMPLATE_PATCH.md`
-  - possibly old compatibility docs after the new architecture doc is accepted.
+  - `README_PATCH.md`
+  - `README_CONTEXT_PATCH.md`
+  - `README_PROMPT_TEMPLATE_PATCH.md`
 
 ## Target Backend Structure
 
@@ -246,10 +247,10 @@ These are removal candidates, not approved deletions yet.
 
 | Path | Current suspicion | Required proof before deletion |
 | --- | --- | --- |
-| `static/app.js` | Old compatibility entry, current HTML uses `static/js/main.js`. | `rg "app.js"` only finds docs, and browser smoke passes. |
-| `README_PATCH.md` | Patch-era note, likely obsolete. | Content duplicated in README/architecture docs. |
-| `README_CONTEXT_PATCH.md` | Patch-era note, likely obsolete. | No tests/docs reference it. |
-| `README_PROMPT_TEMPLATE_PATCH.md` | Patch-era note, likely obsolete. | Prompt template behavior documented elsewhere. |
+| `static/app.js` | Removed. Old compatibility entry; current HTML uses `static/js/main.js`. | Browser/static smoke must keep passing. |
+| `README_PATCH.md` | Removed. Patch-era note. | README/architecture docs carry current guidance. |
+| `README_CONTEXT_PATCH.md` | Removed. Patch-era note. | README/architecture docs carry current guidance. |
+| `README_PROMPT_TEMPLATE_PATCH.md` | Removed. Patch-era note. | Prompt template behavior is covered by workflow docs/tests. |
 | `workspaces/` contents | Runtime output, not source. | Confirm no checked-in required fixture lives there. |
 | old compatibility facades | Needed during migration. | Internal imports removed and compatibility tests updated. |
 

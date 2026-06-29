@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Any
 
 from app.runtime_modules.files import classify_test_retry_target
-from app.runtime_modules.paths import ROOT, read_text
+from app.core.paths import ROOT, read_text
 
 
 def retry_target_for_step(step_record: dict[str, Any], steps: list[dict[str, Any]], current_index: int) -> str | None:

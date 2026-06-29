@@ -20,7 +20,7 @@ from app.runtime_modules.files import (
     validate_generated_test_files,
 )
 from app.runtime_modules.run_state import RunState
-from app.runtime_modules.store import Store
+from app.persistence.json_store import Store
 from app.runtime_modules.qwen import QwenCliClient
 from app.services import workflow_config_service
 from app.workflow_runtime.agent_step_runner import AgentStepRunner

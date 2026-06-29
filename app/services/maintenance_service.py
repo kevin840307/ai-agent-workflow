@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from app.repositories import store_repository
-from app.runtime_modules.metrics import metrics
+from app.core.metrics import metrics
 
 
 ACTIVE_RUN_STATUSES = {"queued", "running", "waiting_input", "cancelling"}

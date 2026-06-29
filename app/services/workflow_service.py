@@ -8,8 +8,8 @@ from pathlib import Path
 from fastapi import HTTPException
 
 from app.runtime_modules import api as runtime
-from app.runtime_modules.locks import project_run_creation_lock
-from app.runtime_modules.metrics import metrics
+from app.core.locks import project_run_creation_lock
+from app.core.metrics import metrics
 from app.repositories import store_repository
 from app.services import workflow_config_service
 

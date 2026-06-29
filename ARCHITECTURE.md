@@ -6,14 +6,18 @@ The app is split into a FastAPI backend, a static frontend, workflow bundle data
 
 ```text
 app/
-  controllers/              HTTP routes only
+  api/routes/               HTTP routes only
+  core/                     paths, locks, metrics, API error helpers
+  persistence/              JSON store and repositories
+  controllers/              compatibility facades for old route imports
   services/                 API use cases and persistence orchestration
+  workflow/agents/          provider-neutral agent contracts and providers
   workflow_runtime/          workflow execution, agent calls, prompt building, retry
-    agent_adapters/          provider-specific agent adapters
+    agent_adapters/          compatibility facades for old adapter imports
   workflow_functions.py      executable Python workflow functions
   workflow_function_catalog.py
                              function metadata exposed to Workflow Designer
-  runtime.py                 compatibility facade for older imports
+  runtime_modules/           runtime compatibility facade package
 static/
   index.html                 runner/chat UI
   workflow-designer.html     workflow configuration UI
