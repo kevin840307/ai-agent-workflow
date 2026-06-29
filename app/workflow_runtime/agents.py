@@ -102,8 +102,12 @@ class QwenAdapter:
         # changes are picked up without restarting the server.
         self.client = QwenCliClient()
 
+    @staticmethod
+    def use_serve_by_default() -> bool:
+        return os.environ.get("QWEN_USE_SERVE", "0").lower() not in {"0", "false", "no", "off"}
+
     async def run_stream(self, request: AgentRequest, on_output: AgentOutputCallback | None = None) -> AgentResult:
-        use_serve = os.environ.get("QWEN_USE_SERVE", "1").lower() not in {"0", "false", "no", "off"}
+        use_serve = self.use_serve_by_default()
         if use_serve and not self.client.mock:
             try:
                 output = await run_prompt_via_serve(
@@ -131,7 +135,7 @@ class QwenAdapter:
         return AgentResult(output=output, session_id=request.session_id, raw_output=output)
 
     def command_preview(self, request: AgentRequest) -> str:
-        use_serve = os.environ.get("QWEN_USE_SERVE", "1").lower() not in {"0", "false", "no", "off"}
+        use_serve = self.use_serve_by_default()
         if use_serve and not self.client.mock:
             return "POST qwen serve /session/<session>/prompt"
         return " ".join([*self.client.command(request.session_id, include_prompt_flag=False), "<prompt via stdin>"])
@@ -139,7 +143,7 @@ class QwenAdapter:
     def health(self) -> dict[str, Any]:
         return {
             "name": self.name,
-            "type": "qwen_serve",
+            "type": "qwen_serve" if self.use_serve_by_default() and not self.client.mock else "qwen_cli",
             "mock": self.client.mock,
             "bin": self.client.bin,
             "reuse_session": self.client.reuse_session,

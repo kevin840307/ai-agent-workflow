@@ -45,8 +45,17 @@ js/
     workflow-notification.js
   pages/
     workflow-runner.js
-    workflow-designer.js
-    workflow-designer-constants.js
+    workflow-designer.js             # thin page entry facade
+    workflow-designer-constants.js   # static select options and template presets
+    workflow-designer/
+      controller.js                  # page lifecycle, event delegation, API save/delete, orchestration
+      layout-renderer.js             # overview, sidebar, step list, canvas, drag/drop rendering
+      step-settings-renderer.js      # step settings tabs and form HTML
+      template-editor.js             # step editor modal, prompt template editor, prompt preview
+      import-export.js               # workflow JSON import/export UI and parsing
+      function-catalog.js            # backend function metadata and prompt param catalog helpers
+      model.js                       # workflow/step factories and normalization
+      utils.js                       # DOM, escaping, option, clone, and toast helpers
 ```
 
 ## Runner Page
@@ -59,6 +68,26 @@ The runner supports two modes:
 Local storage is used only for UI preferences such as panel collapse state. Runtime data comes from backend APIs.
 
 ## Workflow Designer
+
+Workflow Designer is API-backed. `js/pages/workflow-designer.js` is intentionally a thin entry facade so the public page import stays stable while implementation code lives under `js/pages/workflow-designer/`.
+
+Module responsibilities:
+
+- `controller.js`: owns page lifecycle, event delegation, state transitions, API persistence, and module wiring. It should stay orchestration-only.
+- `layout-renderer.js`: owns top-level designer rendering, sidebar/workflow labels, step list, canvas, filters, density controls, context menu, and drag/drop.
+- `step-settings-renderer.js`: owns step settings tab rendering, including basic/prompt/review/retry/gate/advanced/consensus forms.
+- `template-editor.js`: owns the step editor modal, prompt template editor, template diagnostics, prompt preview, and template preset loading.
+- `import-export.js`: owns workflow JSON import validation, imported workflow normalization, export JSON rendering, and import/export overlays.
+- `function-catalog.js`: owns backend function metadata display helpers and prompt parameter catalog merging.
+- `model.js`: owns workflow/step creation, default values, normalization, and filename/template defaults.
+- `utils.js`: owns shared DOM helpers, escaping, option rendering, cloning, ids, and toast UI.
+- `workflow-designer-constants.js`: owns static option lists and prompt template presets.
+
+Size guardrails:
+
+- `workflow-designer.js` should stay a thin entry facade.
+- `controller.js` should stay below 1,200 lines and should not absorb renderer/editor/import logic again.
+- Focused designer modules should stay below 700 lines each.
 
 Workflow Designer is API-backed.
 
