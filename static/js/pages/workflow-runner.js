@@ -1,20 +1,20 @@
-import { createAppContext } from "../core/context.js?v=20260629-static-modules6";
-import { createArtifacts } from "../features/artifacts.js?v=20260629-static-modules6";
-import { createChat } from "../features/chat.js?v=20260629-static-modules6";
-import { createComposer } from "../features/composer.js?v=20260629-static-modules6";
-import { createConfig } from "../features/config.js?v=20260629-static-modules6";
-import { createConsole } from "../features/console.js?v=20260629-static-modules6";
-import { createEvents } from "../features/events.js?v=20260629-static-modules6";
-import { createEventStream } from "../features/event-stream.js?v=20260629-static-modules6";
-import { createInteractions } from "../features/interactions.js?v=20260629-static-modules6";
-import { createLayout } from "../features/layout.js?v=20260629-static-modules6";
-import { createMessages } from "../features/messages.js?v=20260629-static-modules6";
-import { createModal } from "../features/modal.js?v=20260629-static-modules6";
-import { createRequirements } from "../features/requirements.js?v=20260629-static-modules6";
-import { createRuns } from "../features/runs.js?v=20260629-static-modules6";
-import { createSessions } from "../features/sessions.js?v=20260629-static-modules6";
-import { createWorkflows } from "../features/workflows.js?v=20260629-static-modules6";
-import { createWorkflowNotification } from "../features/workflow-notification.js?v=20260629-static-modules6";
+import { createAppContext } from "../core/context.js?v=20260629-static-modules9";
+import { createArtifacts } from "../features/artifacts.js?v=20260629-static-modules9";
+import { createChat } from "../features/chat.js?v=20260629-static-modules9";
+import { createComposer } from "../features/composer.js?v=20260629-static-modules9";
+import { createConfig } from "../features/config.js?v=20260629-static-modules9";
+import { createConsole } from "../features/console.js?v=20260629-static-modules9";
+import { createEvents } from "../features/events.js?v=20260629-static-modules9";
+import { createEventStream } from "../features/event-stream.js?v=20260629-static-modules9";
+import { createInteractions } from "../features/interactions.js?v=20260629-static-modules9";
+import { createLayout } from "../features/layout.js?v=20260629-static-modules9";
+import { createMessages } from "../features/messages.js?v=20260629-static-modules9";
+import { createModal } from "../features/modal.js?v=20260629-static-modules9";
+import { createRequirements } from "../features/requirements.js?v=20260629-static-modules9";
+import { createRuns } from "../features/runs.js?v=20260629-static-modules9";
+import { createSessions } from "../features/sessions.js?v=20260629-static-modules9";
+import { createWorkflows } from "../features/workflows.js?v=20260629-static-modules9";
+import { createWorkflowNotification } from "../features/workflow-notification.js?v=20260629-static-modules9";
 
 function registerWorkflowRunnerFeatures(ctx) {
   ctx.features.layout = createLayout(ctx);

@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Workflow Designer</title>
-    <link rel="stylesheet" href="/static/styles.css?v=20260629-static-modules6" />
+    <link rel="stylesheet" href="/static/styles.css?v=20260629-static-modules9" />
   </head>
   <body data-page="workflow-designer">
     <div class="designer-shell">
@@ -79,32 +79,46 @@
 
         <section class="designer-editor">
           <div class="designer-editor-head">
-            <div class="designer-workflow-title-fields">
-              <div>
-                <label class="designer-label" for="workflowNameInput">Workflow Name</label>
-                <input id="workflowNameInput" class="designer-title-input" />
+            <div class="designer-workflow-title-fields" aria-label="Workflow details">
+              <div class="designer-workflow-details-heading">
+                <div>
+                  <span class="designer-eyebrow">Workflow details</span>
+                  <h3>Name, description, and skill path</h3>
+                </div>
+                <p>These values are saved with the workflow config and shown in the runner/workflow list.</p>
               </div>
-              <div>
-                <label class="designer-label" for="workflowDescriptionInput">Description</label>
-                <textarea id="workflowDescriptionInput" class="designer-textarea designer-workflow-description-input" rows="3" placeholder="Describe what this workflow is for..."></textarea>
-              </div>
-              <div class="designer-workflow-path-grid">
-                <label class="designer-form-row">
+              <div class="designer-workflow-field-grid">
+                <label class="designer-form-row designer-workflow-name-field" for="workflowNameInput">
+                  <span class="designer-label">Workflow Name</span>
+                  <input id="workflowNameInput" class="designer-title-input" placeholder="My Custom Workflow" />
+                  <span class="designer-field-hint">Displayed in the sidebar, export file, and runner selector.</span>
+                </label>
+                <label class="designer-form-row designer-workflow-skill-root-field" for="workflowSkillRootInput">
                   <span class="designer-label">Skill Root</span>
-                  <input id="workflowSkillRootInput" class="designer-input" data-workflow-field="skillRoot" placeholder="~/.qwen/skills" />
+                  <input id="workflowSkillRootInput" class="designer-input designer-skill-root-input" data-workflow-field="skillRoot" placeholder="~/.qwen/skills" />
+                  <span class="designer-field-hint">Relative skill paths resolve from here, then Project Path.</span>
+                </label>
+                <label class="designer-form-row designer-workflow-description-field" for="workflowDescriptionInput">
+                  <span class="designer-label">Description</span>
+                  <textarea id="workflowDescriptionInput" class="designer-textarea designer-workflow-description-input" rows="3" placeholder="Describe what this workflow is for..."></textarea>
+                  <span class="designer-field-hint">Keep this short; it appears in the workflow summary and custom workflow list.</span>
                 </label>
               </div>
             </div>
-            <div class="designer-editor-actions">
+            <div class="designer-editor-actions" aria-label="Workflow editor actions">
+              <div class="designer-editor-action-top">
+                <span id="designerWorkflowDirtyBadge" class="badge passed">Saved</span>
+                <span id="designerWorkflowLockHint" class="designer-lock-hint">Editable</span>
+              </div>
               <div class="designer-mode-switch" role="group" aria-label="Designer mode">
                 <button type="button" data-designer-action="set-designer-mode" data-mode="simple">Simple</button>
                 <button type="button" data-designer-action="set-designer-mode" data-mode="advanced">Advanced</button>
                 <button type="button" data-designer-action="set-designer-mode" data-mode="json">JSON</button>
               </div>
-              <span id="designerWorkflowDirtyBadge" class="badge passed">Saved</span>
-              <span id="designerWorkflowLockHint" class="designer-lock-hint">Editable</span>
-              <button id="designerResetDraft">Reset Draft</button>
-              <button id="designerSaveDraft" class="primary">Save Draft</button>
+              <div class="designer-editor-action-buttons">
+                <button id="designerResetDraft">Reset Draft</button>
+                <button id="designerSaveDraft" class="primary">Save Draft</button>
+              </div>
             </div>
           </div>
 
@@ -179,6 +193,6 @@
       </main>
     </div>
 
-    <script type="module" src="/static/js/main.js?v=20260629-static-modules6"></script>
+    <script type="module" src="/static/js/main.js?v=20260629-static-modules9"></script>
   </body>
 </html>

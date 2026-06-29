@@ -1,61 +1,112 @@
 from __future__ import annotations
 
+
+def _ui(
+    *,
+    supports_prompt: bool = False,
+    supports_agent: bool = False,
+    tabs: list[str] | None = None,
+    prompt_defaults: bool | None = None,
+    note: str = "",
+) -> dict:
+    """UI capability metadata consumed by workflow-designer.
+
+    Keep this catalog as the single source of truth for function-specific UI.
+    Step type still provides safe defaults, but selected function metadata can
+    enable Prompt / Agent settings for special Python-backed functions.
+    """
+
+    data: dict[str, object] = {
+        "supportsPrompt": supports_prompt,
+        "supportsAgent": supports_agent,
+    }
+    if tabs is not None:
+        data["tabs"] = tabs
+    if prompt_defaults is not None:
+        data["promptDefaults"] = prompt_defaults
+    if note:
+        data["note"] = note
+    return data
+
+
+PROMPT_AGENT_TABS = ["basic", "sources", "retry", "advanced"]
+REVIEW_AGENT_TABS = ["basic", "sources", "review", "retry", "advanced"]
+VALIDATOR_TABS = ["basic", "retry", "advanced"]
+
+
 AVAILABLE_WORKFLOW_FUNCTIONS = {
     "validators": [
         {
             "id": "validate_spec",
             "label": "Validate Spec",
             "description": "Check required spec sections and AC IDs.",
+            "ui": _ui(tabs=VALIDATOR_TABS),
         },
         {
             "id": "validate_todo",
             "label": "Validate Todo",
             "description": "Check todo sections, TEST IDs, and AC coverage.",
+            "ui": _ui(tabs=VALIDATOR_TABS),
         },
         {
             "id": "require_status_pass",
             "label": "Require Status PASS",
             "description": "Gate helper for review artifacts that must contain Status: PASS.",
+            "ui": _ui(tabs=["basic", "gate", "retry", "advanced"]),
         },
         {
             "id": "run_pytest",
             "label": "Run Pytest",
             "description": "Run the configured Python test command and write output/test-result.md.",
+            "ui": _ui(tabs=VALIDATOR_TABS),
         },
         {
             "id": "collect_security_context",
             "label": "Collect Security Context",
             "description": "Write security scan scope and exclude rules to output/security-context.md without embedding source file contents.",
+            "ui": _ui(tabs=VALIDATOR_TABS),
         },
         {
             "id": "consensus_agent",
             "label": "Consensus Agent",
             "description": "Run multiple internal agent generations with per-agent validation and retry in one visible workflow step.",
+            "ui": _ui(
+                supports_prompt=True,
+                supports_agent=True,
+                tabs=PROMPT_AGENT_TABS,
+                prompt_defaults=True,
+                note="This Python function wraps internal agent prompt executions.",
+            ),
         },
         {
             "id": "combine_security_candidates",
             "label": "Combine Security Candidates",
             "description": "Merge same-task multi-agent security candidate files, deduplicate evidence, compute consensus confidence, and write output/security-findings.md.",
+            "ui": _ui(tabs=VALIDATOR_TABS),
         },
         {
             "id": "generate_security_report",
             "label": "Generate Security Report",
             "description": "Generate output/security-report.md from Python-combined security-findings.md using the deterministic report template.",
+            "ui": _ui(tabs=VALIDATOR_TABS),
         },
         {
             "id": "finalize_security_report",
             "label": "Finalize Security Report",
             "description": "Write output/security-final.md after security-report.md has passed validation.",
+            "ui": _ui(tabs=VALIDATOR_TABS),
         },
         {
             "id": "validate_security_candidates",
             "label": "Validate Security Candidates",
             "description": "Check and score one AI-generated security-candidates-agent-*.md artifact for status, checklist coverage, CAND IDs, severity, confidence, evidence quality, and required fields. Fails when quality score is below thresholds.",
+            "ui": _ui(tabs=VALIDATOR_TABS),
         },
         {
             "id": "validate_security_report",
             "label": "Validate Security Report",
             "description": "Check and score output/security-report.md for required findings, source finding IDs, severity, confidence, evidence quality, checklist coverage, and risk matrix format. Fails when quality score is below thresholds.",
+            "ui": _ui(tabs=VALIDATOR_TABS),
         },
     ],
     "reviewStrategies": [
@@ -63,16 +114,34 @@ AVAILABLE_WORKFLOW_FUNCTIONS = {
             "id": "current_session",
             "label": "Current Session Review",
             "description": "Reuse the current agent session and evaluate pass/fail keywords plus confidence threshold.",
+            "ui": _ui(
+                supports_prompt=True,
+                supports_agent=True,
+                tabs=REVIEW_AGENT_TABS,
+                prompt_defaults=True,
+            ),
         },
         {
             "id": "new_agent",
             "label": "New Agent Review",
             "description": "Run review in a fresh agent session, then evaluate pass/fail keywords plus confidence threshold.",
+            "ui": _ui(
+                supports_prompt=True,
+                supports_agent=True,
+                tabs=REVIEW_AGENT_TABS,
+                prompt_defaults=True,
+            ),
         },
         {
             "id": "multi_agent",
             "label": "Multi-Agent Review",
             "description": "Run one or more reviewer agents and aggregate with keyword_confidence, majority_vote, or all_must_pass.",
+            "ui": _ui(
+                supports_prompt=True,
+                supports_agent=True,
+                tabs=REVIEW_AGENT_TABS,
+                prompt_defaults=True,
+            ),
         },
     ],
     "aggregators": [

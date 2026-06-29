@@ -1,4 +1,4 @@
-import { ensureActiveTabForStep as ensureStepTab, isConsensusAgentStep, tabsForStep } from "./step-tabs.js?v=20260629-static-modules6";
+import { ensureActiveTabForStep as ensureStepTab, tabsForStep } from "./step-tabs.js?v=20260629-static-modules9";
 
 export function installLayoutRenderer(ctx) {
   const {
@@ -25,6 +25,7 @@ export function installLayoutRenderer(ctx) {
     state,
     summarizeStep,
     toast,
+    stepUiCapabilities,
     workflowFunctionCounts,
   } = ctx;
 
@@ -507,7 +508,7 @@ function renderCanvas() {
 
 function renderTabs() {
   const step = getSelectedStep();
-  const validTabs = new Set(tabsForStep(step));
+  const validTabs = new Set(tabsForStep(step, stepUiCapabilities(step)));
   document.querySelectorAll(".designer-tab").forEach((tab) => {
     tab.hidden = false;
     tab.classList.toggle("irrelevant", !validTabs.has(tab.dataset.designerTab));
@@ -516,7 +517,7 @@ function renderTabs() {
 }
 
 function ensureActiveTabForStep(step) {
-  ensureStepTab(state, step);
+  ensureStepTab(state, step, stepUiCapabilities(step));
 }
 
 function applyStepTypeDefaults(step) {
@@ -534,6 +535,8 @@ function applyStepTypeDefaults(step) {
     step.command = "";
   }
   if (step.type === "review") {
+    step.agent = step.agent || step.provider || "qwen";
+    step.provider = step.provider || step.agent || "qwen";
     step.reviewMode = step.reviewMode === "none" ? "current_session" : step.reviewMode;
     step.aggregatorFunction = step.aggregatorFunction || "keyword_confidence";
   }
@@ -544,11 +547,15 @@ function applyStepTypeDefaults(step) {
     step.command = "";
   }
   if (step.type === "ai") {
+    step.agent = step.agent || step.provider || "qwen";
+    step.provider = step.provider || step.agent || "qwen";
     step.validator = "";
     step.reviewMode = "none";
     step.command = step.command || "";
   }
   if (step.type === "command") {
+    step.agent = step.agent || step.provider || "qwen";
+    step.provider = step.provider || step.agent || "qwen";
     step.validator = "";
     step.reviewMode = "none";
     step.command = step.command || "custom";
@@ -572,7 +579,6 @@ function applyStepTypeDefaults(step) {
     handleStepDragStart,
     handleStepDrop,
     ensureActiveTabForStep,
-    isConsensusAgentStep,
     isStepContextMenuOpen,
     openStepContextMenu,
     render,

@@ -1,4 +1,4 @@
-import { isConsensusAgentStep, tabsForStep } from "./step-tabs.js?v=20260629-static-modules6";
+import { tabsForStep } from "./step-tabs.js?v=20260629-static-modules9";
 
 export function installStepSettingsRenderer(ctx) {
   const {
@@ -19,31 +19,40 @@ export function installStepSettingsRenderer(ctx) {
     normalizeFilename,
     options,
     state,
+    stepUiCapabilities,
   } = ctx;
 
 function renderSettings() {
-  const target = el("designerStepSettingsModal") || el("designerStepSettings");
+  const targets = [el("designerStepSettingsModal"), el("designerStepSettings")].filter(Boolean);
+  if (!targets.length) return;
+
+  const html = renderSettingsHtml();
+  targets.forEach((target) => {
+    target.innerHTML = html;
+  });
+}
+
+function renderSettingsHtml() {
   const step = getSelectedStep();
-  if (!target) return;
   if (!step) {
-    target.innerHTML = `<div class="designer-empty-state">Select a step to edit its configuration.</div>`;
-    return;
+    return `<div class="designer-empty-state">Select a step to edit its configuration.</div>`;
   }
 
   const readonly = isReadonly();
   const disabled = readonly ? "disabled" : "";
   const tab = state.activeTab;
-  if (!tabsForStep(step).includes(tab)) {
-    target.innerHTML = renderIrrelevantTab(step, tab);
-    return;
+  const capabilities = stepUiCapabilities(step);
+  if (!tabsForStep(step, capabilities).includes(tab)) {
+    return renderIrrelevantTab(step, tab);
   }
 
-  if (tab === "basic") target.innerHTML = renderBasic(step, disabled, readonly);
-  if (tab === "sources") target.innerHTML = renderSources(step, disabled, readonly);
-  if (tab === "review") target.innerHTML = renderReview(step, disabled, readonly);
-  if (tab === "retry") target.innerHTML = renderRetry(step, disabled, readonly);
-  if (tab === "gate") target.innerHTML = renderGate(step, disabled, readonly);
-  if (tab === "advanced") target.innerHTML = renderAdvanced(step, disabled, readonly);
+  if (tab === "basic") return renderBasic(step, disabled, readonly, capabilities);
+  if (tab === "sources") return renderSources(step, disabled, readonly);
+  if (tab === "review") return renderReview(step, disabled, readonly);
+  if (tab === "retry") return renderRetry(step, disabled, readonly);
+  if (tab === "gate") return renderGate(step, disabled, readonly);
+  if (tab === "advanced") return renderAdvanced(step, disabled, readonly);
+  return renderBasic(step, disabled, readonly);
 }
 
 function renderIrrelevantTab(step, tab) {
@@ -63,7 +72,7 @@ function renderIrrelevantTab(step, tab) {
   `;
 }
 
-function renderBasic(step, disabled, readonly) {
+function renderBasic(step, disabled, readonly, capabilities) {
   return `
     <div class="designer-form-grid">
       ${readonly ? readonlyNotice() : ""}
@@ -75,8 +84,8 @@ function renderBasic(step, disabled, readonly) {
           ${options(StepTypes, step.type)}
         </select>
       </label>
-      ${renderAgentConfig(step, disabled)}
-      ${renderBasicTypeConfig(step, disabled)}
+      ${renderAgentConfig(step, disabled, capabilities)}
+      ${renderBasicTypeConfig(step, disabled, capabilities)}
       ${textareaRow("Description", "description", step.description, disabled)}
       ${switchRow("Enabled", "Turn this step on/off without deleting it.", "enabled", step.enabled, disabled)}
       <div class="designer-runner-note">
@@ -87,8 +96,8 @@ function renderBasic(step, disabled, readonly) {
   `;
 }
 
-function renderAgentConfig(step, disabled) {
-  if (!["ai", "review", "command"].includes(step.type) && !isConsensusAgentStep(step)) return "";
+function renderAgentConfig(step, disabled, capabilities) {
+  if (!capabilities?.supportsAgent) return "";
   return `
     <div class="designer-template-summary-grid compact">
       ${inputRow("Agent Provider", "agent", step.agent || step.provider || "qwen", disabled, "qwen / opencode")}
@@ -97,10 +106,10 @@ function renderAgentConfig(step, disabled) {
   `;
 }
 
-function renderBasicTypeConfig(step, disabled) {
+function renderBasicTypeConfig(step, disabled, capabilities) {
   if (step.type === "validation" || step.type === "python") {
-    const promptHint = isConsensusAgentStep(step)
-      ? `<div class="designer-runner-note"><strong>Consensus agent step</strong><span>Use the Prompt tab to edit the template that each internal agent receives.</span></div>`
+    const promptHint = capabilities?.supportsPrompt
+      ? `<div class="designer-runner-note"><strong>Prompt-enabled function</strong><span>This function enables the Prompt tab through backend catalog UI metadata.</span></div>`
       : "";
     return `
       <label class="designer-form-row">
@@ -349,7 +358,7 @@ function renderGate(step, disabled, readonly) {
 }
 
 function renderAdvanced(step, disabled, readonly) {
-  const showConsensus = step.validator === "consensus_agent" || step.key === "consensus_agent" || step.key === "consensus_security_scan";
+  const showConsensus = stepUiCapabilities(step).functionId === "consensus_agent" || step.key === "consensus_agent" || step.key === "consensus_security_scan";
   return `
     <div class="designer-form-grid">
       ${readonly ? readonlyNotice() : ""}

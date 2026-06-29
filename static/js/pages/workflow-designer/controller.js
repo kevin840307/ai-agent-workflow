@@ -4,7 +4,7 @@ import {
   SourceTypes,
   StepTypes,
   TemplatePresets,
-} from "../workflow-designer-constants.js?v=20260629-static-modules6";
+} from "../workflow-designer-constants.js?v=20260629-static-modules9";
 import {
   clone,
   el,
@@ -18,7 +18,7 @@ import {
   readInputValue,
   setText,
   toast,
-} from "./utils.js?v=20260629-static-modules6";
+} from "./utils.js?v=20260629-static-modules9";
 import {
   createStep,
   createWorkflow,
@@ -30,18 +30,19 @@ import {
   normalizeFunctionId,
   normalizeStep,
   normalizeWorkflow,
-} from "./model.js?v=20260629-static-modules6";
+} from "./model.js?v=20260629-static-modules9";
 import {
   availablePromptParamsFor,
   functionHelpFor,
   functionMetaFor,
   functionOptionsFor,
+  stepUiCapabilitiesFor,
   workflowFunctionCountsFor,
-} from "./function-catalog.js?v=20260629-static-modules6";
-import { installLayoutRenderer } from "./layout-renderer.js?v=20260629-static-modules6";
-import { installStepSettingsRenderer } from "./step-settings-renderer.js?v=20260629-static-modules6";
-import { installTemplateEditor } from "./template-editor.js?v=20260629-static-modules6";
-import { installImportExportTools } from "./import-export.js?v=20260629-static-modules6";
+} from "./function-catalog.js?v=20260629-static-modules9";
+import { installLayoutRenderer } from "./layout-renderer.js?v=20260629-static-modules9";
+import { installStepSettingsRenderer } from "./step-settings-renderer.js?v=20260629-static-modules9";
+import { installTemplateEditor } from "./template-editor.js?v=20260629-static-modules9";
+import { installImportExportTools } from "./import-export.js?v=20260629-static-modules9";
 
 const STORAGE_KEY = "qwenWorkflow.workflowDesigner.ui.v1";
 const WORKFLOW_API = "/api/workflows";
@@ -64,6 +65,10 @@ function workflowFunctionCounts() {
 
 function availablePromptParams() {
   return availablePromptParamsFor(availableWorkflowFunctions);
+}
+
+function stepUiCapabilities(step) {
+  return stepUiCapabilitiesFor(availableWorkflowFunctions, step);
 }
 
 let systemWorkflow = Object.freeze({
@@ -393,17 +398,25 @@ function updateFromInput(input) {
   }
 
   if (input.dataset.stepField && step) {
-    step[input.dataset.stepField] = value;
-    if (input.dataset.stepField === "type") {
-      applyStepTypeDefaults(step);
-      renderWorkflowViewOnly();
-      renderSettings();
-      renderTabs();
+    const field = input.dataset.stepField;
+    step[field] = value;
+
+    if (field === "type") {
+      handleStepTypeChange(step);
+      markWorkflowDirty();
+      return;
     }
-    if (input.dataset.stepField === "templateContent") {
+
+    if (["validator", "reviewMode"].includes(field)) {
+      handleStepCapabilityChange(step);
+      markWorkflowDirty();
+      return;
+    }
+
+    if (field === "templateContent") {
       renderPromptDiagnostics(step);
     }
-    if (["name", "templatePath", "filename", "outputFile", "validator", "reviewMode", "aggregatorFunction", "agent", "provider", "maxRetries", "failAction", "retryFromStepKey", "keepSameSession", "injectFailureFeedback", "timeoutEnabled", "timeoutMinutes"].includes(input.dataset.stepField)) renderWorkflowViewOnly();
+    if (["name", "templatePath", "filename", "outputFile", "aggregatorFunction", "agent", "provider", "maxRetries", "failAction", "retryFromStepKey", "keepSameSession", "injectFailureFeedback", "timeoutEnabled", "timeoutMinutes"].includes(field)) renderWorkflowViewOnly();
     renderStepEditorHeader();
     markWorkflowDirty();
     return;
@@ -448,6 +461,42 @@ function selectStep(stepId, options = {}) {
   renderTabs();
   renderSettings();
   if (options.openModal) openStepEditor(stepId);
+}
+
+function handleStepTypeChange(step) {
+  applyStepTypeDefaults(step);
+  handleStepCapabilityChange(step);
+}
+
+function handleStepCapabilityChange(step) {
+  hydratePromptDefaultsForStepType(step);
+  ensureActiveTabForStep(step);
+  saveUiState();
+  renderWorkflowViewOnly();
+  renderStepEditorHeader();
+  renderTabs();
+  renderSettings();
+}
+
+function hydratePromptDefaultsForStepType(step) {
+  if (!step) return;
+  const capabilities = stepUiCapabilities(step);
+  if (capabilities.supportsAgent) {
+    step.agent = step.agent || step.provider || "qwen";
+    step.provider = step.provider || step.agent || "qwen";
+  }
+  if (!isPromptCapableStep(step)) return;
+  step.templatePath = step.templatePath || defaultTemplatePath(step);
+  step.filename = step.filename || defaultFilename(step);
+  step.templateContent = step.templateContent || defaultTemplateContent(step);
+  if ((!Array.isArray(step.expectedFiles) || !step.expectedFiles.length) && step.filename) {
+    step.expectedFiles = [step.filename];
+  }
+}
+
+function isPromptCapableStep(step) {
+  const capabilities = stepUiCapabilities(step);
+  return Boolean(capabilities.promptDefaults || capabilities.supportsPrompt);
 }
 
 function createNewWorkflow() {
@@ -921,6 +970,7 @@ const stepSettingsRenderer = installStepSettingsRenderer({
   normalizeFilename,
   options,
   state,
+  stepUiCapabilities,
 });
 
 const layoutRenderer = installLayoutRenderer({
@@ -936,6 +986,7 @@ const layoutRenderer = installLayoutRenderer({
   isReadonly,
   markWorkflowDirty,
   moveStep,
+  normalizeFilename,
   options,
   renderSettings: () => stepSettingsRenderer.renderSettings(),
   renderStepEditorHeader,
@@ -945,6 +996,7 @@ const layoutRenderer = installLayoutRenderer({
   setText,
   summarizeStep,
   state,
+  stepUiCapabilities,
   toast,
   workflowFunctionCounts,
 });
@@ -998,7 +1050,6 @@ function handleStepDrop(event) { return layoutRenderer.handleStepDrop(event); }
 function handleStepDragEnd() { return layoutRenderer.handleStepDragEnd(); }
 function syncStepFilterControls() { return layoutRenderer.syncStepFilterControls(); }
 function getVisibleSteps(wf) { return layoutRenderer.getVisibleSteps(wf); }
-function isConsensusAgentStep(step) { return layoutRenderer.isConsensusAgentStep(step); }
 function applyStepTypeDefaults(step) { return layoutRenderer.applyStepTypeDefaults(step); }
 function ensureActiveTabForStep(step) { return layoutRenderer.ensureActiveTabForStep(step); }
 

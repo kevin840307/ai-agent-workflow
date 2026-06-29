@@ -1,31 +1,14 @@
-// Shared step-tab rules for workflow designer renderers.
-// Keep this logic outside individual renderers so split modules stay in sync.
+// Shared step-tab helpers for workflow designer renderers.
+// Capability calculation is config-driven in function-catalog.js; this module
+// only applies the resolved capabilities to state/tab UI.
 
-export function tabsForStep(step) {
+export function tabsForStep(step, capabilities = null) {
   if (!step) return ["basic"];
-  if (isConsensusAgentStep(step)) return ["basic", "sources", "retry", "advanced"];
-  const byType = {
-    ai: ["basic", "sources", "retry", "advanced"],
-    command: ["basic", "sources", "retry", "advanced"],
-    validation: ["basic", "retry", "advanced"],
-    python: ["basic", "retry", "advanced"],
-    review: ["basic", "review", "retry", "advanced"],
-    gate: ["basic", "gate", "retry", "advanced"],
-    manual: ["basic", "gate", "retry", "advanced"],
-  };
-  return byType[step.type] || ["basic", "advanced"];
+  if (Array.isArray(capabilities?.tabs) && capabilities.tabs.length) return capabilities.tabs;
+  return ["basic", "advanced"];
 }
 
-export function isConsensusAgentStep(step) {
-  return Boolean(
-    step &&
-      (step.validator === "consensus_agent" ||
-        step.key === "consensus_agent" ||
-        step.key === "consensus_security_scan")
-  );
-}
-
-export function ensureActiveTabForStep(state, step) {
-  const tabs = tabsForStep(step);
+export function ensureActiveTabForStep(state, step, capabilities = null) {
+  const tabs = tabsForStep(step, capabilities);
   if (!tabs.includes(state.activeTab)) state.activeTab = tabs[0] || "basic";
 }

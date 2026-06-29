@@ -53,18 +53,6 @@ SECURITY_KEYWORDS = [
     "debug", "ssl", "verify=False", "trustAll", "AllowAnyOrigin",
 ]
 
-
-def _is_security_context_file(path: Path) -> bool:
-    name = path.name.lower()
-    if name in SECURITY_CONTEXT_SKIP_FILE_NAMES:
-        return False
-    if path.suffix.lower() in SECURITY_CONTEXT_SKIP_SUFFIXES:
-        return False
-    if name in {"dockerfile", "makefile", "pom.xml", "build.gradle", "package.json", "requirements.txt", "pyproject.toml", "go.mod", "cargo.toml", ".env", ".env.example"}:
-        return True
-    return path.suffix.lower() in SECURITY_CONTEXT_EXTENSIONS
-
-
 def _is_under_security_excluded_path(relative: Path) -> bool:
     return any(part in SECURITY_CONTEXT_SKIP_DIRS for part in relative.parts[:-1])
 

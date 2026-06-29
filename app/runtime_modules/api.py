@@ -155,11 +155,6 @@ def mark_interrupted_runs() -> None:
     if changed:
         store.save_sync(data)
 
-
-def workflow_function_context(run: dict[str, Any], output_dir: Path | None = None):
-    return function_service.context(run, output_dir)
-
-
 def validate_spec(output_dir: Path) -> None:
     return function_service.validate_spec(output_dir)
 
@@ -267,7 +262,3 @@ def action_for_step(run: dict[str, Any], step_record: dict[str, Any], output_dir
 
 async def execute_workflow(run_id: str, start_index: int = 0) -> None:
     return await workflow_executor.execute(run_id, start_index)
-
-
-def agent_runtime_config() -> dict[str, Any]:
-    return agent_manager.health()

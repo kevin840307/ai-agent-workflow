@@ -17,13 +17,6 @@ def _markdown_section_body(text: str, section: str) -> str:
         next_section = len(text)
     return text[start:next_section].strip()
 
-
-def _ids_with_prefix_ordered(text: str, prefix: str) -> list[str]:
-    import re
-
-    return re.findall(rf"\b{prefix}-\d{{3}}\b", text)
-
-
 def _security_finding_blocks(findings: str) -> list[tuple[str, str]]:
     import re
 
@@ -896,22 +889,6 @@ def _security_python_confidence_score(items: list[dict[str, str]], evidence: str
     if penalty:
         basis.append(f"Penalty applied: -{penalty} for weak or inconsistent support.")
     return score, basis
-
-
-def _security_consensus_confidence(confidences: list[str], evidence: str, consensus_count: int) -> str:
-    numeric_scores = [score for score in (_security_parse_confidence_score(value) for value in confidences) if score is not None]
-    base_score = _security_average(numeric_scores, 30)
-    has_location = _security_evidence_has_location(evidence)
-    if consensus_count >= 3 and has_location:
-        base_score += 20
-    elif consensus_count >= 2 and has_location:
-        base_score += 12
-    elif has_location:
-        base_score += 5
-    else:
-        base_score = min(base_score, 45)
-    return str(max(0, min(100, round(base_score))))
-
 
 def _security_candidate_key(candidate: dict[str, str]) -> str:
     import re
