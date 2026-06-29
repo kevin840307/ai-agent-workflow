@@ -107,6 +107,7 @@ class RunState:
             for index, step in enumerate(run["steps"]):
                 if index >= start_index:
                     step["retry_count"] = 0
+                    step["manual_retry_started_at"] = utc_now()
             run["updated_at"] = utc_now()
 
         return await self.update_run(run_id, apply)
@@ -154,7 +155,51 @@ class RunState:
             f"{str(exc).strip()}\n\n"
         )
         write_text(feedback_path, previous + ("\n" if previous.strip() else "") + entry)
+        await self.record_step_event(
+            run["id"],
+            target_key,
+            "retry",
+            f"Retry {retry_count}/{max_retries} from {source_key}: {str(exc).strip()}",
+            {
+                "source_step": source_key,
+                "target_step": target_key,
+                "retry_count": retry_count,
+                "max_retries": max_retries,
+                "error": str(exc).strip(),
+            },
+        )
         await self.refresh_artifacts(run["id"])
+
+    async def record_step_event(
+        self,
+        run_id: str,
+        step_key: str,
+        kind: str,
+        message: str,
+        extra: dict[str, Any] | None = None,
+    ) -> None:
+        def apply(run):
+            event = {
+                "time": utc_now(),
+                "step_key": step_key,
+                "kind": kind,
+                "message": message,
+            }
+            if extra:
+                event.update(extra)
+            run.setdefault("timeline", []).append(event)
+            for step in run.get("steps", []):
+                if step.get("key") == step_key:
+                    step.setdefault("events", []).append(event)
+                    step["last_event"] = message
+                    if kind == "retry":
+                        step.setdefault("retry_history", []).append(event)
+                    break
+            run["updated_at"] = utc_now()
+
+        run = await self.update_run(run_id, apply)
+        if run:
+            await self.bus.publish(run_id, {"type": "run", "run": run})
 
     async def refresh_artifacts(self, run_id: str) -> None:
         def apply(run):

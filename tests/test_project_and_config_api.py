@@ -98,6 +98,30 @@ class ProjectAndConfigApiTests(unittest.TestCase):
             self.assertEqual(fake_agent.requests[0].prompt, "你是opencode CLI嗎")
             self.assertIn("不要輸出 JSON", fake_agent.requests[1].prompt)
 
+    def test_chat_prompt_excludes_workflow_requirement_history(self) -> None:
+        class FakeAgent:
+            name = "opencode"
+
+            def health(self):
+                return {"reuse_session": False}
+
+            async def run_stream(self, request, on_output=None):
+                self.request = request
+                return AgentResult(output="chat answer")
+
+        fake_agent = FakeAgent()
+        with tempfile.TemporaryDirectory() as tmp, TestClient(app) as client, patch(
+            "app.services.project_service.runtime.agent_manager.resolve",
+            return_value=fake_agent,
+        ):
+            session = client.post("/api/sessions", json={"title": "Chat Boundary", "project_path": tmp}).json()
+            client.post(f"/api/sessions/{session['id']}/messages", json={"content": "workflow-only requirement"})
+            response = client.post(f"/api/sessions/{session['id']}/chat", json={"content": "chat follow up"})
+
+            self.assertEqual(response.status_code, 200, response.text)
+            self.assertIn("User: chat follow up", fake_agent.request.prompt)
+            self.assertNotIn("workflow-only requirement", fake_agent.request.prompt)
+
     def test_qwen_config_update_validates_auth_and_clamps_retries(self) -> None:
         original = SETTINGS_FILE.read_text(encoding="utf-8") if SETTINGS_FILE.exists() else ""
         try:

@@ -28,6 +28,7 @@ class WorkflowExecutor:
         append_failure_feedback: Callable[..., Awaitable[Any]],
         refresh_artifacts: Callable[[str], Awaitable[Any]],
         log: Callable[[dict[str, Any], str], Awaitable[None]],
+        record_step_event: Callable[..., Awaitable[Any]] | None = None,
     ) -> None:
         self.store = store
         self.bus = bus
@@ -40,6 +41,7 @@ class WorkflowExecutor:
         self.append_failure_feedback = append_failure_feedback
         self.refresh_artifacts = refresh_artifacts
         self.log = log
+        self.record_step_event = record_step_event
 
     async def execute(self, run_id: str, start_index: int = 0) -> None:
         data = await self.store.read()
@@ -115,6 +117,8 @@ class WorkflowExecutor:
         step_record = next((item for item in run.get("steps", []) if item.get("key") == key), {})
         await self.set_step(run_id, key, "running")
         await self.log(run, f"{key}: started")
+        if self.record_step_event:
+            await self.record_step_event(run_id, key, "started", f"{key}: started")
         try:
             timeout = timeout_seconds(step_record)
             if timeout:
@@ -125,14 +129,22 @@ class WorkflowExecutor:
         except asyncio.TimeoutError as exc:
             message = f"{key}: timed out after {timeout_seconds(step_record) or 0:.0f} seconds."
             await self.set_step(run_id, key, "failed", message)
+            if self.record_step_event:
+                await self.record_step_event(run_id, key, "failed", message)
             raise WorkflowError(message) from exc
         except UserInputRequired as exc:
             await self.set_step(run_id, key, "waiting_input", str(exc))
+            if self.record_step_event:
+                await self.record_step_event(run_id, key, "waiting_input", str(exc))
             raise
         except Exception as exc:
             await self.set_step(run_id, key, "failed", str(exc))
+            if self.record_step_event:
+                await self.record_step_event(run_id, key, "failed", str(exc))
             raise
         await self.set_step(run_id, key, "passed")
+        if self.record_step_event:
+            await self.record_step_event(run_id, key, "passed", f"{key}: passed")
         await self.log(run, f"{key}: passed")
 
     def _validate_expected_files(self, run: dict[str, Any], step_record: dict[str, Any]) -> None:

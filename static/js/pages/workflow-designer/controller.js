@@ -85,6 +85,7 @@ let state = {
   stepFilter: "",
   stepTypeFilter: "all",
   stepDensity: "compact",
+  designerMode: "simple",
   stepActionMenuExpanded: false,
   apiLoaded: false,
   apiError: "",
@@ -127,6 +128,7 @@ async function loadState() {
   state.stepFilter = saved.stepFilter || "";
   state.stepTypeFilter = saved.stepTypeFilter || "all";
   state.stepDensity = ["dense", "compact", "detail"].includes(saved.stepDensity) ? saved.stepDensity : "compact";
+  state.designerMode = ["simple", "advanced", "json"].includes(saved.designerMode) ? saved.designerMode : "simple";
   state.stepActionMenuExpanded = Boolean(saved.stepActionMenuExpanded);
   workflowDirty = false;
 }
@@ -232,6 +234,8 @@ const DesignerActionHandlers = Object.freeze({
   "move-step-up": (action) => moveStep(action.dataset.stepId, -1),
   "move-step-down": (action) => moveStep(action.dataset.stepId, 1),
   "set-step-density": (action) => setStepDensity(action.dataset.density),
+  "set-designer-mode": (action) => setDesignerMode(action.dataset.mode),
+  "apply-json-editor": () => applyJsonEditor(),
   "toggle-step-actions": () => toggleStepActionMenu(),
   "clear-step-filter": () => clearStepFilter(),
   "open-step-editor": (action) => openStepEditor(action.dataset.stepId),
@@ -711,6 +715,7 @@ function saveUiState() {
       stepFilter: state.stepFilter,
       stepTypeFilter: state.stepTypeFilter,
       stepDensity: state.stepDensity,
+      designerMode: state.designerMode,
       stepActionMenuExpanded: state.stepActionMenuExpanded,
     }));
   } catch {
@@ -722,6 +727,35 @@ function markWorkflowDirty() {
   if (isReadonly()) return;
   workflowDirty = true;
   renderWorkflowDirtyState();
+}
+
+function setDesignerMode(mode) {
+  if (!["simple", "advanced", "json"].includes(mode)) return;
+  state.designerMode = mode;
+  if (mode === "simple" && !["basic", "sources"].includes(state.activeTab)) state.activeTab = "basic";
+  saveUiState();
+  render();
+}
+
+function applyJsonEditor() {
+  const wf = getSelectedWorkflow();
+  const editor = el("designerJsonEditor");
+  if (!wf || !editor) return;
+  if (isReadonly()) {
+    toast("System workflow is read-only. Duplicate it before editing JSON.");
+    render();
+    return;
+  }
+  try {
+    const parsed = normalizeWorkflow(JSON.parse(editor.value || "{}"));
+    Object.assign(wf, parsed, { id: wf.id, kind: "custom" });
+    state.selectedStepId = wf.steps?.[0]?.id || null;
+    markWorkflowDirty();
+    render();
+    toast("JSON applied. Save Draft to keep it.");
+  } catch (error) {
+    toast(`Invalid workflow JSON: ${error.message}`);
+  }
 }
 
 function isWorkflowDirty() {
@@ -886,18 +920,25 @@ const layoutRenderer = installLayoutRenderer({
   el,
   escapeAttr,
   escapeHtml,
+  formatReviewMode,
   formatStepType,
+  functionMeta,
   getSelectedStep,
   getSelectedWorkflow,
   getSystemWorkflow: () => systemWorkflow,
   isReadonly,
+  markWorkflowDirty,
   moveStep,
   options,
   renderSettings: () => stepSettingsRenderer.renderSettings(),
+  renderStepEditorHeader,
+  renderStepEditorModal,
   renderWorkflowDirtyState,
   saveUiState,
   setText,
+  summarizeStep,
   state,
+  toast,
   workflowFunctionCounts,
 });
 

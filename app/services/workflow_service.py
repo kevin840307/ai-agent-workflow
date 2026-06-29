@@ -111,6 +111,7 @@ async def create_workflow_run(session_id: str, body: runtime.CreateRunRequest) -
             "test_command": body.test_command,
             "steps": steps,
             "artifacts": [],
+            "timeline": [],
             "created_at": runtime.utc_now(),
             "updated_at": runtime.utc_now(),
             "started_at": None,
@@ -156,6 +157,15 @@ async def retry_run(run_id: str, body: runtime.RetryRunRequest | None = None) ->
         failed_index = next((index for index, step in enumerate(run["steps"]) if step["status"] in {"failed", "waiting_input"}), None)
         start_index = failed_index if failed_index is not None else 0
     await runtime.reset_retry_counts_from(run_id, start_index)
+    target_key = step_keys[start_index] if step_keys else ""
+    if target_key:
+        await runtime.record_step_event(
+            run_id,
+            target_key,
+            "manual_retry",
+            f"Manual retry requested from {target_key}; retry counters were reset from this step.",
+            {"target_step": target_key, "start_index": start_index},
+        )
     await runtime.reset_steps_from(run_id, start_index)
     start_workflow_task(run_id, start_index=start_index)
     return await get_run(run_id)

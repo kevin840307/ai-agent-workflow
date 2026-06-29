@@ -29,31 +29,34 @@ export function createMessages(ctx) {
       const empty = list.querySelector(".message.system");
       if (empty) {
         empty.textContent = state.runMode === "chat"
-          ? `Ask ${state.defaultAgent || "the agent"} anything about this project.`
-          : "Describe what you want to build, then run the workflow.";
+          ? "Chat uses the current project session. Send a question or follow-up."
+          : "Describe the next change you want the workflow to make.";
       }
     },
 
     async load(options = {}) {
       const messages = await api.request(`/api/sessions/${state.activeSessionId}/messages`);
+      const visibleMessages = messages.filter((msg) => (
+        state.runMode === "chat"
+          ? msg.kind === "chat"
+          : msg.kind !== "chat"
+      ));
       const list = ui.byKey("messages");
       list.innerHTML = "";
       state.lastAskText = "";
 
-      messages.forEach((msg) => list.appendChild(messagesFeature.renderMessage(msg)));
+      visibleMessages.forEach((msg) => list.appendChild(messagesFeature.renderMessage(msg)));
 
-      if (!messages.length) {
+      if (!visibleMessages.length) {
         const div = document.createElement("div");
         div.className = "message system";
         div.textContent = state.runMode === "chat"
-          ? `Ask ${state.defaultAgent || "the agent"} anything about this project.`
-          : "Describe what you want to build, then run the workflow.";
+          ? `Chat uses the current project session. Send a question or follow-up.`
+          : "Describe the next change you want the workflow to make.";
         list.appendChild(div);
       }
 
-      const latest = [...messages].reverse().find((msg) => (
-        msg.role === "user" && (state.runMode === "chat" || msg.kind !== "chat")
-      ));
+      const latest = [...visibleMessages].reverse().find((msg) => msg.role === "user");
       if (!options.keepDraft) ui.byKey("messageInput").value = state.runMode === "chat" ? "" : (latest?.content || "");
       ctx.features.composer.autoResize();
       list.scrollTop = list.scrollHeight;

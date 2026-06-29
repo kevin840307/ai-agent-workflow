@@ -96,6 +96,11 @@
               </div>
             </div>
             <div class="designer-editor-actions">
+              <div class="designer-mode-switch" role="group" aria-label="Designer mode">
+                <button type="button" data-designer-action="set-designer-mode" data-mode="simple">Simple</button>
+                <button type="button" data-designer-action="set-designer-mode" data-mode="advanced">Advanced</button>
+                <button type="button" data-designer-action="set-designer-mode" data-mode="json">JSON</button>
+              </div>
               <span id="designerWorkflowDirtyBadge" class="badge passed">Saved</span>
               <span id="designerWorkflowLockHint" class="designer-lock-hint">Editable</span>
               <button id="designerResetDraft">Reset Draft</button>
@@ -159,6 +164,17 @@
               <div id="designerStepSettings" class="designer-step-settings"></div>
             </aside>
           </div>
+
+          <section id="designerJsonPanel" class="designer-json-panel" hidden>
+            <div class="designer-panel-head compact">
+              <div>
+                <h3>Workflow JSON</h3>
+                <p>Edit the complete workflow config. Save Draft writes it back to the API.</p>
+              </div>
+              <button type="button" class="primary" data-designer-action="apply-json-editor">Apply JSON</button>
+            </div>
+            <textarea id="designerJsonEditor" class="designer-json-editor" spellcheck="false"></textarea>
+          </section>
         </section>
       </main>
     </div>

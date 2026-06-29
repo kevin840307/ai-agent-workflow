@@ -12,6 +12,7 @@ export function createRuns(ctx) {
       ui.byKey("logs").textContent = "";
       ui.byKey("artifacts").innerHTML = "";
       ui.byKey("artifactContent").textContent = "";
+      if (ui.byKey("stepDetails")) ui.byKey("stepDetails").innerHTML = "";
     },
 
     renderStepSkeleton(stepTitles = []) {
@@ -60,6 +61,7 @@ export function createRuns(ctx) {
         || run.steps[0];
       state.selectedStepKey = selectedStep?.key || null;
       runs.renderSteps(run);
+      runs.renderStepDetails(run, selectedStep);
       ctx.features.artifacts.render(run.artifacts || []);
       ctx.features.interactions.render(run);
       ctx.features.workflows?.renderPreview?.();
@@ -107,6 +109,74 @@ export function createRuns(ctx) {
       const rows = [...document.querySelectorAll(".step")];
       const index = run.steps.findIndex((item) => item.key === step.key);
       if (rows[index]) rows[index].classList.add("selected");
+      runs.renderStepDetails(run, step);
+    },
+
+    renderStepDetails(run, step) {
+      const target = ui.byKey("stepDetails");
+      if (!target) return;
+      if (!step) {
+        target.innerHTML = `<div class="step-detail-empty">Select a step to inspect prompt, files, retry, and errors.</div>`;
+        return;
+      }
+
+      const config = step.config || {};
+      const relatedArtifacts = ctx.features.artifacts.artifactsForStep(step, run.artifacts || []);
+      const promptArtifact = relatedArtifacts.find((artifact) => String(artifact.path || "") === `prompts/${step.key}.md`);
+      const retryPolicy = [
+        `max ${Number(step.max_retries ?? config.maxRetries ?? 0)}`,
+        `from ${step.retry_from_step_key || config.retryFromStepKey || "auto"}`,
+        `on fail ${step.fail_action || config.failAction || "same_step"}`,
+      ].join(" · ");
+      const events = (step.events || []).slice(-5).reverse();
+      const files = relatedArtifacts.slice(0, 6);
+      target.innerHTML = `
+        <article class="step-detail-card">
+          <div class="step-detail-head">
+            <div>
+              <span class="step-detail-eyebrow">${ui.escapeHtml(step.key || "step")}</span>
+              <h3>${ui.escapeHtml(step.title || step.key || "Step")}</h3>
+            </div>
+            <span class="badge ${step.status}">${step.status}</span>
+          </div>
+          <div class="step-detail-grid">
+            <div><span>Retry</span><strong>${ui.escapeHtml(String(step.retry_count || 0))}</strong><small>${ui.escapeHtml(retryPolicy)}</small></div>
+            <div><span>Agent</span><strong>${ui.escapeHtml(step.agent || config.agent || config.provider || state.defaultAgent || "default")}</strong><small>${config.allowInteraction ? "interactive" : "automatic"}</small></div>
+            <div><span>Output</span><strong>${ui.escapeHtml(config.outputFile || config.filename || "-")}</strong><small>${files.length} related file${files.length === 1 ? "" : "s"}</small></div>
+          </div>
+          ${step.error ? `<div class="step-detail-error"><strong>Failure</strong><span>${ui.escapeHtml(step.error)}</span></div>` : ""}
+          <div class="step-detail-actions">
+            ${promptArtifact ? `<button class="mini-button step-detail-open-prompt" type="button">Prompt</button>` : ""}
+            ${relatedArtifacts.length ? `<button class="mini-button step-detail-open-files" type="button">Files ${relatedArtifacts.length}</button>` : ""}
+            <button class="mini-button step-detail-guide" type="button">Guide</button>
+            <button class="mini-button step-detail-retry" type="button">Retry from here</button>
+          </div>
+          <div class="step-detail-section">
+            <strong>Recent Events</strong>
+            ${events.length ? `
+              <ol class="step-detail-events">
+                ${events.map((event) => `<li><span>${ui.escapeHtml(event.kind || "event")}</span>${ui.escapeHtml(event.message || "")}</li>`).join("")}
+              </ol>
+            ` : `<p>No step events yet.</p>`}
+          </div>
+          <div class="step-detail-section">
+            <strong>Files</strong>
+            ${files.length ? `
+              <div class="step-detail-files">
+                ${files.map((artifact) => `<button class="step-detail-file" data-artifact-id="${ui.escapeHtml(artifact.id)}" title="${ui.escapeHtml(artifact.path)}">${ui.escapeHtml(artifact.path)}</button>`).join("")}
+              </div>
+            ` : `<p>No files found for this step yet.</p>`}
+          </div>
+        </article>
+      `;
+
+      target.querySelector(".step-detail-open-files")?.addEventListener("click", () => ctx.features.artifacts.openStepFilesModal(run, step));
+      target.querySelector(".step-detail-open-prompt")?.addEventListener("click", () => ctx.features.artifacts.open(promptArtifact.id));
+      target.querySelector(".step-detail-guide")?.addEventListener("click", () => runs.addGuidance(step.key));
+      target.querySelector(".step-detail-retry")?.addEventListener("click", () => runs.retry(step.key));
+      target.querySelectorAll("[data-artifact-id]").forEach((button) => {
+        button.addEventListener("click", () => ctx.features.artifacts.open(button.dataset.artifactId));
+      });
     },
 
     async loadLatest() {

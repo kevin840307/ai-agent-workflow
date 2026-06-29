@@ -102,6 +102,7 @@ get_step_retry_count = run_state.get_step_retry_count
 increment_step_retry = run_state.increment_step_retry
 append_failure_feedback = run_state.append_failure_feedback
 refresh_artifacts = run_state.refresh_artifacts
+record_step_event = run_state.record_step_event
 
 agent_manager: AgentManager = create_agent_manager()
 prompt_builder = PromptBuilder()
@@ -132,6 +133,7 @@ workflow_executor = WorkflowExecutor(
     append_failure_feedback=append_failure_feedback,
     refresh_artifacts=refresh_artifacts,
     log=log,
+    record_step_event=record_step_event,
 )
 
 

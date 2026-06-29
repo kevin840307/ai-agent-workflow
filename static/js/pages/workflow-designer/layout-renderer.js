@@ -3,18 +3,25 @@
     el,
     escapeAttr,
     escapeHtml,
+    formatReviewMode,
     formatStepType,
+    functionMeta,
     getSelectedStep,
     getSelectedWorkflow,
     getSystemWorkflow,
     isReadonly,
+    markWorkflowDirty,
     moveStep,
     options,
     renderSettings,
+    renderStepEditorHeader,
+    renderStepEditorModal,
     renderWorkflowDirtyState,
     saveUiState,
     setText,
     state,
+    summarizeStep,
+    toast,
     workflowFunctionCounts,
   } = ctx;
 
@@ -22,6 +29,7 @@
   let stepContextMenuOpen = false;
 
 function render() {
+  document.body.dataset.designerMode = state.designerMode || "simple";
   renderSidebar();
   renderBackendStatus();
   renderWorkflowLabels();
@@ -31,6 +39,7 @@ function render() {
   renderTabs();
   renderSettings();
   renderStepEditorModal();
+  renderJsonPanel();
 }
 
 function renderBackendStatus() {
@@ -365,6 +374,23 @@ function renderWorkflowViewOnly() {
   setText("designerSelectedStepTitle", step ? step.name : "Step Settings");
   setText("designerSelectedStepType", step ? formatStepType(step.type) : "Select a step");
   renderStepEditorHeader();
+}
+
+function renderJsonPanel() {
+  document.querySelectorAll("[data-designer-action='set-designer-mode']").forEach((button) => {
+    button.classList.toggle("active", button.dataset.mode === (state.designerMode || "simple"));
+  });
+  const panel = el("designerJsonPanel");
+  const editor = el("designerJsonEditor");
+  const grid = document.querySelector(".designer-grid");
+  const isJson = state.designerMode === "json";
+  if (grid) grid.hidden = isJson;
+  if (panel) panel.hidden = !isJson;
+  if (!isJson || !editor) return;
+  const wf = getSelectedWorkflow();
+  const nextValue = JSON.stringify(wf || {}, null, 2);
+  if (document.activeElement !== editor && editor.value !== nextValue) editor.value = nextValue;
+  editor.disabled = isReadonly();
 }
 
 function renderStepList() {

@@ -31,6 +31,9 @@ class RunStateTests(unittest.TestCase):
     def test_refresh_artifacts_collects_workflow_files_and_expected_outputs(self) -> None:
         asyncio.run(self._run_refresh_case())
 
+    def test_record_step_event_updates_run_and_step_timeline(self) -> None:
+        asyncio.run(self._run_record_step_event_case())
+
     async def _run_refresh_case(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             workspace = Path(tmp) / "run"
@@ -69,6 +72,28 @@ class RunStateTests(unittest.TestCase):
             self.assertIn("prompts/generate_spec.md", paths)
             self.assertIn(".workflow/run-log.md", paths)
             self.assertTrue(bus.events)
+
+    async def _run_record_step_event_case(self) -> None:
+        run = {
+            "id": "run-1",
+            "workspace": ".",
+            "steps": [{"key": "build", "retry_count": 2}],
+        }
+        bus = FakeBus()
+        state = RunState(FakeStore({"runs": [run]}), bus)
+
+        await state.reset_retry_counts_from("run-1", 0)
+        await state.record_step_event(
+            "run-1",
+            "build",
+            "manual_retry",
+            "Manual retry requested from build; retry counters were reset from this step.",
+        )
+
+        self.assertEqual(run["steps"][0]["retry_count"], 0)
+        self.assertEqual(run["timeline"][0]["kind"], "manual_retry")
+        self.assertEqual(run["steps"][0]["events"][0]["kind"], "manual_retry")
+        self.assertTrue(bus.events)
 
 
 if __name__ == "__main__":

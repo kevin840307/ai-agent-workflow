@@ -170,6 +170,33 @@ body[data-page="workflow-designer"] {
   flex-wrap: wrap;
 }
 
+.designer-mode-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel-2);
+}
+
+.designer-mode-switch button {
+  min-height: 28px;
+  padding: 4px 10px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.designer-mode-switch button.active {
+  background: var(--accent);
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(15, 118, 110, 0.18);
+}
+
 .designer-action-group {
   display: inline-flex;
   align-items: center;
@@ -403,6 +430,48 @@ body[data-page="workflow-designer"] {
   display: grid;
   grid-template-columns: 320px minmax(0, 1fr);
   min-width: 0;
+}
+
+.designer-json-panel {
+  min-height: 620px;
+  border-top: 1px solid var(--line);
+  background: var(--panel);
+}
+
+.designer-json-panel[hidden] {
+  display: none;
+}
+
+.designer-json-editor {
+  display: block;
+  width: 100%;
+  min-height: 640px;
+  padding: 14px;
+  border: 0;
+  border-radius: 0;
+  outline: 0;
+  resize: vertical;
+  background: #0e1726;
+  color: #dbe7ff;
+  font-family: Consolas, Monaco, "Courier New", monospace;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+body[data-page="workflow-designer"][data-designer-mode="simple"] .designer-step-toolbar,
+body[data-page="workflow-designer"][data-designer-mode="simple"] .designer-tab[data-designer-tab="review"],
+body[data-page="workflow-designer"][data-designer-mode="simple"] .designer-tab[data-designer-tab="retry"],
+body[data-page="workflow-designer"][data-designer-mode="simple"] .designer-tab[data-designer-tab="gate"],
+body[data-page="workflow-designer"][data-designer-mode="simple"] .designer-tab[data-designer-tab="advanced"] {
+  display: none;
+}
+
+body[data-page="workflow-designer"][data-designer-mode="simple"] .designer-tabs {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+body[data-page="workflow-designer"][data-designer-mode="simple"] .designer-step-list-panel {
+  min-width: 280px;
 }
 
 .designer-step-list-panel,

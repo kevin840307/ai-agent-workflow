@@ -205,7 +205,11 @@ async def chat(session_id: str, body: runtime.CreateMessageRequest) -> dict:
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
 
-    history = [msg for msg in data["messages"] if msg["session_id"] == session_id]
+    history = [
+        msg
+        for msg in data["messages"]
+        if msg["session_id"] == session_id and msg.get("kind") == "chat"
+    ]
     user_msg = await runtime.append_session_message(session_id, "user", body.content, kind="chat")
     project_path = runtime.resolve_project_path(session.get("project_path"), runtime.ROOT)
 

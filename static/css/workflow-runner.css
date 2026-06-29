@@ -536,6 +536,7 @@ body.chat-mode .composer-box {
 .step-panel-layout {
   display: grid;
   grid-template-columns: 1fr;
+  gap: 12px;
   min-height: 0;
 }
 
@@ -627,6 +628,154 @@ body.chat-mode .composer-box {
   line-height: 1.35;
   max-height: 58px;
   overflow: auto;
+}
+
+.step-detail-empty,
+.step-detail-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.step-detail-empty {
+  padding: 12px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.step-detail-card {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+}
+
+.step-detail-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+.step-detail-head h3 {
+  margin: 3px 0 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 15px;
+}
+
+.step-detail-eyebrow {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.step-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.step-detail-grid > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-2);
+}
+
+.step-detail-grid span,
+.step-detail-grid small,
+.step-detail-section p {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.step-detail-grid strong,
+.step-detail-grid small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.step-detail-error {
+  display: grid;
+  gap: 4px;
+  padding: 9px 10px;
+  border: 1px solid #f5a99e;
+  border-radius: 8px;
+  background: #fff7f5;
+  color: var(--fail);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.step-detail-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.step-detail-section {
+  display: grid;
+  gap: 7px;
+}
+
+.step-detail-section > strong {
+  font-size: 12px;
+}
+
+.step-detail-events {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding-left: 18px;
+  color: var(--text);
+  font-size: 12px;
+}
+
+.step-detail-events li {
+  line-height: 1.35;
+}
+
+.step-detail-events span {
+  display: inline-flex;
+  margin-right: 6px;
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.step-detail-files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.step-detail-file {
+  max-width: 100%;
+  min-height: 26px;
+  padding: 4px 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  color: var(--accent-dark);
+  background: #effaf7;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+@media (max-width: 760px) {
+  .step-detail-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .badge {
