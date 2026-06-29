@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 import os
 from pathlib import Path
 import tempfile
+import time
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -30,6 +31,21 @@ def read_text(path: Path) -> str:
     return path.read_text(encoding="utf-8") if path.exists() else ""
 
 
+def _replace_with_retry(tmp: Path, path: Path, *, attempts: int = 12, delay_sec: float = 0.025) -> None:
+    for attempt in range(attempts):
+        try:
+            os.replace(tmp, path)
+            return
+        except PermissionError:
+            if attempt >= attempts - 1:
+                raise
+            time.sleep(delay_sec * (attempt + 1))
+        except OSError as exc:
+            if getattr(exc, "winerror", None) not in {5, 32} or attempt >= attempts - 1:
+                raise
+            time.sleep(delay_sec * (attempt + 1))
+
+
 def atomic_write_text(path: Path, content: str, *, encoding: str = "utf-8") -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     fd, tmp_name = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=str(path.parent))
@@ -39,7 +55,7 @@ def atomic_write_text(path: Path, content: str, *, encoding: str = "utf-8") -> N
             handle.write(content)
             handle.flush()
             os.fsync(handle.fileno())
-        os.replace(tmp, path)
+        _replace_with_retry(tmp, path)
         try:
             dir_fd = os.open(str(path.parent), os.O_RDONLY)
             try:

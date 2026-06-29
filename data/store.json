@@ -1,6 +1,294 @@
 {
   "sessions": [
     {
+      "id": "eccfb464-e2c4-43c0-89f9-97f56c76d72e",
+      "qwen_session_id": "eccfb464-e2c4-43c0-89f9-97f56c76d72e",
+      "agent_session_ids": {
+        "qwen": "eccfb464-e2c4-43c0-89f9-97f56c76d72e",
+        "opencode": null
+      },
+      "title": "Chat Agent",
+      "project_path": "C:\\Users\\kevin\\AppData\\Local\\Temp\\tmpcsga45_3",
+      "created_at": "2026-06-29T23:21:57.777539+00:00",
+      "updated_at": "2026-06-29T23:21:57.856540+00:00"
+    },
+    {
+      "id": "8af36e26-9a87-4a5a-8e25-4839bde30685",
+      "qwen_session_id": "8af36e26-9a87-4a5a-8e25-4839bde30685",
+      "agent_session_ids": {
+        "qwen": "8af36e26-9a87-4a5a-8e25-4839bde30685",
+        "opencode": null
+      },
+      "title": "Chat Repair",
+      "project_path": "C:\\Users\\kevin\\AppData\\Local\\Temp\\tmp5rqyg7ji",
+      "created_at": "2026-06-29T23:21:57.663733+00:00",
+      "updated_at": "2026-06-29T23:21:57.745315+00:00"
+    },
+    {
+      "id": "d58e8bf3-7861-4bb8-aea2-2170ea37c939",
+      "qwen_session_id": "d58e8bf3-7861-4bb8-aea2-2170ea37c939",
+      "agent_session_ids": {
+        "qwen": "d58e8bf3-7861-4bb8-aea2-2170ea37c939",
+        "opencode": null
+      },
+      "title": "Chat Boundary",
+      "project_path": "C:\\Users\\kevin\\AppData\\Local\\Temp\\tmpbbuaqhuf",
+      "created_at": "2026-06-29T23:21:57.520777+00:00",
+      "updated_at": "2026-06-29T23:21:57.628577+00:00"
+    },
+    {
+      "id": "2a037d5b-d80c-4f88-b929-f95095ec8728",
+      "qwen_session_id": "2a037d5b-d80c-4f88-b929-f95095ec8728",
+      "agent_session_ids": {
+        "qwen": "2a037d5b-d80c-4f88-b929-f95095ec8728",
+        "opencode": null
+      },
+      "title": "Idempotent Chat",
+      "project_path": "C:\\Users\\kevin\\AppData\\Local\\Temp\\tmppdimyyvt",
+      "created_at": "2026-06-29T23:21:57.389924+00:00",
+      "updated_at": "2026-06-29T23:21:57.478784+00:00"
+    },
+    {
+      "id": "ddbd9da2-209a-4d8a-89b3-93fa711c7061",
+      "qwen_session_id": "ddbd9da2-209a-4d8a-89b3-93fa711c7061",
+      "agent_session_ids": {
+        "qwen": "ddbd9da2-209a-4d8a-89b3-93fa711c7061",
+        "opencode": null
+      },
+      "title": "Chat Agent",
+      "project_path": "C:\\Users\\kevin\\AppData\\Local\\Temp\\tmp2s6k5ce6",
+      "created_at": "2026-06-29T23:21:20.338169+00:00",
+      "updated_at": "2026-06-29T23:21:20.418240+00:00"
+    },
+    {
+      "id": "e203ef7c-c217-4dca-8858-48916f3e6bc1",
+      "qwen_session_id": "e203ef7c-c217-4dca-8858-48916f3e6bc1",
+      "agent_session_ids": {
+        "qwen": "e203ef7c-c217-4dca-8858-48916f3e6bc1",
+        "opencode": null
+      },
+      "title": "Chat Repair",
+      "project_path": "C:\\Users\\kevin\\AppData\\Local\\Temp\\tmpapj54cj6",
+      "created_at": "2026-06-29T23:21:20.226836+00:00",
+      "updated_at": "2026-06-29T23:21:20.305943+00:00"
+    },
+    {
+      "id": "3c78dbf4-86c1-4a61-941a-f0099f357001",
+      "qwen_session_id": "3c78dbf4-86c1-4a61-941a-f0099f357001",
+      "agent_session_ids": {
+        "qwen": "3c78dbf4-86c1-4a61-941a-f0099f357001",
+        "opencode": null
+      },
+      "title": "Chat Boundary",
+      "project_path": "C:\\Users\\kevin\\AppData\\Local\\Temp\\tmpby3v65k4",
+      "created_at": "2026-06-29T23:21:20.087196+00:00",
+      "updated_at": "2026-06-29T23:21:20.192660+00:00"
+    },
+    {
+      "id": "67c1351a-87e0-42f1-bd90-dca99a500575",
+      "qwen_session_id": "67c1351a-87e0-42f1-bd90-dca99a500575",
+      "agent_session_ids": {
+        "qwen": "67c1351a-87e0-42f1-bd90-dca99a500575",
+        "opencode": null
+      },
+      "title": "Idempotent Chat",
+      "project_path": "C:\\Users\\kevin\\AppData\\Local\\Temp\\tmpzjo41oit",
+      "created_at": "2026-06-29T23:21:19.969425+00:00",
+      "updated_at": "2026-06-29T23:21:20.049112+00:00"
+    },
+    {
+      "id": "6c5ae507-4473-4888-b6c0-7a49d4d03ef0",
+      "qwen_session_id": "6c5ae507-4473-4888-b6c0-7a49d4d03ef0",
+      "agent_session_ids": {
+        "qwen": "6c5ae507-4473-4888-b6c0-7a49d4d03ef0",
+        "opencode": "6c5ae507-4473-4888-b6c0-7a49d4d03ef0"
+      },
+      "title": "Project B",
+      "project_path": "C:\\Users\\kevin\\AppData\\Local\\Temp\\tmpaayxqjxr\\project-b",
+      "created_at": "2026-06-29T23:19:59.225722+00:00",
+      "updated_at": "2026-06-29T23:19:59.225722+00:00"
+    },
+    {
+      "id": "1620e3e5-2886-4d5b-895d-502b443bb64b",
+      "qwen_session_id": "1620e3e5-2886-4d5b-895d-502b443bb64b",
+      "agent_session_ids": {
+        "qwen": "1620e3e5-2886-4d5b-895d-502b443bb64b",
+        "opencode": "1620e3e5-2886-4d5b-895d-502b443bb64b"
+      },
+      "title": "Project A",
+      "project_path": "C:\\Users\\kevin\\AppData\\Local\\Temp\\tmpaayxqjxr\\project-a",
+      "created_at": "2026-06-29T23:19:59.215954+00:00",
+      "updated_at": "2026-06-29T23:19:59.215954+00:00"
+    },
+    {
+      "id": "ba0bd136-663e-4f30-9de9-981b66ffc20c",
+      "qwen_session_id": "ba0bd136-663e-4f30-9de9-981b66ffc20c",
+      "agent_session_ids": {
+        "qwen": "ba0bd136-663e-4f30-9de9-981b66ffc20c",
+        "opencode": null
+      },
+      "title": "Chat Agent",
+      "project_path": "C:\\Users\\kevin\\AppData\\Local\\Temp\\tmp8k2a19fg",
+      "created_at": "2026-06-29T23:19:37.003755+00:00",
+      "updated_at": "2026-06-29T23:19:37.082410+00:00"
+    },
+    {
+      "id": "3984b3b5-51db-4f65-899a-752e2cfd3c44",
+      "qwen_session_id": "3984b3b5-51db-4f65-899a-752e2cfd3c44",
+      "agent_session_ids": {
+        "qwen": "3984b3b5-51db-4f65-899a-752e2cfd3c44",
+        "opencode": null
+      },
+      "title": "Chat Repair",
+      "project_path": "C:\\Users\\kevin\\AppData\\Local\\Temp\\tmp_phqv8cf",
+      "created_at": "2026-06-29T23:19:36.886097+00:00",
+      "updated_at": "2026-06-29T23:19:36.970036+00:00"
+    },
+    {
+      "id": "97fdc7b0-5bc0-4069-a9f8-d5ae6751b4fe",
+      "qwen_session_id": "97fdc7b0-5bc0-4069-a9f8-d5ae6751b4fe",
+      "agent_session_ids": {
+        "qwen": "97fdc7b0-5bc0-4069-a9f8-d5ae6751b4fe",
+        "opencode": null
+      },
+      "title": "Chat Boundary",
+      "project_path": "C:\\Users\\kevin\\AppData\\Local\\Temp\\tmpdc040oxj",
+      "created_at": "2026-06-29T23:19:36.743012+00:00",
+      "updated_at": "2026-06-29T23:19:36.853873+00:00"
+    },
+    {
+      "id": "370b2030-6507-4b83-b05c-df26bb5cf8ca",
+      "qwen_session_id": "370b2030-6507-4b83-b05c-df26bb5cf8ca",
+      "agent_session_ids": {
+        "qwen": "370b2030-6507-4b83-b05c-df26bb5cf8ca",
+        "opencode": null
+      },
+      "title": "Idempotent Chat",
+      "project_path": "C:\\Users\\kevin\\AppData\\Local\\Temp\\tmp8er2_yue",
+      "created_at": "2026-06-29T23:19:36.624290+00:00",
+      "updated_at": "2026-06-29T23:19:36.704928+00:00"
+    },
+    {
+      "id": "d5dff09c-f682-414d-95af-35ae595239c9",
+      "qwen_session_id": "d5dff09c-f682-414d-95af-35ae595239c9",
+      "agent_session_ids": {
+        "qwen": "d5dff09c-f682-414d-95af-35ae595239c9",
+        "opencode": null
+      },
+      "title": "Chat Agent",
+      "project_path": "C:\\Users\\kevin\\AppData\\Local\\Temp\\tmp_ypzu5ej",
+      "created_at": "2026-06-29T23:17:08.097145+00:00",
+      "updated_at": "2026-06-29T23:17:08.181743+00:00"
+    },
+    {
+      "id": "5945b8ff-5f61-45bd-b2c4-6ac2cdbe7d72",
+      "qwen_session_id": "5945b8ff-5f61-45bd-b2c4-6ac2cdbe7d72",
+      "agent_session_ids": {
+        "qwen": "5945b8ff-5f61-45bd-b2c4-6ac2cdbe7d72",
+        "opencode": null
+      },
+      "title": "Chat Repair",
+      "project_path": "C:\\Users\\kevin\\AppData\\Local\\Temp\\tmpfsa9yctq",
+      "created_at": "2026-06-29T23:17:07.980643+00:00",
+      "updated_at": "2026-06-29T23:17:08.061992+00:00"
+    },
+    {
+      "id": "24321940-b58d-4c94-945b-156c9d8ba31d",
+      "qwen_session_id": "24321940-b58d-4c94-945b-156c9d8ba31d",
+      "agent_session_ids": {
+        "qwen": "24321940-b58d-4c94-945b-156c9d8ba31d",
+        "opencode": null
+      },
+      "title": "Chat Boundary",
+      "project_path": "C:\\Users\\kevin\\AppData\\Local\\Temp\\tmp16lkvubj",
+      "created_at": "2026-06-29T23:17:07.846862+00:00",
+      "updated_at": "2026-06-29T23:17:07.949396+00:00"
+    },
+    {
+      "id": "d0381355-4835-44c6-950a-8b5862ee93ac",
+      "qwen_session_id": "d0381355-4835-44c6-950a-8b5862ee93ac",
+      "agent_session_ids": {
+        "qwen": "d0381355-4835-44c6-950a-8b5862ee93ac",
+        "opencode": null
+      },
+      "title": "Idempotent Chat",
+      "project_path": "C:\\Users\\kevin\\AppData\\Local\\Temp\\tmpmoh2mqpg",
+      "created_at": "2026-06-29T23:17:07.721260+00:00",
+      "updated_at": "2026-06-29T23:17:07.801946+00:00"
+    },
+    {
+      "id": "cced69f8-67ed-438a-8436-744519c3e8bc",
+      "qwen_session_id": "cced69f8-67ed-438a-8436-744519c3e8bc",
+      "agent_session_ids": {
+        "qwen": "cced69f8-67ed-438a-8436-744519c3e8bc",
+        "opencode": "cced69f8-67ed-438a-8436-744519c3e8bc"
+      },
+      "title": "Project B",
+      "project_path": "C:\\Users\\kevin\\AppData\\Local\\Temp\\tmpeba7acho\\project-b",
+      "created_at": "2026-06-29T23:16:03.464492+00:00",
+      "updated_at": "2026-06-29T23:16:03.464492+00:00"
+    },
+    {
+      "id": "8e5decde-b1d3-4654-ab50-ca5da9a1e4cb",
+      "qwen_session_id": "8e5decde-b1d3-4654-ab50-ca5da9a1e4cb",
+      "agent_session_ids": {
+        "qwen": "8e5decde-b1d3-4654-ab50-ca5da9a1e4cb",
+        "opencode": "8e5decde-b1d3-4654-ab50-ca5da9a1e4cb"
+      },
+      "title": "Project A",
+      "project_path": "C:\\Users\\kevin\\AppData\\Local\\Temp\\tmpeba7acho\\project-a",
+      "created_at": "2026-06-29T23:16:03.449844+00:00",
+      "updated_at": "2026-06-29T23:16:03.449844+00:00"
+    },
+    {
+      "id": "b5e46c27-5b0b-440f-bcf2-a708f1d3bc66",
+      "qwen_session_id": "b5e46c27-5b0b-440f-bcf2-a708f1d3bc66",
+      "agent_session_ids": {
+        "qwen": "b5e46c27-5b0b-440f-bcf2-a708f1d3bc66",
+        "opencode": null
+      },
+      "title": "Chat Agent",
+      "project_path": "C:\\Users\\kevin\\AppData\\Local\\Temp\\tmp5z3h8v89",
+      "created_at": "2026-06-29T23:15:41.054664+00:00",
+      "updated_at": "2026-06-29T23:15:41.122042+00:00"
+    },
+    {
+      "id": "f5b2d06b-cdf7-4fc9-a52c-fef9a6d334f7",
+      "qwen_session_id": "f5b2d06b-cdf7-4fc9-a52c-fef9a6d334f7",
+      "agent_session_ids": {
+        "qwen": "f5b2d06b-cdf7-4fc9-a52c-fef9a6d334f7",
+        "opencode": null
+      },
+      "title": "Chat Repair",
+      "project_path": "C:\\Users\\kevin\\AppData\\Local\\Temp\\tmpeaq1rn9v",
+      "created_at": "2026-06-29T23:15:40.954994+00:00",
+      "updated_at": "2026-06-29T23:15:41.022454+00:00"
+    },
+    {
+      "id": "70d9949f-2e2e-4af9-abf2-de739cd9212c",
+      "qwen_session_id": "70d9949f-2e2e-4af9-abf2-de739cd9212c",
+      "agent_session_ids": {
+        "qwen": "70d9949f-2e2e-4af9-abf2-de739cd9212c",
+        "opencode": null
+      },
+      "title": "Chat Boundary",
+      "project_path": "C:\\Users\\kevin\\AppData\\Local\\Temp\\tmpdwlyr_gl",
+      "created_at": "2026-06-29T23:15:40.828049+00:00",
+      "updated_at": "2026-06-29T23:15:40.924723+00:00"
+    },
+    {
+      "id": "40dd351e-2298-4c9f-a94d-115e21bbd7f8",
+      "qwen_session_id": "40dd351e-2298-4c9f-a94d-115e21bbd7f8",
+      "agent_session_ids": {
+        "qwen": "40dd351e-2298-4c9f-a94d-115e21bbd7f8",
+        "opencode": null
+      },
+      "title": "Idempotent Chat",
+      "project_path": "C:\\Users\\kevin\\AppData\\Local\\Temp\\tmpded317hh",
+      "created_at": "2026-06-29T23:15:40.709320+00:00",
+      "updated_at": "2026-06-29T23:15:40.787438+00:00"
+    },
+    {
       "id": "6ea63817-ab6f-4a4c-8074-527ea0af36cd",
       "qwen_session_id": "6ea63817-ab6f-4a4c-8074-527ea0af36cd",
       "agent_session_ids": {
@@ -3448,9 +3736,906 @@
       "kind": "chat",
       "status": "completed",
       "updated_at": "2026-06-29T16:57:41.300638+00:00"
+    },
+    {
+      "id": "c194e645-4e0f-4dff-b8b9-1ffb69a1c18b",
+      "session_id": "40dd351e-2298-4c9f-a94d-115e21bbd7f8",
+      "role": "user",
+      "content": "hello once",
+      "created_at": "2026-06-29T23:15:40.727872+00:00",
+      "kind": "chat",
+      "client_request_id": "req-1",
+      "status": "completed"
+    },
+    {
+      "id": "02d9bef2-20c4-4fa2-a284-e7c13f8f2b45",
+      "session_id": "40dd351e-2298-4c9f-a94d-115e21bbd7f8",
+      "role": "assistant",
+      "content": "idempotent answer",
+      "created_at": "2026-06-29T23:15:40.734708+00:00",
+      "kind": "chat",
+      "client_request_id": "req-1",
+      "status": "completed",
+      "updated_at": "2026-06-29T23:15:40.787438+00:00"
+    },
+    {
+      "id": "e6dac59b-0738-49d0-be21-f374c64732b1",
+      "session_id": "70d9949f-2e2e-4af9-abf2-de739cd9212c",
+      "role": "user",
+      "kind": "requirement",
+      "content": "workflow-only requirement",
+      "created_at": "2026-06-29T23:15:40.835863+00:00",
+      "status": "completed"
+    },
+    {
+      "id": "9e343a35-b0f5-4d9d-a3d3-aa48f241d659",
+      "session_id": "70d9949f-2e2e-4af9-abf2-de739cd9212c",
+      "role": "user",
+      "content": "chat follow up",
+      "created_at": "2026-06-29T23:15:40.863205+00:00",
+      "kind": "chat",
+      "status": "completed"
+    },
+    {
+      "id": "6637b9e0-e5cc-42b8-9943-abdef521823d",
+      "session_id": "70d9949f-2e2e-4af9-abf2-de739cd9212c",
+      "role": "assistant",
+      "content": "chat answer",
+      "created_at": "2026-06-29T23:15:40.880783+00:00",
+      "kind": "chat",
+      "status": "completed",
+      "updated_at": "2026-06-29T23:15:40.924723+00:00"
+    },
+    {
+      "id": "4374401e-0a17-4c36-b4d1-1c9e13ee1e9d",
+      "session_id": "f5b2d06b-cdf7-4fc9-a52c-fef9a6d334f7",
+      "role": "user",
+      "content": "你是opencode CLI嗎",
+      "created_at": "2026-06-29T23:15:40.969645+00:00",
+      "kind": "chat",
+      "status": "completed"
+    },
+    {
+      "id": "00378c42-e9f0-4308-a562-7f118fe30538",
+      "session_id": "f5b2d06b-cdf7-4fc9-a52c-fef9a6d334f7",
+      "role": "assistant",
+      "content": "我是透過 OpenCode CLI 執行的 agent。",
+      "created_at": "2026-06-29T23:15:40.976535+00:00",
+      "kind": "chat",
+      "status": "completed",
+      "updated_at": "2026-06-29T23:15:41.022454+00:00"
+    },
+    {
+      "id": "b569cd48-566a-4bd8-b4f9-212968d2e117",
+      "session_id": "b5e46c27-5b0b-440f-bcf2-a708f1d3bc66",
+      "role": "user",
+      "content": "hello",
+      "created_at": "2026-06-29T23:15:41.070289+00:00",
+      "kind": "chat",
+      "status": "completed"
+    },
+    {
+      "id": "35c4503a-eabc-4f14-b7c2-36853120b2d2",
+      "session_id": "b5e46c27-5b0b-440f-bcf2-a708f1d3bc66",
+      "role": "assistant",
+      "content": "opencode answer",
+      "created_at": "2026-06-29T23:15:41.077123+00:00",
+      "kind": "chat",
+      "status": "completed",
+      "updated_at": "2026-06-29T23:15:41.122042+00:00"
+    },
+    {
+      "id": "45460269-5031-474d-9f60-dbcd119fa398",
+      "session_id": "d0381355-4835-44c6-950a-8b5862ee93ac",
+      "role": "user",
+      "content": "hello once",
+      "created_at": "2026-06-29T23:17:07.739387+00:00",
+      "kind": "chat",
+      "client_request_id": "req-1",
+      "status": "completed"
+    },
+    {
+      "id": "80537eca-18e2-474c-b7e3-678c02a6a8cb",
+      "session_id": "d0381355-4835-44c6-950a-8b5862ee93ac",
+      "role": "assistant",
+      "content": "idempotent answer",
+      "created_at": "2026-06-29T23:17:07.747198+00:00",
+      "kind": "chat",
+      "client_request_id": "req-1",
+      "status": "completed",
+      "updated_at": "2026-06-29T23:17:07.801946+00:00"
+    },
+    {
+      "id": "957cc344-12fc-4aef-9052-97f1f1c2af2b",
+      "session_id": "24321940-b58d-4c94-945b-156c9d8ba31d",
+      "role": "user",
+      "kind": "requirement",
+      "content": "workflow-only requirement",
+      "created_at": "2026-06-29T23:17:07.856627+00:00",
+      "status": "completed"
+    },
+    {
+      "id": "e998f6f1-5603-418b-9ad6-98975dcbaf7b",
+      "session_id": "24321940-b58d-4c94-945b-156c9d8ba31d",
+      "role": "user",
+      "content": "chat follow up",
+      "created_at": "2026-06-29T23:17:07.885925+00:00",
+      "kind": "chat",
+      "status": "completed"
+    },
+    {
+      "id": "e097b386-eb58-45b8-bd72-778f268a5cae",
+      "session_id": "24321940-b58d-4c94-945b-156c9d8ba31d",
+      "role": "assistant",
+      "content": "chat answer",
+      "created_at": "2026-06-29T23:17:07.901549+00:00",
+      "kind": "chat",
+      "status": "completed",
+      "updated_at": "2026-06-29T23:17:07.949396+00:00"
+    },
+    {
+      "id": "0dbb2e3e-1afb-41a7-9718-3dfaf815fc5c",
+      "session_id": "5945b8ff-5f61-45bd-b2c4-6ac2cdbe7d72",
+      "role": "user",
+      "content": "你是opencode CLI嗎",
+      "created_at": "2026-06-29T23:17:07.998755+00:00",
+      "kind": "chat",
+      "status": "completed"
+    },
+    {
+      "id": "a27b26e2-3475-4e0d-b35f-16b8c1a88542",
+      "session_id": "5945b8ff-5f61-45bd-b2c4-6ac2cdbe7d72",
+      "role": "assistant",
+      "content": "我是透過 OpenCode CLI 執行的 agent。",
+      "created_at": "2026-06-29T23:17:08.006567+00:00",
+      "kind": "chat",
+      "status": "completed",
+      "updated_at": "2026-06-29T23:17:08.061992+00:00"
+    },
+    {
+      "id": "b46c086a-ba88-4045-8969-440631c3f5e5",
+      "session_id": "d5dff09c-f682-414d-95af-35ae595239c9",
+      "role": "user",
+      "content": "hello",
+      "created_at": "2026-06-29T23:17:08.118642+00:00",
+      "kind": "chat",
+      "status": "completed"
+    },
+    {
+      "id": "b610fd4a-5045-41e1-ad53-a8eaffef2650",
+      "session_id": "d5dff09c-f682-414d-95af-35ae595239c9",
+      "role": "assistant",
+      "content": "opencode answer",
+      "created_at": "2026-06-29T23:17:08.127430+00:00",
+      "kind": "chat",
+      "status": "completed",
+      "updated_at": "2026-06-29T23:17:08.181743+00:00"
+    },
+    {
+      "id": "527bd58c-ef18-402b-a0ae-f301c7263f78",
+      "session_id": "370b2030-6507-4b83-b05c-df26bb5cf8ca",
+      "role": "user",
+      "content": "hello once",
+      "created_at": "2026-06-29T23:19:36.643845+00:00",
+      "kind": "chat",
+      "client_request_id": "req-1",
+      "status": "completed"
+    },
+    {
+      "id": "e3b7ccae-517e-49a0-9666-c05467a0ce2c",
+      "session_id": "370b2030-6507-4b83-b05c-df26bb5cf8ca",
+      "role": "assistant",
+      "content": "idempotent answer",
+      "created_at": "2026-06-29T23:19:36.652637+00:00",
+      "kind": "chat",
+      "client_request_id": "req-1",
+      "status": "completed",
+      "updated_at": "2026-06-29T23:19:36.704928+00:00"
+    },
+    {
+      "id": "c5e06638-19bd-4a06-bebf-ae1e99f5b7ad",
+      "session_id": "97fdc7b0-5bc0-4069-a9f8-d5ae6751b4fe",
+      "role": "user",
+      "kind": "requirement",
+      "content": "workflow-only requirement",
+      "created_at": "2026-06-29T23:19:36.755707+00:00",
+      "status": "completed"
+    },
+    {
+      "id": "9513e161-1caa-46b7-8994-e6717abc3be2",
+      "session_id": "97fdc7b0-5bc0-4069-a9f8-d5ae6751b4fe",
+      "role": "user",
+      "content": "chat follow up",
+      "created_at": "2026-06-29T23:19:36.785981+00:00",
+      "kind": "chat",
+      "status": "completed"
+    },
+    {
+      "id": "73a4edcc-4a6f-4f64-b090-014db5fe8d29",
+      "session_id": "97fdc7b0-5bc0-4069-a9f8-d5ae6751b4fe",
+      "role": "assistant",
+      "content": "chat answer",
+      "created_at": "2026-06-29T23:19:36.800625+00:00",
+      "kind": "chat",
+      "status": "completed",
+      "updated_at": "2026-06-29T23:19:36.853873+00:00"
+    },
+    {
+      "id": "7574682e-81eb-41e8-bb31-50b4789ba8d0",
+      "session_id": "3984b3b5-51db-4f65-899a-752e2cfd3c44",
+      "role": "user",
+      "content": "你是opencode CLI嗎",
+      "created_at": "2026-06-29T23:19:36.904610+00:00",
+      "kind": "chat",
+      "status": "completed"
+    },
+    {
+      "id": "04b6dbae-835e-454a-90ea-8e49b98675bd",
+      "session_id": "3984b3b5-51db-4f65-899a-752e2cfd3c44",
+      "role": "assistant",
+      "content": "我是透過 OpenCode CLI 執行的 agent。",
+      "created_at": "2026-06-29T23:19:36.913398+00:00",
+      "kind": "chat",
+      "status": "completed",
+      "updated_at": "2026-06-29T23:19:36.970036+00:00"
+    },
+    {
+      "id": "407bc6e8-ef94-42c0-9d7d-a14d6e35308d",
+      "session_id": "ba0bd136-663e-4f30-9de9-981b66ffc20c",
+      "role": "user",
+      "content": "hello",
+      "created_at": "2026-06-29T23:19:37.020355+00:00",
+      "kind": "chat",
+      "status": "completed"
+    },
+    {
+      "id": "2af75dbe-2bb2-4ed9-ac1a-0a315eae6ed3",
+      "session_id": "ba0bd136-663e-4f30-9de9-981b66ffc20c",
+      "role": "assistant",
+      "content": "opencode answer",
+      "created_at": "2026-06-29T23:19:37.028168+00:00",
+      "kind": "chat",
+      "status": "completed",
+      "updated_at": "2026-06-29T23:19:37.082410+00:00"
+    },
+    {
+      "id": "e8b765e9-d3f1-4f72-9752-30aba49f9723",
+      "session_id": "67c1351a-87e0-42f1-bd90-dca99a500575",
+      "role": "user",
+      "content": "hello once",
+      "created_at": "2026-06-29T23:21:19.988955+00:00",
+      "kind": "chat",
+      "client_request_id": "req-1",
+      "status": "completed"
+    },
+    {
+      "id": "37625123-9279-4a8b-9aca-6f16e4584d0c",
+      "session_id": "67c1351a-87e0-42f1-bd90-dca99a500575",
+      "role": "assistant",
+      "content": "idempotent answer",
+      "created_at": "2026-06-29T23:21:19.996765+00:00",
+      "kind": "chat",
+      "client_request_id": "req-1",
+      "status": "completed",
+      "updated_at": "2026-06-29T23:21:20.049112+00:00"
+    },
+    {
+      "id": "57f0018d-16a9-4648-ba51-f232b1287c47",
+      "session_id": "3c78dbf4-86c1-4a61-941a-f0099f357001",
+      "role": "user",
+      "kind": "requirement",
+      "content": "workflow-only requirement",
+      "created_at": "2026-06-29T23:21:20.096961+00:00",
+      "status": "completed"
+    },
+    {
+      "id": "901cf734-ffe1-4b5d-a411-945e99936194",
+      "session_id": "3c78dbf4-86c1-4a61-941a-f0099f357001",
+      "role": "user",
+      "content": "chat follow up",
+      "created_at": "2026-06-29T23:21:20.126256+00:00",
+      "kind": "chat",
+      "status": "completed"
+    },
+    {
+      "id": "b9161728-425c-48b9-b992-4867dec879da",
+      "session_id": "3c78dbf4-86c1-4a61-941a-f0099f357001",
+      "role": "assistant",
+      "content": "chat answer",
+      "created_at": "2026-06-29T23:21:20.140906+00:00",
+      "kind": "chat",
+      "status": "completed",
+      "updated_at": "2026-06-29T23:21:20.192660+00:00"
+    },
+    {
+      "id": "324a6a0e-b5df-4a34-90c7-d1e3aaebb3c1",
+      "session_id": "e203ef7c-c217-4dca-8858-48916f3e6bc1",
+      "role": "user",
+      "content": "你是opencode CLI嗎",
+      "created_at": "2026-06-29T23:21:20.244413+00:00",
+      "kind": "chat",
+      "status": "completed"
+    },
+    {
+      "id": "855911eb-46b2-4dc1-8bbd-87194446f740",
+      "session_id": "e203ef7c-c217-4dca-8858-48916f3e6bc1",
+      "role": "assistant",
+      "content": "我是透過 OpenCode CLI 執行的 agent。",
+      "created_at": "2026-06-29T23:21:20.254179+00:00",
+      "kind": "chat",
+      "status": "completed",
+      "updated_at": "2026-06-29T23:21:20.305943+00:00"
+    },
+    {
+      "id": "4a5929e4-f5dd-48a3-8e08-12774999b07b",
+      "session_id": "ddbd9da2-209a-4d8a-89b3-93fa711c7061",
+      "role": "user",
+      "content": "hello",
+      "created_at": "2026-06-29T23:21:20.357698+00:00",
+      "kind": "chat",
+      "status": "completed"
+    },
+    {
+      "id": "f9e4d9d7-31eb-4dcd-a830-6021f6a1ff86",
+      "session_id": "ddbd9da2-209a-4d8a-89b3-93fa711c7061",
+      "role": "assistant",
+      "content": "opencode answer",
+      "created_at": "2026-06-29T23:21:20.365511+00:00",
+      "kind": "chat",
+      "status": "completed",
+      "updated_at": "2026-06-29T23:21:20.418240+00:00"
+    },
+    {
+      "id": "0e4b2186-5a4a-4b33-843e-a0cff3f08524",
+      "session_id": "2a037d5b-d80c-4f88-b929-f95095ec8728",
+      "role": "user",
+      "content": "hello once",
+      "created_at": "2026-06-29T23:21:57.411407+00:00",
+      "kind": "chat",
+      "client_request_id": "req-1",
+      "status": "completed"
+    },
+    {
+      "id": "96e41326-7d70-4d73-9604-394cf4c08e0c",
+      "session_id": "2a037d5b-d80c-4f88-b929-f95095ec8728",
+      "role": "assistant",
+      "content": "idempotent answer",
+      "created_at": "2026-06-29T23:21:57.421174+00:00",
+      "kind": "chat",
+      "client_request_id": "req-1",
+      "status": "completed",
+      "updated_at": "2026-06-29T23:21:57.478784+00:00"
+    },
+    {
+      "id": "8a9cdb1a-9b46-4a0b-a2ed-1df5d5fb4607",
+      "session_id": "d58e8bf3-7861-4bb8-aea2-2170ea37c939",
+      "role": "user",
+      "kind": "requirement",
+      "content": "workflow-only requirement",
+      "created_at": "2026-06-29T23:21:57.534445+00:00",
+      "status": "completed"
+    },
+    {
+      "id": "d172dbbd-0744-49c1-925c-77ccb15ba870",
+      "session_id": "d58e8bf3-7861-4bb8-aea2-2170ea37c939",
+      "role": "user",
+      "content": "chat follow up",
+      "created_at": "2026-06-29T23:21:57.564717+00:00",
+      "kind": "chat",
+      "status": "completed"
+    },
+    {
+      "id": "7bbf66dc-49f4-48db-943b-52828a3243ec",
+      "session_id": "d58e8bf3-7861-4bb8-aea2-2170ea37c939",
+      "role": "assistant",
+      "content": "chat answer",
+      "created_at": "2026-06-29T23:21:57.579362+00:00",
+      "kind": "chat",
+      "status": "completed",
+      "updated_at": "2026-06-29T23:21:57.628577+00:00"
+    },
+    {
+      "id": "eb1e80d8-dedc-476c-8b84-248d8f9ad85f",
+      "session_id": "8af36e26-9a87-4a5a-8e25-4839bde30685",
+      "role": "user",
+      "content": "你是opencode CLI嗎",
+      "created_at": "2026-06-29T23:21:57.684239+00:00",
+      "kind": "chat",
+      "status": "completed"
+    },
+    {
+      "id": "ce1c7dc8-f1ef-411d-b873-0608452dc55e",
+      "session_id": "8af36e26-9a87-4a5a-8e25-4839bde30685",
+      "role": "assistant",
+      "content": "我是透過 OpenCode CLI 執行的 agent。",
+      "created_at": "2026-06-29T23:21:57.692581+00:00",
+      "kind": "chat",
+      "status": "completed",
+      "updated_at": "2026-06-29T23:21:57.745315+00:00"
+    },
+    {
+      "id": "4e04f5da-602f-4c35-88ac-ce03b21637ba",
+      "session_id": "eccfb464-e2c4-43c0-89f9-97f56c76d72e",
+      "role": "user",
+      "content": "hello",
+      "created_at": "2026-06-29T23:21:57.795119+00:00",
+      "kind": "chat",
+      "status": "completed"
+    },
+    {
+      "id": "28787e76-51ba-4248-b5ee-77a9f5c147e7",
+      "session_id": "eccfb464-e2c4-43c0-89f9-97f56c76d72e",
+      "role": "assistant",
+      "content": "opencode answer",
+      "created_at": "2026-06-29T23:21:57.803445+00:00",
+      "kind": "chat",
+      "status": "completed",
+      "updated_at": "2026-06-29T23:21:57.856540+00:00"
     }
   ],
   "runs": [
+    {
+      "id": "edc8765b-aa3a-44db-80d0-06b003251f35",
+      "session_id": "6c5ae507-4473-4888-b6c0-7a49d4d03ef0",
+      "qwen_session_id": "6c5ae507-4473-4888-b6c0-7a49d4d03ef0",
+      "agent_session_ids": {
+        "qwen": "6c5ae507-4473-4888-b6c0-7a49d4d03ef0",
+        "opencode": "6c5ae507-4473-4888-b6c0-7a49d4d03ef0"
+      },
+      "status": "failed",
+      "error": "WorkflowError: Retry stopped: raw_artifact already reached max retries (0/0). Last failure from raw_artifact: [WinError 5] 存取被拒。: 'C:\\\\Users\\\\kevin\\\\testllm\\\\data\\\\.store.json.8i3t_nhb.tmp' -> 'C:\\\\Users\\\\kevin\\\\testllm\\\\data\\\\store.json'",
+      "workspace": "C:\\Users\\kevin\\AppData\\Local\\Temp\\tmpaayxqjxr\\project-b\\.qwen-workflow\\runs\\session-6c5ae507-4473-4888-b6c0-7a49d4d03ef0\\run-edc8765b-aa3a-44db-80d0-06b003251f35",
+      "project_path": "C:\\Users\\kevin\\AppData\\Local\\Temp\\tmpaayxqjxr\\project-b",
+      "workflow_id": "isolation-workflow",
+      "workflow_folder": "system-controlled-qwen",
+      "workflow_name": "isolation-workflow",
+      "skill_root": "",
+      "test_command": null,
+      "steps": [
+        {
+          "key": "raw_artifact",
+          "title": "Raw Artifact",
+          "kind": "agent",
+          "type": "ai",
+          "agent": "",
+          "status": "failed",
+          "started_at": null,
+          "ended_at": "2026-06-29T23:19:59.686968+00:00",
+          "error": "Retry stopped: raw_artifact already reached max retries (0/0). Last failure from raw_artifact: [WinError 5] 存取被拒。: 'C:\\\\Users\\\\kevin\\\\testllm\\\\data\\\\.store.json.8i3t_nhb.tmp' -> 'C:\\\\Users\\\\kevin\\\\testllm\\\\data\\\\store.json'",
+          "retry_count": 0,
+          "config": {
+            "id": "test-raw_artifact",
+            "key": "raw_artifact",
+            "name": "Raw Artifact",
+            "type": "ai",
+            "enabled": true,
+            "templatePath": "prompts/01_spec.md",
+            "filename": "raw.md",
+            "outputFile": "raw.md",
+            "maxRetries": 0,
+            "failAction": "same_step",
+            "retryFromStepKey": "",
+            "allowInteraction": false,
+            "expectedFiles": [
+              "raw.md"
+            ],
+            "validator": "",
+            "reviewMode": "none",
+            "timeoutEnabled": false,
+            "timeoutMinutes": 0,
+            "injectFailureFeedback": true,
+            "contextArtifacts": []
+          },
+          "max_retries": 0,
+          "retry_from_step_key": "",
+          "fail_action": "same_step",
+          "allow_interaction": false,
+          "pause_after_step": false,
+          "events": []
+        }
+      ],
+      "artifacts": [
+        {
+          "id": "edc8765b-aa3a-44db-80d0-06b003251f35:requirement.md",
+          "name": "requirement.md",
+          "path": "requirement.md",
+          "size": 36,
+          "updated_at": "2026-06-29T23:19:59.754877+00:00"
+        },
+        {
+          "id": "edc8765b-aa3a-44db-80d0-06b003251f35:.workflow|run-log.md",
+          "name": "run-log.md",
+          "path": ".workflow/run-log.md",
+          "size": 857,
+          "updated_at": "2026-06-29T23:19:59.754877+00:00"
+        },
+        {
+          "id": "edc8765b-aa3a-44db-80d0-06b003251f35:.workflow|state.json",
+          "name": "state.json",
+          "path": ".workflow/state.json",
+          "size": 3350,
+          "updated_at": "2026-06-29T23:19:59.754877+00:00"
+        }
+      ],
+      "timeline": [],
+      "created_at": "2026-06-29T23:19:59.606895+00:00",
+      "updated_at": "2026-06-29T23:19:59.754877+00:00",
+      "started_at": "2026-06-29T23:19:59.654742+00:00",
+      "ended_at": "2026-06-29T23:19:59.728956+00:00"
+    },
+    {
+      "id": "300036f0-6969-4c04-928f-7d4fab02709d",
+      "session_id": "1620e3e5-2886-4d5b-895d-502b443bb64b",
+      "qwen_session_id": "1620e3e5-2886-4d5b-895d-502b443bb64b",
+      "agent_session_ids": {
+        "qwen": "1620e3e5-2886-4d5b-895d-502b443bb64b",
+        "opencode": "1620e3e5-2886-4d5b-895d-502b443bb64b"
+      },
+      "status": "done",
+      "error": null,
+      "workspace": "C:\\Users\\kevin\\AppData\\Local\\Temp\\tmpaayxqjxr\\project-a\\.qwen-workflow\\runs\\session-1620e3e5-2886-4d5b-895d-502b443bb64b\\run-300036f0-6969-4c04-928f-7d4fab02709d",
+      "project_path": "C:\\Users\\kevin\\AppData\\Local\\Temp\\tmpaayxqjxr\\project-a",
+      "workflow_id": "isolation-workflow",
+      "workflow_folder": "system-controlled-qwen",
+      "workflow_name": "isolation-workflow",
+      "skill_root": "",
+      "test_command": null,
+      "steps": [
+        {
+          "key": "raw_artifact",
+          "title": "Raw Artifact",
+          "kind": "agent",
+          "type": "ai",
+          "agent": "",
+          "status": "passed",
+          "started_at": "2026-06-29T23:19:59.317510+00:00",
+          "ended_at": "2026-06-29T23:19:59.494598+00:00",
+          "error": null,
+          "retry_count": 0,
+          "config": {
+            "id": "test-raw_artifact",
+            "key": "raw_artifact",
+            "name": "Raw Artifact",
+            "type": "ai",
+            "enabled": true,
+            "templatePath": "prompts/01_spec.md",
+            "filename": "raw.md",
+            "outputFile": "raw.md",
+            "maxRetries": 0,
+            "failAction": "same_step",
+            "retryFromStepKey": "",
+            "allowInteraction": false,
+            "expectedFiles": [
+              "raw.md"
+            ],
+            "validator": "",
+            "reviewMode": "none",
+            "timeoutEnabled": false,
+            "timeoutMinutes": 0,
+            "injectFailureFeedback": true,
+            "contextArtifacts": []
+          },
+          "max_retries": 0,
+          "retry_from_step_key": "",
+          "fail_action": "same_step",
+          "allow_interaction": false,
+          "pause_after_step": false,
+          "events": [
+            {
+              "time": "2026-06-29T23:19:59.341923+00:00",
+              "ts": "2026-06-29T23:19:59.341923+00:00",
+              "step_key": "raw_artifact",
+              "stepKey": "raw_artifact",
+              "kind": "started",
+              "type": "started",
+              "message": "raw_artifact: started"
+            },
+            {
+              "time": "2026-06-29T23:19:59.513149+00:00",
+              "ts": "2026-06-29T23:19:59.513149+00:00",
+              "step_key": "raw_artifact",
+              "stepKey": "raw_artifact",
+              "kind": "passed",
+              "type": "passed",
+              "message": "raw_artifact: passed"
+            }
+          ],
+          "last_event": "raw_artifact: passed"
+        }
+      ],
+      "artifacts": [
+        {
+          "id": "300036f0-6969-4c04-928f-7d4fab02709d:requirement.md",
+          "name": "requirement.md",
+          "path": "requirement.md",
+          "size": 36,
+          "updated_at": "2026-06-29T23:19:59.562951+00:00"
+        },
+        {
+          "id": "300036f0-6969-4c04-928f-7d4fab02709d:.workflow|run-log.md",
+          "name": "run-log.md",
+          "path": ".workflow/run-log.md",
+          "size": 1344,
+          "updated_at": "2026-06-29T23:19:59.562951+00:00"
+        },
+        {
+          "id": "300036f0-6969-4c04-928f-7d4fab02709d:.workflow|state.json",
+          "name": "state.json",
+          "path": ".workflow/state.json",
+          "size": 4503,
+          "updated_at": "2026-06-29T23:19:59.563928+00:00"
+        },
+        {
+          "id": "300036f0-6969-4c04-928f-7d4fab02709d:prompts|raw_artifact.md",
+          "name": "raw_artifact.md",
+          "path": "prompts/raw_artifact.md",
+          "size": 2890,
+          "updated_at": "2026-06-29T23:19:59.563928+00:00"
+        },
+        {
+          "id": "300036f0-6969-4c04-928f-7d4fab02709d:output|raw.md",
+          "name": "raw.md",
+          "path": "output/raw.md",
+          "size": 35,
+          "updated_at": "2026-06-29T23:19:59.563928+00:00"
+        }
+      ],
+      "timeline": [
+        {
+          "time": "2026-06-29T23:19:59.341923+00:00",
+          "ts": "2026-06-29T23:19:59.341923+00:00",
+          "step_key": "raw_artifact",
+          "stepKey": "raw_artifact",
+          "kind": "started",
+          "type": "started",
+          "message": "raw_artifact: started"
+        },
+        {
+          "time": "2026-06-29T23:19:59.513149+00:00",
+          "ts": "2026-06-29T23:19:59.513149+00:00",
+          "step_key": "raw_artifact",
+          "stepKey": "raw_artifact",
+          "kind": "passed",
+          "type": "passed",
+          "message": "raw_artifact: passed"
+        }
+      ],
+      "created_at": "2026-06-29T23:19:59.256968+00:00",
+      "updated_at": "2026-06-29T23:19:59.563928+00:00",
+      "started_at": "2026-06-29T23:19:59.299934+00:00",
+      "ended_at": "2026-06-29T23:19:59.541468+00:00"
+    },
+    {
+      "id": "41165083-0809-469a-8757-bd24696d872d",
+      "session_id": "cced69f8-67ed-438a-8436-744519c3e8bc",
+      "qwen_session_id": "cced69f8-67ed-438a-8436-744519c3e8bc",
+      "agent_session_ids": {
+        "qwen": "cced69f8-67ed-438a-8436-744519c3e8bc",
+        "opencode": "cced69f8-67ed-438a-8436-744519c3e8bc"
+      },
+      "status": "failed",
+      "error": "WorkflowError: Retry stopped: raw_artifact already reached max retries (0/0). Last failure from raw_artifact: [WinError 5] 存取被拒。: 'C:\\\\Users\\\\kevin\\\\testllm\\\\data\\\\.store.json.lwazst60.tmp' -> 'C:\\\\Users\\\\kevin\\\\testllm\\\\data\\\\store.json'",
+      "workspace": "C:\\Users\\kevin\\AppData\\Local\\Temp\\tmpeba7acho\\project-b\\.qwen-workflow\\runs\\session-cced69f8-67ed-438a-8436-744519c3e8bc\\run-41165083-0809-469a-8757-bd24696d872d",
+      "project_path": "C:\\Users\\kevin\\AppData\\Local\\Temp\\tmpeba7acho\\project-b",
+      "workflow_id": "isolation-workflow",
+      "workflow_folder": "system-controlled-qwen",
+      "workflow_name": "isolation-workflow",
+      "skill_root": "",
+      "test_command": null,
+      "steps": [
+        {
+          "key": "raw_artifact",
+          "title": "Raw Artifact",
+          "kind": "agent",
+          "type": "ai",
+          "agent": "",
+          "status": "failed",
+          "started_at": null,
+          "ended_at": "2026-06-29T23:16:03.974766+00:00",
+          "error": "Retry stopped: raw_artifact already reached max retries (0/0). Last failure from raw_artifact: [WinError 5] 存取被拒。: 'C:\\\\Users\\\\kevin\\\\testllm\\\\data\\\\.store.json.lwazst60.tmp' -> 'C:\\\\Users\\\\kevin\\\\testllm\\\\data\\\\store.json'",
+          "retry_count": 0,
+          "config": {
+            "id": "test-raw_artifact",
+            "key": "raw_artifact",
+            "name": "Raw Artifact",
+            "type": "ai",
+            "enabled": true,
+            "templatePath": "prompts/01_spec.md",
+            "filename": "raw.md",
+            "outputFile": "raw.md",
+            "maxRetries": 0,
+            "failAction": "same_step",
+            "retryFromStepKey": "",
+            "allowInteraction": false,
+            "expectedFiles": [
+              "raw.md"
+            ],
+            "validator": "",
+            "reviewMode": "none",
+            "timeoutEnabled": false,
+            "timeoutMinutes": 0,
+            "injectFailureFeedback": true,
+            "contextArtifacts": []
+          },
+          "max_retries": 0,
+          "retry_from_step_key": "",
+          "fail_action": "same_step",
+          "allow_interaction": false,
+          "pause_after_step": false,
+          "events": []
+        }
+      ],
+      "artifacts": [
+        {
+          "id": "41165083-0809-469a-8757-bd24696d872d:requirement.md",
+          "name": "requirement.md",
+          "path": "requirement.md",
+          "size": 36,
+          "updated_at": "2026-06-29T23:16:04.043646+00:00"
+        },
+        {
+          "id": "41165083-0809-469a-8757-bd24696d872d:.workflow|run-log.md",
+          "name": "run-log.md",
+          "path": ".workflow/run-log.md",
+          "size": 857,
+          "updated_at": "2026-06-29T23:16:04.043646+00:00"
+        },
+        {
+          "id": "41165083-0809-469a-8757-bd24696d872d:.workflow|state.json",
+          "name": "state.json",
+          "path": ".workflow/state.json",
+          "size": 3350,
+          "updated_at": "2026-06-29T23:16:04.043646+00:00"
+        }
+      ],
+      "timeline": [],
+      "created_at": "2026-06-29T23:16:03.894693+00:00",
+      "updated_at": "2026-06-29T23:16:04.043646+00:00",
+      "started_at": "2026-06-29T23:16:03.942542+00:00",
+      "ended_at": "2026-06-29T23:16:04.018710+00:00"
+    },
+    {
+      "id": "479881cf-7ce1-4fc9-bc27-ec115b08df56",
+      "session_id": "8e5decde-b1d3-4654-ab50-ca5da9a1e4cb",
+      "qwen_session_id": "8e5decde-b1d3-4654-ab50-ca5da9a1e4cb",
+      "agent_session_ids": {
+        "qwen": "8e5decde-b1d3-4654-ab50-ca5da9a1e4cb",
+        "opencode": "8e5decde-b1d3-4654-ab50-ca5da9a1e4cb"
+      },
+      "status": "done",
+      "error": null,
+      "workspace": "C:\\Users\\kevin\\AppData\\Local\\Temp\\tmpeba7acho\\project-a\\.qwen-workflow\\runs\\session-8e5decde-b1d3-4654-ab50-ca5da9a1e4cb\\run-479881cf-7ce1-4fc9-bc27-ec115b08df56",
+      "project_path": "C:\\Users\\kevin\\AppData\\Local\\Temp\\tmpeba7acho\\project-a",
+      "workflow_id": "isolation-workflow",
+      "workflow_folder": "system-controlled-qwen",
+      "workflow_name": "isolation-workflow",
+      "skill_root": "",
+      "test_command": null,
+      "steps": [
+        {
+          "key": "raw_artifact",
+          "title": "Raw Artifact",
+          "kind": "agent",
+          "type": "ai",
+          "agent": "",
+          "status": "passed",
+          "started_at": "2026-06-29T23:16:03.569953+00:00",
+          "ended_at": "2026-06-29T23:16:03.760913+00:00",
+          "error": null,
+          "retry_count": 0,
+          "config": {
+            "id": "test-raw_artifact",
+            "key": "raw_artifact",
+            "name": "Raw Artifact",
+            "type": "ai",
+            "enabled": true,
+            "templatePath": "prompts/01_spec.md",
+            "filename": "raw.md",
+            "outputFile": "raw.md",
+            "maxRetries": 0,
+            "failAction": "same_step",
+            "retryFromStepKey": "",
+            "allowInteraction": false,
+            "expectedFiles": [
+              "raw.md"
+            ],
+            "validator": "",
+            "reviewMode": "none",
+            "timeoutEnabled": false,
+            "timeoutMinutes": 0,
+            "injectFailureFeedback": true,
+            "contextArtifacts": []
+          },
+          "max_retries": 0,
+          "retry_from_step_key": "",
+          "fail_action": "same_step",
+          "allow_interaction": false,
+          "pause_after_step": false,
+          "events": [
+            {
+              "time": "2026-06-29T23:16:03.595340+00:00",
+              "ts": "2026-06-29T23:16:03.595340+00:00",
+              "step_key": "raw_artifact",
+              "stepKey": "raw_artifact",
+              "kind": "started",
+              "type": "started",
+              "message": "raw_artifact: started"
+            },
+            {
+              "time": "2026-06-29T23:16:03.781419+00:00",
+              "ts": "2026-06-29T23:16:03.781419+00:00",
+              "step_key": "raw_artifact",
+              "stepKey": "raw_artifact",
+              "kind": "passed",
+              "type": "passed",
+              "message": "raw_artifact: passed"
+            }
+          ],
+          "last_event": "raw_artifact: passed"
+        }
+      ],
+      "artifacts": [
+        {
+          "id": "479881cf-7ce1-4fc9-bc27-ec115b08df56:requirement.md",
+          "name": "requirement.md",
+          "path": "requirement.md",
+          "size": 36,
+          "updated_at": "2026-06-29T23:16:03.846843+00:00"
+        },
+        {
+          "id": "479881cf-7ce1-4fc9-bc27-ec115b08df56:.workflow|run-log.md",
+          "name": "run-log.md",
+          "path": ".workflow/run-log.md",
+          "size": 1344,
+          "updated_at": "2026-06-29T23:16:03.846843+00:00"
+        },
+        {
+          "id": "479881cf-7ce1-4fc9-bc27-ec115b08df56:.workflow|state.json",
+          "name": "state.json",
+          "path": ".workflow/state.json",
+          "size": 4503,
+          "updated_at": "2026-06-29T23:16:03.846843+00:00"
+        },
+        {
+          "id": "479881cf-7ce1-4fc9-bc27-ec115b08df56:prompts|raw_artifact.md",
+          "name": "raw_artifact.md",
+          "path": "prompts/raw_artifact.md",
+          "size": 2890,
+          "updated_at": "2026-06-29T23:16:03.846843+00:00"
+        },
+        {
+          "id": "479881cf-7ce1-4fc9-bc27-ec115b08df56:output|raw.md",
+          "name": "raw.md",
+          "path": "output/raw.md",
+          "size": 35,
+          "updated_at": "2026-06-29T23:16:03.846843+00:00"
+        }
+      ],
+      "timeline": [
+        {
+          "time": "2026-06-29T23:16:03.595340+00:00",
+          "ts": "2026-06-29T23:16:03.595340+00:00",
+          "step_key": "raw_artifact",
+          "stepKey": "raw_artifact",
+          "kind": "started",
+          "type": "started",
+          "message": "raw_artifact: started"
+        },
+        {
+          "time": "2026-06-29T23:16:03.781419+00:00",
+          "ts": "2026-06-29T23:16:03.781419+00:00",
+          "step_key": "raw_artifact",
+          "stepKey": "raw_artifact",
+          "kind": "passed",
+          "type": "passed",
+          "message": "raw_artifact: passed"
+        }
+      ],
+      "created_at": "2026-06-29T23:16:03.503548+00:00",
+      "updated_at": "2026-06-29T23:16:03.846843+00:00",
+      "started_at": "2026-06-29T23:16:03.547492+00:00",
+      "ended_at": "2026-06-29T23:16:03.807784+00:00"
+    },
     {
       "id": "4714bb97-96c5-437a-91cc-79e39b532047",
       "session_id": "bea7a4b0-ccec-4bbd-bd84-0a3fb3b40eb0",

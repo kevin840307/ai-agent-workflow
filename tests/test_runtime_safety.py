@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import asyncio
+import os
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from fastapi import HTTPException
 
@@ -84,6 +86,27 @@ Status: DONE
             atomic_write_text(path, "second")
 
             self.assertEqual(path.read_text(encoding="utf-8"), "second")
+            self.assertFalse(list(Path(tmp).glob("*.tmp")))
+
+    def test_atomic_write_text_retries_transient_replace_lock(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "store.json"
+            calls = {"count": 0}
+            real_replace = os.replace
+
+            def flaky_replace(src, dst):
+                calls["count"] += 1
+                if calls["count"] < 3:
+                    raise PermissionError(5, "Access is denied")
+                return real_replace(src, dst)
+
+            with patch("app.runtime_modules.paths.os.replace", side_effect=flaky_replace), patch(
+                "app.runtime_modules.paths.time.sleep", return_value=None
+            ):
+                atomic_write_text(path, '{"ok": true}')
+
+            self.assertEqual(path.read_text(encoding="utf-8"), '{"ok": true}')
+            self.assertEqual(calls["count"], 3)
             self.assertFalse(list(Path(tmp).glob("*.tmp")))
 
 
