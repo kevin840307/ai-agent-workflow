@@ -44,6 +44,9 @@ class ProjectAndConfigApiTests(unittest.TestCase):
         class FakeAgent:
             name = "opencode"
 
+            def health(self):
+                return {"reuse_session": True}
+
             async def run_stream(self, request, on_output=None):
                 self.request = request
                 return AgentResult(output="opencode answer")
@@ -60,6 +63,40 @@ class ProjectAndConfigApiTests(unittest.TestCase):
             resolve.assert_called_once_with()
             self.assertEqual(response.json()["assistant"]["content"], "opencode answer")
             self.assertEqual(fake_agent.request.session_id, session["id"])
+            self.assertEqual(fake_agent.request.prompt, "hello")
+            sessions = client.get("/api/sessions").json()
+            updated = next(item for item in sessions if item["id"] == session["id"])
+            self.assertIsNone(updated["agent_session_ids"]["opencode"])
+
+    def test_chat_repairs_tool_call_json_response_once(self) -> None:
+        class FakeAgent:
+            name = "opencode"
+
+            def __init__(self) -> None:
+                self.requests = []
+
+            def health(self):
+                return {"reuse_session": True}
+
+            async def run_stream(self, request, on_output=None):
+                self.requests.append(request)
+                if len(self.requests) == 1:
+                    return AgentResult(output='```json\n{"name":"queryKnowledgebase","arguments":{"prompt":"你是opencode CLI嗎?"}}\n```')
+                return AgentResult(output="我是透過 OpenCode CLI 執行的 agent。")
+
+        fake_agent = FakeAgent()
+        with tempfile.TemporaryDirectory() as tmp, TestClient(app) as client, patch(
+            "app.services.project_service.runtime.agent_manager.resolve",
+            return_value=fake_agent,
+        ):
+            session = client.post("/api/sessions", json={"title": "Chat Repair", "project_path": tmp}).json()
+            response = client.post(f"/api/sessions/{session['id']}/chat", json={"content": "你是opencode CLI嗎"})
+
+            self.assertEqual(response.status_code, 200, response.text)
+            self.assertEqual(response.json()["assistant"]["content"], "我是透過 OpenCode CLI 執行的 agent。")
+            self.assertEqual(len(fake_agent.requests), 2)
+            self.assertEqual(fake_agent.requests[0].prompt, "你是opencode CLI嗎")
+            self.assertIn("不要輸出 JSON", fake_agent.requests[1].prompt)
 
     def test_qwen_config_update_validates_auth_and_clamps_retries(self) -> None:
         original = SETTINGS_FILE.read_text(encoding="utf-8") if SETTINGS_FILE.exists() else ""
@@ -84,6 +121,10 @@ class ProjectAndConfigApiTests(unittest.TestCase):
                         "default_agent": "opencode",
                         "opencode_bin": "opencode.cmd",
                         "opencode_mode": "run",
+                        "reuse_session": True,
+                        "opencode_timeout_sec": 42,
+                        "opencode_model": "provider/model",
+                        "opencode_agent": "build",
                     },
                 )
                 self.assertEqual(agent_update.status_code, 200, agent_update.text)
@@ -91,11 +132,21 @@ class ProjectAndConfigApiTests(unittest.TestCase):
                 self.assertEqual(settings["agents"]["default"], "opencode")
                 self.assertEqual(settings["agents"]["providers"]["opencode"]["bin"], "opencode.cmd")
                 self.assertEqual(settings["agents"]["providers"]["opencode"]["mode"], "run")
+                self.assertTrue(settings["qwen"]["reuse_session"])
+                self.assertTrue(settings["agents"]["providers"]["opencode"]["reuseSession"])
+                self.assertEqual(settings["agents"]["providers"]["opencode"]["timeoutSec"], 42)
+                self.assertEqual(settings["agents"]["providers"]["opencode"]["model"], "provider/model")
+                self.assertEqual(settings["agents"]["providers"]["opencode"]["agent"], "build")
 
                 bad_agent = client.post("/api/config/qwen", json={"default_agent": "missing-agent"})
                 self.assertEqual(bad_agent.status_code, 400)
                 bad_mode = client.post("/api/config/agents", json={"opencode_mode": "bad-mode"})
                 self.assertEqual(bad_mode.status_code, 400)
+
+                legacy_reuse = client.post("/api/config/agents", json={"auth_type": "", "opencode_reuse_session": False})
+                self.assertEqual(legacy_reuse.status_code, 200, legacy_reuse.text)
+                settings = json.loads(SETTINGS_FILE.read_text(encoding="utf-8-sig"))
+                self.assertFalse(settings["agents"]["providers"]["opencode"]["reuseSession"])
         finally:
             if original:
                 SETTINGS_FILE.write_text(original, encoding="utf-8")

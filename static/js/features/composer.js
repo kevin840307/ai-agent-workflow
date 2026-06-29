@@ -16,7 +16,7 @@ export function createComposer(ctx) {
 
     updateModeLabel() {
       if (state.runMode === "chat") {
-        composer.setMode(state.chatBusy ? "Qwen thinking" : "Chat");
+        composer.setMode(state.chatBusy ? `${state.defaultAgent || "Agent"} thinking` : "Chat");
         return;
       }
       if (["running", "queued"].includes(state.activeRunStatus)) {
@@ -24,7 +24,7 @@ export function createComposer(ctx) {
         return;
       }
       if (state.waitingForInput || state.activeRunStatus === "waiting_input") {
-        composer.setMode("Qwen waiting");
+        composer.setMode(`${state.defaultAgent || "Agent"} waiting`);
         return;
       }
       if (state.activeRunStatus === "failed") {
@@ -49,7 +49,7 @@ export function createComposer(ctx) {
       const runButton = ui.byKey("runWorkflow");
       const saveButton = ui.byKey("saveRequirement");
       if (state.runMode === "chat") {
-        if (input) input.placeholder = "Ask Qwen about this project...";
+        if (input) input.placeholder = `Ask ${state.defaultAgent || "the agent"} about this project...`;
         if (runButton) {
           runButton.textContent = state.chatBusy ? "Wait" : "Send";
           runButton.disabled = !state.activeSessionId || state.chatBusy;
@@ -61,7 +61,7 @@ export function createComposer(ctx) {
       }
 
       if (waiting && !wasWaiting && input) input.value = "";
-      if (input) input.placeholder = waiting ? "Reply to Qwen and continue..." : "Describe what to build...";
+      if (input) input.placeholder = waiting ? `Reply to ${state.defaultAgent || "the agent"} and continue...` : "Describe what to build...";
       if (runButton) {
         runButton.textContent = ["queued", "running"].includes(state.activeRunStatus)
           ? "Stop"
@@ -83,7 +83,7 @@ export function createComposer(ctx) {
       const guidanceButton = ui.byKey("addGuidance");
 
       if (state.runMode === "chat") {
-        if (input) input.placeholder = "Ask Qwen about this project...";
+        if (input) input.placeholder = `Ask ${state.defaultAgent || "the agent"} about this project...`;
         if (runButton) {
           runButton.textContent = state.chatBusy ? "Wait" : "Send";
           runButton.disabled = !state.activeSessionId || state.chatBusy;

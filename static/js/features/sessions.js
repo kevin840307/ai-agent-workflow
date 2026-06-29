@@ -102,7 +102,7 @@ export function createSessions(ctx) {
       if (!title) return;
       const projectPath = await ctx.features.modal.openInput({
         title: "New Project",
-        description: "Create a project session by selecting the source folder Qwen should work with.",
+        description: "Create a project session by selecting the source folder the agent should work with.",
         label: "Project folder path",
         defaultValue: "C:\\Users\\kevin\\sort",
         placeholder: "C:\\Users\\kevin\\sort",
@@ -122,7 +122,7 @@ export function createSessions(ctx) {
       if (!state.activeSessionId) return;
       const session = state.sessions.find((item) => item.id === state.activeSessionId);
       if (!session) return;
-      if (!confirm(`Reset "${session.title || "Project"}"? This clears messages, runs, retry state, artifacts, and starts a new Qwen session without creating a new project.`)) return;
+      if (!confirm(`Reset "${session.title || "Project"}"? This clears messages, runs, retry state, artifacts, and starts a new agent session without creating a new project.`)) return;
 
       ctx.features.eventStream.close();
       const resetSession = await api.request(`/api/sessions/${state.activeSessionId}/reset`, {

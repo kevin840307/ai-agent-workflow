@@ -53,10 +53,10 @@ class Store:
                 }
                 changed = True
             else:
-                if not session["agent_session_ids"].get("qwen"):
+                if "qwen" not in session["agent_session_ids"]:
                     session["agent_session_ids"]["qwen"] = session.get("qwen_session_id") or session["id"]
                     changed = True
-                if not session["agent_session_ids"].get("opencode"):
+                if "opencode" not in session["agent_session_ids"]:
                     session["agent_session_ids"]["opencode"] = session["id"]
                     changed = True
             if not session.get("project_path"):
@@ -73,10 +73,10 @@ class Store:
                 }
                 changed = True
             else:
-                if not run["agent_session_ids"].get("qwen"):
+                if "qwen" not in run["agent_session_ids"]:
                     run["agent_session_ids"]["qwen"] = run.get("qwen_session_id") or run.get("session_id")
                     changed = True
-                if not run["agent_session_ids"].get("opencode"):
+                if "opencode" not in run["agent_session_ids"]:
                     run["agent_session_ids"]["opencode"] = run.get("session_id")
                     changed = True
             for key, default in {

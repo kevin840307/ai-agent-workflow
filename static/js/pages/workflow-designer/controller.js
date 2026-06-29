@@ -69,7 +69,7 @@ function availablePromptParams() {
 let systemWorkflow = Object.freeze({
   id: "system-controlled-qwen",
   kind: "system",
-  name: "Controlled Qwen Workflow",
+  name: "Controlled Agent Workflow",
   description: "Built-in workflow loaded from backend configuration.",
   active: true,
   skillRoot: "",
@@ -818,9 +818,6 @@ function uniqueWorkflowName(base) {
   let index = 2;
   while (names.has(`${base} ${index}`)) index += 1;
   return `${base} ${index}`;
-}
-
-)[char]);
 }
 
 const templateEditor = installTemplateEditor({

@@ -4,14 +4,16 @@ export function createMessages(ctx) {
   const messagesFeature = {
     renderMessage(msg) {
       const div = document.createElement("div");
-      const isAsk = msg.role !== "user" && msg.content.startsWith("Qwen asks:");
+      const askMatch = msg.role !== "user" ? msg.content.match(/^(.+?) asks:\s*/i) : null;
+      const isAsk = Boolean(askMatch);
       div.className = `message ${msg.role === "user" ? "user" : "assistant"}${isAsk ? " ask" : ""}`;
 
       if (isAsk) {
+        const agent = askMatch?.[1] || state.defaultAgent || "Agent";
         const title = document.createElement("strong");
-        title.textContent = "Qwen asks";
+        title.textContent = `${agent} asks`;
         const body = document.createElement("div");
-        body.textContent = msg.content.replace(/^Qwen asks:\s*/i, "");
+        body.textContent = msg.content.replace(/^(.+?) asks:\s*/i, "");
         div.appendChild(title);
         div.appendChild(body);
         return div;
@@ -27,7 +29,7 @@ export function createMessages(ctx) {
       const empty = list.querySelector(".message.system");
       if (empty) {
         empty.textContent = state.runMode === "chat"
-          ? "Ask Qwen anything about this project."
+          ? `Ask ${state.defaultAgent || "the agent"} anything about this project.`
           : "Describe what you want to build, then run the workflow.";
       }
     },
@@ -44,7 +46,7 @@ export function createMessages(ctx) {
         const div = document.createElement("div");
         div.className = "message system";
         div.textContent = state.runMode === "chat"
-          ? "Ask Qwen anything about this project."
+          ? `Ask ${state.defaultAgent || "the agent"} anything about this project.`
           : "Describe what you want to build, then run the workflow.";
         list.appendChild(div);
       }
@@ -73,7 +75,7 @@ export function createMessages(ctx) {
     },
 
     renderAsk(text) {
-      const content = text || "Qwen needs more information before continuing.";
+      const content = text || `${state.defaultAgent || "Agent"} needs more information before continuing.`;
       if (content === state.lastAskText) return;
 
       const existing = Array.from(ui.byKey("messages").querySelectorAll(".message"))
@@ -88,7 +90,7 @@ export function createMessages(ctx) {
       const ask = document.createElement("div");
       ask.className = "message assistant ask";
       const title = document.createElement("strong");
-      title.textContent = "Qwen asks";
+      title.textContent = `${state.defaultAgent || "Agent"} asks`;
       const body = document.createElement("div");
       body.textContent = content;
       ask.appendChild(title);

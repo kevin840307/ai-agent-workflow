@@ -41,7 +41,8 @@ function escapeHtml(value = "") {
     ">": "&gt;",
     "\"": "&quot;",
     "'": "&#039;",
-  }
+  })[char]);
+}
 function escapeAttr(value = "") {
   return escapeHtml(value);
 }

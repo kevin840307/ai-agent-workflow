@@ -72,15 +72,47 @@ class OpenCodeCliAdapter:
         env = os.environ.copy()
         if self.config_dir:
             env["OPENCODE_CONFIG_DIR"] = str(self.config_dir)
-        stdout, stderr = await run_process_stream(
-            self._command(request.prompt, request.session_id),
+        try:
+            stdout, stderr = await self._run_process(request, env, on_output, request.session_id)
+            result_session_id = request.session_id
+        except WorkflowError as exc:
+            if not self._is_recoverable_session_error(exc) or not request.session_id:
+                raise
+            if on_output:
+                await on_output("stderr", "OpenCode session was not found; retrying once with a fresh agent session.")
+            stdout, stderr = await self._run_process(request, env, on_output, None)
+            result_session_id = None
+        output = stdout or stderr
+        return AgentResult(output=output, session_id=result_session_id, raw_output="\n".join(x for x in [stdout, stderr] if x))
+
+    async def _run_process(
+        self,
+        request: AgentRequest,
+        env: dict[str, str],
+        on_output: AgentOutputCallback | None,
+        session_id: str | None,
+    ) -> tuple[str, str]:
+        return await run_process_stream(
+            self._command(request.prompt, session_id),
             request.cwd,
             env=env,
             on_output=on_output,
             timeout_sec=self.timeout_sec,
         )
-        output = stdout or stderr
-        return AgentResult(output=output, session_id=request.session_id, raw_output="\n".join(x for x in [stdout, stderr] if x))
+
+    @staticmethod
+    def _is_recoverable_session_error(exc: WorkflowError) -> bool:
+        message = str(exc).lower()
+        return any(
+            phrase in message
+            for phrase in [
+                "session not found",
+                "invalid session",
+                "unknown session",
+                "could not find session",
+                "no session found",
+            ]
+        )
 
     def command_preview(self, request: AgentRequest) -> str:
         if self.mode == "prompt_flag":

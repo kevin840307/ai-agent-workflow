@@ -22,8 +22,6 @@ export function createEvents(ctx) {
       ui.on("qwenReuseSession", "change", () => ctx.features.config.saveAgentConfig());
       ui.on("maxRetries", "change", () => ctx.features.config.saveAgentConfig());
       ui.on("defaultAgent", "change", () => ctx.features.config.saveAgentConfig());
-      ui.on("opencodeBin", "change", () => ctx.features.config.saveAgentConfig());
-      ui.on("opencodeMode", "change", () => ctx.features.config.saveAgentConfig());
       ui.on("workflowSelect", "change", (event) => ctx.features.workflows.select(event.target.value));
       ui.on("workflowDropdownButton", "click", (event) => {
         event.stopPropagation();

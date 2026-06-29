@@ -353,7 +353,7 @@ function renderAdvanced(step, disabled, readonly) {
       ${readonly ? readonlyNotice() : ""}
       ${switchRow("Enable Timeout", "Timeout counts as failure and follows retry policy.", "timeoutEnabled", step.timeoutEnabled, disabled)}
       ${numberRow("Timeout Minutes", "timeoutMinutes", step.timeoutMinutes, disabled, "0", "1440", "1")}
-      ${switchRow("Allow Interaction", "Qwen can pause and ask the user questions.", "allowInteraction", step.allowInteraction, disabled)}
+      ${switchRow("Allow Interaction", "The selected agent can pause and ask the user questions.", "allowInteraction", step.allowInteraction, disabled)}
       <label class="designer-form-row">
         <span class="designer-label">Python Validator</span>
         <select class="designer-select" data-step-field="validator" ${disabled}>
@@ -444,32 +444,6 @@ function switchRow(title, description, field, checked, disabled) {
 
 function readonlyNotice() {
   return `<div class="designer-empty-state">This is a system workflow. Duplicate it to edit settings.</div>`;
-}
-
-) {
-  const preset = TemplatePresets[overrides.key];
-  if (preset?.path) return preset.path;
-  const promptSource = (overrides.sources || []).find((source) => source.type === "prompt_file");
-  return promptSource?.value || "";
-}
-
-) {
-  const preset = TemplatePresets[overrides.key];
-  if (preset?.filename) return preset.filename;
-  if (overrides.filename) return normalizeFilename(overrides.filename);
-  if (overrides.outputFile) return normalizeFilename(overrides.outputFile);
-  const expected = Array.isArray(overrides.expectedFiles) ? overrides.expectedFiles[0] : "";
-  return normalizeFilename(expected || "result.md");
-}
-
-) {
-  const preset = TemplatePresets[overrides.key];
-  if (preset?.content) return preset.content;
-  if (overrides.type === "review") {
-    return "FILENAME: review.md\n\nRequirement:\n{{requirement}}\n\nArtifact:\n{{step_output}}";
-  }
-  if (overrides.type === "validation" || overrides.type === "python") return "";
-  return "FILENAME: result.md\n\nProject Context:\n- Project Path: {{project_path}}\n- Workflow Workspace: {{workspace_path}}\n\nRequirement:\n{{requirement}}";
 }
 
   return {

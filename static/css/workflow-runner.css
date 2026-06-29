@@ -106,12 +106,15 @@ body.run-failed .summary > div:last-child {
   box-shadow: 0 8px 24px rgba(29, 78, 216, 0.08);
 }
 
-.message.ask::before {
-  content: "Qwen asks";
-  color: var(--blue);
-}
+.message.ask::before { display: none; }
 
-.message.ask strong { display: none; }
+.message.ask strong {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--blue);
+  font-size: 12px;
+  font-weight: 850;
+}
 
 .message.system {
   align-self: center;
@@ -544,7 +547,7 @@ body.chat-mode .composer-box {
 
 .step {
   display: grid;
-  grid-template-columns: minmax(112px, 0.7fr) minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 8px;
   align-items: start;
   border: 1px solid var(--line);
@@ -568,6 +571,8 @@ body.chat-mode .composer-box {
 }
 
 .step-title {
+  grid-column: 1;
+  grid-row: 1;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -585,11 +590,19 @@ body.chat-mode .composer-box {
 }
 
 .step-actions {
+  grid-column: 2;
+  grid-row: 1;
   display: inline-flex;
   align-items: center;
   justify-content: flex-end;
   flex-wrap: wrap;
   gap: 6px;
+}
+
+.step-message {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  min-width: 0;
 }
 
 .mini-button {
@@ -629,17 +642,6 @@ body.chat-mode .composer-box {
 .badge.failed { background: #fee4df; color: var(--fail); }
 .badge.waiting_input { background: #e6f0ff; color: var(--blue); }
 .badge.cancelled { background: #edf0f4; color: #596579; }
-
-@media (max-width: 1320px) {
-  .step {
-    grid-template-columns: minmax(0, 1fr) auto;
-  }
-
-  .step-message {
-    grid-column: 1 / -1;
-    order: 3;
-  }
-}
 
 .console,
 .artifact-content {

@@ -16,8 +16,6 @@ def update_agent_config(body: runtime.AgentSettingsRequest) -> dict:
         raise HTTPException(status_code=400, detail=f"Unsupported auth type: {auth_type}")
     settings = runtime.load_settings()
     settings["qwen"]["auth_type"] = auth_type
-    if body.reuse_session is not None:
-        settings["qwen"]["reuse_session"] = body.reuse_session
     if body.max_retries is not None:
         settings["qwen"]["max_retries"] = max(0, min(10, int(body.max_retries)))
     settings.setdefault("agents", {})
@@ -27,6 +25,9 @@ def update_agent_config(body: runtime.AgentSettingsRequest) -> dict:
         "opencode",
         {"type": "opencode_cli", "bin": "opencode", "mode": "run", "reuseSession": True, "timeoutSec": 1200},
     )
+    if body.reuse_session is not None:
+        settings["qwen"]["reuse_session"] = body.reuse_session
+        settings["agents"]["providers"]["opencode"]["reuseSession"] = body.reuse_session
     if body.default_agent is not None:
         default_agent = body.default_agent.strip() or "qwen"
         if default_agent not in settings["agents"]["providers"]:
@@ -39,7 +40,7 @@ def update_agent_config(body: runtime.AgentSettingsRequest) -> dict:
         if opencode_mode not in {"run", "prompt_flag"}:
             raise HTTPException(status_code=400, detail=f"Unsupported opencode mode: {opencode_mode}")
         settings["agents"]["providers"]["opencode"]["mode"] = opencode_mode
-    if body.opencode_reuse_session is not None:
+    if body.opencode_reuse_session is not None and body.reuse_session is None:
         settings["agents"]["providers"]["opencode"]["reuseSession"] = body.opencode_reuse_session
     if body.opencode_timeout_sec is not None:
         settings["agents"]["providers"]["opencode"]["timeoutSec"] = max(1, min(86400, int(body.opencode_timeout_sec)))

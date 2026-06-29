@@ -8,7 +8,7 @@ export function createRuns(ctx) {
       ui.byKey("resultText").textContent = "Waiting";
       ctx.features.interactions.hide();
       runs.renderStepSkeleton([]);
-      ui.byKey("qwenLive").textContent = "No Qwen output yet.";
+      ui.byKey("qwenLive").textContent = "No agent output yet.";
       ui.byKey("logs").textContent = "";
       ui.byKey("artifacts").innerHTML = "";
       ui.byKey("artifactContent").textContent = "";
@@ -156,7 +156,7 @@ export function createRuns(ctx) {
         ctx.features.composer.updatePrimaryAction();
         ui.byKey("runWorkflow").disabled = true;
         ui.byKey("logs").textContent = "Starting workflow...\n";
-        ui.byKey("qwenLive").textContent = "Waiting for Qwen process...\n";
+        ui.byKey("qwenLive").textContent = `Waiting for ${state.defaultAgent || "agent"} process...\n`;
         const run = await api.request(`/api/sessions/${state.activeSessionId}/workflow-runs`, {
           method: "POST",
           body: JSON.stringify({ workflow_id: state.selectedWorkflowId }),

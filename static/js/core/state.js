@@ -15,6 +15,7 @@ export const AppState = {
   selectedStepArtifactId: null,
   runMode: LocalStore.getString(StorageKeys.runMode, "workflow") === "chat" ? "chat" : "workflow",
   chatBusy: false,
+  defaultAgent: "agent",
   workflows: [],
   selectedWorkflowId: LocalStore.getString(StorageKeys.selectedWorkflowId, "system-controlled-qwen") || "system-controlled-qwen",
 };

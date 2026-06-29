@@ -1,7 +1,7 @@
 import { LocalStore, StorageKeys } from "../core/storage.js";
 
 export function createConfig(ctx) {
-  const { api, ui } = ctx;
+  const { api, state, ui } = ctx;
 
   const configFeature = {
     async load() {
@@ -17,12 +17,7 @@ export function createConfig(ctx) {
       const agents = qwen.agents || {};
       const providers = agents.providers || {};
       if (ui.byKey("defaultAgent")) ui.byKey("defaultAgent").value = agents.default || "qwen";
-      if (ui.byKey("opencodeBin")) ui.byKey("opencodeBin").value = providers.opencode?.bin || "opencode.cmd";
-      if (ui.byKey("opencodeMode")) ui.byKey("opencodeMode").value = providers.opencode?.mode || "run";
-      if (ui.byKey("opencodeReuseSession")) ui.byKey("opencodeReuseSession").checked = providers.opencode?.reuse_session ?? providers.opencode?.reuseSession ?? true;
-      if (ui.byKey("opencodeTimeout")) ui.byKey("opencodeTimeout").value = providers.opencode?.timeout_sec ?? providers.opencode?.timeoutSec ?? 1200;
-      if (ui.byKey("opencodeModel")) ui.byKey("opencodeModel").value = providers.opencode?.model || "";
-      if (ui.byKey("opencodeAgent")) ui.byKey("opencodeAgent").value = providers.opencode?.agent || "";
+      state.defaultAgent = agents.default || "qwen";
       configFeature.renderAgentMeta(qwen);
     },
 
@@ -33,11 +28,10 @@ export function createConfig(ctx) {
       const agents = qwen.agents || {};
       const providers = agents.providers || {};
       const defaultAgent = agents.default || "qwen";
-      const opencode = providers.opencode;
-      const opencodeStatus = opencode
-        ? `opencode ${opencode.exists ? "ready" : "missing"} ${opencode.reuse_session ? "reuse" : "fresh"} ${opencode.timeout_sec || 1200}s`
-        : "opencode unavailable";
-      ui.byKey("qwenMeta").textContent = `${mode} - default ${defaultAgent} - qwen ${exists} - ${opencodeStatus} - ${skills}`;
+      state.defaultAgent = defaultAgent;
+      const selected = providers[defaultAgent];
+      const selectedStatus = selected ? `${defaultAgent} ${selected.exists ? "ready" : "missing"}` : `${defaultAgent} unavailable`;
+      ui.byKey("qwenMeta").textContent = `${mode} - default ${defaultAgent} - ${selectedStatus} - ${skills}`;
     },
 
     async saveAgentConfig() {
@@ -49,14 +43,9 @@ export function createConfig(ctx) {
           reuse_session: ui.byKey("qwenReuseSession").checked,
           max_retries: Number(ui.byKey("maxRetries").value || 0),
           default_agent: ui.byKey("defaultAgent")?.value || "qwen",
-          opencode_bin: ui.byKey("opencodeBin")?.value || "opencode.cmd",
-          opencode_mode: ui.byKey("opencodeMode")?.value || "run",
-          opencode_reuse_session: ui.byKey("opencodeReuseSession")?.checked ?? true,
-          opencode_timeout_sec: Number(ui.byKey("opencodeTimeout")?.value || 1200),
-          opencode_model: ui.byKey("opencodeModel")?.value || "",
-          opencode_agent: ui.byKey("opencodeAgent")?.value || "",
         }),
       });
+      state.defaultAgent = config.qwen?.agents?.default || ui.byKey("defaultAgent")?.value || "qwen";
       configFeature.renderAgentMeta(config.qwen);
     },
   };

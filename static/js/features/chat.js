@@ -40,7 +40,7 @@ export function createChat(ctx) {
       input.value = "";
       ctx.features.composer.autoResize();
       ctx.features.messages.addLocal(content, "user");
-      ctx.features.messages.addLocal("Qwen is thinking...", "assistant", { temporary: true });
+      ctx.features.messages.addLocal(`${state.defaultAgent || "Agent"} is thinking...`, "assistant", { temporary: true });
 
       try {
         await api.request(`/api/sessions/${state.activeSessionId}/chat`, {

@@ -60,7 +60,20 @@ On Windows the app prefers `opencode.cmd` to avoid PowerShell `.ps1` execution-p
 - `prompt_flag`: invokes `opencode --prompt <prompt> --session <project-session>`
 
 The default agent is stored under `agents.default` in `data/settings.json`. Provider settings are stored under `agents.providers`.
-Project sessions store provider ids in `agent_session_ids`, so Qwen and OpenCode can both reuse the selected project session.
+Project sessions store provider ids in `agent_session_ids`, so Qwen and OpenCode can both reuse the selected project session. The runner Settings `Reuse` switch is shared by Qwen and OpenCode.
+In Chat mode, reused agent sessions receive only the latest user message; workflow prompts and prior chat history are not re-sent because the CLI session owns that context.
+OpenCode supports the same baseline runtime controls as Qwen where the CLI allows it: session reuse, timeout, mock mode for local tests, command preview, health status, model, and agent.
+If an OpenCode reused session is no longer known by the CLI, the adapter retries once without `--session` and clears that provider session id for the project.
+On Windows, if the active FastAPI event loop cannot create asyncio subprocesses, the agent runner automatically falls back to a threaded subprocess call instead of returning a 500.
+
+Useful OpenCode environment variables:
+
+- `OPENCODE_BIN`: OpenCode executable. Default is `opencode.cmd` on Windows, `opencode` elsewhere.
+- `OPENCODE_REUSE_SESSION`: set `0` to disable `--session`.
+- `OPENCODE_TIMEOUT_SEC`: agent timeout seconds. Default `1200`.
+- `OPENCODE_MOCK`: set `1` for mock output during local UI testing.
+- `OPENCODE_MODEL`: optional model override.
+- `OPENCODE_AGENT`: optional agent override.
 
 ## Workflows
 

@@ -1,6 +1,7 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import asyncio
+import json
 import shutil
 import uuid
 from pathlib import Path
@@ -160,21 +161,42 @@ async def create_message(session_id: str, body: runtime.CreateMessageRequest) ->
     return await store_repository.mutate(add)
 
 
-def _chat_prompt(session: dict, history: list[dict], content: str) -> str:
-    lines = [
-        "你現在是一般對話模式，不是在 workflow 模式。",
-        "請直接回覆使用者，不要輸出 FILE/CONTENT/END_FILE 區塊，也不要產生 workflow artifact，除非使用者明確要求。",
-        "預設使用繁體中文回答。",
-        f"Project Path: {session.get('project_path') or runtime.ROOT}",
-        "",
-        "以下是最近對話紀錄：",
-    ]
+def _chat_prompt(history: list[dict], content: str, *, reuse_session: bool) -> str:
+    """Build a normal chat prompt, not a workflow prompt."""
+    content = content.strip()
+    if reuse_session:
+        return content
+
+    lines: list[str] = []
     recent = history[-CHAT_HISTORY_LIMIT:]
     for message in recent:
         role = "User" if message.get("role") == "user" else "Assistant"
         lines.append(f"{role}: {message.get('content', '').strip()}")
-    lines.extend(["", f"User: {content.strip()}", "Assistant:"])
+    if lines:
+        lines.append("")
+    lines.extend([f"User: {content}", "Assistant:"])
     return "\n".join(lines)
+
+
+def _looks_like_tool_call_json(text: str) -> bool:
+    stripped = text.strip()
+    if stripped.startswith("```"):
+        stripped = stripped.strip("`").strip()
+        if stripped.lower().startswith("json"):
+            stripped = stripped[4:].strip()
+    try:
+        payload = json.loads(stripped)
+    except json.JSONDecodeError:
+        return False
+    return isinstance(payload, dict) and isinstance(payload.get("name"), str) and "arguments" in payload
+
+
+def _chat_repair_prompt(content: str) -> str:
+    return (
+        "請直接用自然語言回答使用者問題。"
+        "不要輸出 JSON，不要輸出工具呼叫，不要使用 markdown code block。\n\n"
+        f"使用者問題：{content.strip()}"
+    )
 
 
 async def chat(session_id: str, body: runtime.CreateMessageRequest) -> dict:
@@ -185,13 +207,18 @@ async def chat(session_id: str, body: runtime.CreateMessageRequest) -> dict:
 
     history = [msg for msg in data["messages"] if msg["session_id"] == session_id]
     user_msg = await runtime.append_session_message(session_id, "user", body.content, kind="chat")
-    prompt = _chat_prompt(session, history, body.content)
     project_path = runtime.resolve_project_path(session.get("project_path"), runtime.ROOT)
 
     try:
         agent = runtime.agent_manager.resolve()
+        prompt = _chat_prompt(history, body.content, reuse_session=bool(agent.health().get("reuse_session")))
         provider_sessions = session.get("agent_session_ids") or {}
-        agent_session_id = provider_sessions.get(agent.name) or session.get("qwen_session_id") or session_id
+        if isinstance(provider_sessions, dict) and agent.name in provider_sessions:
+            agent_session_id = provider_sessions.get(agent.name)
+        elif agent.name == "qwen":
+            agent_session_id = session.get("qwen_session_id") or session_id
+        else:
+            agent_session_id = None
         result = await agent.run_stream(
             AgentRequest(
                 run_id=f"chat-{session_id}",
@@ -201,14 +228,42 @@ async def chat(session_id: str, body: runtime.CreateMessageRequest) -> dict:
                 session_id=agent_session_id,
             )
         )
+        if result.session_id != agent_session_id:
+            await _update_agent_session_id(session_id, agent.name, result.session_id)
         answer = result.output
+        if _looks_like_tool_call_json(answer):
+            repair_result = await agent.run_stream(
+                AgentRequest(
+                    run_id=f"chat-{session_id}-repair",
+                    step_key="chat",
+                    prompt=_chat_repair_prompt(body.content),
+                    cwd=project_path,
+                    session_id=result.session_id,
+                )
+            )
+            if repair_result.session_id != result.session_id:
+                await _update_agent_session_id(session_id, agent.name, repair_result.session_id)
+            answer = repair_result.output
     except runtime.WorkflowError as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
     assistant_msg = await runtime.append_session_message(
         session_id,
         "assistant",
-        answer.strip() or "(Qwen returned no text.)",
+        answer.strip() or "(Agent returned no text.)",
         kind="chat",
     )
     return {"user": user_msg, "assistant": assistant_msg}
+
+
+async def _update_agent_session_id(session_id: str, agent_name: str, agent_session_id: str | None) -> None:
+    def update(data):
+        target = next((item for item in data["sessions"] if item["id"] == session_id), None)
+        if not target:
+            return None
+        target.setdefault("agent_session_ids", {})
+        target["agent_session_ids"][agent_name] = agent_session_id
+        target["updated_at"] = runtime.utc_now()
+        return None
+
+    await store_repository.mutate(update)

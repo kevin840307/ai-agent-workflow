@@ -15,6 +15,19 @@ from .agent_adapters import (
 )
 from .settings import load_settings
 
+AdapterFactory = Callable[[dict[str, Any]], AgentClient]
+
+ADAPTER_FACTORIES: dict[str, AdapterFactory] = {
+    "qwen_cli": QwenAdapter,
+    "qwen_serve": QwenAdapter,
+    "opencode_cli": OpenCodeCliAdapter,
+}
+
+PROVIDER_TYPE_ALIASES = {
+    "qwen": "qwen_cli",
+    "opencode": "opencode_cli",
+}
+
 
 class AgentManager:
     """Resolve workflow steps to provider adapters.
@@ -35,11 +48,10 @@ class AgentManager:
         agents: dict[str, AgentClient] = {}
         for name, config in providers.items():
             config = config or {}
-            provider_type = config.get("type") or f"{name}_cli"
-            if name == "qwen" or provider_type in {"qwen_cli", "qwen_serve"}:
-                agents[name] = QwenAdapter(config)
-            elif name == "opencode" or provider_type == "opencode_cli":
-                agents[name] = OpenCodeCliAdapter(config)
+            provider_type = config.get("type") or PROVIDER_TYPE_ALIASES.get(name) or f"{name}_cli"
+            factory = ADAPTER_FACTORIES.get(provider_type)
+            if factory:
+                agents[name] = factory(config)
         agents.setdefault("qwen", QwenAdapter())
         return default_agent, agents
 
@@ -79,7 +91,9 @@ __all__ = [
     "AgentOutputCallback",
     "AgentRequest",
     "AgentResult",
+    "ADAPTER_FACTORIES",
     "OpenCodeCliAdapter",
+    "PROVIDER_TYPE_ALIASES",
     "QwenAdapter",
     "create_agent_manager",
     "run_process_stream",

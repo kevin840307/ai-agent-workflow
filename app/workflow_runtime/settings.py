@@ -29,7 +29,7 @@ def default_settings() -> dict[str, Any]:
                     "type": "opencode_cli",
                     "bin": "opencode",
                     "mode": "run",
-                    "reuseSession": True,
+                    "reuseSession": False,
                     "timeoutSec": 1200,
                 },
             },
@@ -50,7 +50,7 @@ def _apply_defaults(settings: dict[str, Any]) -> dict[str, Any]:
     settings["agents"]["providers"].setdefault("opencode", {"type": "opencode_cli"})
     settings["agents"]["providers"]["opencode"].setdefault("bin", "opencode")
     settings["agents"]["providers"]["opencode"].setdefault("mode", "run")
-    settings["agents"]["providers"]["opencode"].setdefault("reuseSession", True)
+    settings["agents"]["providers"]["opencode"].setdefault("reuseSession", bool(settings["qwen"].get("reuse_session", False)))
     settings["agents"]["providers"]["opencode"].setdefault("timeoutSec", 1200)
     return settings
 

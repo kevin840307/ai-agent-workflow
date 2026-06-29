@@ -32,8 +32,14 @@ export function createEventStream(ctx) {
       state.eventSource.onmessage = (message) => {
         const event = JSON.parse(message.data);
         if (event.type === "log") ctx.features.console.append("logs", event.message);
-        if (event.type === "qwen_status") ctx.features.console.append("qwenLive", `[${event.step}] ${event.message}`);
-        if (event.type === "qwen_output") ctx.features.console.append("qwenLive", `[${event.step}:${event.stream}] ${event.text}`);
+        if (event.type === "agent_status" || event.type === "qwen_status") {
+          const agent = event.agent || state.defaultAgent || "agent";
+          ctx.features.console.append("qwenLive", `[${agent}:${event.step}] ${event.message}`);
+        }
+        if (event.type === "agent_output" || event.type === "qwen_output") {
+          const agent = event.agent || state.defaultAgent || "agent";
+          ctx.features.console.append("qwenLive", `[${agent}:${event.step}:${event.stream}] ${event.text}`);
+        }
         if (event.type === "run") ctx.features.runs.render(event.run);
         if (["done", "failed", "cancelled"].includes(event.type)) {
           eventStream.handleTerminal(runId, event);

@@ -16,7 +16,7 @@ export function createInteractions(ctx) {
       }
 
       ctx.features.composer.setWaiting(true);
-      ctx.features.messages.renderAsk(waitingStep.error || "Qwen needs more information before continuing.");
+      ctx.features.messages.renderAsk(waitingStep.error || `${state.defaultAgent || "Agent"} needs more information before continuing.`);
       setTimeout(() => {
         ui.byKey("messages").scrollTop = ui.byKey("messages").scrollHeight;
         ui.byKey("messageInput").focus();

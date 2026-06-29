@@ -52,16 +52,18 @@ Agent support is provider-neutral.
 - `QwenAdapter` prefers Qwen serve and can fall back to CLI when configured.
 - `OpenCodeCliAdapter` runs `opencode run --session <project-session> <prompt>` or `opencode --prompt <prompt> --session <project-session>` and is selectable as the default agent or per step provider.
 - New agents should implement `AgentClient` in `app/workflow_runtime/agent_adapters/<provider>.py`.
+- Provider construction is registered through `ADAPTER_FACTORIES`, keyed by provider `type`.
 
 Recommended extension path for a new agent:
 
 1. Add provider config to `data/settings.json`.
 2. Add an adapter implementing `run_stream`, `command_preview`, and `health`.
-3. Register it in `AgentManager._settings`.
+3. Register its provider type in `ADAPTER_FACTORIES`.
 4. Expose UI choices through workflow step `agent` / `provider`.
 
 Chat mode calls `AgentManager.resolve()` without forcing a provider, so it follows `agents.default`. Workflow steps can override that with their `agent` or `provider` field.
 Project sessions store provider session ids in `agent_session_ids`; legacy `qwen_session_id` remains for backward compatibility.
+Adapters should support the same baseline contract where possible: session reuse, timeout handling, command preview, health metadata, mock mode for local tests, and streamed output callbacks.
 
 ## Workflow Bundles
 

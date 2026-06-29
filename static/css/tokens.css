@@ -1,5 +1,5 @@
-/*
-  Qwen Workflow UI
+﻿/*
+  Agent Workflow UI
   Structure guideline:
   1. Design tokens
   2. App layout regions
@@ -90,3 +90,4 @@ h1 {
 
 .primary:hover:not(:disabled) { background: var(--accent-dark); }
 .wide { width: 100%; }
+

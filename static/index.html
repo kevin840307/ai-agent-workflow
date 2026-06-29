@@ -3,14 +3,14 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Qwen Workflow</title>
+    <title>Agent Workflow</title>
     <link rel="stylesheet" href="/static/styles.css?v=20260628-step-files-preview1" />
   </head>
   <body data-page="workflow-runner">
     <!-- App region: Project sessions -->
     <aside class="projects">
       <div class="projects-head">
-        <div class="brand">Qwen Workflow</div>
+        <div class="brand">Agent Workflow</div>
         <button id="toggleProjects" class="side-toggle" title="Collapse projects" aria-label="Collapse projects" aria-pressed="false">☰</button>
       </div>
       <button id="newProject" class="primary wide new-project-button"><span class="button-icon">＋</span><span class="button-text">New Project</span></button>
@@ -45,8 +45,8 @@
               <strong id="runStatusMeta">No active run</strong>
             </div>
             <div>
-              <span>Qwen</span>
-              <strong id="qwenMeta">Checking Qwen...</strong>
+              <span>Agent</span>
+              <strong id="qwenMeta">Checking agent...</strong>
             </div>
           </div>
           <label class="setting">
@@ -71,36 +71,9 @@
               <option value="opencode">opencode</option>
             </select>
           </label>
-          <label class="setting">
-            OpenCode Bin
-            <input id="opencodeBin" placeholder="opencode.cmd" />
-          </label>
-          <label class="setting">
-            OpenCode Mode
-            <select id="opencodeMode">
-              <option value="run">run</option>
-              <option value="prompt_flag">prompt flag</option>
-            </select>
-          </label>
-          <label class="setting">
-            OpenCode Timeout
-            <input id="opencodeTimeout" type="number" min="1" max="86400" step="1" />
-          </label>
-          <label class="setting">
-            OpenCode Model
-            <input id="opencodeModel" placeholder="provider/model" />
-          </label>
-          <label class="setting">
-            OpenCode Agent
-            <input id="opencodeAgent" placeholder="agent name" />
-          </label>
           <label class="check">
             <input id="qwenReuseSession" type="checkbox" />
-            Qwen Reuse
-          </label>
-          <label class="check">
-            <input id="opencodeReuseSession" type="checkbox" />
-            OpenCode Reuse
+            Reuse
           </label>
         </div>
       </header>
@@ -152,7 +125,7 @@
     <aside class="details">
       <div class="tabs">
         <button class="tab active" data-tab="stepsPanel">Steps</button>
-        <button class="tab" data-tab="qwenPanel">Qwen</button>
+        <button class="tab" data-tab="qwenPanel">Agent</button>
         <button class="tab" data-tab="logsPanel">Logs</button>
         <button class="tab" data-tab="artifactsPanel">Artifacts</button>
       </div>
@@ -163,7 +136,7 @@
         </div>
       </section>
       <section id="qwenPanel" class="panel">
-        <pre id="qwenLive" class="console">No Qwen output yet.</pre>
+        <pre id="qwenLive" class="console">No agent output yet.</pre>
       </section>
       <section id="logsPanel" class="panel">
         <pre id="logs" class="console"></pre>

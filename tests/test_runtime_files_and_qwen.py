@@ -4,6 +4,7 @@ import os
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import AsyncMock, patch
 
 from app.runtime_modules.errors import WorkflowError
 from app.runtime_modules.files import (
@@ -14,7 +15,7 @@ from app.runtime_modules.files import (
     validate_generated_test_files,
 )
 from app.runtime_modules.qwen import QwenCliClient
-from app.workflow_runtime.agents import AgentRequest, OpenCodeCliAdapter, QwenAdapter
+from app.workflow_runtime.agents import AgentRequest, OpenCodeCliAdapter, QwenAdapter, run_process_stream
 from app.workflow_runtime.qwen_serve import qwen_serve_disabled
 
 
@@ -122,7 +123,7 @@ END_FILE
             _restore_env("QWEN_SERVE", old_serve)
 
     def test_opencode_adapter_prefers_cmd_on_windows_and_renders_command(self) -> None:
-        adapter = OpenCodeCliAdapter({"bin": "opencode", "mode": "run"})
+        adapter = OpenCodeCliAdapter({"bin": "opencode", "mode": "run", "model": "test/model", "agent": "build"})
         request = AgentRequest(
             run_id="run-1",
             step_key="step",
@@ -130,6 +131,9 @@ END_FILE
             cwd=Path.cwd(),
         )
         self.assertEqual(adapter.command_preview(request), f"{adapter.bin} run <prompt>")
+        self.assertEqual(adapter.health()["model"], "test/model")
+        self.assertEqual(adapter.health()["agent"], "build")
+        self.assertEqual(adapter.health()["timeout_sec"], 1200)
         session_request = AgentRequest(
             run_id="run-1",
             step_key="step",
@@ -138,8 +142,69 @@ END_FILE
             session_id="session-1",
         )
         self.assertEqual(adapter.command_preview(session_request), f"{adapter.bin} run --session <session> <prompt>")
+        no_reuse = OpenCodeCliAdapter({"bin": "opencode", "mode": "run", "reuseSession": False})
+        self.assertEqual(no_reuse.command_preview(session_request), f"{no_reuse.bin} run <prompt>")
         if os.name == "nt":
             self.assertTrue(adapter.bin.endswith("opencode.cmd") or adapter.bin.endswith("opencode.exe") or adapter.bin == "opencode.cmd")
+
+    def test_opencode_mock_uses_agent_contract_without_cli(self) -> None:
+        old_mock = os.environ.get("OPENCODE_MOCK")
+        try:
+            os.environ["OPENCODE_MOCK"] = "1"
+            adapter = OpenCodeCliAdapter({"bin": "missing-opencode"})
+            self.assertTrue(adapter.health()["mock"])
+            self.assertTrue(adapter.health()["exists"])
+        finally:
+            _restore_env("OPENCODE_MOCK", old_mock)
+
+    def test_opencode_recovers_from_missing_session_by_retrying_fresh(self) -> None:
+        async def run() -> None:
+            adapter = OpenCodeCliAdapter({"bin": "opencode", "mode": "run", "reuseSession": True})
+            request = AgentRequest(
+                run_id="run-1",
+                step_key="chat",
+                prompt="hello",
+                cwd=Path.cwd(),
+                session_id="missing-session",
+            )
+            calls: list[list[str]] = []
+
+            async def fake_process(command, cwd, *, env=None, on_output=None, timeout_sec=None):
+                calls.append(command)
+                if "--session" in command:
+                    raise WorkflowError("Agent process failed with exit code 1: opencode run --session missing-session\nError: Session not found")
+                return "fresh answer", ""
+
+            with patch("app.workflow_runtime.agent_adapters.opencode.run_process_stream", new=AsyncMock(side_effect=fake_process)):
+                result = await adapter.run_stream(request)
+
+            self.assertEqual(result.output, "fresh answer")
+            self.assertIsNone(result.session_id)
+            self.assertEqual(len(calls), 2)
+            self.assertIn("--session", calls[0])
+            self.assertNotIn("--session", calls[1])
+
+        import asyncio
+
+        asyncio.run(run())
+
+    def test_process_runner_falls_back_when_async_subprocess_is_unavailable(self) -> None:
+        async def run() -> None:
+            completed = subprocess.CompletedProcess(["agent"], 0, stdout="ok\n", stderr="")
+            with patch("asyncio.create_subprocess_exec", side_effect=NotImplementedError), patch(
+                "subprocess.run",
+                return_value=completed,
+            ) as subprocess_run:
+                stdout, stderr = await run_process_stream(["agent", "run"], Path.cwd())
+
+            self.assertEqual(stdout, "ok")
+            self.assertEqual(stderr, "")
+            subprocess_run.assert_called_once()
+
+        import asyncio
+        import subprocess
+
+        asyncio.run(run())
 
 
 def _restore_env(key: str, value: str | None) -> None:

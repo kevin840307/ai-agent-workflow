@@ -1,4 +1,4 @@
-export function installLayoutRenderer(ctx) {
+﻿export function installLayoutRenderer(ctx) {
   const {
     el,
     escapeAttr,
@@ -56,7 +56,7 @@ function renderSidebar() {
   customList.innerHTML = state.workflows.map((workflow) => `
     <div class="designer-workflow-pill ${workflow.id === state.selectedWorkflowId ? "active" : ""}" data-workflow-id="${escapeHtml(workflow.id)}">
       <strong>${escapeHtml(workflow.name)}</strong>
-      <span>${workflow.steps.length} steps · ${workflow.active ? "active" : "draft"}</span>
+      <span>${workflow.steps.length} steps 繚 ${workflow.active ? "active" : "draft"}</span>
       <span class="designer-workflow-pill-description">${escapeHtml(workflow.description || "No description.")}</span>
     </div>
   `).join("");
@@ -71,8 +71,8 @@ function renderWorkflowLabels() {
   setText(
     "designerActiveWorkflowMeta",
     readonly
-      ? "System · read only · runner default"
-      : `${wf.steps.length} steps · editable API workflow · ${wf.folderName || "new folder"} · runner selection not wired yet`
+      ? "System 繚 read only 繚 runner default"
+      : `${wf.steps.length} steps 繚 editable API workflow 繚 ${wf.folderName || "new folder"} 繚 runner selection not wired yet`
   );
   setText("designerEditableBadge", readonly ? "READ ONLY" : "EDITABLE");
   el("designerEditableBadge")?.classList.toggle("passed", !readonly);
@@ -112,7 +112,7 @@ function renderStepFloatingActions(wf) {
   return `
     <aside class="designer-step-floating-actions ${expanded ? "expanded" : "collapsed"}" aria-label="Selected step actions">
       <button type="button" class="designer-action-fab designer-action-toggle" data-designer-action="toggle-step-actions" aria-expanded="${expanded ? "true" : "false"}" title="${expandLabel}" aria-label="${expandLabel}">
-        <span aria-hidden="true">${expanded ? "×" : "⋯"}</span>
+        <span aria-hidden="true">${expanded ? "-" : "+"}</span>
       </button>
       <div class="designer-floating-panel" aria-hidden="${expanded ? "false" : "true"}">
         <span class="designer-floating-step-context" title="${escapeAttr(step.name || "Selected step")}">
@@ -120,11 +120,11 @@ function renderStepFloatingActions(wf) {
           <span>${escapeHtml(step.name || "Selected step")}</span>
         </span>
         <span class="designer-floating-action-buttons">
-          <button type="button" class="designer-action-fab designer-floating-primary" data-designer-action="open-step-editor" data-step-id="${escapeHtml(step.id)}" title="${editLabel}" aria-label="${editLabel}"><span aria-hidden="true">✎</span></button>
-          <button type="button" class="designer-action-fab" data-designer-action="move-step-up" data-step-id="${escapeHtml(step.id)}" title="Move up" aria-label="Move up" ${moveUpDisabled}><span aria-hidden="true">↑</span></button>
-          <button type="button" class="designer-action-fab" data-designer-action="move-step-down" data-step-id="${escapeHtml(step.id)}" title="Move down" aria-label="Move down" ${moveDownDisabled}><span aria-hidden="true">↓</span></button>
-          <button type="button" class="designer-action-fab" data-designer-action="duplicate-step" data-step-id="${escapeHtml(step.id)}" title="Duplicate" aria-label="Duplicate" ${disabled}><span aria-hidden="true">⧉</span></button>
-          <button type="button" class="designer-action-fab designer-danger" data-designer-action="delete-step" data-step-id="${escapeHtml(step.id)}" title="Delete" aria-label="Delete" ${disabled}><span aria-hidden="true">×</span></button>
+          <button type="button" class="designer-action-fab designer-floating-primary" data-designer-action="open-step-editor" data-step-id="${escapeHtml(step.id)}" title="${editLabel}" aria-label="${editLabel}"><span aria-hidden="true">??/span></button>
+          <button type="button" class="designer-action-fab" data-designer-action="move-step-up" data-step-id="${escapeHtml(step.id)}" title="Move up" aria-label="Move up" ${moveUpDisabled}><span aria-hidden="true">??/span></button>
+          <button type="button" class="designer-action-fab" data-designer-action="move-step-down" data-step-id="${escapeHtml(step.id)}" title="Move down" aria-label="Move down" ${moveDownDisabled}><span aria-hidden="true">??/span></button>
+          <button type="button" class="designer-action-fab" data-designer-action="duplicate-step" data-step-id="${escapeHtml(step.id)}" title="Duplicate" aria-label="Duplicate" ${disabled}><span aria-hidden="true">漰?/span></button>
+          <button type="button" class="designer-action-fab designer-danger" data-designer-action="delete-step" data-step-id="${escapeHtml(step.id)}" title="Delete" aria-label="Delete" ${disabled}><span aria-hidden="true">?</span></button>
         </span>
       </div>
     </aside>
@@ -164,19 +164,19 @@ function openStepContextMenu(stepId, options = {}) {
       <span title="${escapeAttr(step.name || "Selected step")}">${escapeHtml(step.name || "Selected step")}</span>
     </div>
     <button type="button" role="menuitem" data-designer-action="open-step-editor" data-step-id="${escapeHtml(step.id)}">
-      <span aria-hidden="true">✎</span><span>${escapeHtml(editLabel)}</span>
+      <span aria-hidden="true">??/span><span>${escapeHtml(editLabel)}</span>
     </button>
     <button type="button" role="menuitem" data-designer-action="move-step-up" data-step-id="${escapeHtml(step.id)}" ${moveUpDisabled}>
-      <span aria-hidden="true">↑</span><span>Move Up</span>
+      <span aria-hidden="true">??/span><span>Move Up</span>
     </button>
     <button type="button" role="menuitem" data-designer-action="move-step-down" data-step-id="${escapeHtml(step.id)}" ${moveDownDisabled}>
-      <span aria-hidden="true">↓</span><span>Move Down</span>
+      <span aria-hidden="true">??/span><span>Move Down</span>
     </button>
     <button type="button" role="menuitem" data-designer-action="duplicate-step" data-step-id="${escapeHtml(step.id)}" ${readonly ? "disabled" : ""}>
-      <span aria-hidden="true">⧉</span><span>Duplicate</span>
+      <span aria-hidden="true">漰?/span><span>Duplicate</span>
     </button>
     <button type="button" role="menuitem" class="designer-context-danger" data-designer-action="delete-step" data-step-id="${escapeHtml(step.id)}" ${readonly ? "disabled" : ""}>
-      <span aria-hidden="true">×</span><span>Delete</span>
+      <span aria-hidden="true">?</span><span>Delete</span>
     </button>
   `;
   document.body.appendChild(menu);
@@ -415,7 +415,7 @@ function renderStepList() {
       ["Key", step.key || "-"],
       ["Template", step.templatePath || "-"],
       ["File", step.filename || normalizeFilename(step.outputFile || "-")],
-      ["Retry", `${step.maxRetries ?? 0}${step.retryFromStepKey ? ` → ${step.retryFromStepKey}` : ""}`],
+      ["Retry", `${step.maxRetries ?? 0}${step.retryFromStepKey ? ` ??${step.retryFromStepKey}` : ""}`],
       ["Agent", step.agent || step.provider || "default"],
       ["Expected", (step.expectedFiles || []).length ? step.expectedFiles.join(", ") : "-"],
     ];
@@ -430,7 +430,7 @@ function renderStepList() {
             </span>
             <span class="designer-step-type ${escapeHtml(step.type)}">${escapeHtml(formatStepType(step.type))}</span>
           </span>
-          <button type="button" class="designer-step-card-menu" data-designer-action="open-step-context-menu" data-step-id="${escapeHtml(step.id)}" title="Step actions" aria-label="Step actions for ${escapeAttr(step.name || "step")}">⋮</button>
+          <button type="button" class="designer-step-card-menu" data-designer-action="open-step-context-menu" data-step-id="${escapeHtml(step.id)}" title="Step actions" aria-label="Step actions for ${escapeAttr(step.name || "step")}">??/button>
         </span>
         <span class="designer-step-card-sub">
           <span class="designer-step-summary">${escapeHtml(summarizeStep(step))}</span>
@@ -467,7 +467,7 @@ function renderCanvas() {
       <p>${escapeHtml(step.description || summarizeStep(step))}</p>
       <div class="designer-chip-row" style="margin-top: 8px;">
         ${step.enabled ? `<span class="badge passed">enabled</span>` : `<span class="badge cancelled">disabled</span>`}
-        <span class="badge">retry ${step.maxRetries}${step.retryFromStepKey ? ` → ${escapeHtml(step.retryFromStepKey)}` : ""}</span>
+        <span class="badge">retry ${step.maxRetries}${step.retryFromStepKey ? ` ??${escapeHtml(step.retryFromStepKey)}` : ""}</span>
         ${step.agent || step.provider ? `<span class="badge">agent ${escapeHtml(step.agent || step.provider)}</span>` : ""}
         ${step.allowInteraction ? `<span class="badge waiting_input">interaction</span>` : `<span class="badge">auto</span>`}
         ${step.pauseAfterStep ? `<span class="badge running">pause</span>` : ""}

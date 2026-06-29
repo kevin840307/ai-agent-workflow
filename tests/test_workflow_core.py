@@ -9,7 +9,7 @@ from app.runtime_modules.files import apply_extracted_files, classify_test_retry
 from app.services import workflow_config_service
 from app.workflow_function_catalog import AVAILABLE_WORKFLOW_FUNCTIONS
 from app.workflow_functions import PYTHON_FUNCTIONS
-from app.workflow_runtime.agents import create_agent_manager
+from app.workflow_runtime.agents import ADAPTER_FACTORIES, create_agent_manager
 from app.workflow_runtime.retry_policy import retry_target_for_failure, retry_target_for_step
 from app.workflow_runtime.step_config import initial_steps
 
@@ -65,6 +65,8 @@ class WorkflowCoreTests(unittest.TestCase):
         )
 
     def test_agent_manager_supports_opencode_provider_shape(self) -> None:
+        self.assertIn("qwen_cli", ADAPTER_FACTORIES)
+        self.assertIn("opencode_cli", ADAPTER_FACTORIES)
         manager = create_agent_manager(
             {
                 "agents": {

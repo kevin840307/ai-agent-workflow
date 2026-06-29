@@ -3,5 +3,20 @@
     "auth_type": "",
     "reuse_session": true,
     "max_retries": 10
+  },
+  "agents": {
+    "default": "qwen",
+    "providers": {
+      "qwen": {
+        "type": "qwen_cli"
+      },
+      "opencode": {
+        "type": "opencode_cli",
+        "bin": "C:\\Users\\kevin\\AppData\\Roaming\\npm\\opencode.cmd",
+        "mode": "run",
+        "reuseSession": true,
+        "timeoutSec": 1200
+      }
+    }
   }
 }
