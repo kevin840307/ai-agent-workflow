@@ -12,7 +12,7 @@ body[data-page="workflow-designer"] {
 .designer-shell {
   height: 100vh;
   display: grid;
-  grid-template-columns: 280px minmax(0, 1fr);
+  grid-template-columns: var(--rail-left) minmax(0, 1fr);
   min-width: 0;
 }
 
@@ -3084,3 +3084,56 @@ body[data-page="workflow-designer"]:has(.designer-template-modal-box) .designer-
   }
 }
 
+
+/* Sidebar alignment with runner page */
+.designer-sidebar {
+  display: grid;
+  grid-template-rows: auto auto auto minmax(0, 1fr);
+  padding: 16px 14px;
+  overflow: hidden;
+  scrollbar-gutter: stable;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(15, 118, 110, 0.11), transparent 34%),
+    linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+}
+
+.designer-brand-block {
+  min-width: 0;
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(216, 222, 232, 0.72);
+}
+
+.designer-brand-block .brand {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.designer-badge {
+  flex: 0 0 auto;
+  padding: 3px 6px;
+  font-size: 10px;
+}
+
+.designer-nav {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(216, 222, 232, 0.72);
+}
+
+.designer-custom-list {
+  min-height: 0;
+  overflow: auto;
+  padding-right: 2px;
+  scrollbar-gutter: stable;
+}
+
+.designer-sidebar-section:last-child {
+  min-height: 0;
+}
+
+@media (max-width: 245px) {
+  .designer-badge { display: none; }
+}

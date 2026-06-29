@@ -1,4 +1,4 @@
-import { LocalStore, StorageKeys } from "../core/storage.js?v=20260629-static-modules13";
+import { LocalStore, StorageKeys } from "../core/storage.js?v=20260629-static-modules15";
 
 export function createChat(ctx) {
   const { api, state, ui } = ctx;

@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Agent Workflow</title>
-    <link rel="stylesheet" href="/static/styles.css?v=20260629-static-modules13" />
+    <link rel="stylesheet" href="/static/styles.css?v=20260629-static-modules15" />
   </head>
   <body data-page="workflow-runner">
     <!-- App region: Project sessions -->
@@ -13,10 +13,11 @@
         <div class="brand">Agent Workflow</div>
         <button id="toggleProjects" class="side-toggle" title="Collapse projects" aria-label="Collapse projects" aria-pressed="false">☰</button>
       </div>
-      <button id="newProject" class="primary wide new-project-button"><span class="button-icon">＋</span><span class="button-text">New Project</span></button>
       <nav class="project-nav" aria-label="Application navigation">
+        <a href="/" class="project-nav-link active"><span>▶</span><strong>Runner</strong></a>
         <a href="/workflow-designer" class="project-nav-link"><span>⚙</span><strong>Workflows</strong></a>
       </nav>
+      <button id="newProject" class="primary wide new-project-button"><span class="button-icon">＋</span><span class="button-text">New Project</span></button>
       <div id="projectList" class="project-list"></div>
     </aside>
 
@@ -172,6 +173,6 @@
       </div>
     </div>
 
-    <script type="module" src="/static/js/main.js?v=20260629-static-modules13"></script>
+    <script type="module" src="/static/js/main.js?v=20260629-static-modules15"></script>
   </body>
 </html>

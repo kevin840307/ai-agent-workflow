@@ -117,7 +117,8 @@
   text-decoration: none;
 }
 
-.project-nav-link:hover {
+.project-nav-link:hover,
+.project-nav-link.active {
   border-color: rgba(15, 118, 110, 0.45);
   background: #effaf7;
   color: var(--accent-dark);
@@ -220,7 +221,8 @@ body.projects-collapsed .project-nav-link strong {
   color: var(--accent);
 }
 
-.project-nav-link:hover {
+.project-nav-link:hover,
+.project-nav-link.active {
   transform: translateY(-1px);
   border-color: rgba(15, 118, 110, 0.38);
   background: #ffffff;
@@ -349,4 +351,141 @@ body.projects-collapsed .project-item::before {
   width: auto;
   height: auto;
   background: transparent;
+}
+
+.project-nav-link.active span {
+  background: var(--accent);
+  color: #ffffff;
+}
+
+.project-nav-link.active strong {
+  color: var(--accent-dark);
+}
+
+/* Keep runner and designer sidebar navigation aligned across page switches. */
+.projects .project-nav {
+  margin-top: 0;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(216, 222, 232, 0.72);
+}
+
+.projects .new-project-button {
+  margin-bottom: 12px;
+}
+
+.project-nav-link.active {
+  transform: none;
+}
+
+.project-nav-link.active:hover {
+  transform: translateY(-1px);
+}
+
+/* Sidebar consistency + scroll polish */
+.projects {
+  display: grid;
+  grid-template-rows: auto auto auto minmax(0, 1fr);
+  min-width: 0;
+  overflow: hidden;
+  scrollbar-gutter: stable;
+}
+
+.projects .project-list {
+  min-height: 0;
+  overflow: auto;
+  padding-right: 2px;
+  scrollbar-gutter: stable;
+}
+
+.brand {
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.project-nav-link,
+.designer-nav-link {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  min-height: 42px;
+  padding: 0 12px;
+  border: 1px solid rgba(203, 213, 225, 0.72);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--text);
+  text-decoration: none;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  transition: transform 150ms ease, border-color 150ms ease, box-shadow 150ms ease, background 150ms ease;
+}
+
+.project-nav-link span,
+.designer-nav-link span {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  background: #eef7f5;
+  color: var(--accent);
+  font-size: 12px;
+  line-height: 1;
+}
+
+.project-nav-link strong,
+.designer-nav-link strong {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: inherit;
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.project-nav-link:hover,
+.project-nav-link.active,
+.designer-nav-link:hover,
+.designer-nav-link.active {
+  transform: translateY(-1px);
+  border-color: rgba(15, 118, 110, 0.38);
+  background: #ffffff;
+  color: var(--accent-dark);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+}
+
+.project-nav-link.active span,
+.designer-nav-link.active span {
+  background: var(--accent);
+  color: #ffffff;
+}
+
+body.projects-collapsed .project-nav-link span {
+  display: inline-grid !important;
+  width: 24px;
+  height: 24px;
+  background: #eef7f5;
+  color: var(--accent);
+}
+
+body.projects-collapsed .project-nav-link.active span {
+  background: var(--accent);
+  color: #ffffff;
+}
+
+body.projects-collapsed .project-nav-link strong {
+  display: none;
+}
+
+body.projects-collapsed .projects {
+  overflow: hidden;
+}
+
+body.projects-collapsed .project-list {
+  overflow: hidden;
+  padding-right: 0;
 }
