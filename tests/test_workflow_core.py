@@ -80,6 +80,7 @@ class WorkflowCoreTests(unittest.TestCase):
         self.assertEqual(manager.default_agent_name(), "opencode")
         self.assertIn("opencode", manager.available_agent_names())
         self.assertEqual(manager.resolve(agent_name="opencode").name, "opencode")
+        self.assertEqual(manager.resolve().name, "opencode")
 
 
 if __name__ == "__main__":

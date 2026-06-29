@@ -46,6 +46,19 @@ class Store:
             if not session.get("qwen_session_id"):
                 session["qwen_session_id"] = session["id"]
                 changed = True
+            if not isinstance(session.get("agent_session_ids"), dict):
+                session["agent_session_ids"] = {
+                    "qwen": session.get("qwen_session_id") or session["id"],
+                    "opencode": session["id"],
+                }
+                changed = True
+            else:
+                if not session["agent_session_ids"].get("qwen"):
+                    session["agent_session_ids"]["qwen"] = session.get("qwen_session_id") or session["id"]
+                    changed = True
+                if not session["agent_session_ids"].get("opencode"):
+                    session["agent_session_ids"]["opencode"] = session["id"]
+                    changed = True
             if not session.get("project_path"):
                 session["project_path"] = self._default_project_path()
                 changed = True
@@ -53,6 +66,19 @@ class Store:
             if not run.get("qwen_session_id"):
                 run["qwen_session_id"] = run.get("session_id")
                 changed = True
+            if not isinstance(run.get("agent_session_ids"), dict):
+                run["agent_session_ids"] = {
+                    "qwen": run.get("qwen_session_id") or run.get("session_id"),
+                    "opencode": run.get("session_id"),
+                }
+                changed = True
+            else:
+                if not run["agent_session_ids"].get("qwen"):
+                    run["agent_session_ids"]["qwen"] = run.get("qwen_session_id") or run.get("session_id")
+                    changed = True
+                if not run["agent_session_ids"].get("opencode"):
+                    run["agent_session_ids"]["opencode"] = run.get("session_id")
+                    changed = True
             for key, default in {
                 "status": "queued",
                 "error": None,

@@ -70,7 +70,10 @@ def _qwen_serve_command(client: QwenCliClient, workspace: Path, port: int) -> li
 
 
 def qwen_serve_disabled() -> bool:
-    return os.environ.get("QWEN_SERVE", "1").lower() in {"0", "false", "no", "off"}
+    serve_setting = os.environ.get("QWEN_SERVE")
+    if serve_setting is not None:
+        return serve_setting.lower() in {"0", "false", "no", "off"}
+    return os.environ.get("QWEN_USE_SERVE", "0").lower() in {"0", "false", "no", "off"}
 
 
 def qwen_serve_is_running() -> bool:

@@ -98,6 +98,8 @@ async def create_workflow_run(session_id: str, body: runtime.CreateRunRequest) -
             "id": run_id,
             "session_id": session_id,
             "qwen_session_id": session.get("qwen_session_id") or session_id,
+            "agent_session_ids": session.get("agent_session_ids")
+            or {"qwen": session.get("qwen_session_id") or session_id, "opencode": session_id},
             "status": "queued",
             "error": None,
             "workspace": str(run_dir),

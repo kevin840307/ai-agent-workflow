@@ -5,6 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from app.runtime_modules.errors import WorkflowError
 from app.runtime_modules.files import (
     extract_build_files,
     project_profile,
@@ -13,7 +14,8 @@ from app.runtime_modules.files import (
     validate_generated_test_files,
 )
 from app.runtime_modules.qwen import QwenCliClient
-from app.runtime_modules.errors import WorkflowError
+from app.workflow_runtime.agents import AgentRequest, OpenCodeCliAdapter, QwenAdapter
+from app.workflow_runtime.qwen_serve import qwen_serve_disabled
 
 
 class RuntimeFilesAndQwenTests(unittest.TestCase):
@@ -75,6 +77,69 @@ END_FILE
             _restore_env("QWEN_MOCK", old_mock)
             _restore_env("QWEN_BARE", old_bare)
             _restore_env("QWEN_AUTH_TYPE", old_auth)
+
+    def test_qwen_adapter_defaults_to_cli_unless_serve_is_enabled(self) -> None:
+        old_mock = os.environ.get("QWEN_MOCK")
+        old_use_serve = os.environ.get("QWEN_USE_SERVE")
+        try:
+            os.environ.pop("QWEN_MOCK", None)
+            os.environ.pop("QWEN_USE_SERVE", None)
+            request = AgentRequest(
+                run_id="run-1",
+                step_key="step",
+                prompt="hello",
+                cwd=Path.cwd(),
+                session_id="session-1",
+            )
+
+            adapter = QwenAdapter()
+            self.assertIn("<prompt via stdin>", adapter.command_preview(request))
+            self.assertEqual(adapter.health()["type"], "qwen_cli")
+
+            os.environ["QWEN_USE_SERVE"] = "1"
+            adapter = QwenAdapter()
+            self.assertEqual(adapter.command_preview(request), "POST qwen serve /session/<session>/prompt")
+            self.assertEqual(adapter.health()["type"], "qwen_serve")
+        finally:
+            _restore_env("QWEN_MOCK", old_mock)
+            _restore_env("QWEN_USE_SERVE", old_use_serve)
+
+    def test_qwen_serve_status_is_disabled_by_default(self) -> None:
+        old_use_serve = os.environ.get("QWEN_USE_SERVE")
+        old_serve = os.environ.get("QWEN_SERVE")
+        try:
+            os.environ.pop("QWEN_USE_SERVE", None)
+            os.environ.pop("QWEN_SERVE", None)
+            self.assertTrue(qwen_serve_disabled())
+
+            os.environ["QWEN_USE_SERVE"] = "1"
+            self.assertFalse(qwen_serve_disabled())
+
+            os.environ["QWEN_SERVE"] = "0"
+            self.assertTrue(qwen_serve_disabled())
+        finally:
+            _restore_env("QWEN_USE_SERVE", old_use_serve)
+            _restore_env("QWEN_SERVE", old_serve)
+
+    def test_opencode_adapter_prefers_cmd_on_windows_and_renders_command(self) -> None:
+        adapter = OpenCodeCliAdapter({"bin": "opencode", "mode": "run"})
+        request = AgentRequest(
+            run_id="run-1",
+            step_key="step",
+            prompt="hello",
+            cwd=Path.cwd(),
+        )
+        self.assertEqual(adapter.command_preview(request), f"{adapter.bin} run <prompt>")
+        session_request = AgentRequest(
+            run_id="run-1",
+            step_key="step",
+            prompt="hello",
+            cwd=Path.cwd(),
+            session_id="session-1",
+        )
+        self.assertEqual(adapter.command_preview(session_request), f"{adapter.bin} run --session <session> <prompt>")
+        if os.name == "nt":
+            self.assertTrue(adapter.bin.endswith("opencode.cmd") or adapter.bin.endswith("opencode.exe") or adapter.bin == "opencode.cmd")
 
 
 def _restore_env(key: str, value: str | None) -> None:

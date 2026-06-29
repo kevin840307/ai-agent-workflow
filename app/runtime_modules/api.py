@@ -7,10 +7,10 @@ from typing import Any
 # Keep schema imports for backward compatibility with existing route modules that
 # import these names from runtime.py.
 from app.domain.schemas import (  # noqa: F401
+    AgentSettingsRequest,
     CreateMessageRequest,
     CreateRunRequest,
     CreateSessionRequest,
-    QwenSettingsRequest,
     RetryRunRequest,
     SubmitAnswersRequest,
     SubmitGuidanceRequest,

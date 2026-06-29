@@ -14,5 +14,10 @@ async def get_config():
 
 
 @router.post("/api/config/qwen")
-async def update_qwen_config(body: schemas.QwenSettingsRequest):
-    return config_service.update_qwen_config(body)
+async def update_agent_config(body: schemas.AgentSettingsRequest):
+    return config_service.update_agent_config(body)
+
+
+@router.post("/api/config/agents")
+async def update_agents_config(body: schemas.AgentSettingsRequest):
+    return config_service.update_agent_config(body)

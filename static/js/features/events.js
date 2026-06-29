@@ -18,9 +18,12 @@ export function createEvents(ctx) {
           ctx.features.chat.submit();
         }
       });
-      ui.on("qwenAuthType", "change", () => ctx.features.config.saveQwenConfig());
-      ui.on("qwenReuseSession", "change", () => ctx.features.config.saveQwenConfig());
-      ui.on("maxRetries", "change", () => ctx.features.config.saveQwenConfig());
+      ui.on("qwenAuthType", "change", () => ctx.features.config.saveAgentConfig());
+      ui.on("qwenReuseSession", "change", () => ctx.features.config.saveAgentConfig());
+      ui.on("maxRetries", "change", () => ctx.features.config.saveAgentConfig());
+      ui.on("defaultAgent", "change", () => ctx.features.config.saveAgentConfig());
+      ui.on("opencodeBin", "change", () => ctx.features.config.saveAgentConfig());
+      ui.on("opencodeMode", "change", () => ctx.features.config.saveAgentConfig());
       ui.on("workflowSelect", "change", (event) => ctx.features.workflows.select(event.target.value));
       ui.on("workflowDropdownButton", "click", (event) => {
         event.stopPropagation();

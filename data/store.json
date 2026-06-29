@@ -1,6 +1,176 @@
 {
-  "sessions": [],
-  "messages": [],
+  "sessions": [
+    {
+      "id": "7b18da93-abd3-484c-9f45-d552e8bcc2a4",
+      "qwen_session_id": "7b18da93-abd3-484c-9f45-d552e8bcc2a4",
+      "agent_session_ids": {
+        "qwen": "7b18da93-abd3-484c-9f45-d552e8bcc2a4",
+        "opencode": "7b18da93-abd3-484c-9f45-d552e8bcc2a4"
+      },
+      "title": "Chat Agent",
+      "project_path": "C:\\Users\\kevin\\AppData\\Local\\Temp\\tmplq_tfg61",
+      "created_at": "2026-06-29T11:59:26.256704+00:00",
+      "updated_at": "2026-06-29T11:59:26.277211+00:00"
+    },
+    {
+      "id": "5f2886f4-aa80-4afa-8aa6-513c15df1ce2",
+      "qwen_session_id": "5f2886f4-aa80-4afa-8aa6-513c15df1ce2",
+      "agent_session_ids": {
+        "qwen": "5f2886f4-aa80-4afa-8aa6-513c15df1ce2",
+        "opencode": "5f2886f4-aa80-4afa-8aa6-513c15df1ce2"
+      },
+      "title": "Chat Agent",
+      "project_path": "C:\\Users\\kevin\\AppData\\Local\\Temp\\tmp771ntnkd",
+      "created_at": "2026-06-29T11:59:18.277257+00:00",
+      "updated_at": "2026-06-29T11:59:18.298738+00:00"
+    },
+    {
+      "id": "c305e235-803a-4e4e-b15f-bfe4d4217fe5",
+      "qwen_session_id": "c305e235-803a-4e4e-b15f-bfe4d4217fe5",
+      "agent_session_ids": {
+        "qwen": "c305e235-803a-4e4e-b15f-bfe4d4217fe5",
+        "opencode": "c305e235-803a-4e4e-b15f-bfe4d4217fe5"
+      },
+      "title": "Chat Agent",
+      "project_path": "C:\\Users\\kevin\\AppData\\Local\\Temp\\tmpitt6elmq",
+      "created_at": "2026-06-29T11:58:11.011993+00:00",
+      "updated_at": "2026-06-29T11:58:11.033473+00:00"
+    },
+    {
+      "id": "d6467520-21f4-4179-ab36-1bfa2bdb4370",
+      "qwen_session_id": "d6467520-21f4-4179-ab36-1bfa2bdb4370",
+      "title": "Chat Agent",
+      "project_path": "C:\\Users\\kevin\\AppData\\Local\\Temp\\tmp0tx4_qhl",
+      "created_at": "2026-06-29T11:55:18.387336+00:00",
+      "updated_at": "2026-06-29T11:55:18.410771+00:00",
+      "agent_session_ids": {
+        "qwen": "d6467520-21f4-4179-ab36-1bfa2bdb4370",
+        "opencode": "d6467520-21f4-4179-ab36-1bfa2bdb4370"
+      }
+    },
+    {
+      "id": "85b3543d-aec0-471f-a016-4731832b037c",
+      "qwen_session_id": "85b3543d-aec0-471f-a016-4731832b037c",
+      "title": "Chat Agent",
+      "project_path": "C:\\Users\\kevin\\AppData\\Local\\Temp\\tmps2ehsopq",
+      "created_at": "2026-06-29T11:49:34.356869+00:00",
+      "updated_at": "2026-06-29T11:49:34.372840+00:00",
+      "agent_session_ids": {
+        "qwen": "85b3543d-aec0-471f-a016-4731832b037c",
+        "opencode": "85b3543d-aec0-471f-a016-4731832b037c"
+      }
+    },
+    {
+      "id": "fa288e40-5de0-4408-9a72-6618667ca0ee",
+      "qwen_session_id": "fa288e40-5de0-4408-9a72-6618667ca0ee",
+      "title": "Chat Agent",
+      "project_path": "C:\\Users\\kevin\\AppData\\Local\\Temp\\tmpfs_v98qe",
+      "created_at": "2026-06-29T11:49:04.051983+00:00",
+      "updated_at": "2026-06-29T11:49:04.069786+00:00",
+      "agent_session_ids": {
+        "qwen": "fa288e40-5de0-4408-9a72-6618667ca0ee",
+        "opencode": "fa288e40-5de0-4408-9a72-6618667ca0ee"
+      }
+    }
+  ],
+  "messages": [
+    {
+      "id": "b6987847-bedd-4e64-9c0f-7a785139e987",
+      "session_id": "fa288e40-5de0-4408-9a72-6618667ca0ee",
+      "role": "user",
+      "content": "hello",
+      "created_at": "2026-06-29T11:49:04.061972+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "fd53aada-68b3-4bd1-8fa5-e2c4a6a384bf",
+      "session_id": "fa288e40-5de0-4408-9a72-6618667ca0ee",
+      "role": "assistant",
+      "content": "opencode answer",
+      "created_at": "2026-06-29T11:49:04.063927+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "287c1d4d-38df-4ef2-9235-365b2b87e2da",
+      "session_id": "85b3543d-aec0-471f-a016-4731832b037c",
+      "role": "user",
+      "content": "hello",
+      "created_at": "2026-06-29T11:49:34.366173+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "e844f472-e0ec-402c-9ff5-395ab9e05aca",
+      "session_id": "85b3543d-aec0-471f-a016-4731832b037c",
+      "role": "assistant",
+      "content": "opencode answer",
+      "created_at": "2026-06-29T11:49:34.367965+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "31283d68-621d-4ee2-afbb-677ac4d8f06f",
+      "session_id": "d6467520-21f4-4179-ab36-1bfa2bdb4370",
+      "role": "user",
+      "content": "hello",
+      "created_at": "2026-06-29T11:55:18.401004+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "9736c7b0-d59d-47a3-a725-c7d34118ce31",
+      "session_id": "d6467520-21f4-4179-ab36-1bfa2bdb4370",
+      "role": "assistant",
+      "content": "opencode answer",
+      "created_at": "2026-06-29T11:55:18.403935+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "e4a5f108-2d97-46f5-83e5-3a418b7956b0",
+      "session_id": "c305e235-803a-4e4e-b15f-bfe4d4217fe5",
+      "role": "user",
+      "content": "hello",
+      "created_at": "2026-06-29T11:58:11.023708+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "9e2e920a-c6ed-4ef4-9c4d-2fbe0b1d6ba4",
+      "session_id": "c305e235-803a-4e4e-b15f-bfe4d4217fe5",
+      "role": "assistant",
+      "content": "opencode answer",
+      "created_at": "2026-06-29T11:58:11.025662+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "b42b630a-35e3-4d51-b20e-077fc578071d",
+      "session_id": "5f2886f4-aa80-4afa-8aa6-513c15df1ce2",
+      "role": "user",
+      "content": "hello",
+      "created_at": "2026-06-29T11:59:18.288974+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "e56cef61-051c-4725-a6ea-a45af04b90c1",
+      "session_id": "5f2886f4-aa80-4afa-8aa6-513c15df1ce2",
+      "role": "assistant",
+      "content": "opencode answer",
+      "created_at": "2026-06-29T11:59:18.289950+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "c400fb71-eed9-4b35-9b12-4fd735e8902e",
+      "session_id": "7b18da93-abd3-484c-9f45-d552e8bcc2a4",
+      "role": "user",
+      "content": "hello",
+      "created_at": "2026-06-29T11:59:26.268422+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "5185041e-2084-4333-966f-98afa4c5c3a0",
+      "session_id": "7b18da93-abd3-484c-9f45-d552e8bcc2a4",
+      "role": "assistant",
+      "content": "opencode answer",
+      "created_at": "2026-06-29T11:59:26.270376+00:00",
+      "kind": "chat"
+    }
+  ],
   "runs": [],
   "workflow_configs": []
 }

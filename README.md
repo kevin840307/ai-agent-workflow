@@ -20,13 +20,19 @@ Open http://127.0.0.1:8000.
 
 ## Qwen Runtime
 
-By default the app tries to use `qwen serve` for lower latency:
+By default the app uses the Qwen CLI path, because it matches normal `qwen -p "..."` behavior and avoids starting a background server unexpectedly. OpenCode is also supported as an agent provider.
+
+```text
+qwen <session/options> <prompt via stdin>
+```
+
+`qwen serve` is opt-in. Set `QWEN_USE_SERVE=1` when you want the app to call the serve API:
 
 ```text
 POST qwen serve /session/<session>/prompt
 ```
 
-If no matching server is running, the app starts one for the project workspace. Session behavior:
+When serve mode is enabled and no matching server is running, the app can start one for the project workspace. Session behavior:
 
 - Normal workflow/chat calls reuse the project `qwen_session_id`.
 - Consensus agent steps can request fresh internal Qwen sessions with `freshSessionPerAgent`.
@@ -35,7 +41,7 @@ If no matching server is running, the app starts one for the project workspace. 
 Useful environment variables:
 
 - `QWEN_BIN`: Qwen executable. Default is `qwen.cmd` on Windows, `qwen` elsewhere.
-- `QWEN_USE_SERVE`: set `0` to disable serve API and use CLI fallback path.
+- `QWEN_USE_SERVE`: set `1` to enable Qwen serve API. Default: `0`.
 - `QWEN_SERVE`: set `0` to prevent auto-starting `qwen serve`.
 - `QWEN_SERVE_FALLBACK_CLI`: set `1` to use CLI when serve fails.
 - `QWEN_TIMEOUT_SEC`: agent timeout seconds. Default `1200`.
@@ -43,6 +49,18 @@ Useful environment variables:
 - `WORKFLOW_TEST_COMMAND`: command used by the Run Test step. Default `python -m pytest`.
 
 If `qwen -p "hello world"` works in cmd, keep Auth blank/none in the UI so the app uses your existing Qwen settings.
+
+## OpenCode
+
+OpenCode can be selected from the settings menu as the default agent, or per workflow step by setting Agent Provider to `opencode`.
+
+On Windows the app prefers `opencode.cmd` to avoid PowerShell `.ps1` execution-policy errors. Supported OpenCode modes:
+
+- `run`: invokes `opencode run --session <project-session> <prompt>`
+- `prompt_flag`: invokes `opencode --prompt <prompt> --session <project-session>`
+
+The default agent is stored under `agents.default` in `data/settings.json`. Provider settings are stored under `agents.providers`.
+Project sessions store provider ids in `agent_session_ids`, so Qwen and OpenCode can both reuse the selected project session.
 
 ## Workflows
 

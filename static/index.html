@@ -31,14 +31,14 @@
           <button id="resetSession" class="header-icon reset-session" title="Reset session" aria-label="Reset session">
             <span class="icon-mark">Reset</span>
           </button>
-          <button id="toggleSettings" class="header-icon" title="Qwen settings" aria-label="Qwen settings" aria-expanded="false">
+          <button id="toggleSettings" class="header-icon" title="Agent settings" aria-label="Agent settings" aria-expanded="false">
             <span class="icon-mark">⚙</span>
           </button>
           <button id="toggleDetails" class="header-icon" title="Collapse details" aria-label="Collapse details" aria-pressed="false">
             <span class="icon-mark">⇥</span>
           </button>
         </div>
-        <div id="settingsMenu" class="actions settings-menu" aria-label="Qwen settings panel">
+        <div id="settingsMenu" class="actions settings-menu" aria-label="Agent settings panel">
           <div class="settings-status">
             <div>
               <span>Run</span>
@@ -64,9 +64,43 @@
             Max Retry
             <input id="maxRetries" type="number" min="0" max="10" step="1" />
           </label>
+          <label class="setting">
+            Default Agent
+            <select id="defaultAgent">
+              <option value="qwen">qwen</option>
+              <option value="opencode">opencode</option>
+            </select>
+          </label>
+          <label class="setting">
+            OpenCode Bin
+            <input id="opencodeBin" placeholder="opencode.cmd" />
+          </label>
+          <label class="setting">
+            OpenCode Mode
+            <select id="opencodeMode">
+              <option value="run">run</option>
+              <option value="prompt_flag">prompt flag</option>
+            </select>
+          </label>
+          <label class="setting">
+            OpenCode Timeout
+            <input id="opencodeTimeout" type="number" min="1" max="86400" step="1" />
+          </label>
+          <label class="setting">
+            OpenCode Model
+            <input id="opencodeModel" placeholder="provider/model" />
+          </label>
+          <label class="setting">
+            OpenCode Agent
+            <input id="opencodeAgent" placeholder="agent name" />
+          </label>
           <label class="check">
             <input id="qwenReuseSession" type="checkbox" />
-            Reuse
+            Qwen Reuse
+          </label>
+          <label class="check">
+            <input id="opencodeReuseSession" type="checkbox" />
+            OpenCode Reuse
           </label>
         </div>
       </header>

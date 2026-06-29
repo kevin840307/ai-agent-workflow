@@ -66,6 +66,7 @@ async def create_project(body: runtime.CreateSessionRequest | None = None) -> di
     session = {
         "id": session_id,
         "qwen_session_id": session_id,
+        "agent_session_ids": {"qwen": session_id, "opencode": session_id},
         "title": title,
         "project_path": project_path,
         "created_at": runtime.utc_now(),
@@ -114,13 +115,14 @@ async def reset_project(session_id: str) -> dict:
     forget_qwen_serve_session(old_qwen_session_id)
     forget_qwen_serve_session(session_id)
 
-    new_qwen_session_id = str(uuid.uuid4())
+    new_agent_session_id = str(uuid.uuid4())
 
     def reset(data):
         target = next((item for item in data["sessions"] if item["id"] == session_id), None)
         if not target:
             raise HTTPException(status_code=404, detail="Session not found")
-        target["qwen_session_id"] = new_qwen_session_id
+        target["qwen_session_id"] = new_agent_session_id
+        target["agent_session_ids"] = {"qwen": new_agent_session_id, "opencode": new_agent_session_id}
         target["updated_at"] = runtime.utc_now()
         data["messages"] = [message for message in data["messages"] if message["session_id"] != session_id]
         data["runs"] = [run for run in data["runs"] if run["session_id"] != session_id]
@@ -187,14 +189,16 @@ async def chat(session_id: str, body: runtime.CreateMessageRequest) -> dict:
     project_path = runtime.resolve_project_path(session.get("project_path"), runtime.ROOT)
 
     try:
-        agent = runtime.agent_manager.resolve(agent_name="qwen")
+        agent = runtime.agent_manager.resolve()
+        provider_sessions = session.get("agent_session_ids") or {}
+        agent_session_id = provider_sessions.get(agent.name) or session.get("qwen_session_id") or session_id
         result = await agent.run_stream(
             AgentRequest(
                 run_id=f"chat-{session_id}",
                 step_key="chat",
                 prompt=prompt,
                 cwd=project_path,
-                session_id=session.get("qwen_session_id") or session_id,
+                session_id=agent_session_id,
             )
         )
         answer = result.output

@@ -32,9 +32,9 @@ class RuntimeRefactorContractTests(unittest.TestCase):
             "WorkflowCancelled",
             "ValidationError",
             "UserInputRequired",
+            "AgentSettingsRequest",
             "CreateRunRequest",
             "CreateSessionRequest",
-            "QwenSettingsRequest",
             "ROOT",
             "STORE_FILE",
             "WORKSPACES_DIR",
@@ -121,6 +121,28 @@ class RuntimeRefactorContractTests(unittest.TestCase):
                     if pattern in text:
                         violations.append(f"{rel_path}: contains {pattern!r}")
         self.assertEqual(violations, [])
+
+    def test_agent_provider_code_is_split_by_adapter(self) -> None:
+        repo = Path(__file__).resolve().parents[1]
+        adapter_dir = repo / "app" / "workflow_runtime" / "agent_adapters"
+        expected_files = [
+            adapter_dir / "base.py",
+            adapter_dir / "qwen.py",
+            adapter_dir / "opencode.py",
+        ]
+        for path in expected_files:
+            with self.subTest(path=path.name):
+                self.assertTrue(path.exists(), f"missing agent adapter: {path}")
+
+        qwen_source = (adapter_dir / "qwen.py").read_text(encoding="utf-8")
+        opencode_source = (adapter_dir / "opencode.py").read_text(encoding="utf-8")
+        schema_source = (repo / "app" / "domain" / "schemas.py").read_text(encoding="utf-8")
+
+        self.assertNotIn("OpenCode", qwen_source)
+        self.assertNotIn("opencode", qwen_source.lower())
+        self.assertIn("OpenCodeCliAdapter", opencode_source)
+        self.assertIn("class AgentSettingsRequest", schema_source)
+        self.assertNotIn("class QwenSettingsRequest", schema_source)
 
 
 if __name__ == "__main__":

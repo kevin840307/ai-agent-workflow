@@ -19,10 +19,17 @@ class CreateSessionRequest(BaseModel):
     title: str | None = None
 
 
-class QwenSettingsRequest(BaseModel):
+class AgentSettingsRequest(BaseModel):
     auth_type: str | None = None
     reuse_session: bool | None = None
     max_retries: int | None = None
+    default_agent: str | None = None
+    opencode_bin: str | None = None
+    opencode_mode: str | None = None
+    opencode_reuse_session: bool | None = None
+    opencode_timeout_sec: int | None = None
+    opencode_model: str | None = None
+    opencode_agent: str | None = None
 
 
 class RetryRunRequest(BaseModel):
@@ -42,7 +49,7 @@ __all__ = [
     "CreateMessageRequest",
     "CreateRunRequest",
     "CreateSessionRequest",
-    "QwenSettingsRequest",
+    "AgentSettingsRequest",
     "RetryRunRequest",
     "SubmitAnswersRequest",
     "SubmitGuidanceRequest",

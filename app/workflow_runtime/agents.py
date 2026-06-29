@@ -1,214 +1,26 @@
 from __future__ import annotations
 
-import asyncio
-import os
-import shutil
-from dataclasses import dataclass
-from pathlib import Path
-from typing import Any, Awaitable, Callable, Protocol
+from typing import Any, Callable
 
 from app.runtime_modules.errors import WorkflowError
 
-from .qwen_serve import QwenCliClient, run_prompt_via_serve
+from .agent_adapters import (
+    AgentClient,
+    AgentOutputCallback,
+    AgentRequest,
+    AgentResult,
+    OpenCodeCliAdapter,
+    QwenAdapter,
+    run_process_stream,
+)
 from .settings import load_settings
-
-AgentOutputCallback = Callable[[str, str], Awaitable[None]]
-
-
-@dataclass(slots=True)
-class AgentRequest:
-    run_id: str
-    step_key: str
-    prompt: str
-    cwd: Path
-    session_id: str | None = None
-    profile: str | None = None
-    metadata: dict[str, Any] | None = None
-
-
-@dataclass(slots=True)
-class AgentResult:
-    output: str
-    session_id: str | None = None
-    raw_output: str | None = None
-
-
-class AgentClient(Protocol):
-    name: str
-
-    async def run_stream(self, request: AgentRequest, on_output: AgentOutputCallback | None = None) -> AgentResult:
-        ...
-
-    def command_preview(self, request: AgentRequest) -> str:
-        ...
-
-    def health(self) -> dict[str, Any]:
-        ...
-
-
-async def run_process_stream(
-    command: list[str],
-    cwd: Path,
-    *,
-    env: dict[str, str] | None = None,
-    on_output: AgentOutputCallback | None = None,
-) -> tuple[str, str]:
-    """Run an external CLI and stream stdout/stderr separately.
-
-    Artifact content should normally come from stdout only.  stderr is still
-    streamed to the UI and included in errors when the process fails.
-    """
-    proc = await asyncio.create_subprocess_exec(
-        *command,
-        cwd=str(cwd),
-        env=env,
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE,
-    )
-    stdout_chunks: list[str] = []
-    stderr_chunks: list[str] = []
-
-    async def drain(stream_name: str, stream: asyncio.StreamReader | None, chunks: list[str]) -> None:
-        if stream is None:
-            return
-        while True:
-            data = await stream.readline()
-            if not data:
-                break
-            text = data.decode(errors="replace")
-            chunks.append(text)
-            if on_output:
-                await on_output(stream_name, text)
-
-    await asyncio.gather(
-        drain("stdout", proc.stdout, stdout_chunks),
-        drain("stderr", proc.stderr, stderr_chunks),
-    )
-    code = await proc.wait()
-    stdout = "".join(stdout_chunks).strip()
-    stderr = "".join(stderr_chunks).strip()
-    if code != 0:
-        detail = stderr or stdout or "no stdout/stderr"
-        raise WorkflowError(f"Agent process failed with exit code {code}: {' '.join(command)}\n{detail}".strip())
-    return stdout, stderr
-
-
-class QwenAdapter:
-    name = "qwen"
-
-    def __init__(self) -> None:
-        # Create the client at adapter construction time.  AgentManager rebuilds
-        # adapters from current settings on each resolve/health call, so config
-        # changes are picked up without restarting the server.
-        self.client = QwenCliClient()
-
-    @staticmethod
-    def use_serve_by_default() -> bool:
-        return os.environ.get("QWEN_USE_SERVE", "0").lower() not in {"0", "false", "no", "off"}
-
-    async def run_stream(self, request: AgentRequest, on_output: AgentOutputCallback | None = None) -> AgentResult:
-        use_serve = self.use_serve_by_default()
-        if use_serve and not self.client.mock:
-            try:
-                output = await run_prompt_via_serve(
-                    request.prompt,
-                    request.cwd,
-                    request.session_id,
-                    on_output=on_output,
-                    timeout_sec=self.client.timeout_sec,
-                )
-                return AgentResult(output=output, session_id=request.session_id, raw_output=output)
-            except Exception as exc:
-                fallback_enabled = os.environ.get("QWEN_SERVE_FALLBACK_CLI", "0").lower() not in {"0", "false", "no", "off"}
-                if not fallback_enabled:
-                    raise
-                if on_output:
-                    await on_output("stderr", f"Qwen serve failed; falling back to CLI: {exc}")
-
-        output = await self.client.run_stream(
-            request.prompt,
-            request.cwd,
-            request.session_id,
-            on_output=on_output,
-            run_id=request.run_id,
-        )
-        return AgentResult(output=output, session_id=request.session_id, raw_output=output)
-
-    def command_preview(self, request: AgentRequest) -> str:
-        use_serve = self.use_serve_by_default()
-        if use_serve and not self.client.mock:
-            return "POST qwen serve /session/<session>/prompt"
-        return " ".join([*self.client.command(request.session_id, include_prompt_flag=False), "<prompt via stdin>"])
-
-    def health(self) -> dict[str, Any]:
-        return {
-            "name": self.name,
-            "type": "qwen_serve" if self.use_serve_by_default() and not self.client.mock else "qwen_cli",
-            "mock": self.client.mock,
-            "bin": self.client.bin,
-            "reuse_session": self.client.reuse_session,
-            "bare": self.client.bare,
-            "auth_type": self.client.auth_type or None,
-            "timeout_sec": self.client.timeout_sec,
-            "exists": self.client.mock or shutil.which(self.client.bin) is not None,
-            "fallback": os.environ.get("QWEN_SERVE_FALLBACK_CLI", "0"),
-        }
-
-
-class OpenCodeCliAdapter:
-    """Adapter for OpenCode or OpenCode-compatible command line agents.
-
-    Supported modes:
-    - ``run``:         opencode run <prompt>
-    - ``prompt_flag``: opencode -p <prompt>
-
-    Keep the mode configurable because CLI distributions may differ.
-    """
-
-    name = "opencode"
-
-    def __init__(self, config: dict[str, Any] | None = None) -> None:
-        config = config or {}
-        self.bin = config.get("bin") or "opencode"
-        self.mode = config.get("mode") or "run"
-        self.config_dir = config.get("configDir") or config.get("config_dir")
-        self.extra_args = list(config.get("extraArgs") or config.get("extra_args") or [])
-
-    def _command(self, prompt: str) -> list[str]:
-        if self.mode == "prompt_flag":
-            return [self.bin, "-p", prompt, *self.extra_args]
-        return [self.bin, "run", prompt, *self.extra_args]
-
-    async def run_stream(self, request: AgentRequest, on_output: AgentOutputCallback | None = None) -> AgentResult:
-        env = os.environ.copy()
-        if self.config_dir:
-            env["OPENCODE_CONFIG_DIR"] = str(self.config_dir)
-        stdout, stderr = await run_process_stream(self._command(request.prompt), request.cwd, env=env, on_output=on_output)
-        output = stdout or stderr
-        return AgentResult(output=output, session_id=request.session_id, raw_output="\n".join(x for x in [stdout, stderr] if x))
-
-    def command_preview(self, request: AgentRequest) -> str:
-        if self.mode == "prompt_flag":
-            return f"{self.bin} -p <prompt>"
-        return f"{self.bin} run <prompt>"
-
-    def health(self) -> dict[str, Any]:
-        return {
-            "name": self.name,
-            "type": "opencode_cli",
-            "bin": self.bin,
-            "exists": shutil.which(self.bin) is not None,
-            "mode": self.mode,
-            "config_dir": self.config_dir,
-        }
 
 
 class AgentManager:
-    """Resolve workflow steps to agent adapters.
+    """Resolve workflow steps to provider adapters.
 
-    This manager is intentionally settings-backed and rebuilds adapters on each
-    call.  The existing config API mutates settings at runtime, so caching a
-    Qwen/OpenCode client at process startup would make config changes stale.
+    Provider implementations live under ``workflow_runtime/agent_adapters`` so
+    adding a new agent does not require editing the workflow engine itself.
     """
 
     def __init__(self, settings_loader: Callable[[], dict[str, Any]] = load_settings) -> None:
@@ -225,7 +37,7 @@ class AgentManager:
             config = config or {}
             provider_type = config.get("type") or f"{name}_cli"
             if name == "qwen" or provider_type in {"qwen_cli", "qwen_serve"}:
-                agents[name] = QwenAdapter()
+                agents[name] = QwenAdapter(config)
             elif name == "opencode" or provider_type == "opencode_cli":
                 agents[name] = OpenCodeCliAdapter(config)
         agents.setdefault("qwen", QwenAdapter())
@@ -259,3 +71,16 @@ def create_agent_manager(settings: dict[str, Any] | None = None) -> AgentManager
     if settings is None:
         return AgentManager(load_settings)
     return AgentManager(lambda: settings)
+
+
+__all__ = [
+    "AgentClient",
+    "AgentManager",
+    "AgentOutputCallback",
+    "AgentRequest",
+    "AgentResult",
+    "OpenCodeCliAdapter",
+    "QwenAdapter",
+    "create_agent_manager",
+    "run_process_stream",
+]
