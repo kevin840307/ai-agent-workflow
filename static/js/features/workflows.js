@@ -1,4 +1,4 @@
-import { LocalStore, StorageKeys } from "../core/storage.js?v=20260629-static-modules16";
+import { LocalStore, StorageKeys } from "../core/storage.js?v=20260630-stability1";
 
 export function createWorkflows(ctx) {
   const { api, state, ui } = ctx;
@@ -167,7 +167,7 @@ export function createWorkflows(ctx) {
                 <span class="workflow-preview-step-no">${index + 1}</span>
                 <span class="workflow-preview-step-main">
                   <strong>${ui.escapeHtml(step.name || step.key || `Step ${index + 1}`)}</strong>
-                  <small>${ui.escapeHtml(step.key || "")}${step.type ? ` · ${ui.escapeHtml(step.type)}` : ""}</small>
+                  <small>${ui.escapeHtml(step.key || "")}${step.type ? ` - ${ui.escapeHtml(step.type)}` : ""}</small>
                 </span>
                 <span class="workflow-preview-step-output">${ui.escapeHtml(outputLabel(step))}</span>
               </div>

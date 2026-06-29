@@ -19,7 +19,8 @@ export function createMessages(ctx) {
         return div;
       }
 
-      div.textContent = msg.content;
+      const status = msg.status && !["completed"].includes(msg.status) ? ` [${msg.status}]` : "";
+      div.textContent = `${msg.content || ""}${status}`;
       return div;
     },
 

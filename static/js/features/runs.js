@@ -45,7 +45,7 @@ export function createRuns(ctx) {
       const running = run.steps.find((step) => step.status === "running");
       const failed = run.steps.find((step) => step.status === "failed" || step.status === "waiting_input");
 
-      const workflowName = run.workflow_name ? ` · ${run.workflow_name}` : "";
+      const workflowName = run.workflow_name ? ` - ${run.workflow_name}` : "";
       ui.byKey("runMeta").textContent = `${ui.shortPath(run.project_path || session?.project_path || "")}${workflowName}`;
       ui.byKey("runStatusMeta").textContent = run.status.toUpperCase();
       ui.byKey("currentStep").textContent = running?.title || failed?.title || (run.status === "done" ? "Complete" : "Idle");
@@ -127,7 +127,7 @@ export function createRuns(ctx) {
         `max ${Number(step.max_retries ?? config.maxRetries ?? 0)}`,
         `from ${step.retry_from_step_key || config.retryFromStepKey || "auto"}`,
         `on fail ${step.fail_action || config.failAction || "same_step"}`,
-      ].join(" · ");
+      ].join(" - ");
       const events = (step.events || []).slice(-5).reverse();
       const files = relatedArtifacts.slice(0, 6);
       target.innerHTML = `

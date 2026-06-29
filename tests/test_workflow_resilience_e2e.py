@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import os
 import tempfile
@@ -156,7 +156,7 @@ class WorkflowResilienceE2ETests(unittest.TestCase):
         workflow_id: str,
         project_dir: Path,
         *,
-        requirement: str = "請執行 workflow resilience 測試。",
+        requirement: str = "Build a workflow resilience fixture.",
         test_command: str | None = None,
     ) -> dict:
         payload = {
@@ -199,7 +199,7 @@ class WorkflowResilienceE2ETests(unittest.TestCase):
                 session = self._session(client, project_dir, "Reset Contract")
                 original_session_id = session["id"]
                 original_qwen_session_id = session["qwen_session_id"]
-                client.post(f"/api/sessions/{session['id']}/messages", json={"content": "需求"})
+                client.post(f"/api/sessions/{session['id']}/messages", json={"content": "hello"})
                 run = self._wait_for_terminal_run(client, self._run(client, session, workflow["id"], project_dir))
                 self.assertEqual(run["status"], "done")
                 self.assertTrue(run["artifacts"])

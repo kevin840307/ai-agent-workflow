@@ -4,7 +4,7 @@ import {
   SourceTypes,
   StepTypes,
   TemplatePresets,
-} from "../workflow-designer-constants.js?v=20260629-static-modules16";
+} from "../workflow-designer-constants.js?v=20260630-stability1";
 import {
   clone,
   el,
@@ -18,7 +18,7 @@ import {
   readInputValue,
   setText,
   toast,
-} from "./utils.js?v=20260629-static-modules16";
+} from "./utils.js?v=20260630-stability1";
 import {
   createStep,
   createWorkflow,
@@ -30,7 +30,7 @@ import {
   normalizeFunctionId,
   normalizeStep,
   normalizeWorkflow,
-} from "./model.js?v=20260629-static-modules16";
+} from "./model.js?v=20260630-stability1";
 import {
   availablePromptParamsFor,
   functionHelpFor,
@@ -38,14 +38,13 @@ import {
   functionOptionsFor,
   stepUiCapabilitiesFor,
   workflowFunctionCountsFor,
-} from "./function-catalog.js?v=20260629-static-modules16";
-import { installLayoutRenderer } from "./layout-renderer.js?v=20260629-static-modules16";
-import { installStepSettingsRenderer } from "./step-settings-renderer.js?v=20260629-static-modules16";
-import { installTemplateEditor } from "./template-editor.js?v=20260629-static-modules16";
-import { installImportExportTools } from "./import-export.js?v=20260629-static-modules16";
+} from "./function-catalog.js?v=20260630-stability1";
+import { installLayoutRenderer } from "./layout-renderer.js?v=20260630-stability1";
+import { installStepSettingsRenderer } from "./step-settings-renderer.js?v=20260630-stability1";
+import { installTemplateEditor } from "./template-editor.js?v=20260630-stability1";
+import { installImportExportTools } from "./import-export.js?v=20260630-stability1";
 
 const STORAGE_KEY = "qwenWorkflow.workflowDesigner.ui.v1";
-const SIDEBAR_COLLAPSED_KEY = "qwenWorkflow.layout.projectsCollapsed";
 const WORKFLOW_API = "/api/workflows";
 
 function functionOptions(groupName, fallbackItems, selected) {
@@ -102,7 +101,6 @@ let pendingWorkflowAction = null;
 let availableWorkflowFunctions = { validators: [], reviewStrategies: [], aggregators: [], promptParams: [] };
 
 async function initWorkflowDesignerPage() {
-  restoreDesignerSidebar();
   await loadState();
   bindEvents();
   render();
@@ -140,48 +138,7 @@ async function loadState() {
   workflowDirty = false;
 }
 
-function readDesignerSidebarCollapsed() {
-  try {
-    return window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "true";
-  } catch {
-    return false;
-  }
-}
-
-function writeDesignerSidebarCollapsed(collapsed) {
-  try {
-    window.localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(Boolean(collapsed)));
-  } catch {
-    // localStorage may be disabled in private / restricted browser modes.
-  }
-}
-
-function updateDesignerSidebarButton(collapsed) {
-  const button = el("toggleProjects");
-  if (!button) return;
-  button.classList.toggle("active", collapsed);
-  button.textContent = collapsed ? ">" : "<";
-  button.title = collapsed ? "Expand workflows" : "Collapse workflows";
-  button.setAttribute("aria-label", button.title);
-  button.setAttribute("aria-pressed", String(collapsed));
-}
-
-function setDesignerSidebarCollapsed(collapsed, persist = true) {
-  document.body.classList.toggle("projects-collapsed", collapsed);
-  updateDesignerSidebarButton(collapsed);
-  if (persist) writeDesignerSidebarCollapsed(collapsed);
-}
-
-function restoreDesignerSidebar() {
-  setDesignerSidebarCollapsed(readDesignerSidebarCollapsed(), false);
-}
-
-function toggleDesignerSidebar() {
-  setDesignerSidebarCollapsed(!document.body.classList.contains("projects-collapsed"));
-}
-
 function bindEvents() {
-  on("toggleProjects", "click", toggleDesignerSidebar);
   on("designerSystemWorkflow", "click", () => selectWorkflow(systemWorkflow.id));
   on("designerViewSystem", "click", () => selectWorkflow(systemWorkflow.id));
   on("designerDuplicateWorkflow", "click", () => guardedWorkflowAction(() => {
@@ -745,7 +702,7 @@ function openDeleteConfirm({ title, message, confirmLabel, action, workflowId = 
     <div class="designer-export-card" style="width:min(460px, 96vw);">
       <div class="designer-step-card-title">
         <h2 style="margin:0;">${escapeHtml(title)}</h2>
-        <button data-designer-action="close-confirm" aria-label="Close">×</button>
+        <button data-designer-action="close-confirm" aria-label="Close">x</button>
       </div>
       <p class="designer-form-hint" style="font-size:14px;">${escapeHtml(message)}</p>
       <div class="designer-footer-actions">
@@ -882,7 +839,7 @@ function openWorkflowUnsavedConfirm() {
     <div class="designer-export-card" style="width:min(500px, 96vw);">
       <div class="designer-step-card-title">
         <h2 style="margin:0;">Discard unsaved workflow changes?</h2>
-        <button data-designer-action="close-confirm" aria-label="Close">×</button>
+        <button data-designer-action="close-confirm" aria-label="Close">x</button>
       </div>
       <p class="designer-form-hint" style="font-size:14px;">You changed this workflow but have not saved the draft yet.</p>
       <div class="designer-footer-actions">
@@ -922,20 +879,23 @@ async function designerApi(path, options = {}) {
   });
   if (!response.ok) {
     const body = await response.json().catch(() => ({ detail: response.statusText }));
-    throw new Error(body.detail || response.statusText);
+    const message = body?.error?.message
+      ? `${body.error.code ? `${body.error.code}: ` : ""}${body.error.message}`
+      : (body.detail || response.statusText);
+    throw new Error(message);
   }
   return response.json();
 }
 
 function summarizeStep(step) {
-  if (step.type === "review") return `${formatReviewMode(step.reviewMode)} · confidence >= ${step.confidenceThreshold} · retry ${step.maxRetries}${step.retryFromStepKey ? ` → ${step.retryFromStepKey}` : ""}`;
+  if (step.type === "review") return `${formatReviewMode(step.reviewMode)} - confidence >= ${step.confidenceThreshold} - retry ${step.maxRetries}${step.retryFromStepKey ? ` -> ${step.retryFromStepKey}` : ""}`;
   if (step.type === "validation" || step.type === "python") {
     const meta = functionMeta("validators", step.validator);
     return `${step.type === "python" ? "Python function" : "Validation function"}: ${meta?.label || step.validator || "not set"}`;
   }
   if (step.type === "gate" || step.type === "manual") return step.pauseAfterStep ? "Pause and wait for human approval." : "Gate decision step.";
-  if (step.command) return `Command ${step.command} · template ${step.templatePath || "not set"} · retry ${step.maxRetries}${step.retryFromStepKey ? ` → ${step.retryFromStepKey}` : ""}.`;
-  return `${step.templatePath || "no template"} · retry ${step.maxRetries}${step.retryFromStepKey ? ` → ${step.retryFromStepKey}` : ""} · ${step.allowInteraction ? "interactive" : "fully automatic"}`;
+  if (step.command) return `Command ${step.command} - template ${step.templatePath || "not set"} - retry ${step.maxRetries}${step.retryFromStepKey ? ` -> ${step.retryFromStepKey}` : ""}.`;
+  return `${step.templatePath || "no template"} - retry ${step.maxRetries}${step.retryFromStepKey ? ` -> ${step.retryFromStepKey}` : ""} - ${step.allowInteraction ? "interactive" : "fully automatic"}`;
 }
 
 function uniqueWorkflowName(base) {

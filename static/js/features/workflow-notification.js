@@ -22,7 +22,7 @@ export function createWorkflowNotification(ctx) {
                 <h2 id="workflowResultTitle">Workflow finished</h2>
                 <p id="workflowResultDescription">The workflow has completed.</p>
               </div>
-              <button id="workflowResultClose" class="workflow-result-close" type="button" aria-label="Close result dialog">×</button>
+              <button id="workflowResultClose" class="workflow-result-close" type="button" aria-label="Close result dialog">x</button>
             </div>
             <div class="workflow-result-stats" aria-label="Workflow summary">
               <div class="workflow-result-stat">

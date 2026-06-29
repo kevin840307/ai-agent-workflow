@@ -101,6 +101,10 @@ It also creates a unique project title and verifies the project list before asse
 Get-Content -Raw static\js\main.js | node --input-type=module --check
 Get-Content -Raw static\js\pages\workflow-runner.js | node --input-type=module --check
 Get-Content -Raw static\js\pages\workflow-designer.js | node --input-type=module --check
+Get-Content -Raw static\js\pages\workflow-designer\controller.js | node --input-type=module --check
+Get-Content -Raw static\js\pages\workflow-designer\layout-renderer.js | node --input-type=module --check
+Get-Content -Raw static\js\pages\workflow-designer\step-settings-renderer.js | node --input-type=module --check
+Get-Content -Raw static\js\pages\workflow-designer\template-editor.js | node --input-type=module --check
 ```
 
 
@@ -131,11 +135,11 @@ python -m unittest discover -s tests -v
 
 `PlaywrightUiManualTests` now covers these browser flows:
 
-- basic create project → run workflow → reset
+- basic create project -> run workflow -> reset
 - reset must not create duplicate project rows
 - workflow preview shows full description/steps before a run, compacts after a run, and expands again after switching workflow
-- intentional final review failure → UI retry → workflow passes
-- intentional generated-test-file validation failure → failed step/error is visible and retry is enabled
+- intentional final review failure -> UI retry -> workflow passes
+- intentional generated-test-file validation failure -> failed step/error is visible and retry is enabled
 
 Run all UI behavior tests:
 

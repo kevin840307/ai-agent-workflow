@@ -122,6 +122,40 @@ class ProjectAndConfigApiTests(unittest.TestCase):
             self.assertIn("User: chat follow up", fake_agent.request.prompt)
             self.assertNotIn("workflow-only requirement", fake_agent.request.prompt)
 
+    def test_chat_client_request_id_is_idempotent_and_tracks_status(self) -> None:
+        class FakeAgent:
+            name = "opencode"
+
+            def __init__(self) -> None:
+                self.calls = 0
+
+            def health(self):
+                return {"reuse_session": True}
+
+            async def run_stream(self, request, on_output=None):
+                self.calls += 1
+                return AgentResult(output="idempotent answer")
+
+        fake_agent = FakeAgent()
+        with tempfile.TemporaryDirectory() as tmp, TestClient(app) as client, patch(
+            "app.services.project_service.runtime.agent_manager.resolve",
+            return_value=fake_agent,
+        ):
+            session = client.post("/api/sessions", json={"title": "Idempotent Chat", "project_path": tmp}).json()
+            body = {"content": "hello once", "clientRequestId": "req-1"}
+
+            first = client.post(f"/api/sessions/{session['id']}/chat", json=body)
+            second = client.post(f"/api/sessions/{session['id']}/chat", json=body)
+
+            self.assertEqual(first.status_code, 200, first.text)
+            self.assertEqual(second.status_code, 200, second.text)
+            self.assertEqual(fake_agent.calls, 1)
+            self.assertTrue(second.json()["idempotent"])
+            messages = client.get(f"/api/sessions/{session['id']}/messages").json()
+            chat_messages = [message for message in messages if message.get("client_request_id") == "req-1"]
+            self.assertEqual(len(chat_messages), 2)
+            self.assertTrue(all(message.get("status") == "completed" for message in chat_messages))
+
     def test_qwen_config_update_validates_auth_and_clamps_retries(self) -> None:
         original = SETTINGS_FILE.read_text(encoding="utf-8") if SETTINGS_FILE.exists() else ""
         try:

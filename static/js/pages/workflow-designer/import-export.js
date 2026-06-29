@@ -36,7 +36,7 @@ function openImportWorkflow() {
           <h2 style="margin:0;">Import Workflow JSON</h2>
           <p class="designer-form-hint">Paste exported JSON or choose a file. Imported workflows become custom drafts.</p>
         </div>
-        <button data-designer-action="close-import" aria-label="Close">×</button>
+        <button data-designer-action="close-import" aria-label="Close">x</button>
       </div>
       <div class="designer-import-grid">
         <section class="designer-form-grid">
@@ -227,7 +227,7 @@ function exportWorkflow() {
     <div class="designer-export-card">
       <div class="designer-step-card-title">
         <h2 style="margin:0;">Export Workflow JSON</h2>
-        <button data-designer-action="close-export">×</button>
+        <button data-designer-action="close-export">x</button>
       </div>
       <p class="designer-form-hint">This is the backend workflow.json payload. Runtime execution uses these values directly.</p>
       <pre>${escapeHtml(JSON.stringify(toExportWorkflow(wf), null, 2))}</pre>

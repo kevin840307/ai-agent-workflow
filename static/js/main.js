@@ -1,7 +1,9 @@
-import { initWorkflowDesignerPage } from "./pages/workflow-designer.js?v=20260629-static-modules17";
-import { initWorkflowRunnerPage } from "./pages/workflow-runner.js?v=20260629-static-modules17";
+import { initSharedSidebar } from "./components/sidebar.js?v=20260630-stability1";
+import { initWorkflowDesignerPage } from "./pages/workflow-designer.js?v=20260630-stability1";
+import { initWorkflowRunnerPage } from "./pages/workflow-runner.js?v=20260630-stability1";
 
 const page = document.body?.dataset.page || "workflow-runner";
+initSharedSidebar();
 
 if (page === "workflow-designer") {
   initWorkflowDesignerPage();

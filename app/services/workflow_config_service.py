@@ -10,6 +10,7 @@ from pathlib import Path
 from fastapi import HTTPException
 
 from app.runtime_modules import api as runtime
+from app.runtime_modules.paths import write_text
 from app.workflow_functions import AVAILABLE_WORKFLOW_FUNCTIONS
 
 
@@ -43,9 +44,9 @@ def ensure_workflow_dir() -> None:
     GLOBAL_MD_DIR.mkdir(parents=True, exist_ok=True)
     global_readme = GLOBAL_MD_DIR / "README.md"
     if not global_readme.exists():
-        global_readme.write_text(
+        write_text(
+            global_readme,
             "# Global Markdown\n\nShared markdown files that are not owned by one workflow can live here.\n",
-            encoding="utf-8",
         )
 
 
@@ -135,7 +136,7 @@ def write_workflow_file(workflow: dict) -> None:
     ensure_bundle_dirs(folder_name)
     target = workflow_file(folder_name)
     target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(json.dumps(workflow, indent=2, ensure_ascii=False), encoding="utf-8")
+    write_text(target, json.dumps(workflow, indent=2, ensure_ascii=False))
 
 
 def list_custom_workflow_files() -> list[Path]:
@@ -240,7 +241,7 @@ def write_prompt_files(workflow: dict) -> dict:
         if isinstance(content, str) and content.strip():
             target = bundle_path(folder_name, template_path)
             target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_text(content, encoding="utf-8")
+            write_text(target, content)
         step["templateContent"] = ""
     return item
 
@@ -267,7 +268,7 @@ def seed_prompts_from_root(folder_name: str, workflow: dict, overwrite: bool = F
         target = bundle_path(folder_name, f"prompts/{filename}")
         if overwrite or not target.exists():
             target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_text(source.read_text(encoding="utf-8-sig"), encoding="utf-8")
+            write_text(target, source.read_text(encoding="utf-8-sig"))
     for step in workflow.get("steps", []):
         filename = PROMPT_FILE_BY_STEP_KEY.get(step.get("key") or "")
         if not filename:
@@ -280,7 +281,7 @@ def seed_prompts_from_root(folder_name: str, workflow: dict, overwrite: bool = F
         target = bundle_path(folder_name, template_path)
         if overwrite or not target.exists():
             target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_text(source.read_text(encoding="utf-8-sig"), encoding="utf-8")
+            write_text(target, source.read_text(encoding="utf-8-sig"))
 
 
 def ensure_workflow_prompt_files(folder_name: str, workflow: dict) -> dict:
@@ -295,13 +296,13 @@ def ensure_workflow_prompt_files(folder_name: str, workflow: dict) -> dict:
         content = step.get("templateContent")
         if isinstance(content, str) and content.strip():
             target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_text(content, encoding="utf-8")
+            write_text(target, content)
             continue
         filename = PROMPT_FILE_BY_STEP_KEY.get(step.get("key") or "")
         source = prompt_seed_source(filename, folder_name) if filename else None
         if source and source.exists():
             target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_text(source.read_text(encoding="utf-8-sig"), encoding="utf-8")
+            write_text(target, source.read_text(encoding="utf-8-sig"))
     return item
 
 

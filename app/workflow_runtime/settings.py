@@ -6,7 +6,7 @@ from typing import Any
 
 from fastapi import HTTPException
 
-from app.runtime_modules.paths import ROOT, SETTINGS_FILE, ensure_dirs
+from app.runtime_modules.paths import ROOT, SETTINGS_FILE, ensure_dirs, write_text
 
 
 def default_settings() -> dict[str, Any]:
@@ -65,7 +65,7 @@ def load_settings() -> dict[str, Any]:
 
 def save_settings(settings: dict[str, Any]) -> None:
     ensure_dirs()
-    SETTINGS_FILE.write_text(json.dumps(_apply_defaults(settings), indent=2, ensure_ascii=False), encoding="utf-8")
+    write_text(SETTINGS_FILE, json.dumps(_apply_defaults(settings), indent=2, ensure_ascii=False))
 
 
 def resolve_project_path(project_path: str | None, fallback: Path | None = None) -> Path:

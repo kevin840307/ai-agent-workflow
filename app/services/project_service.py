@@ -9,6 +9,8 @@ from pathlib import Path
 from fastapi import HTTPException
 
 from app.runtime_modules import api as runtime
+from app.runtime_modules.locks import reject_if_chat_busy
+from app.runtime_modules.metrics import metrics
 from app.repositories import store_repository
 from app.workflow_runtime.agents import AgentRequest
 from app.workflow_runtime.qwen_serve import forget_qwen_serve_session
@@ -205,59 +207,109 @@ async def chat(session_id: str, body: runtime.CreateMessageRequest) -> dict:
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
 
+    client_request_id = (body.client_request_id or "").strip() or None
+    if client_request_id:
+        existing_user = next(
+            (
+                msg
+                for msg in data.get("messages", [])
+                if msg.get("session_id") == session_id
+                and msg.get("kind") == "chat"
+                and msg.get("client_request_id") == client_request_id
+                and msg.get("role") == "user"
+            ),
+            None,
+        )
+        existing_assistant = next(
+            (
+                msg
+                for msg in data.get("messages", [])
+                if msg.get("session_id") == session_id
+                and msg.get("kind") == "chat"
+                and msg.get("client_request_id") == client_request_id
+                and msg.get("role") == "assistant"
+            ),
+            None,
+        )
+        if existing_user and existing_assistant:
+            return {"user": existing_user, "assistant": existing_assistant, "idempotent": True}
+
     history = [
         msg
         for msg in data["messages"]
         if msg["session_id"] == session_id and msg.get("kind") == "chat"
     ]
-    user_msg = await runtime.append_session_message(session_id, "user", body.content, kind="chat")
-    project_path = runtime.resolve_project_path(session.get("project_path"), runtime.ROOT)
-
-    try:
-        agent = runtime.agent_manager.resolve()
-        prompt = _chat_prompt(history, body.content, reuse_session=bool(agent.health().get("reuse_session")))
-        provider_sessions = session.get("agent_session_ids") or {}
-        if isinstance(provider_sessions, dict) and agent.name in provider_sessions:
-            agent_session_id = provider_sessions.get(agent.name)
-        elif agent.name == "qwen":
-            agent_session_id = session.get("qwen_session_id") or session_id
-        else:
-            agent_session_id = None
-        result = await agent.run_stream(
-            AgentRequest(
-                run_id=f"chat-{session_id}",
-                step_key="chat",
-                prompt=prompt,
-                cwd=project_path,
-                session_id=agent_session_id,
-            )
+    async with reject_if_chat_busy(session_id):
+        user_msg = await runtime.append_session_message(
+            session_id,
+            "user",
+            body.content,
+            kind="chat",
+            client_request_id=client_request_id,
+            status="completed",
         )
-        if result.session_id != agent_session_id:
-            await _update_agent_session_id(session_id, agent.name, result.session_id)
-        answer = result.output
-        if _looks_like_tool_call_json(answer):
-            repair_result = await agent.run_stream(
+        assistant_msg = await runtime.append_session_message(
+            session_id,
+            "assistant",
+            "",
+            kind="chat",
+            client_request_id=client_request_id,
+            status="pending",
+        )
+        project_path = runtime.resolve_project_path(session.get("project_path"), runtime.ROOT)
+
+        try:
+            await runtime.update_message(assistant_msg["id"], status="running")
+            agent = runtime.agent_manager.resolve()
+            prompt = _chat_prompt(history, body.content, reuse_session=bool(agent.health().get("reuse_session")))
+            provider_sessions = session.get("agent_session_ids") or {}
+            if isinstance(provider_sessions, dict) and agent.name in provider_sessions:
+                agent_session_id = provider_sessions.get(agent.name)
+            elif agent.name == "qwen":
+                agent_session_id = session.get("qwen_session_id") or session_id
+            else:
+                agent_session_id = None
+            result = await agent.run_stream(
                 AgentRequest(
-                    run_id=f"chat-{session_id}-repair",
+                    run_id=f"chat-{session_id}",
                     step_key="chat",
-                    prompt=_chat_repair_prompt(body.content),
+                    prompt=prompt,
                     cwd=project_path,
-                    session_id=result.session_id,
+                    session_id=agent_session_id,
                 )
             )
-            if repair_result.session_id != result.session_id:
-                await _update_agent_session_id(session_id, agent.name, repair_result.session_id)
-            answer = repair_result.output
-    except runtime.WorkflowError as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+            if result.session_id != agent_session_id:
+                await _update_agent_session_id(session_id, agent.name, result.session_id)
+            answer = result.output
+            if _looks_like_tool_call_json(answer):
+                repair_result = await agent.run_stream(
+                    AgentRequest(
+                        run_id=f"chat-{session_id}-repair",
+                        step_key="chat",
+                        prompt=_chat_repair_prompt(body.content),
+                        cwd=project_path,
+                        session_id=result.session_id,
+                    )
+                )
+                if repair_result.session_id != result.session_id:
+                    await _update_agent_session_id(session_id, agent.name, repair_result.session_id)
+                answer = repair_result.output
+        except Exception as exc:
+            metrics.increment("chat.failed")
+            failed = await runtime.update_message(
+                assistant_msg["id"],
+                content=f"Chat failed: {exc}",
+                status="failed",
+                error=str(exc),
+            )
+            raise HTTPException(status_code=500, detail=str(exc)) from exc
 
-    assistant_msg = await runtime.append_session_message(
-        session_id,
-        "assistant",
-        answer.strip() or "(Agent returned no text.)",
-        kind="chat",
-    )
-    return {"user": user_msg, "assistant": assistant_msg}
+        completed = await runtime.update_message(
+            assistant_msg["id"],
+            content=answer.strip() or "(Agent returned no text.)",
+            status="completed",
+        )
+        return {"user": user_msg, "assistant": completed or assistant_msg}
 
 
 async def _update_agent_session_id(session_id: str, agent_name: str, agent_session_id: str | None) -> None:

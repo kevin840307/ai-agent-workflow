@@ -4,20 +4,20 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Agent Workflow</title>
-    <link rel="stylesheet" href="/static/styles.css?v=20260629-static-modules17" />
+    <link rel="stylesheet" href="/static/styles.css?v=20260630-stability1" />
   </head>
   <body data-page="workflow-runner">
     <!-- App region: Project sessions -->
     <aside class="projects">
       <div class="projects-head">
         <div class="brand">Agent Workflow</div>
-        <button id="toggleProjects" class="side-toggle" title="Collapse projects" aria-label="Collapse projects" aria-pressed="false">☰</button>
+        <button id="toggleProjects" class="side-toggle" title="Collapse projects" aria-label="Collapse projects" aria-pressed="false">&lt;</button>
       </div>
       <nav class="project-nav" aria-label="Application navigation">
-        <a href="/" class="project-nav-link active"><span>▶</span><strong>Runner</strong></a>
-        <a href="/workflow-designer" class="project-nav-link"><span>⚙</span><strong>Workflows</strong></a>
+        <a href="/" class="project-nav-link active"><span>Run</span><strong>Runner</strong></a>
+        <a href="/workflow-designer" class="project-nav-link"><span>Cfg</span><strong>Workflows</strong></a>
       </nav>
-      <button id="newProject" class="primary wide new-project-button"><span class="button-icon">＋</span><span class="button-text">New Project</span></button>
+      <button id="newProject" class="primary wide new-project-button"><span class="button-icon">+</span><span class="button-text">New Project</span></button>
       <div id="projectList" class="project-list"></div>
     </aside>
 
@@ -33,10 +33,10 @@
             <span class="icon-mark">Reset</span>
           </button>
           <button id="toggleSettings" class="header-icon" title="Agent settings" aria-label="Agent settings" aria-expanded="false">
-            <span class="icon-mark">⚙</span>
+            <span class="icon-mark">Settings</span>
           </button>
           <button id="toggleDetails" class="header-icon" title="Collapse details" aria-label="Collapse details" aria-pressed="false">
-            <span class="icon-mark">⇥</span>
+            <span class="icon-mark">&gt;</span>
           </button>
         </div>
         <div id="settingsMenu" class="actions settings-menu" aria-label="Agent settings panel">
@@ -111,11 +111,11 @@
           <div class="composer-footer">
             <div class="composer-left">
               <button id="saveRequirement" class="composer-tool save-tool" title="Save draft" aria-label="Save draft">Save</button>
-              <button id="retryRun" class="composer-tool" title="Retry workflow" aria-label="Retry workflow" disabled>↻</button>
-              <button id="addGuidance" class="composer-tool" title="Add guidance" aria-label="Add guidance" disabled>＋</button>
+              <button id="retryRun" class="composer-tool" title="Retry workflow" aria-label="Retry workflow" disabled>Retry</button>
+              <button id="addGuidance" class="composer-tool" title="Add guidance" aria-label="Add guidance" disabled>Guide</button>
             </div>
             <div class="composer-right">
-              <button id="runWorkflow" class="primary send-button" disabled>Run ▶</button>
+              <button id="runWorkflow" class="primary send-button" disabled>Run</button>
             </div>
           </div>
         </div>
@@ -160,7 +160,7 @@
             <h2 id="modalTitle">Input</h2>
             <p id="modalDescription"></p>
           </div>
-          <button id="modalClose" class="modal-close" aria-label="Close dialog">×</button>
+          <button id="modalClose" class="modal-close" aria-label="Close dialog">x</button>
         </div>
         <label id="modalLabel" class="modal-label" for="modalInput">Value</label>
         <input id="modalInput" class="modal-input" />
@@ -173,6 +173,6 @@
       </div>
     </div>
 
-    <script type="module" src="/static/js/main.js?v=20260629-static-modules17"></script>
+    <script type="module" src="/static/js/main.js?v=20260630-stability1"></script>
   </body>
 </html>

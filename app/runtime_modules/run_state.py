@@ -5,6 +5,8 @@ from typing import Any
 
 from app.runtime_modules.paths import read_text, utc_now, write_text
 
+MAX_RUN_LOG_CHARS = 250_000
+
 
 def artifact_record(run_id: str, run_dir: Path, rel_path: str) -> dict[str, Any]:
     path = run_dir / rel_path
@@ -41,7 +43,14 @@ class RunState:
             raise HTTPException(status_code=404, detail="Run not found")
         return run
 
-    async def append_session_message(self, session_id: str, role: str, content: str, kind: str | None = None) -> dict[str, Any]:
+    async def append_session_message(
+        self,
+        session_id: str,
+        role: str,
+        content: str,
+        kind: str | None = None,
+        **extra: Any,
+    ) -> dict[str, Any]:
         import uuid
 
         msg = {
@@ -53,6 +62,7 @@ class RunState:
         }
         if kind:
             msg["kind"] = kind
+        msg.update({key: value for key, value in extra.items() if value is not None})
 
         def add(data):
             data["messages"].append(msg)
@@ -63,11 +73,30 @@ class RunState:
 
         return await self.store.mutate(add)
 
+    async def update_message(self, message_id: str, **updates: Any) -> dict[str, Any] | None:
+        def apply(data):
+            for msg in data.get("messages", []):
+                if msg.get("id") == message_id:
+                    msg.update({key: value for key, value in updates.items() if value is not None})
+                    msg["updated_at"] = utc_now()
+                    for session in data.get("sessions", []):
+                        if session.get("id") == msg.get("session_id"):
+                            session["updated_at"] = utc_now()
+                    return msg
+            return None
+
+        return await self.store.mutate(apply)
+
     async def log(self, run: dict[str, Any], message: str) -> None:
         meta = f"run_id={run.get('id', '')} session_id={run.get('session_id', '')}"
         line = f"[{utc_now()}] {meta} {message}"
         run_dir = Path(run["workspace"])
-        write_text(run_dir / ".workflow" / "run-log.md", read_text(run_dir / ".workflow" / "run-log.md") + line + "\n")
+        log_path = run_dir / ".workflow" / "run-log.md"
+        previous = read_text(log_path)
+        content = previous + line + "\n"
+        if len(content) > MAX_RUN_LOG_CHARS:
+            content = "# Log rotated: keeping latest entries only.\n" + content[-MAX_RUN_LOG_CHARS:]
+        write_text(log_path, content)
         await self.bus.publish(run["id"], {"type": "log", "message": line})
 
     async def set_step(self, run_id: str, key: str, status: str, error: str | None = None) -> None:
@@ -179,10 +208,14 @@ class RunState:
         extra: dict[str, Any] | None = None,
     ) -> None:
         def apply(run):
+            ts = utc_now()
             event = {
-                "time": utc_now(),
+                "time": ts,
+                "ts": ts,
                 "step_key": step_key,
+                "stepKey": step_key,
                 "kind": kind,
+                "type": kind,
                 "message": message,
             }
             if extra:

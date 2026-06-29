@@ -1,10 +1,13 @@
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class CreateMessageRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
     content: str = Field(min_length=1)
+    client_request_id: str | None = Field(default=None, alias="clientRequestId")
 
 
 class CreateRunRequest(BaseModel):

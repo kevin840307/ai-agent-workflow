@@ -1,4 +1,4 @@
-import { tabsForStep } from "./step-tabs.js?v=20260629-static-modules16";
+import { tabsForStep } from "./step-tabs.js?v=20260630-stability1";
 
 export function installStepSettingsRenderer(ctx) {
   const {
@@ -256,7 +256,7 @@ function renderSources(step, disabled, readonly) {
       <div class="designer-list-editor">
         <div class="designer-section-row">
           <span class="designer-label">Extra Context Sources</span>
-          <button class="mini-button" data-designer-action="add-source" ${disabled}>＋ Add Source</button>
+          <button class="mini-button" data-designer-action="add-source" ${disabled}>+ Add Source</button>
         </div>
         ${step.sources.length ? step.sources.map((source, index) => `
           <div class="designer-source-row">
@@ -264,7 +264,7 @@ function renderSources(step, disabled, readonly) {
               ${options(SourceTypes, source.type)}
             </select>
             <input class="designer-input" value="${escapeAttr(source.value || "")}" data-array-collection="sources" data-index="${index}" data-array-field="value" ${disabled} />
-            <button class="designer-danger" data-designer-action="remove-source" data-index="${index}" ${disabled}>×</button>
+            <button class="designer-danger" data-designer-action="remove-source" data-index="${index}" ${disabled}>x</button>
             <div class="designer-path-help">${escapeHtml(describeSourcePath(source))}</div>
           </div>
         `).join("") : `<div class="designer-empty-state">No extra sources. Template params are provided by backend runtime context.</div>`}
@@ -291,7 +291,7 @@ function renderReview(step, disabled, readonly) {
       <div class="designer-list-editor">
         <div class="designer-section-row">
           <span class="designer-label">Review Agents</span>
-          <button class="mini-button" data-designer-action="add-reviewer" ${disabled}>＋ Add Reviewer</button>
+          <button class="mini-button" data-designer-action="add-reviewer" ${disabled}>+ Add Reviewer</button>
         </div>
         ${step.reviewers.length ? step.reviewers.map((reviewer, index) => `
           <div class="designer-reviewer-row">
@@ -300,7 +300,7 @@ function renderReview(step, disabled, readonly) {
               <input class="designer-input" placeholder="Review prompt path" value="${escapeAttr(reviewer.prompt || "")}" data-array-collection="reviewers" data-index="${index}" data-array-field="prompt" ${disabled} />
             </div>
             <input class="designer-input" type="number" step="0.1" value="${escapeAttr(reviewer.weight ?? 1)}" data-array-collection="reviewers" data-index="${index}" data-array-field="weight" ${disabled} />
-            <button class="designer-danger" data-designer-action="remove-reviewer" data-index="${index}" ${disabled}>×</button>
+            <button class="designer-danger" data-designer-action="remove-reviewer" data-index="${index}" ${disabled}>x</button>
           </div>
         `).join("") : `<div class="designer-empty-state">No extra reviewers. Current session review can still be used without reviewer rows.</div>`}
       </div>
@@ -339,7 +339,7 @@ function renderRetry(step, disabled, readonly) {
       </label>
       ${switchRow("Keep Same Session", "Continue in the same agent session when retrying.", "keepSameSession", step.keepSameSession, disabled)}
       ${switchRow("Inject Failure Feedback", "Pass validation/review error back into the retry prompt.", "injectFailureFeedback", step.injectFailureFeedback, disabled)}
-      <div class="designer-function-help"><strong>Backend retry target</strong><span>${escapeHtml(step.retryFromStepKey || "Current / automatic")} · On fail: ${escapeHtml(step.failAction || "same_step")}</span></div>
+      <div class="designer-function-help"><strong>Backend retry target</strong><span>${escapeHtml(step.retryFromStepKey || "Current / automatic")} - On fail: ${escapeHtml(step.failAction || "same_step")}</span></div>
       ${numberRow("Stop After Continuous Failures", "stopAfterFailures", step.stopAfterFailures, disabled, "1", "20", "1")}
     </div>
   `;
@@ -376,12 +376,12 @@ function renderAdvanced(step, disabled, readonly) {
       <div class="designer-list-editor">
         <div class="designer-section-row">
           <span class="designer-label">Expected Files</span>
-          <button class="mini-button" data-designer-action="add-expected-file" ${disabled}>＋ Add File</button>
+          <button class="mini-button" data-designer-action="add-expected-file" ${disabled}>+ Add File</button>
         </div>
         ${step.expectedFiles.length ? step.expectedFiles.map((file, index) => `
           <div class="designer-expected-row">
             <input class="designer-input" value="${escapeAttr(file)}" placeholder="output/report.md, report.md, or C:\\path\\report.md" data-array-collection="expectedFiles" data-index="${index}" data-array-field="value" ${disabled} />
-            <button class="designer-danger" data-designer-action="remove-expected-file" data-index="${index}" ${disabled}>×</button>
+            <button class="designer-danger" data-designer-action="remove-expected-file" data-index="${index}" ${disabled}>x</button>
             <div class="designer-path-help">${escapeHtml(describeExpectedFilePath(file))}</div>
           </div>
         `).join("") : `<div class="designer-empty-state">No expected files configured.</div>`}

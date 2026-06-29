@@ -241,11 +241,11 @@ function openStepEditor(stepId = state.selectedStepId) {
         </div>
         <div class="designer-step-modal-tools">
           <div class="designer-step-modal-nav" aria-label="Switch step">
-            <button type="button" data-designer-action="step-editor-prev" data-step-editor-nav="prev" title="Previous step: Alt + ←">← Prev</button>
+            <button type="button" data-designer-action="step-editor-prev" data-step-editor-nav="prev" title="Previous step: Alt + <-"><- Prev</button>
             <span data-step-editor-position>1 / 1</span>
-            <button type="button" data-designer-action="step-editor-next" data-step-editor-nav="next" title="Next step: Alt + →">Next →</button>
+            <button type="button" data-designer-action="step-editor-next" data-step-editor-nav="next" title="Next step: Alt + ->">Next -></button>
           </div>
-          <button type="button" data-designer-action="close-step-editor" aria-label="Close">×</button>
+          <button type="button" data-designer-action="close-step-editor" aria-label="Close">x</button>
         </div>
       </div>
 
@@ -262,8 +262,8 @@ function openStepEditor(stepId = state.selectedStepId) {
 
       <div class="designer-footer-actions designer-step-modal-footer">
         <div class="designer-step-modal-footer-nav" aria-label="Switch step">
-          <button type="button" data-designer-action="step-editor-prev" data-step-editor-nav="prev">← Previous Step</button>
-          <button type="button" data-designer-action="step-editor-next" data-step-editor-nav="next">Next Step →</button>
+          <button type="button" data-designer-action="step-editor-prev" data-step-editor-nav="prev"><- Previous Step</button>
+          <button type="button" data-designer-action="step-editor-next" data-step-editor-nav="next">Next Step -></button>
         </div>
         <span class="designer-form-hint">Changes are kept in this draft. Use Save Draft on the main screen to persist.</span>
         <button type="button" data-designer-action="close-step-editor">Close</button>
@@ -319,7 +319,7 @@ function renderStepEditorHeader() {
   title.textContent = `${index >= 0 ? index + 1 + ". " : ""}${step.name || "Step Settings"}`;
   type.textContent = formatStepType(step.type);
   type.className = `designer-step-type ${step.type || ""}`;
-  meta.textContent = `${step.key || "no key"} · ${step.enabled ? "enabled" : "disabled"} · retry ${step.maxRetries ?? 0}`;
+  meta.textContent = `${step.key || "no key"} - ${step.enabled ? "enabled" : "disabled"} - retry ${step.maxRetries ?? 0}`;
 
   document.querySelectorAll("[data-step-editor-position]").forEach((node) => {
     node.textContent = index >= 0 && total ? `${index + 1} / ${total}` : "- / -";
@@ -362,7 +362,7 @@ function openTemplateEditor() {
           </div>
           <p class="designer-form-hint">Backend creates a workflow folder, saves this prompt under prompts/, then writes the step artifact using Output File Name.</p>
         </div>
-        <button data-designer-action="close-template-editor" aria-label="Close">×</button>
+        <button data-designer-action="close-template-editor" aria-label="Close">x</button>
       </div>
       <div class="designer-template-modal-meta">
         <label class="designer-form-row">
@@ -478,7 +478,7 @@ function openTemplateUnsavedConfirm({ title, message, confirmLabel, action, temp
     <div class="designer-export-card" style="width:min(480px, 96vw);">
       <div class="designer-step-card-title">
         <h2 style="margin:0;">${escapeHtml(title)}</h2>
-        <button data-designer-action="close-confirm" aria-label="Close">×</button>
+        <button data-designer-action="close-confirm" aria-label="Close">x</button>
       </div>
       <p class="designer-form-hint" style="font-size:14px;">${escapeHtml(message)}</p>
       <div class="designer-footer-actions">
@@ -501,7 +501,7 @@ function openPromptPreview() {
     <div class="designer-export-card">
       <div class="designer-step-card-title">
         <h2 style="margin:0;">Rendered Prompt Preview</h2>
-        <button data-designer-action="close-preview" aria-label="Close">×</button>
+        <button data-designer-action="close-preview" aria-label="Close">x</button>
       </div>
       <p class="designer-form-hint">Preview uses sample values. Backend will replace params with real runtime values.</p>
       <pre>${escapeHtml(renderPromptWithSamples(templateEditorDraft?.templateContent ?? step.templateContent ?? ""))}</pre>

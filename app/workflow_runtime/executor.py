@@ -7,6 +7,7 @@ from typing import Any, Awaitable, Callable
 
 from app.runtime_modules.errors import UserInputRequired, WorkflowError
 from app.runtime_modules.paths import utc_now, write_text
+from app.runtime_modules.metrics import metrics, now
 
 from .actions import WorkflowActions
 from .retry_policy import retry_target_for_failure
@@ -50,6 +51,7 @@ class WorkflowExecutor:
             return
         run_dir = Path(run["workspace"])
         output_dir = run_dir / "output"
+        run_started = now()
         try:
             await self.update_run(
                 run_id,
@@ -105,18 +107,23 @@ class WorkflowExecutor:
                     index = target_index
 
             await self._mark_done(run_id, run, run_dir)
+            metrics.observe("workflow.durationSec", now() - run_started)
         except UserInputRequired as exc:
             await self._mark_waiting_input(run_id, run, run_dir, exc)
         except asyncio.CancelledError:
             await self._mark_cancelled(run_id, run, run_dir)
+            metrics.increment("workflow.cancelled")
             raise
         except Exception as exc:
             await self._mark_failed(run_id, run, run_dir, exc)
+            metrics.increment("workflow.failed")
+            metrics.observe("workflow.durationSec", now() - run_started)
 
     async def _run_step(self, run_id: str, run: dict[str, Any], key: str, action: Callable[[], Awaitable[None]]) -> None:
         step_record = next((item for item in run.get("steps", []) if item.get("key") == key), {})
         await self.set_step(run_id, key, "running")
         await self.log(run, f"{key}: started")
+        step_started = now()
         if self.record_step_event:
             await self.record_step_event(run_id, key, "started", f"{key}: started")
         try:
@@ -129,6 +136,8 @@ class WorkflowExecutor:
         except asyncio.TimeoutError as exc:
             message = f"{key}: timed out after {timeout_seconds(step_record) or 0:.0f} seconds."
             await self.set_step(run_id, key, "failed", message)
+            metrics.increment("workflow.step.failed")
+            metrics.observe("workflow.step.durationSec", now() - step_started)
             if self.record_step_event:
                 await self.record_step_event(run_id, key, "failed", message)
             raise WorkflowError(message) from exc
@@ -139,10 +148,13 @@ class WorkflowExecutor:
             raise
         except Exception as exc:
             await self.set_step(run_id, key, "failed", str(exc))
+            metrics.increment("workflow.step.failed")
+            metrics.observe("workflow.step.durationSec", now() - step_started)
             if self.record_step_event:
                 await self.record_step_event(run_id, key, "failed", str(exc))
             raise
         await self.set_step(run_id, key, "passed")
+        metrics.observe("workflow.step.durationSec", now() - step_started)
         if self.record_step_event:
             await self.record_step_event(run_id, key, "passed", f"{key}: passed")
         await self.log(run, f"{key}: passed")

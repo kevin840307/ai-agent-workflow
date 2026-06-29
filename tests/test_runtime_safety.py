@@ -8,6 +8,7 @@ from pathlib import Path
 from fastapi import HTTPException
 
 from app.services import artifact_service, workflow_service
+from app.runtime_modules.paths import atomic_write_text
 from app.workflow_functions import _security_heuristic_candidates_from_context
 from app.workflow_runtime.step_config import initial_steps
 
@@ -75,6 +76,15 @@ Status: DONE
         file_blob = "\n".join(candidate["File"] for candidate in candidates)
         self.assertIn("app/config.py", evidence_blob + file_blob)
         self.assertNotIn("SGOAuto", evidence_blob + file_blob)
+
+    def test_atomic_write_text_replaces_complete_file(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "artifact.md"
+            atomic_write_text(path, "first")
+            atomic_write_text(path, "second")
+
+            self.assertEqual(path.read_text(encoding="utf-8"), "second")
+            self.assertFalse(list(Path(tmp).glob("*.tmp")))
 
 
 if __name__ == "__main__":

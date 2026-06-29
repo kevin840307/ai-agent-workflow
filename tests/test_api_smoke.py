@@ -13,6 +13,9 @@ class ApiSmokeTests(unittest.TestCase):
             for path in [
                 "/",
                 "/workflow-designer",
+                "/health",
+                "/ready",
+                "/metrics",
                 "/api/config",
                 "/api/workflows",
                 "/api/workflows/functions",
@@ -31,6 +34,16 @@ class ApiSmokeTests(unittest.TestCase):
         self.assertIn("run_pytest", validator_ids)
         self.assertEqual(len(payload.get("reviewStrategies", [])), 3)
         self.assertEqual(len(payload.get("aggregators", [])), 3)
+
+    def test_error_payload_is_consistent(self) -> None:
+        with TestClient(app) as client:
+            response = client.get("/api/workflow-runs/missing-run")
+
+        self.assertEqual(response.status_code, 404)
+        payload = response.json()
+        self.assertFalse(payload["ok"])
+        self.assertEqual(payload["error"]["code"], "HTTP_404")
+        self.assertEqual(payload["detail"], payload["error"]["message"])
 
 
 if __name__ == "__main__":

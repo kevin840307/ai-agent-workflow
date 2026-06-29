@@ -12,6 +12,8 @@ python -m venv .venv
 
 Open http://127.0.0.1:8000.
 
+Run this MVP as a single process. Do not start uvicorn with more than one worker; the runtime keeps in-process chat, workflow, and cancellation locks for local single-machine use. `WEB_CONCURRENCY` or `UVICORN_WORKERS` must be unset or set to `1`.
+
 ## Modes
 
 - Workflow mode runs a selected workflow against one project path.
@@ -95,6 +97,21 @@ The built-in workflow is `data/workflows/system-controlled-qwen` and is read-onl
 
 Python validation steps do not need to call an agent. Their `validator` field selects a backend function from `/api/workflows/functions`.
 
+Runtime safety:
+
+- The JSON store, settings, prompt templates, workflow configs, and workflow artifacts are written atomically with temp-file replace.
+- One chat request can generate in a session at a time. Duplicate chat sends can pass `clientRequestId` for idempotency.
+- One workflow run can be active for a project path at a time, even after refresh.
+- Startup marks interrupted runs when the previous app process exited mid-run.
+- Run logs are rotated in place to keep the latest entries.
+
+Operational endpoints:
+
+- `GET /health`: process liveness.
+- `GET /ready`: store/workspace/static readiness checks.
+- `GET /metrics`: lightweight in-process counters, timings, and active run count.
+- `POST /api/maintenance/cleanup?keep_per_project=20`: removes old inactive run workspaces beyond the retention count.
+
 ## Security Scan
 
 The security scan workflow uses a compact consensus design:
@@ -131,6 +148,10 @@ Optional frontend syntax check:
 Get-Content -Raw static\js\main.js | node --input-type=module --check
 Get-Content -Raw static\js\pages\workflow-runner.js | node --input-type=module --check
 Get-Content -Raw static\js\pages\workflow-designer.js | node --input-type=module --check
+Get-Content -Raw static\js\pages\workflow-designer\controller.js | node --input-type=module --check
+Get-Content -Raw static\js\pages\workflow-designer\layout-renderer.js | node --input-type=module --check
+Get-Content -Raw static\js\pages\workflow-designer\step-settings-renderer.js | node --input-type=module --check
+Get-Content -Raw static\js\pages\workflow-designer\template-editor.js | node --input-type=module --check
 ```
 
 ## Architecture

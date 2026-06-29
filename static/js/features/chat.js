@@ -1,4 +1,4 @@
-import { LocalStore, StorageKeys } from "../core/storage.js?v=20260629-static-modules16";
+import { LocalStore, StorageKeys } from "../core/storage.js?v=20260630-stability1";
 
 export function createChat(ctx) {
   const { api, state, ui } = ctx;
@@ -34,6 +34,7 @@ export function createChat(ctx) {
       const input = ui.byKey("messageInput");
       const content = input.value.trim();
       if (!content) return;
+      const clientRequestId = crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
       state.chatBusy = true;
       ctx.features.composer.updatePrimaryAction();
@@ -45,7 +46,7 @@ export function createChat(ctx) {
       try {
         await api.request(`/api/sessions/${state.activeSessionId}/chat`, {
           method: "POST",
-          body: JSON.stringify({ content }),
+          body: JSON.stringify({ content, clientRequestId }),
         });
         await ctx.features.messages.load({ keepDraft: true });
         await ctx.features.sessions.refreshList();

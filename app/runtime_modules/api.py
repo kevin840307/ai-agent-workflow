@@ -94,6 +94,7 @@ run_state = RunState(store, bus)
 update_run = run_state.update_run
 get_run_record = run_state.get_run_record
 append_session_message = run_state.append_session_message
+update_message = run_state.update_message
 log = run_state.log
 set_step = run_state.set_step
 reset_steps_from = run_state.reset_steps_from

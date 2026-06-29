@@ -168,7 +168,7 @@ export function createArtifacts(ctx) {
                 <h2 id="stepFilesModalTitle">Files</h2>
                 <p id="stepFilesModalMeta"></p>
               </div>
-              <button id="stepFilesModalClose" class="step-files-modal-close" type="button" aria-label="Close files dialog">×</button>
+              <button id="stepFilesModalClose" class="step-files-modal-close" type="button" aria-label="Close files dialog">x</button>
             </div>
             <div id="stepFilesTabs" class="step-files-tabs" role="tablist" aria-label="Step files"></div>
             <div class="step-files-active-head">

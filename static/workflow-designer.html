@@ -4,33 +4,33 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Workflow Designer</title>
-    <link rel="stylesheet" href="/static/styles.css?v=20260629-static-modules17" />
+    <link rel="stylesheet" href="/static/styles.css?v=20260630-stability1" />
   </head>
   <body data-page="workflow-designer">
     <div class="designer-shell">
       <aside class="designer-sidebar">
         <div class="designer-brand-block">
           <div class="brand">Agent Workflow</div>
-          <button id="toggleProjects" class="side-toggle" title="Collapse workflows" aria-label="Collapse workflows" aria-pressed="false">☰</button>
+          <button id="toggleProjects" class="side-toggle" title="Collapse workflows" aria-label="Collapse workflows" aria-pressed="false">&lt;</button>
         </div>
 
         <nav class="designer-nav" aria-label="Designer navigation">
-          <a href="/" class="designer-nav-link"><span aria-hidden="true">▶</span><strong>Runner</strong></a>
-          <a href="/workflow-designer" class="designer-nav-link active"><span aria-hidden="true">⚙</span><strong>Workflows</strong></a>
+          <a href="/" class="designer-nav-link"><span aria-hidden="true">Run</span><strong>Runner</strong></a>
+          <a href="/workflow-designer" class="designer-nav-link active"><span aria-hidden="true">Cfg</span><strong>Workflows</strong></a>
         </nav>
 
         <div class="designer-sidebar-section">
           <div class="designer-section-title">System</div>
           <button id="designerSystemWorkflow" class="designer-workflow-pill active">
             <strong>Controlled Agent Workflow</strong>
-            <span>System · read only</span>
+            <span>System - read only</span>
           </button>
         </div>
 
         <div class="designer-sidebar-section">
           <div class="designer-section-row">
             <div class="designer-section-title">Custom</div>
-            <button id="designerNewWorkflowMini" class="mini-button">＋</button>
+            <button id="designerNewWorkflowMini" class="mini-button">+</button>
           </div>
           <div id="designerCustomList" class="designer-custom-list"></div>
         </div>
@@ -44,7 +44,7 @@
           </div>
           <div class="designer-topbar-actions">
             <div class="designer-action-group" aria-label="Workflow actions">
-              <button id="designerNewWorkflow" class="primary">＋ New Workflow</button>
+              <button id="designerNewWorkflow" class="primary">+ New Workflow</button>
             </div>
             <span id="designerBackendStatus" class="designer-api-status" title="Loading workflow API...">API...</span>
           </div>
@@ -66,7 +66,7 @@
                   <button id="designerDeleteWorkflow" class="designer-danger-button">Delete</button>
                 </div>
               </div>
-              <p id="designerActiveWorkflowMeta">Editable · API workflow</p>
+              <p id="designerActiveWorkflowMeta">Editable - API workflow</p>
               <p id="designerActiveWorkflowDescription" class="designer-active-workflow-description">No description.</p>
               <div class="designer-card-meta-row">
                 <span>API-backed</span>
@@ -138,7 +138,7 @@
                   <h3>Steps</h3>
                   <p id="designerStepCount">0 steps</p>
                 </div>
-                <button id="designerAddStep" class="mini-button">＋ Add</button>
+                <button id="designerAddStep" class="mini-button">+ Add</button>
               </div>
               <div class="designer-step-toolbar" aria-label="Step filters and display mode">
                 <label class="designer-step-search-wrap" for="designerStepSearch">
@@ -202,6 +202,6 @@
       </main>
     </div>
 
-    <script type="module" src="/static/js/main.js?v=20260629-static-modules17"></script>
+    <script type="module" src="/static/js/main.js?v=20260630-stability1"></script>
   </body>
 </html>

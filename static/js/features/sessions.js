@@ -14,7 +14,7 @@ export function createSessions(ctx) {
             <strong>${ui.escapeHtml(session.title || "Project")}</strong>
             <span>${ui.escapeHtml(ui.shortPath(session.project_path || ""))}</span>
           </button>
-          <button class="icon-button danger" title="Delete project">×</button>
+          <button class="icon-button danger" title="Delete project">x</button>
         `;
         row.querySelector(".project-item").onclick = () => sessions.select(session.id);
         row.querySelector(".danger").onclick = (event) => sessions.delete(event, session.id);

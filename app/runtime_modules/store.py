@@ -2,11 +2,10 @@ from __future__ import annotations
 
 import asyncio
 import json
-import time
 from pathlib import Path
 from typing import Any, Callable
 
-from app.runtime_modules.paths import ensure_dirs
+from app.runtime_modules.paths import atomic_write_text, ensure_dirs
 
 
 class Store:
@@ -31,7 +30,9 @@ class Store:
         try:
             data = json.loads(self.path.read_text(encoding="utf-8-sig"))
         except json.JSONDecodeError:
-            backup = self.path.with_suffix(f".corrupt-{int(time.time())}.json")
+            from app.runtime_modules.paths import utc_now
+
+            backup = self.path.with_suffix(f".corrupt-{utc_now().replace(':', '-')}.json")
             try:
                 self.path.replace(backup)
             except OSError:
@@ -42,6 +43,10 @@ class Store:
             if key not in data or not isinstance(data.get(key), list):
                 data[key] = []
         changed = False
+        for message in data.get("messages", []):
+            if "status" not in message:
+                message["status"] = "completed"
+                changed = True
         for session in data.get("sessions", []):
             if not session.get("qwen_session_id"):
                 session["qwen_session_id"] = session["id"]
@@ -99,9 +104,15 @@ class Store:
             if not run.get("steps"):
                 run["steps"] = self._default_steps()
                 changed = True
+            if "timeline" not in run or not isinstance(run.get("timeline"), list):
+                run["timeline"] = []
+                changed = True
             for step in run.get("steps", []):
                 if "retry_count" not in step:
                     step["retry_count"] = 0
+                    changed = True
+                if "events" not in step or not isinstance(step.get("events"), list):
+                    step["events"] = []
                     changed = True
                 step.setdefault("status", "pending")
                 step.setdefault("started_at", None)
@@ -113,16 +124,7 @@ class Store:
 
     def save_sync(self, data: dict[str, Any]) -> None:
         ensure_dirs()
-        tmp = self.path.with_suffix(".tmp")
-        tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
-        for attempt in range(5):
-            try:
-                tmp.replace(self.path)
-                return
-            except PermissionError:
-                if attempt == 4:
-                    raise
-                time.sleep(0.05)
+        atomic_write_text(self.path, json.dumps(data, indent=2, ensure_ascii=False))
 
     async def mutate(self, fn):
         async with self._lock:

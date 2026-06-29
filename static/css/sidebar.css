@@ -1,0 +1,17 @@
+/* Shared sidebar/navigation behavior for runner and workflow designer. */
+.project-nav-link,
+.designer-nav-link {
+  transition: border-color 0.16s ease, background 0.16s ease, color 0.16s ease;
+}
+
+.project-nav-link.active,
+.designer-nav-link.active {
+  border-color: rgba(15, 118, 110, 0.55);
+  background: #e8f5f1;
+  color: var(--accent-dark);
+}
+
+.side-toggle {
+  font-weight: 900;
+}
+

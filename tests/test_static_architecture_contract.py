@@ -21,9 +21,12 @@ class StaticArchitectureContractTests(unittest.TestCase):
             "static/js/pages/workflow-designer/import-export.js",
             "static/js/pages/workflow-designer/layout-renderer.js",
             "static/js/pages/workflow-designer/model.js",
+            "static/js/pages/workflow-designer/step-tabs.js",
             "static/js/pages/workflow-designer/step-settings-renderer.js",
             "static/js/pages/workflow-designer/template-editor.js",
             "static/js/pages/workflow-designer/utils.js",
+            "static/js/components/sidebar.js",
+            "static/css/sidebar.css",
         ]
         for rel_path in expected:
             with self.subTest(rel_path=rel_path):
@@ -49,18 +52,29 @@ class StaticArchitectureContractTests(unittest.TestCase):
         limits = {
             "static/js/pages/workflow-designer/controller.js": 1200,
             "static/js/pages/workflow-designer/layout-renderer.js": 700,
+            "static/js/pages/workflow-designer/step-tabs.js": 80,
             "static/js/pages/workflow-designer/step-settings-renderer.js": 700,
             "static/js/pages/workflow-designer/template-editor.js": 700,
             "static/js/pages/workflow-designer/import-export.js": 400,
             "static/js/pages/workflow-designer/function-catalog.js": 200,
             "static/js/pages/workflow-designer/model.js": 200,
             "static/js/pages/workflow-designer/utils.js": 200,
+            "static/js/components/sidebar.js": 120,
         }
         for rel_path, max_lines in limits.items():
             with self.subTest(rel_path=rel_path):
                 path = ROOT / rel_path
                 line_count = len(path.read_text(encoding="utf-8").splitlines())
                 self.assertLessEqual(line_count, max_lines, f"{rel_path} has {line_count} lines; split it before it grows past {max_lines}")
+
+    def test_static_cache_version_is_consistent(self):
+        versions = set()
+        for path in (ROOT / "static").rglob("*"):
+            if path.suffix.lower() not in {".html", ".css", ".js"}:
+                continue
+            source = path.read_text(encoding="utf-8")
+            versions.update(re.findall(r"\?v=([A-Za-z0-9_-]+)", source))
+        self.assertEqual(versions, {"20260630-stability1"})
 
     def test_static_structure_document_mentions_designer_modules(self):
         source = (ROOT / "static/FRONTEND_STRUCTURE.md").read_text(encoding="utf-8")

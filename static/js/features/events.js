@@ -9,7 +9,6 @@ export function createEvents(ctx) {
       });
       ui.on("settingsMenu", "click", (event) => event.stopPropagation());
       ui.on("toggleDetails", "click", () => ctx.features.layout.toggleDetails());
-      ui.on("toggleProjects", "click", () => ctx.features.layout.toggleProjects());
       ui.on("artifactSearch", "input", () => ctx.features.artifacts.renderList());
       ui.on("messageInput", "input", () => ctx.features.composer.autoResize());
       ui.on("messageInput", "keydown", (event) => {

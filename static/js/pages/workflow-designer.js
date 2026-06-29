@@ -1,3 +1,3 @@
-import { initWorkflowDesignerPage } from "./workflow-designer/controller.js?v=20260629-static-modules16";
+import { initWorkflowDesignerPage } from "./workflow-designer/controller.js?v=20260630-stability1";
 
 export { initWorkflowDesignerPage };
