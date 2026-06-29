@@ -1,4 +1,4 @@
-import { ensureActiveTabForStep as ensureStepTab, tabsForStep } from "./step-tabs.js?v=20260629-static-modules15";
+import { ensureActiveTabForStep as ensureStepTab, tabsForStep } from "./step-tabs.js?v=20260629-static-modules16";
 
 export function installLayoutRenderer(ctx) {
   const {

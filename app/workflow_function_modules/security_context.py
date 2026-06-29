@@ -14,7 +14,7 @@ SECURITY_CONTEXT_EXTENSIONS = {
 
 
 SECURITY_CONTEXT_SKIP_DIRS = {
-    ".git", ".hg", ".svn", ".vs", ".idea", ".vscode", ".qwen-workflow",
+    ".git", ".hg", ".svn", ".qwen", ".vs", ".idea", ".vscode", ".qwen-workflow",
     "node_modules", "vendor", "bower_components",
     "venv", ".venv", "env", ".envdir",
     "__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache", ".tox", ".nox",

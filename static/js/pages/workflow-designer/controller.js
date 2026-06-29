@@ -4,7 +4,7 @@ import {
   SourceTypes,
   StepTypes,
   TemplatePresets,
-} from "../workflow-designer-constants.js?v=20260629-static-modules15";
+} from "../workflow-designer-constants.js?v=20260629-static-modules16";
 import {
   clone,
   el,
@@ -18,7 +18,7 @@ import {
   readInputValue,
   setText,
   toast,
-} from "./utils.js?v=20260629-static-modules15";
+} from "./utils.js?v=20260629-static-modules16";
 import {
   createStep,
   createWorkflow,
@@ -30,7 +30,7 @@ import {
   normalizeFunctionId,
   normalizeStep,
   normalizeWorkflow,
-} from "./model.js?v=20260629-static-modules15";
+} from "./model.js?v=20260629-static-modules16";
 import {
   availablePromptParamsFor,
   functionHelpFor,
@@ -38,13 +38,14 @@ import {
   functionOptionsFor,
   stepUiCapabilitiesFor,
   workflowFunctionCountsFor,
-} from "./function-catalog.js?v=20260629-static-modules15";
-import { installLayoutRenderer } from "./layout-renderer.js?v=20260629-static-modules15";
-import { installStepSettingsRenderer } from "./step-settings-renderer.js?v=20260629-static-modules15";
-import { installTemplateEditor } from "./template-editor.js?v=20260629-static-modules15";
-import { installImportExportTools } from "./import-export.js?v=20260629-static-modules15";
+} from "./function-catalog.js?v=20260629-static-modules16";
+import { installLayoutRenderer } from "./layout-renderer.js?v=20260629-static-modules16";
+import { installStepSettingsRenderer } from "./step-settings-renderer.js?v=20260629-static-modules16";
+import { installTemplateEditor } from "./template-editor.js?v=20260629-static-modules16";
+import { installImportExportTools } from "./import-export.js?v=20260629-static-modules16";
 
 const STORAGE_KEY = "qwenWorkflow.workflowDesigner.ui.v1";
+const SIDEBAR_COLLAPSED_KEY = "qwenWorkflow.layout.projectsCollapsed";
 const WORKFLOW_API = "/api/workflows";
 
 function functionOptions(groupName, fallbackItems, selected) {
@@ -101,6 +102,7 @@ let pendingWorkflowAction = null;
 let availableWorkflowFunctions = { validators: [], reviewStrategies: [], aggregators: [], promptParams: [] };
 
 async function initWorkflowDesignerPage() {
+  restoreDesignerSidebar();
   await loadState();
   bindEvents();
   render();
@@ -138,7 +140,48 @@ async function loadState() {
   workflowDirty = false;
 }
 
+function readDesignerSidebarCollapsed() {
+  try {
+    return window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
+
+function writeDesignerSidebarCollapsed(collapsed) {
+  try {
+    window.localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(Boolean(collapsed)));
+  } catch {
+    // localStorage may be disabled in private / restricted browser modes.
+  }
+}
+
+function updateDesignerSidebarButton(collapsed) {
+  const button = el("toggleProjects");
+  if (!button) return;
+  button.classList.toggle("active", collapsed);
+  button.textContent = collapsed ? ">" : "<";
+  button.title = collapsed ? "Expand workflows" : "Collapse workflows";
+  button.setAttribute("aria-label", button.title);
+  button.setAttribute("aria-pressed", String(collapsed));
+}
+
+function setDesignerSidebarCollapsed(collapsed, persist = true) {
+  document.body.classList.toggle("projects-collapsed", collapsed);
+  updateDesignerSidebarButton(collapsed);
+  if (persist) writeDesignerSidebarCollapsed(collapsed);
+}
+
+function restoreDesignerSidebar() {
+  setDesignerSidebarCollapsed(readDesignerSidebarCollapsed(), false);
+}
+
+function toggleDesignerSidebar() {
+  setDesignerSidebarCollapsed(!document.body.classList.contains("projects-collapsed"));
+}
+
 function bindEvents() {
+  on("toggleProjects", "click", toggleDesignerSidebar);
   on("designerSystemWorkflow", "click", () => selectWorkflow(systemWorkflow.id));
   on("designerViewSystem", "click", () => selectWorkflow(systemWorkflow.id));
   on("designerDuplicateWorkflow", "click", () => guardedWorkflowAction(() => {

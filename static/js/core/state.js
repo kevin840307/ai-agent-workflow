@@ -1,4 +1,4 @@
-import { LocalStore, StorageKeys } from "./storage.js?v=20260629-static-modules15";
+import { LocalStore, StorageKeys } from "./storage.js?v=20260629-static-modules16";
 
 export const AppState = {
   sessions: [],
