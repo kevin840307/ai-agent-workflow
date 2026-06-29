@@ -1,4 +1,4 @@
-import { isConsensusAgentStep, tabsForStep } from "./step-tabs.js?v=20260629-static-modules5";
+import { isConsensusAgentStep, tabsForStep } from "./step-tabs.js?v=20260629-static-modules6";
 
 export function installStepSettingsRenderer(ctx) {
   const {

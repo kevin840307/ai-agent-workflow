@@ -26,6 +26,7 @@ async def index():
     return FileResponse(runtime.STATIC_DIR / "index.html")
 
 @app.get("/workflow-designer")
+@app.get("/workflow-designer.html")
 async def workflow_designer():
     return FileResponse(runtime.STATIC_DIR / "workflow-designer.html")
 

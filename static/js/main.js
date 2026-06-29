@@ -1,5 +1,5 @@
-import { initWorkflowDesignerPage } from "./pages/workflow-designer.js?v=20260629-static-modules5";
-import { initWorkflowRunnerPage } from "./pages/workflow-runner.js?v=20260628-selection-persist1";
+import { initWorkflowDesignerPage } from "./pages/workflow-designer.js?v=20260629-static-modules6";
+import { initWorkflowRunnerPage } from "./pages/workflow-runner.js?v=20260629-static-modules6";
 
 const page = document.body?.dataset.page || "workflow-runner";
 

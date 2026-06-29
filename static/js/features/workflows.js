@@ -1,4 +1,4 @@
-import { LocalStore, StorageKeys } from "../core/storage.js?v=20260628-selection-persist1";
+import { LocalStore, StorageKeys } from "../core/storage.js?v=20260629-static-modules6";
 
 export function createWorkflows(ctx) {
   const { api, state, ui } = ctx;

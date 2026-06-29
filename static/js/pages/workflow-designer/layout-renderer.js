@@ -1,4 +1,4 @@
-import { ensureActiveTabForStep as ensureStepTab, isConsensusAgentStep, tabsForStep } from "./step-tabs.js?v=20260629-static-modules5";
+import { ensureActiveTabForStep as ensureStepTab, isConsensusAgentStep, tabsForStep } from "./step-tabs.js?v=20260629-static-modules6";
 
 export function installLayoutRenderer(ctx) {
   const {

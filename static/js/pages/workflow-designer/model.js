@@ -1,5 +1,5 @@
-import { TemplatePresets } from "../workflow-designer-constants.js?v=20260629-static-modules5";
-import { clone, makeId } from "./utils.js?v=20260629-static-modules5";
+import { TemplatePresets } from "../workflow-designer-constants.js?v=20260629-static-modules6";
+import { clone, makeId } from "./utils.js?v=20260629-static-modules6";
 
 function createStep(overrides = {}) {
   const key = overrides.key || makeId("step");

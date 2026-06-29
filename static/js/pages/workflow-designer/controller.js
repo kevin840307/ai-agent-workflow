@@ -4,7 +4,7 @@ import {
   SourceTypes,
   StepTypes,
   TemplatePresets,
-} from "../workflow-designer-constants.js?v=20260629-static-modules5";
+} from "../workflow-designer-constants.js?v=20260629-static-modules6";
 import {
   clone,
   el,
@@ -18,7 +18,7 @@ import {
   readInputValue,
   setText,
   toast,
-} from "./utils.js?v=20260629-static-modules5";
+} from "./utils.js?v=20260629-static-modules6";
 import {
   createStep,
   createWorkflow,
@@ -30,18 +30,18 @@ import {
   normalizeFunctionId,
   normalizeStep,
   normalizeWorkflow,
-} from "./model.js?v=20260629-static-modules5";
+} from "./model.js?v=20260629-static-modules6";
 import {
   availablePromptParamsFor,
   functionHelpFor,
   functionMetaFor,
   functionOptionsFor,
   workflowFunctionCountsFor,
-} from "./function-catalog.js?v=20260629-static-modules5";
-import { installLayoutRenderer } from "./layout-renderer.js?v=20260629-static-modules5";
-import { installStepSettingsRenderer } from "./step-settings-renderer.js?v=20260629-static-modules5";
-import { installTemplateEditor } from "./template-editor.js?v=20260629-static-modules5";
-import { installImportExportTools } from "./import-export.js?v=20260629-static-modules5";
+} from "./function-catalog.js?v=20260629-static-modules6";
+import { installLayoutRenderer } from "./layout-renderer.js?v=20260629-static-modules6";
+import { installStepSettingsRenderer } from "./step-settings-renderer.js?v=20260629-static-modules6";
+import { installTemplateEditor } from "./template-editor.js?v=20260629-static-modules6";
+import { installImportExportTools } from "./import-export.js?v=20260629-static-modules6";
 
 const STORAGE_KEY = "qwenWorkflow.workflowDesigner.ui.v1";
 const WORKFLOW_API = "/api/workflows";
