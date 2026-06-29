@@ -1,5 +1,5 @@
-import { BuiltInPromptParams } from "../workflow-designer-constants.js?v=20260629-static-modules9";
-import { escapeHtml, options } from "./utils.js?v=20260629-static-modules9";
+import { BuiltInPromptParams } from "../workflow-designer-constants.js?v=20260629-static-modules13";
+import { escapeHtml, options } from "./utils.js?v=20260629-static-modules13";
 
 const STEP_TYPE_UI_DEFAULTS = Object.freeze({
   ai: { supportsPrompt: true, supportsAgent: true, promptDefaults: true, tabs: ["basic", "sources", "retry", "advanced"] },

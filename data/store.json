@@ -1,6 +1,654 @@
 {
   "sessions": [
     {
+      "id": "df26f3fd-d18b-4fa3-8eb3-13a33b12f35a",
+      "qwen_session_id": "df26f3fd-d18b-4fa3-8eb3-13a33b12f35a",
+      "agent_session_ids": {
+        "qwen": "df26f3fd-d18b-4fa3-8eb3-13a33b12f35a",
+        "opencode": null
+      },
+      "title": "Chat Agent",
+      "project_path": "/tmp/tmp3j31ctbg",
+      "created_at": "2026-06-29T14:24:43.741470+00:00",
+      "updated_at": "2026-06-29T14:24:43.750036+00:00"
+    },
+    {
+      "id": "a9248697-80e6-41f7-b17b-ec65a4a1172d",
+      "qwen_session_id": "a9248697-80e6-41f7-b17b-ec65a4a1172d",
+      "agent_session_ids": {
+        "qwen": "a9248697-80e6-41f7-b17b-ec65a4a1172d",
+        "opencode": null
+      },
+      "title": "Chat Repair",
+      "project_path": "/tmp/tmpnhvt61e0",
+      "created_at": "2026-06-29T14:24:43.718031+00:00",
+      "updated_at": "2026-06-29T14:24:43.723879+00:00"
+    },
+    {
+      "id": "2c4788f6-f30e-4d8a-923c-353046befca8",
+      "qwen_session_id": "2c4788f6-f30e-4d8a-923c-353046befca8",
+      "agent_session_ids": {
+        "qwen": "2c4788f6-f30e-4d8a-923c-353046befca8",
+        "opencode": null
+      },
+      "title": "Chat Boundary",
+      "project_path": "/tmp/tmpklnuu9im",
+      "created_at": "2026-06-29T14:24:43.695997+00:00",
+      "updated_at": "2026-06-29T14:24:43.703572+00:00"
+    },
+    {
+      "id": "685817cb-746a-4358-bbd1-6f9ded2c929b",
+      "qwen_session_id": "685817cb-746a-4358-bbd1-6f9ded2c929b",
+      "agent_session_ids": {
+        "qwen": "685817cb-746a-4358-bbd1-6f9ded2c929b",
+        "opencode": null
+      },
+      "title": "Chat Agent",
+      "project_path": "/tmp/tmp9lh7a_w6",
+      "created_at": "2026-06-29T14:21:00.726706+00:00",
+      "updated_at": "2026-06-29T14:21:00.733235+00:00"
+    },
+    {
+      "id": "b7353d0a-e9f7-4ace-a948-7de2dd13b217",
+      "qwen_session_id": "b7353d0a-e9f7-4ace-a948-7de2dd13b217",
+      "agent_session_ids": {
+        "qwen": "b7353d0a-e9f7-4ace-a948-7de2dd13b217",
+        "opencode": null
+      },
+      "title": "Chat Repair",
+      "project_path": "/tmp/tmpogfkufao",
+      "created_at": "2026-06-29T14:21:00.706100+00:00",
+      "updated_at": "2026-06-29T14:21:00.713711+00:00"
+    },
+    {
+      "id": "5c251998-18df-4ced-b1d0-1b2de48be614",
+      "qwen_session_id": "5c251998-18df-4ced-b1d0-1b2de48be614",
+      "agent_session_ids": {
+        "qwen": "5c251998-18df-4ced-b1d0-1b2de48be614",
+        "opencode": null
+      },
+      "title": "Chat Boundary",
+      "project_path": "/tmp/tmpufmqvg35",
+      "created_at": "2026-06-29T14:21:00.683209+00:00",
+      "updated_at": "2026-06-29T14:21:00.692963+00:00"
+    },
+    {
+      "id": "c05eaf9c-a4cd-4740-b9b0-441e543ec208",
+      "qwen_session_id": "c05eaf9c-a4cd-4740-b9b0-441e543ec208",
+      "agent_session_ids": {
+        "qwen": "c05eaf9c-a4cd-4740-b9b0-441e543ec208",
+        "opencode": null
+      },
+      "title": "Chat Agent",
+      "project_path": "/tmp/tmp_njpld16",
+      "created_at": "2026-06-29T14:15:00.490854+00:00",
+      "updated_at": "2026-06-29T14:15:00.495528+00:00"
+    },
+    {
+      "id": "87db989b-0f6b-4325-9b76-f3ebd27bf111",
+      "qwen_session_id": "87db989b-0f6b-4325-9b76-f3ebd27bf111",
+      "agent_session_ids": {
+        "qwen": "87db989b-0f6b-4325-9b76-f3ebd27bf111",
+        "opencode": null
+      },
+      "title": "Chat Repair",
+      "project_path": "/tmp/tmp73_dxo8o",
+      "created_at": "2026-06-29T14:15:00.470899+00:00",
+      "updated_at": "2026-06-29T14:15:00.478256+00:00"
+    },
+    {
+      "id": "74182058-9440-42ce-91ba-b27618945fd3",
+      "qwen_session_id": "74182058-9440-42ce-91ba-b27618945fd3",
+      "agent_session_ids": {
+        "qwen": "74182058-9440-42ce-91ba-b27618945fd3",
+        "opencode": null
+      },
+      "title": "Chat Boundary",
+      "project_path": "/tmp/tmpn5djylz4",
+      "created_at": "2026-06-29T14:15:00.450591+00:00",
+      "updated_at": "2026-06-29T14:15:00.458791+00:00"
+    },
+    {
+      "id": "5b7e497c-d533-43e8-913a-d3619542c860",
+      "qwen_session_id": "5b7e497c-d533-43e8-913a-d3619542c860",
+      "agent_session_ids": {
+        "qwen": "5b7e497c-d533-43e8-913a-d3619542c860",
+        "opencode": null
+      },
+      "title": "Chat Agent",
+      "project_path": "/tmp/tmp9gv2t0we",
+      "created_at": "2026-06-29T14:09:49.669497+00:00",
+      "updated_at": "2026-06-29T14:09:49.673997+00:00"
+    },
+    {
+      "id": "df98d73e-fc2b-4b28-a01a-ef8e034bbd68",
+      "qwen_session_id": "df98d73e-fc2b-4b28-a01a-ef8e034bbd68",
+      "agent_session_ids": {
+        "qwen": "df98d73e-fc2b-4b28-a01a-ef8e034bbd68",
+        "opencode": null
+      },
+      "title": "Chat Repair",
+      "project_path": "/tmp/tmpm8uwgz5b",
+      "created_at": "2026-06-29T14:09:49.653025+00:00",
+      "updated_at": "2026-06-29T14:09:49.657884+00:00"
+    },
+    {
+      "id": "162eb466-ca31-4ab3-aa8c-a5bf968fe441",
+      "qwen_session_id": "162eb466-ca31-4ab3-aa8c-a5bf968fe441",
+      "agent_session_ids": {
+        "qwen": "162eb466-ca31-4ab3-aa8c-a5bf968fe441",
+        "opencode": null
+      },
+      "title": "Chat Boundary",
+      "project_path": "/tmp/tmptr0w4zf3",
+      "created_at": "2026-06-29T14:09:49.629154+00:00",
+      "updated_at": "2026-06-29T14:09:49.638170+00:00"
+    },
+    {
+      "id": "10ed11dd-c155-4588-8acb-199147944220",
+      "qwen_session_id": "10ed11dd-c155-4588-8acb-199147944220",
+      "agent_session_ids": {
+        "qwen": "10ed11dd-c155-4588-8acb-199147944220",
+        "opencode": null
+      },
+      "title": "Chat Agent",
+      "project_path": "/tmp/tmpyfif5c64",
+      "created_at": "2026-06-29T13:55:01.304219+00:00",
+      "updated_at": "2026-06-29T13:55:01.309440+00:00"
+    },
+    {
+      "id": "de13ed01-cd21-43b4-bc17-1d8c38d61a8c",
+      "qwen_session_id": "de13ed01-cd21-43b4-bc17-1d8c38d61a8c",
+      "agent_session_ids": {
+        "qwen": "de13ed01-cd21-43b4-bc17-1d8c38d61a8c",
+        "opencode": null
+      },
+      "title": "Chat Repair",
+      "project_path": "/tmp/tmpd40ln1b6",
+      "created_at": "2026-06-29T13:55:01.283613+00:00",
+      "updated_at": "2026-06-29T13:55:01.290740+00:00"
+    },
+    {
+      "id": "d83224db-ef28-435d-bd48-9ef21b732254",
+      "qwen_session_id": "d83224db-ef28-435d-bd48-9ef21b732254",
+      "agent_session_ids": {
+        "qwen": "d83224db-ef28-435d-bd48-9ef21b732254",
+        "opencode": null
+      },
+      "title": "Chat Boundary",
+      "project_path": "/tmp/tmp9br3jvto",
+      "created_at": "2026-06-29T13:55:01.263249+00:00",
+      "updated_at": "2026-06-29T13:55:01.271142+00:00"
+    },
+    {
+      "id": "e50ba3da-7a99-4e39-a1b4-23fb81e36abb",
+      "qwen_session_id": "e50ba3da-7a99-4e39-a1b4-23fb81e36abb",
+      "agent_session_ids": {
+        "qwen": "e50ba3da-7a99-4e39-a1b4-23fb81e36abb",
+        "opencode": null
+      },
+      "title": "Chat Agent",
+      "project_path": "/tmp/tmpiu4yplay",
+      "created_at": "2026-06-29T13:48:05.103641+00:00",
+      "updated_at": "2026-06-29T13:48:05.108690+00:00"
+    },
+    {
+      "id": "9513be75-9e28-49e8-af49-14b8cd2c81d6",
+      "qwen_session_id": "9513be75-9e28-49e8-af49-14b8cd2c81d6",
+      "agent_session_ids": {
+        "qwen": "9513be75-9e28-49e8-af49-14b8cd2c81d6",
+        "opencode": null
+      },
+      "title": "Chat Repair",
+      "project_path": "/tmp/tmpq5i6awzg",
+      "created_at": "2026-06-29T13:48:05.087048+00:00",
+      "updated_at": "2026-06-29T13:48:05.092579+00:00"
+    },
+    {
+      "id": "f18dbb55-0901-469a-a28b-c2fddd955eed",
+      "qwen_session_id": "f18dbb55-0901-469a-a28b-c2fddd955eed",
+      "agent_session_ids": {
+        "qwen": "f18dbb55-0901-469a-a28b-c2fddd955eed",
+        "opencode": null
+      },
+      "title": "Chat Boundary",
+      "project_path": "/tmp/tmp2lg09ure",
+      "created_at": "2026-06-29T13:48:05.065669+00:00",
+      "updated_at": "2026-06-29T13:48:05.075051+00:00"
+    },
+    {
+      "id": "f8638c60-b630-4d2a-a3c0-6f46b6d87cf1",
+      "qwen_session_id": "f8638c60-b630-4d2a-a3c0-6f46b6d87cf1",
+      "agent_session_ids": {
+        "qwen": "f8638c60-b630-4d2a-a3c0-6f46b6d87cf1",
+        "opencode": null
+      },
+      "title": "Chat Agent",
+      "project_path": "/tmp/tmpo8y1dpg5",
+      "created_at": "2026-06-29T13:47:16.152077+00:00",
+      "updated_at": "2026-06-29T13:47:16.161333+00:00"
+    },
+    {
+      "id": "aed575f7-647f-4249-befe-e6ac1dbf112f",
+      "qwen_session_id": "aed575f7-647f-4249-befe-e6ac1dbf112f",
+      "agent_session_ids": {
+        "qwen": "aed575f7-647f-4249-befe-e6ac1dbf112f",
+        "opencode": null
+      },
+      "title": "Chat Repair",
+      "project_path": "/tmp/tmpxark8mkl",
+      "created_at": "2026-06-29T13:47:16.134175+00:00",
+      "updated_at": "2026-06-29T13:47:16.139495+00:00"
+    },
+    {
+      "id": "ec26d4fb-f15c-4e71-ab21-4b58ca96676c",
+      "qwen_session_id": "ec26d4fb-f15c-4e71-ab21-4b58ca96676c",
+      "agent_session_ids": {
+        "qwen": "ec26d4fb-f15c-4e71-ab21-4b58ca96676c",
+        "opencode": null
+      },
+      "title": "Chat Boundary",
+      "project_path": "/tmp/tmpqntmyqwx",
+      "created_at": "2026-06-29T13:47:16.106813+00:00",
+      "updated_at": "2026-06-29T13:47:16.118694+00:00"
+    },
+    {
+      "id": "f9c002e9-be0f-4795-9053-e1d601cea3ab",
+      "qwen_session_id": "f9c002e9-be0f-4795-9053-e1d601cea3ab",
+      "agent_session_ids": {
+        "qwen": "f9c002e9-be0f-4795-9053-e1d601cea3ab",
+        "opencode": null
+      },
+      "title": "Chat Agent",
+      "project_path": "/tmp/tmp7hxcp5zp",
+      "created_at": "2026-06-29T13:46:11.930172+00:00",
+      "updated_at": "2026-06-29T13:46:11.935349+00:00"
+    },
+    {
+      "id": "35dc248e-2ec1-4d92-b433-bae47f1fff71",
+      "qwen_session_id": "35dc248e-2ec1-4d92-b433-bae47f1fff71",
+      "agent_session_ids": {
+        "qwen": "35dc248e-2ec1-4d92-b433-bae47f1fff71",
+        "opencode": null
+      },
+      "title": "Chat Repair",
+      "project_path": "/tmp/tmpa6bs9dgo",
+      "created_at": "2026-06-29T13:46:11.910943+00:00",
+      "updated_at": "2026-06-29T13:46:11.915652+00:00"
+    },
+    {
+      "id": "f3479b4c-c780-4a81-8ea3-c1b3580cc7c2",
+      "qwen_session_id": "f3479b4c-c780-4a81-8ea3-c1b3580cc7c2",
+      "agent_session_ids": {
+        "qwen": "f3479b4c-c780-4a81-8ea3-c1b3580cc7c2",
+        "opencode": null
+      },
+      "title": "Chat Boundary",
+      "project_path": "/tmp/tmpwefp083c",
+      "created_at": "2026-06-29T13:46:11.888115+00:00",
+      "updated_at": "2026-06-29T13:46:11.898798+00:00"
+    },
+    {
+      "id": "c3bae94f-b2af-41a5-9ac6-9e3e8a9c4e29",
+      "qwen_session_id": "c3bae94f-b2af-41a5-9ac6-9e3e8a9c4e29",
+      "agent_session_ids": {
+        "qwen": "c3bae94f-b2af-41a5-9ac6-9e3e8a9c4e29",
+        "opencode": null
+      },
+      "title": "Chat Agent",
+      "project_path": "/tmp/tmpylnni2if",
+      "created_at": "2026-06-29T13:44:45.004055+00:00",
+      "updated_at": "2026-06-29T13:44:45.009178+00:00"
+    },
+    {
+      "id": "0f4899d0-99a4-4fb3-a89a-12051ad1227a",
+      "qwen_session_id": "0f4899d0-99a4-4fb3-a89a-12051ad1227a",
+      "agent_session_ids": {
+        "qwen": "0f4899d0-99a4-4fb3-a89a-12051ad1227a",
+        "opencode": null
+      },
+      "title": "Chat Repair",
+      "project_path": "/tmp/tmpxmgqkslb",
+      "created_at": "2026-06-29T13:44:44.987448+00:00",
+      "updated_at": "2026-06-29T13:44:44.992389+00:00"
+    },
+    {
+      "id": "c557f130-6ffa-4c08-8b44-009b00e5062e",
+      "qwen_session_id": "c557f130-6ffa-4c08-8b44-009b00e5062e",
+      "agent_session_ids": {
+        "qwen": "c557f130-6ffa-4c08-8b44-009b00e5062e",
+        "opencode": null
+      },
+      "title": "Chat Boundary",
+      "project_path": "/tmp/tmp_p5qcqy5",
+      "created_at": "2026-06-29T13:44:44.969137+00:00",
+      "updated_at": "2026-06-29T13:44:44.975331+00:00"
+    },
+    {
+      "id": "3ad5d518-32ff-4492-8c58-b763ba11a3b4",
+      "qwen_session_id": "3ad5d518-32ff-4492-8c58-b763ba11a3b4",
+      "agent_session_ids": {
+        "qwen": "3ad5d518-32ff-4492-8c58-b763ba11a3b4",
+        "opencode": null
+      },
+      "title": "Chat Agent",
+      "project_path": "/tmp/tmp8x4tcz7m",
+      "created_at": "2026-06-29T13:36:59.606412+00:00",
+      "updated_at": "2026-06-29T13:36:59.611815+00:00"
+    },
+    {
+      "id": "c0b7c709-608a-45c5-915d-33e48520df1a",
+      "qwen_session_id": "c0b7c709-608a-45c5-915d-33e48520df1a",
+      "agent_session_ids": {
+        "qwen": "c0b7c709-608a-45c5-915d-33e48520df1a",
+        "opencode": null
+      },
+      "title": "Chat Repair",
+      "project_path": "/tmp/tmp0crnx7d6",
+      "created_at": "2026-06-29T13:36:59.589475+00:00",
+      "updated_at": "2026-06-29T13:36:59.594281+00:00"
+    },
+    {
+      "id": "d82eea6a-0efe-4ea6-8ee1-be1805af91d5",
+      "qwen_session_id": "d82eea6a-0efe-4ea6-8ee1-be1805af91d5",
+      "agent_session_ids": {
+        "qwen": "d82eea6a-0efe-4ea6-8ee1-be1805af91d5",
+        "opencode": null
+      },
+      "title": "Chat Boundary",
+      "project_path": "/tmp/tmpwy6r1i7l",
+      "created_at": "2026-06-29T13:36:59.569817+00:00",
+      "updated_at": "2026-06-29T13:36:59.576860+00:00"
+    },
+    {
+      "id": "b93f80a0-1909-4dfa-909f-bcd5a08399ee",
+      "qwen_session_id": "b93f80a0-1909-4dfa-909f-bcd5a08399ee",
+      "agent_session_ids": {
+        "qwen": "b93f80a0-1909-4dfa-909f-bcd5a08399ee",
+        "opencode": null
+      },
+      "title": "Chat Agent",
+      "project_path": "/tmp/tmpazxoc8wh",
+      "created_at": "2026-06-29T13:29:21.293089+00:00",
+      "updated_at": "2026-06-29T13:29:21.298013+00:00"
+    },
+    {
+      "id": "f9d0f095-ad84-42ee-87e2-b1f66767f06d",
+      "qwen_session_id": "f9d0f095-ad84-42ee-87e2-b1f66767f06d",
+      "agent_session_ids": {
+        "qwen": "f9d0f095-ad84-42ee-87e2-b1f66767f06d",
+        "opencode": null
+      },
+      "title": "Chat Repair",
+      "project_path": "/tmp/tmp2sfr4kcu",
+      "created_at": "2026-06-29T13:29:21.271502+00:00",
+      "updated_at": "2026-06-29T13:29:21.277286+00:00"
+    },
+    {
+      "id": "2b8addd1-2e74-4c5d-bb8c-bfbf50e131ca",
+      "qwen_session_id": "2b8addd1-2e74-4c5d-bb8c-bfbf50e131ca",
+      "agent_session_ids": {
+        "qwen": "2b8addd1-2e74-4c5d-bb8c-bfbf50e131ca",
+        "opencode": null
+      },
+      "title": "Chat Boundary",
+      "project_path": "/tmp/tmpmo684_nn",
+      "created_at": "2026-06-29T13:29:21.246815+00:00",
+      "updated_at": "2026-06-29T13:29:21.253644+00:00"
+    },
+    {
+      "id": "6393556b-1005-4b24-b0bf-4cb1a444164b",
+      "qwen_session_id": "6393556b-1005-4b24-b0bf-4cb1a444164b",
+      "agent_session_ids": {
+        "qwen": "6393556b-1005-4b24-b0bf-4cb1a444164b",
+        "opencode": null
+      },
+      "title": "Chat Agent",
+      "project_path": "/tmp/tmpr0kra2iy",
+      "created_at": "2026-06-29T13:28:08.234945+00:00",
+      "updated_at": "2026-06-29T13:28:08.238438+00:00"
+    },
+    {
+      "id": "35481eb6-66dd-4c51-8c34-4b986959024d",
+      "qwen_session_id": "35481eb6-66dd-4c51-8c34-4b986959024d",
+      "agent_session_ids": {
+        "qwen": "35481eb6-66dd-4c51-8c34-4b986959024d",
+        "opencode": null
+      },
+      "title": "Chat Repair",
+      "project_path": "/tmp/tmpfbjpyyvg",
+      "created_at": "2026-06-29T13:28:08.218445+00:00",
+      "updated_at": "2026-06-29T13:28:08.222273+00:00"
+    },
+    {
+      "id": "3dc93c5d-5e21-409f-8aeb-efd54d7a419d",
+      "qwen_session_id": "3dc93c5d-5e21-409f-8aeb-efd54d7a419d",
+      "agent_session_ids": {
+        "qwen": "3dc93c5d-5e21-409f-8aeb-efd54d7a419d",
+        "opencode": null
+      },
+      "title": "Chat Boundary",
+      "project_path": "/tmp/tmpl3ikmpdk",
+      "created_at": "2026-06-29T13:28:08.195425+00:00",
+      "updated_at": "2026-06-29T13:28:08.202478+00:00"
+    },
+    {
+      "id": "b80de3b6-b657-4422-a187-627d0eb3bbf5",
+      "qwen_session_id": "b80de3b6-b657-4422-a187-627d0eb3bbf5",
+      "agent_session_ids": {
+        "qwen": "b80de3b6-b657-4422-a187-627d0eb3bbf5",
+        "opencode": null
+      },
+      "title": "Chat Agent",
+      "project_path": "/tmp/tmp43axlslh",
+      "created_at": "2026-06-29T13:24:46.082970+00:00",
+      "updated_at": "2026-06-29T13:24:46.086727+00:00"
+    },
+    {
+      "id": "64767c67-eb7f-44d1-affd-6449211789a3",
+      "qwen_session_id": "64767c67-eb7f-44d1-affd-6449211789a3",
+      "agent_session_ids": {
+        "qwen": "64767c67-eb7f-44d1-affd-6449211789a3",
+        "opencode": null
+      },
+      "title": "Chat Repair",
+      "project_path": "/tmp/tmpwnk6wkhn",
+      "created_at": "2026-06-29T13:24:46.064212+00:00",
+      "updated_at": "2026-06-29T13:24:46.068376+00:00"
+    },
+    {
+      "id": "d838b526-8254-4b81-b2dc-ecf9b4590d9c",
+      "qwen_session_id": "d838b526-8254-4b81-b2dc-ecf9b4590d9c",
+      "agent_session_ids": {
+        "qwen": "d838b526-8254-4b81-b2dc-ecf9b4590d9c",
+        "opencode": null
+      },
+      "title": "Chat Boundary",
+      "project_path": "/tmp/tmpshelohko",
+      "created_at": "2026-06-29T13:24:46.038671+00:00",
+      "updated_at": "2026-06-29T13:24:46.050141+00:00"
+    },
+    {
+      "id": "1abbbc2b-f119-4d64-8461-dc6b6e459935",
+      "qwen_session_id": "1abbbc2b-f119-4d64-8461-dc6b6e459935",
+      "agent_session_ids": {
+        "qwen": "1abbbc2b-f119-4d64-8461-dc6b6e459935",
+        "opencode": null
+      },
+      "title": "Chat Agent",
+      "project_path": "/tmp/tmplmn2rcmt",
+      "created_at": "2026-06-29T13:14:17.963514+00:00",
+      "updated_at": "2026-06-29T13:14:17.967505+00:00"
+    },
+    {
+      "id": "7f71f96d-f0a2-4f87-852e-87252d1ee6f0",
+      "qwen_session_id": "7f71f96d-f0a2-4f87-852e-87252d1ee6f0",
+      "agent_session_ids": {
+        "qwen": "7f71f96d-f0a2-4f87-852e-87252d1ee6f0",
+        "opencode": null
+      },
+      "title": "Chat Repair",
+      "project_path": "/tmp/tmpcq8ga2cm",
+      "created_at": "2026-06-29T13:14:17.945158+00:00",
+      "updated_at": "2026-06-29T13:14:17.949675+00:00"
+    },
+    {
+      "id": "93deebe3-0a36-4235-919b-763fb422ee8a",
+      "qwen_session_id": "93deebe3-0a36-4235-919b-763fb422ee8a",
+      "agent_session_ids": {
+        "qwen": "93deebe3-0a36-4235-919b-763fb422ee8a",
+        "opencode": null
+      },
+      "title": "Chat Boundary",
+      "project_path": "/tmp/tmp7j1fy75f",
+      "created_at": "2026-06-29T13:14:17.927356+00:00",
+      "updated_at": "2026-06-29T13:14:17.933216+00:00"
+    },
+    {
+      "id": "d9635264-5412-4dc0-a387-6fb504cc680c",
+      "qwen_session_id": "d9635264-5412-4dc0-a387-6fb504cc680c",
+      "agent_session_ids": {
+        "qwen": "d9635264-5412-4dc0-a387-6fb504cc680c",
+        "opencode": null
+      },
+      "title": "Chat Agent",
+      "project_path": "/tmp/tmp8eumqbxe",
+      "created_at": "2026-06-29T13:06:36.100298+00:00",
+      "updated_at": "2026-06-29T13:06:36.103982+00:00"
+    },
+    {
+      "id": "d1260ac3-50ec-48c3-9d30-ab544825dc05",
+      "qwen_session_id": "d1260ac3-50ec-48c3-9d30-ab544825dc05",
+      "agent_session_ids": {
+        "qwen": "d1260ac3-50ec-48c3-9d30-ab544825dc05",
+        "opencode": null
+      },
+      "title": "Chat Repair",
+      "project_path": "/tmp/tmpg2eosquu",
+      "created_at": "2026-06-29T13:06:36.085530+00:00",
+      "updated_at": "2026-06-29T13:06:36.088707+00:00"
+    },
+    {
+      "id": "e1890347-07f4-4f0b-b342-b97b6f3c3707",
+      "qwen_session_id": "e1890347-07f4-4f0b-b342-b97b6f3c3707",
+      "agent_session_ids": {
+        "qwen": "e1890347-07f4-4f0b-b342-b97b6f3c3707",
+        "opencode": null
+      },
+      "title": "Chat Boundary",
+      "project_path": "/tmp/tmpczzvs94t",
+      "created_at": "2026-06-29T13:06:36.065284+00:00",
+      "updated_at": "2026-06-29T13:06:36.070421+00:00"
+    },
+    {
+      "id": "041abb50-7ee4-4906-be97-208e9e1c5600",
+      "qwen_session_id": "041abb50-7ee4-4906-be97-208e9e1c5600",
+      "agent_session_ids": {
+        "qwen": "041abb50-7ee4-4906-be97-208e9e1c5600",
+        "opencode": null
+      },
+      "title": "Chat Agent",
+      "project_path": "/tmp/tmpapjr9zx0",
+      "created_at": "2026-06-29T13:00:49.630900+00:00",
+      "updated_at": "2026-06-29T13:00:49.634416+00:00"
+    },
+    {
+      "id": "ad78ce08-3e2d-4ef6-8937-127b09fedbad",
+      "qwen_session_id": "ad78ce08-3e2d-4ef6-8937-127b09fedbad",
+      "agent_session_ids": {
+        "qwen": "ad78ce08-3e2d-4ef6-8937-127b09fedbad",
+        "opencode": null
+      },
+      "title": "Chat Repair",
+      "project_path": "/tmp/tmp3r28a865",
+      "created_at": "2026-06-29T13:00:49.613430+00:00",
+      "updated_at": "2026-06-29T13:00:49.616621+00:00"
+    },
+    {
+      "id": "8a39046f-d4e6-4d74-a200-b218b528a14c",
+      "qwen_session_id": "8a39046f-d4e6-4d74-a200-b218b528a14c",
+      "agent_session_ids": {
+        "qwen": "8a39046f-d4e6-4d74-a200-b218b528a14c",
+        "opencode": null
+      },
+      "title": "Chat Boundary",
+      "project_path": "/tmp/tmpkwoaricy",
+      "created_at": "2026-06-29T13:00:49.594699+00:00",
+      "updated_at": "2026-06-29T13:00:49.600222+00:00"
+    },
+    {
+      "id": "6ab48e59-d9de-462b-bd47-2802bffc67e2",
+      "qwen_session_id": "6ab48e59-d9de-462b-bd47-2802bffc67e2",
+      "agent_session_ids": {
+        "qwen": "6ab48e59-d9de-462b-bd47-2802bffc67e2",
+        "opencode": null
+      },
+      "title": "Chat Agent",
+      "project_path": "/tmp/tmp2gfgjb9m",
+      "created_at": "2026-06-29T12:59:52.043781+00:00",
+      "updated_at": "2026-06-29T12:59:52.047258+00:00"
+    },
+    {
+      "id": "478cfec0-2aa6-4e96-bf0a-939240743187",
+      "qwen_session_id": "478cfec0-2aa6-4e96-bf0a-939240743187",
+      "agent_session_ids": {
+        "qwen": "478cfec0-2aa6-4e96-bf0a-939240743187",
+        "opencode": null
+      },
+      "title": "Chat Repair",
+      "project_path": "/tmp/tmp8lxtm0ao",
+      "created_at": "2026-06-29T12:59:52.020210+00:00",
+      "updated_at": "2026-06-29T12:59:52.022956+00:00"
+    },
+    {
+      "id": "8ccee684-13d0-4380-bf44-c227504a158d",
+      "qwen_session_id": "8ccee684-13d0-4380-bf44-c227504a158d",
+      "agent_session_ids": {
+        "qwen": "8ccee684-13d0-4380-bf44-c227504a158d",
+        "opencode": null
+      },
+      "title": "Chat Boundary",
+      "project_path": "/tmp/tmpdi_zhd9p",
+      "created_at": "2026-06-29T12:59:52.003598+00:00",
+      "updated_at": "2026-06-29T12:59:52.008864+00:00"
+    },
+    {
+      "id": "43b70317-4267-4617-ae6c-d4e4790ba095",
+      "qwen_session_id": "43b70317-4267-4617-ae6c-d4e4790ba095",
+      "agent_session_ids": {
+        "qwen": "43b70317-4267-4617-ae6c-d4e4790ba095",
+        "opencode": null
+      },
+      "title": "Chat Agent",
+      "project_path": "/tmp/tmptxrf2yt4",
+      "created_at": "2026-06-29T12:59:07.412860+00:00",
+      "updated_at": "2026-06-29T12:59:07.418253+00:00"
+    },
+    {
+      "id": "c9e39afe-3c3f-4771-ad1c-c2f0ba584cce",
+      "qwen_session_id": "c9e39afe-3c3f-4771-ad1c-c2f0ba584cce",
+      "agent_session_ids": {
+        "qwen": "c9e39afe-3c3f-4771-ad1c-c2f0ba584cce",
+        "opencode": null
+      },
+      "title": "Chat Repair",
+      "project_path": "/tmp/tmpr6nl9oen",
+      "created_at": "2026-06-29T12:59:07.395088+00:00",
+      "updated_at": "2026-06-29T12:59:07.398591+00:00"
+    },
+    {
+      "id": "2b809294-364f-4e74-b45c-d6b57ebed3d7",
+      "qwen_session_id": "2b809294-364f-4e74-b45c-d6b57ebed3d7",
+      "agent_session_ids": {
+        "qwen": "2b809294-364f-4e74-b45c-d6b57ebed3d7",
+        "opencode": null
+      },
+      "title": "Chat Boundary",
+      "project_path": "/tmp/tmpsgq0mpxb",
+      "created_at": "2026-06-29T12:59:07.374456+00:00",
+      "updated_at": "2026-06-29T12:59:07.380779+00:00"
+    },
+    {
       "id": "2aee87d6-38c1-4b51-9735-d0269193ada0",
       "qwen_session_id": "d8820d31-8596-4f1e-acc2-5b93068341f8",
       "agent_session_ids": {
@@ -172,6 +820,1014 @@
       "role": "assistant",
       "content": "你好！有什么我可以帮你的吗？",
       "created_at": "2026-06-29T12:44:32.353560+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "13d72d75-98a1-46e8-8448-80acd8667e19",
+      "session_id": "2b809294-364f-4e74-b45c-d6b57ebed3d7",
+      "role": "user",
+      "kind": "requirement",
+      "content": "workflow-only requirement",
+      "created_at": "2026-06-29T12:59:07.376979+00:00"
+    },
+    {
+      "id": "297417e3-2e5a-4392-91d0-7d12e49ded4f",
+      "session_id": "2b809294-364f-4e74-b45c-d6b57ebed3d7",
+      "role": "user",
+      "content": "chat follow up",
+      "created_at": "2026-06-29T12:59:07.379103+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "ec9fd075-b4ec-47cc-9ee6-168e750babcd",
+      "session_id": "2b809294-364f-4e74-b45c-d6b57ebed3d7",
+      "role": "assistant",
+      "content": "chat answer",
+      "created_at": "2026-06-29T12:59:07.380511+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "2f686563-6e65-4400-a431-d3a736ca12be",
+      "session_id": "c9e39afe-3c3f-4771-ad1c-c2f0ba584cce",
+      "role": "user",
+      "content": "你是opencode CLI嗎",
+      "created_at": "2026-06-29T12:59:07.397138+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "4f47df6e-c126-4f6b-8700-97185a724d42",
+      "session_id": "c9e39afe-3c3f-4771-ad1c-c2f0ba584cce",
+      "role": "assistant",
+      "content": "我是透過 OpenCode CLI 執行的 agent。",
+      "created_at": "2026-06-29T12:59:07.398402+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "1ac52f9b-f8d1-495b-bbfc-d40fa6795e17",
+      "session_id": "43b70317-4267-4617-ae6c-d4e4790ba095",
+      "role": "user",
+      "content": "hello",
+      "created_at": "2026-06-29T12:59:07.415333+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "b22c248a-a651-4388-8497-b689d96d972d",
+      "session_id": "43b70317-4267-4617-ae6c-d4e4790ba095",
+      "role": "assistant",
+      "content": "opencode answer",
+      "created_at": "2026-06-29T12:59:07.418028+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "84c22446-10e0-43b9-9d98-54750c7ff126",
+      "session_id": "8ccee684-13d0-4380-bf44-c227504a158d",
+      "role": "user",
+      "kind": "requirement",
+      "content": "workflow-only requirement",
+      "created_at": "2026-06-29T12:59:52.005473+00:00"
+    },
+    {
+      "id": "0c441bd7-c6a7-4fc9-b932-0d95cb410f86",
+      "session_id": "8ccee684-13d0-4380-bf44-c227504a158d",
+      "role": "user",
+      "content": "chat follow up",
+      "created_at": "2026-06-29T12:59:52.007624+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "1501e26b-f749-400e-a892-71c2bd85351e",
+      "session_id": "8ccee684-13d0-4380-bf44-c227504a158d",
+      "role": "assistant",
+      "content": "chat answer",
+      "created_at": "2026-06-29T12:59:52.008705+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "e3d12ff5-0b66-4907-85ad-4519905b547f",
+      "session_id": "478cfec0-2aa6-4e96-bf0a-939240743187",
+      "role": "user",
+      "content": "你是opencode CLI嗎",
+      "created_at": "2026-06-29T12:59:52.021713+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "dadf2e31-1417-4812-a54d-e3893009503c",
+      "session_id": "478cfec0-2aa6-4e96-bf0a-939240743187",
+      "role": "assistant",
+      "content": "我是透過 OpenCode CLI 執行的 agent。",
+      "created_at": "2026-06-29T12:59:52.022791+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "4a1e0389-7056-41f7-adc2-40e15a17a96a",
+      "session_id": "6ab48e59-d9de-462b-bd47-2802bffc67e2",
+      "role": "user",
+      "content": "hello",
+      "created_at": "2026-06-29T12:59:52.045735+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "e72485ec-2c18-4f9b-988f-6684236478be",
+      "session_id": "6ab48e59-d9de-462b-bd47-2802bffc67e2",
+      "role": "assistant",
+      "content": "opencode answer",
+      "created_at": "2026-06-29T12:59:52.047039+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "93d2bbd3-54af-4e85-b178-20278b4dc119",
+      "session_id": "8a39046f-d4e6-4d74-a200-b218b528a14c",
+      "role": "user",
+      "kind": "requirement",
+      "content": "workflow-only requirement",
+      "created_at": "2026-06-29T13:00:49.596584+00:00"
+    },
+    {
+      "id": "16bb2256-19c1-4039-b6c7-c3c6e0bcfb7d",
+      "session_id": "8a39046f-d4e6-4d74-a200-b218b528a14c",
+      "role": "user",
+      "content": "chat follow up",
+      "created_at": "2026-06-29T13:00:49.598534+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "ace78079-a4d0-4ba5-b822-e9359837bc87",
+      "session_id": "8a39046f-d4e6-4d74-a200-b218b528a14c",
+      "role": "assistant",
+      "content": "chat answer",
+      "created_at": "2026-06-29T13:00:49.599960+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "c0a204b4-e30b-4dbe-a058-4e96a8a017f5",
+      "session_id": "ad78ce08-3e2d-4ef6-8937-127b09fedbad",
+      "role": "user",
+      "content": "你是opencode CLI嗎",
+      "created_at": "2026-06-29T13:00:49.615342+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "f84f7ae5-bf14-4c68-8720-091ee0fd7b50",
+      "session_id": "ad78ce08-3e2d-4ef6-8937-127b09fedbad",
+      "role": "assistant",
+      "content": "我是透過 OpenCode CLI 執行的 agent。",
+      "created_at": "2026-06-29T13:00:49.616436+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "43e135a3-3c22-4901-8b2d-2fe5de6128b1",
+      "session_id": "041abb50-7ee4-4906-be97-208e9e1c5600",
+      "role": "user",
+      "content": "hello",
+      "created_at": "2026-06-29T13:00:49.632884+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "cd0d2aeb-6c60-4930-b96a-52004e4823d6",
+      "session_id": "041abb50-7ee4-4906-be97-208e9e1c5600",
+      "role": "assistant",
+      "content": "opencode answer",
+      "created_at": "2026-06-29T13:00:49.634221+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "7576d8af-f261-4171-b151-b26b57acd41b",
+      "session_id": "e1890347-07f4-4f0b-b342-b97b6f3c3707",
+      "role": "user",
+      "kind": "requirement",
+      "content": "workflow-only requirement",
+      "created_at": "2026-06-29T13:06:36.066952+00:00"
+    },
+    {
+      "id": "97151d64-ca70-4f55-8e91-07539d327a2a",
+      "session_id": "e1890347-07f4-4f0b-b342-b97b6f3c3707",
+      "role": "user",
+      "content": "chat follow up",
+      "created_at": "2026-06-29T13:06:36.068722+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "18da7b6d-2b55-4659-a3ad-47b1ca69918d",
+      "session_id": "e1890347-07f4-4f0b-b342-b97b6f3c3707",
+      "role": "assistant",
+      "content": "chat answer",
+      "created_at": "2026-06-29T13:06:36.070103+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "d42dd6ae-d9e5-414f-98ca-541c61a672bc",
+      "session_id": "d1260ac3-50ec-48c3-9d30-ab544825dc05",
+      "role": "user",
+      "content": "你是opencode CLI嗎",
+      "created_at": "2026-06-29T13:06:36.087304+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "5cc4efdb-57c6-4832-af31-a6667b28159f",
+      "session_id": "d1260ac3-50ec-48c3-9d30-ab544825dc05",
+      "role": "assistant",
+      "content": "我是透過 OpenCode CLI 執行的 agent。",
+      "created_at": "2026-06-29T13:06:36.088523+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "bbc96452-b91b-45e6-a3e4-a36a2514a710",
+      "session_id": "d9635264-5412-4dc0-a387-6fb504cc680c",
+      "role": "user",
+      "content": "hello",
+      "created_at": "2026-06-29T13:06:36.101912+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "ef5e37cd-ad7a-44bd-9bac-da69b068c365",
+      "session_id": "d9635264-5412-4dc0-a387-6fb504cc680c",
+      "role": "assistant",
+      "content": "opencode answer",
+      "created_at": "2026-06-29T13:06:36.103680+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "916accc1-3f22-433d-82e5-9391445deafa",
+      "session_id": "93deebe3-0a36-4235-919b-763fb422ee8a",
+      "role": "user",
+      "kind": "requirement",
+      "content": "workflow-only requirement",
+      "created_at": "2026-06-29T13:14:17.929289+00:00"
+    },
+    {
+      "id": "97ef6efe-34bb-4f04-aa46-daec79e327e7",
+      "session_id": "93deebe3-0a36-4235-919b-763fb422ee8a",
+      "role": "user",
+      "content": "chat follow up",
+      "created_at": "2026-06-29T13:14:17.931505+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "b301a77e-d16c-444a-a77b-9013c6af30ff",
+      "session_id": "93deebe3-0a36-4235-919b-763fb422ee8a",
+      "role": "assistant",
+      "content": "chat answer",
+      "created_at": "2026-06-29T13:14:17.933000+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "88690472-0d35-4ac5-97fb-87b92bdf9a0e",
+      "session_id": "7f71f96d-f0a2-4f87-852e-87252d1ee6f0",
+      "role": "user",
+      "content": "你是opencode CLI嗎",
+      "created_at": "2026-06-29T13:14:17.947594+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "43d058d9-6d61-489f-b5c0-4d534b246afb",
+      "session_id": "7f71f96d-f0a2-4f87-852e-87252d1ee6f0",
+      "role": "assistant",
+      "content": "我是透過 OpenCode CLI 執行的 agent。",
+      "created_at": "2026-06-29T13:14:17.949399+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "914c2169-ff7b-4ace-9c70-52172226e1da",
+      "session_id": "1abbbc2b-f119-4d64-8461-dc6b6e459935",
+      "role": "user",
+      "content": "hello",
+      "created_at": "2026-06-29T13:14:17.965563+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "52fda07b-34dc-4f52-8465-861a98b167f0",
+      "session_id": "1abbbc2b-f119-4d64-8461-dc6b6e459935",
+      "role": "assistant",
+      "content": "opencode answer",
+      "created_at": "2026-06-29T13:14:17.967184+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "81e27dbc-d3a6-467b-9446-b8c15e39a9a7",
+      "session_id": "d838b526-8254-4b81-b2dc-ecf9b4590d9c",
+      "role": "user",
+      "kind": "requirement",
+      "content": "workflow-only requirement",
+      "created_at": "2026-06-29T13:24:46.040906+00:00"
+    },
+    {
+      "id": "a2b11b76-cfaf-411f-bce4-4a74a210dd28",
+      "session_id": "d838b526-8254-4b81-b2dc-ecf9b4590d9c",
+      "role": "user",
+      "content": "chat follow up",
+      "created_at": "2026-06-29T13:24:46.043434+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "2102af63-bfeb-4590-8d77-9f815c705449",
+      "session_id": "d838b526-8254-4b81-b2dc-ecf9b4590d9c",
+      "role": "assistant",
+      "content": "chat answer",
+      "created_at": "2026-06-29T13:24:46.049814+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "85880593-bf1b-49e4-9b2c-d8230891c57b",
+      "session_id": "64767c67-eb7f-44d1-affd-6449211789a3",
+      "role": "user",
+      "content": "你是opencode CLI嗎",
+      "created_at": "2026-06-29T13:24:46.066309+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "12645d94-9694-4599-8593-0da5377cbeed",
+      "session_id": "64767c67-eb7f-44d1-affd-6449211789a3",
+      "role": "assistant",
+      "content": "我是透過 OpenCode CLI 執行的 agent。",
+      "created_at": "2026-06-29T13:24:46.068024+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "40afa48c-d0ed-49c0-a48a-afa48816170c",
+      "session_id": "b80de3b6-b657-4422-a187-627d0eb3bbf5",
+      "role": "user",
+      "content": "hello",
+      "created_at": "2026-06-29T13:24:46.084922+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "e3eba700-8dfb-4750-960f-ade521e0c277",
+      "session_id": "b80de3b6-b657-4422-a187-627d0eb3bbf5",
+      "role": "assistant",
+      "content": "opencode answer",
+      "created_at": "2026-06-29T13:24:46.086442+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "28495c07-8d68-4e9e-9016-b32a335a685e",
+      "session_id": "3dc93c5d-5e21-409f-8aeb-efd54d7a419d",
+      "role": "user",
+      "kind": "requirement",
+      "content": "workflow-only requirement",
+      "created_at": "2026-06-29T13:28:08.197539+00:00"
+    },
+    {
+      "id": "c560f907-fc4c-42ef-892b-4509f6217146",
+      "session_id": "3dc93c5d-5e21-409f-8aeb-efd54d7a419d",
+      "role": "user",
+      "content": "chat follow up",
+      "created_at": "2026-06-29T13:28:08.199986+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "33310a0a-5a5e-4891-9034-95edf205f3a5",
+      "session_id": "3dc93c5d-5e21-409f-8aeb-efd54d7a419d",
+      "role": "assistant",
+      "content": "chat answer",
+      "created_at": "2026-06-29T13:28:08.202023+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "036d1d09-1793-41b2-b60e-40595a017eb8",
+      "session_id": "35481eb6-66dd-4c51-8c34-4b986959024d",
+      "role": "user",
+      "content": "你是opencode CLI嗎",
+      "created_at": "2026-06-29T13:28:08.220556+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "eaf177eb-7a33-4553-a2e0-4e1874a57b70",
+      "session_id": "35481eb6-66dd-4c51-8c34-4b986959024d",
+      "role": "assistant",
+      "content": "我是透過 OpenCode CLI 執行的 agent。",
+      "created_at": "2026-06-29T13:28:08.222014+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "608576fa-7ca5-421b-a254-9c73214a6c36",
+      "session_id": "6393556b-1005-4b24-b0bf-4cb1a444164b",
+      "role": "user",
+      "content": "hello",
+      "created_at": "2026-06-29T13:28:08.236712+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "ec10ca5a-42dd-4662-b76f-f975f7626fdf",
+      "session_id": "6393556b-1005-4b24-b0bf-4cb1a444164b",
+      "role": "assistant",
+      "content": "opencode answer",
+      "created_at": "2026-06-29T13:28:08.238157+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "7c18f36e-d2d2-4467-8d9a-eda1807b933a",
+      "session_id": "2b8addd1-2e74-4c5d-bb8c-bfbf50e131ca",
+      "role": "user",
+      "kind": "requirement",
+      "content": "workflow-only requirement",
+      "created_at": "2026-06-29T13:29:21.248965+00:00"
+    },
+    {
+      "id": "135f08d7-d749-4398-a830-7672798fbc35",
+      "session_id": "2b8addd1-2e74-4c5d-bb8c-bfbf50e131ca",
+      "role": "user",
+      "content": "chat follow up",
+      "created_at": "2026-06-29T13:29:21.251314+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "163ad420-a0d3-48f8-baa9-47d3129482a3",
+      "session_id": "2b8addd1-2e74-4c5d-bb8c-bfbf50e131ca",
+      "role": "assistant",
+      "content": "chat answer",
+      "created_at": "2026-06-29T13:29:21.253229+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "6b3a96b5-fe33-463f-a10f-72003b8bc77b",
+      "session_id": "f9d0f095-ad84-42ee-87e2-b1f66767f06d",
+      "role": "user",
+      "content": "你是opencode CLI嗎",
+      "created_at": "2026-06-29T13:29:21.274161+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "802d3d8c-27cb-4702-9202-8e3ed27dae94",
+      "session_id": "f9d0f095-ad84-42ee-87e2-b1f66767f06d",
+      "role": "assistant",
+      "content": "我是透過 OpenCode CLI 執行的 agent。",
+      "created_at": "2026-06-29T13:29:21.276855+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "1e1c95dd-4ea4-4253-8e19-aaf2e42ed3d2",
+      "session_id": "b93f80a0-1909-4dfa-909f-bcd5a08399ee",
+      "role": "user",
+      "content": "hello",
+      "created_at": "2026-06-29T13:29:21.295418+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "238893e4-bf9f-40d8-83b8-91492e3033e4",
+      "session_id": "b93f80a0-1909-4dfa-909f-bcd5a08399ee",
+      "role": "assistant",
+      "content": "opencode answer",
+      "created_at": "2026-06-29T13:29:21.297642+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "5d6a56b5-cfa7-42e4-a885-e5e1bdcaa890",
+      "session_id": "d82eea6a-0efe-4ea6-8ee1-be1805af91d5",
+      "role": "user",
+      "kind": "requirement",
+      "content": "workflow-only requirement",
+      "created_at": "2026-06-29T13:36:59.572039+00:00"
+    },
+    {
+      "id": "a469122d-8ba9-4b21-bbe2-6d7d63fd6400",
+      "session_id": "d82eea6a-0efe-4ea6-8ee1-be1805af91d5",
+      "role": "user",
+      "content": "chat follow up",
+      "created_at": "2026-06-29T13:36:59.574390+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "1dc3e121-c5aa-4f35-b4f0-27336b849ec6",
+      "session_id": "d82eea6a-0efe-4ea6-8ee1-be1805af91d5",
+      "role": "assistant",
+      "content": "chat answer",
+      "created_at": "2026-06-29T13:36:59.576538+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "ed48dd7d-349f-4c04-9d91-7ea35ac72514",
+      "session_id": "c0b7c709-608a-45c5-915d-33e48520df1a",
+      "role": "user",
+      "content": "你是opencode CLI嗎",
+      "created_at": "2026-06-29T13:36:59.591853+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "1477e263-c892-4379-9334-1d281b5df91e",
+      "session_id": "c0b7c709-608a-45c5-915d-33e48520df1a",
+      "role": "assistant",
+      "content": "我是透過 OpenCode CLI 執行的 agent。",
+      "created_at": "2026-06-29T13:36:59.593924+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "67111a2e-9122-478f-84c4-ced1dc7a9912",
+      "session_id": "3ad5d518-32ff-4492-8c58-b763ba11a3b4",
+      "role": "user",
+      "content": "hello",
+      "created_at": "2026-06-29T13:36:59.608534+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "c3d6acfb-c9bf-4d83-a7cf-ab25c1d4bffa",
+      "session_id": "3ad5d518-32ff-4492-8c58-b763ba11a3b4",
+      "role": "assistant",
+      "content": "opencode answer",
+      "created_at": "2026-06-29T13:36:59.611196+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "f1d49374-8061-4abf-91a3-32480b3538a9",
+      "session_id": "c557f130-6ffa-4c08-8b44-009b00e5062e",
+      "role": "user",
+      "kind": "requirement",
+      "content": "workflow-only requirement",
+      "created_at": "2026-06-29T13:44:44.971198+00:00"
+    },
+    {
+      "id": "7efb63aa-ab21-4ac1-a23b-3878d19b0458",
+      "session_id": "c557f130-6ffa-4c08-8b44-009b00e5062e",
+      "role": "user",
+      "content": "chat follow up",
+      "created_at": "2026-06-29T13:44:44.973437+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "58351cf5-0ecd-4c79-a53c-69d673d580ed",
+      "session_id": "c557f130-6ffa-4c08-8b44-009b00e5062e",
+      "role": "assistant",
+      "content": "chat answer",
+      "created_at": "2026-06-29T13:44:44.975010+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "3823edaa-f72c-4722-bc0d-a8b5465a84d8",
+      "session_id": "0f4899d0-99a4-4fb3-a89a-12051ad1227a",
+      "role": "user",
+      "content": "你是opencode CLI嗎",
+      "created_at": "2026-06-29T13:44:44.990048+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "df56d09b-029c-4e31-a6cc-d63fb10e21a6",
+      "session_id": "0f4899d0-99a4-4fb3-a89a-12051ad1227a",
+      "role": "assistant",
+      "content": "我是透過 OpenCode CLI 執行的 agent。",
+      "created_at": "2026-06-29T13:44:44.992061+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "a0c1bcb9-d6e3-49e3-abfe-c9b8d2759b55",
+      "session_id": "c3bae94f-b2af-41a5-9ac6-9e3e8a9c4e29",
+      "role": "user",
+      "content": "hello",
+      "created_at": "2026-06-29T13:44:45.006613+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "9365836a-49aa-437f-b303-e808aa9f8c07",
+      "session_id": "c3bae94f-b2af-41a5-9ac6-9e3e8a9c4e29",
+      "role": "assistant",
+      "content": "opencode answer",
+      "created_at": "2026-06-29T13:44:45.008798+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "b1d1161d-454c-4326-a192-6543115f3bbd",
+      "session_id": "f3479b4c-c780-4a81-8ea3-c1b3580cc7c2",
+      "role": "user",
+      "kind": "requirement",
+      "content": "workflow-only requirement",
+      "created_at": "2026-06-29T13:46:11.890404+00:00"
+    },
+    {
+      "id": "80455c1e-33b0-4404-9e64-8506d3dde6f8",
+      "session_id": "f3479b4c-c780-4a81-8ea3-c1b3580cc7c2",
+      "role": "user",
+      "content": "chat follow up",
+      "created_at": "2026-06-29T13:46:11.896385+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "d2c68da6-8a8e-425d-8821-a621d2009d72",
+      "session_id": "f3479b4c-c780-4a81-8ea3-c1b3580cc7c2",
+      "role": "assistant",
+      "content": "chat answer",
+      "created_at": "2026-06-29T13:46:11.898393+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "f0e7d340-17e7-4ecc-8760-c5839d9919b3",
+      "session_id": "35dc248e-2ec1-4d92-b433-bae47f1fff71",
+      "role": "user",
+      "content": "你是opencode CLI嗎",
+      "created_at": "2026-06-29T13:46:11.913189+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "0878cd97-a4b6-47c8-bdb7-98cfc5cf54bf",
+      "session_id": "35dc248e-2ec1-4d92-b433-bae47f1fff71",
+      "role": "assistant",
+      "content": "我是透過 OpenCode CLI 執行的 agent。",
+      "created_at": "2026-06-29T13:46:11.915290+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "e5d8b631-2954-4d77-b9b7-f475f7aad43c",
+      "session_id": "f9c002e9-be0f-4795-9053-e1d601cea3ab",
+      "role": "user",
+      "content": "hello",
+      "created_at": "2026-06-29T13:46:11.932851+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "1976600a-487c-44e9-92cd-d901cb774cec",
+      "session_id": "f9c002e9-be0f-4795-9053-e1d601cea3ab",
+      "role": "assistant",
+      "content": "opencode answer",
+      "created_at": "2026-06-29T13:46:11.934971+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "7c1a676a-3302-40a9-ab9f-1168ba38a4b1",
+      "session_id": "ec26d4fb-f15c-4e71-ab21-4b58ca96676c",
+      "role": "user",
+      "kind": "requirement",
+      "content": "workflow-only requirement",
+      "created_at": "2026-06-29T13:47:16.109028+00:00"
+    },
+    {
+      "id": "c56ead25-528e-41ff-a29b-37e8d5f87652",
+      "session_id": "ec26d4fb-f15c-4e71-ab21-4b58ca96676c",
+      "role": "user",
+      "content": "chat follow up",
+      "created_at": "2026-06-29T13:47:16.116233+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "10c8a030-cc43-4fd4-82da-3f00385b2a61",
+      "session_id": "ec26d4fb-f15c-4e71-ab21-4b58ca96676c",
+      "role": "assistant",
+      "content": "chat answer",
+      "created_at": "2026-06-29T13:47:16.118348+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "6f175344-84a6-4be8-b2d9-7fc71fd040b1",
+      "session_id": "aed575f7-647f-4249-befe-e6ac1dbf112f",
+      "role": "user",
+      "content": "你是opencode CLI嗎",
+      "created_at": "2026-06-29T13:47:16.136989+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "473c3193-9087-4f97-9d3a-7061abec6ff6",
+      "session_id": "aed575f7-647f-4249-befe-e6ac1dbf112f",
+      "role": "assistant",
+      "content": "我是透過 OpenCode CLI 執行的 agent。",
+      "created_at": "2026-06-29T13:47:16.139121+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "db8d1b3f-5cbd-4b71-861a-0fd4a7cc40cd",
+      "session_id": "f8638c60-b630-4d2a-a3c0-6f46b6d87cf1",
+      "role": "user",
+      "content": "hello",
+      "created_at": "2026-06-29T13:47:16.154720+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "782f5068-3d6f-4bfd-88fc-a34d66e82aa0",
+      "session_id": "f8638c60-b630-4d2a-a3c0-6f46b6d87cf1",
+      "role": "assistant",
+      "content": "opencode answer",
+      "created_at": "2026-06-29T13:47:16.160885+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "a39e8e80-561e-493c-a176-1c819f9a2257",
+      "session_id": "f18dbb55-0901-469a-a28b-c2fddd955eed",
+      "role": "user",
+      "kind": "requirement",
+      "content": "workflow-only requirement",
+      "created_at": "2026-06-29T13:48:05.067624+00:00"
+    },
+    {
+      "id": "87ff53e1-6760-41bb-83ea-53f327f57eba",
+      "session_id": "f18dbb55-0901-469a-a28b-c2fddd955eed",
+      "role": "user",
+      "content": "chat follow up",
+      "created_at": "2026-06-29T13:48:05.070506+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "391dd706-85ab-41ce-a298-ac6095d1d121",
+      "session_id": "f18dbb55-0901-469a-a28b-c2fddd955eed",
+      "role": "assistant",
+      "content": "chat answer",
+      "created_at": "2026-06-29T13:48:05.074609+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "66fc408a-a6ce-4223-aa70-5312533345be",
+      "session_id": "9513be75-9e28-49e8-af49-14b8cd2c81d6",
+      "role": "user",
+      "content": "你是opencode CLI嗎",
+      "created_at": "2026-06-29T13:48:05.089937+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "0ed5ed8c-16cc-43db-b7d8-ddc0ac8a0968",
+      "session_id": "9513be75-9e28-49e8-af49-14b8cd2c81d6",
+      "role": "assistant",
+      "content": "我是透過 OpenCode CLI 執行的 agent。",
+      "created_at": "2026-06-29T13:48:05.092192+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "e66d21b6-6e5f-429f-b9ae-eb9b4f748ea1",
+      "session_id": "e50ba3da-7a99-4e39-a1b4-23fb81e36abb",
+      "role": "user",
+      "content": "hello",
+      "created_at": "2026-06-29T13:48:05.106061+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "1ae1da69-b39c-4115-bfb2-00312479c09e",
+      "session_id": "e50ba3da-7a99-4e39-a1b4-23fb81e36abb",
+      "role": "assistant",
+      "content": "opencode answer",
+      "created_at": "2026-06-29T13:48:05.108257+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "a5fe9efc-928f-4570-abe5-6e06099ec576",
+      "session_id": "d83224db-ef28-435d-bd48-9ef21b732254",
+      "role": "user",
+      "kind": "requirement",
+      "content": "workflow-only requirement",
+      "created_at": "2026-06-29T13:55:01.265631+00:00"
+    },
+    {
+      "id": "fe6ef062-168a-48f3-a568-4e8b699e42f1",
+      "session_id": "d83224db-ef28-435d-bd48-9ef21b732254",
+      "role": "user",
+      "content": "chat follow up",
+      "created_at": "2026-06-29T13:55:01.268531+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "1fdb0d4d-6557-4e87-ad98-585834cacde9",
+      "session_id": "d83224db-ef28-435d-bd48-9ef21b732254",
+      "role": "assistant",
+      "content": "chat answer",
+      "created_at": "2026-06-29T13:55:01.270764+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "f7e52466-2550-49f3-863b-f5efaa47b486",
+      "session_id": "de13ed01-cd21-43b4-bc17-1d8c38d61a8c",
+      "role": "user",
+      "content": "你是opencode CLI嗎",
+      "created_at": "2026-06-29T13:55:01.286288+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "2b2ee2f0-6915-41c9-a4a4-e687e0778471",
+      "session_id": "de13ed01-cd21-43b4-bc17-1d8c38d61a8c",
+      "role": "assistant",
+      "content": "我是透過 OpenCode CLI 執行的 agent。",
+      "created_at": "2026-06-29T13:55:01.290328+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "1240bc29-3c3b-4bfd-a400-2441e237cd5d",
+      "session_id": "10ed11dd-c155-4588-8acb-199147944220",
+      "role": "user",
+      "content": "hello",
+      "created_at": "2026-06-29T13:55:01.306865+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "5f72b125-acc6-4986-bb88-f3f8c7716d3f",
+      "session_id": "10ed11dd-c155-4588-8acb-199147944220",
+      "role": "assistant",
+      "content": "opencode answer",
+      "created_at": "2026-06-29T13:55:01.309021+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "4b078b4f-df04-4472-9f9c-1adda1b9defe",
+      "session_id": "162eb466-ca31-4ab3-aa8c-a5bf968fe441",
+      "role": "user",
+      "kind": "requirement",
+      "content": "workflow-only requirement",
+      "created_at": "2026-06-29T14:09:49.631834+00:00"
+    },
+    {
+      "id": "42715a27-c6e1-4b76-96cc-38670018fdb0",
+      "session_id": "162eb466-ca31-4ab3-aa8c-a5bf968fe441",
+      "role": "user",
+      "content": "chat follow up",
+      "created_at": "2026-06-29T14:09:49.634789+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "4c2277d5-f1ea-4751-b2cf-d088da2241a6",
+      "session_id": "162eb466-ca31-4ab3-aa8c-a5bf968fe441",
+      "role": "assistant",
+      "content": "chat answer",
+      "created_at": "2026-06-29T14:09:49.637710+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "6ccbc9b8-4f1d-49b8-b0d7-ad7153802bb6",
+      "session_id": "df98d73e-fc2b-4b28-a01a-ef8e034bbd68",
+      "role": "user",
+      "content": "你是opencode CLI嗎",
+      "created_at": "2026-06-29T14:09:49.655383+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "6c0eaf43-0b05-4693-a46b-24da430cae02",
+      "session_id": "df98d73e-fc2b-4b28-a01a-ef8e034bbd68",
+      "role": "assistant",
+      "content": "我是透過 OpenCode CLI 執行的 agent。",
+      "created_at": "2026-06-29T14:09:49.657461+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "3f4eefab-8ef0-4a79-8300-aba3a535a75c",
+      "session_id": "5b7e497c-d533-43e8-913a-d3619542c860",
+      "role": "user",
+      "content": "hello",
+      "created_at": "2026-06-29T14:09:49.671756+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "24541b61-6381-44b7-9408-28b3a7a0b609",
+      "session_id": "5b7e497c-d533-43e8-913a-d3619542c860",
+      "role": "assistant",
+      "content": "opencode answer",
+      "created_at": "2026-06-29T14:09:49.673662+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "307cc754-ae23-46e7-a63c-c29992160007",
+      "session_id": "74182058-9440-42ce-91ba-b27618945fd3",
+      "role": "user",
+      "kind": "requirement",
+      "content": "workflow-only requirement",
+      "created_at": "2026-06-29T14:15:00.453329+00:00"
+    },
+    {
+      "id": "2d94f979-84bb-4924-86eb-3a32f32bf967",
+      "session_id": "74182058-9440-42ce-91ba-b27618945fd3",
+      "role": "user",
+      "content": "chat follow up",
+      "created_at": "2026-06-29T14:15:00.455934+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "cabe7586-8b5c-401b-a9ea-e8cba22a869f",
+      "session_id": "74182058-9440-42ce-91ba-b27618945fd3",
+      "role": "assistant",
+      "content": "chat answer",
+      "created_at": "2026-06-29T14:15:00.458304+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "acc218e1-02b6-4a9d-8ff1-c354bbd48ba9",
+      "session_id": "87db989b-0f6b-4325-9b76-f3ebd27bf111",
+      "role": "user",
+      "content": "你是opencode CLI嗎",
+      "created_at": "2026-06-29T14:15:00.473268+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "c1600650-6f46-4180-92f3-60742308ff43",
+      "session_id": "87db989b-0f6b-4325-9b76-f3ebd27bf111",
+      "role": "assistant",
+      "content": "我是透過 OpenCode CLI 執行的 agent。",
+      "created_at": "2026-06-29T14:15:00.477811+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "eb0d7f95-5590-45f0-9cb0-8153d4ac340b",
+      "session_id": "c05eaf9c-a4cd-4740-b9b0-441e543ec208",
+      "role": "user",
+      "content": "hello",
+      "created_at": "2026-06-29T14:15:00.493169+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "6257d09a-1573-4b44-a9f4-8f5b58cce850",
+      "session_id": "c05eaf9c-a4cd-4740-b9b0-441e543ec208",
+      "role": "assistant",
+      "content": "opencode answer",
+      "created_at": "2026-06-29T14:15:00.495164+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "e4619911-5447-486e-9ba2-a9c31a5dfbed",
+      "session_id": "5c251998-18df-4ced-b1d0-1b2de48be614",
+      "role": "user",
+      "kind": "requirement",
+      "content": "workflow-only requirement",
+      "created_at": "2026-06-29T14:21:00.685337+00:00"
+    },
+    {
+      "id": "9f093791-65d6-4fac-8f71-670919640f80",
+      "session_id": "5c251998-18df-4ced-b1d0-1b2de48be614",
+      "role": "user",
+      "content": "chat follow up",
+      "created_at": "2026-06-29T14:21:00.688131+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "a0f47a66-79c3-48da-8304-945bd89fa472",
+      "session_id": "5c251998-18df-4ced-b1d0-1b2de48be614",
+      "role": "assistant",
+      "content": "chat answer",
+      "created_at": "2026-06-29T14:21:00.692264+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "73909d34-eed2-4fdd-9dc7-161a9490c071",
+      "session_id": "b7353d0a-e9f7-4ace-a948-7de2dd13b217",
+      "role": "user",
+      "content": "你是opencode CLI嗎",
+      "created_at": "2026-06-29T14:21:00.710750+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "13b82217-2851-4552-a18a-00574f53fddd",
+      "session_id": "b7353d0a-e9f7-4ace-a948-7de2dd13b217",
+      "role": "assistant",
+      "content": "我是透過 OpenCode CLI 執行的 agent。",
+      "created_at": "2026-06-29T14:21:00.713248+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "f4c5e75b-c577-4c19-bad7-791e2582c8b1",
+      "session_id": "685817cb-746a-4358-bbd1-6f9ded2c929b",
+      "role": "user",
+      "content": "hello",
+      "created_at": "2026-06-29T14:21:00.729582+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "3fee3103-80cc-4821-9afc-5450c8c92878",
+      "session_id": "685817cb-746a-4358-bbd1-6f9ded2c929b",
+      "role": "assistant",
+      "content": "opencode answer",
+      "created_at": "2026-06-29T14:21:00.732655+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "b3bdb246-dec2-40a8-b544-b27f38084287",
+      "session_id": "2c4788f6-f30e-4d8a-923c-353046befca8",
+      "role": "user",
+      "kind": "requirement",
+      "content": "workflow-only requirement",
+      "created_at": "2026-06-29T14:24:43.698273+00:00"
+    },
+    {
+      "id": "1fcda21c-f74c-43c2-90fd-787a1149eac8",
+      "session_id": "2c4788f6-f30e-4d8a-923c-353046befca8",
+      "role": "user",
+      "content": "chat follow up",
+      "created_at": "2026-06-29T14:24:43.700998+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "9f21e6b9-45e3-4a0e-bfa8-6066a168c292",
+      "session_id": "2c4788f6-f30e-4d8a-923c-353046befca8",
+      "role": "assistant",
+      "content": "chat answer",
+      "created_at": "2026-06-29T14:24:43.703215+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "dcce2a58-6f10-4b7a-aeac-927500140433",
+      "session_id": "a9248697-80e6-41f7-b17b-ec65a4a1172d",
+      "role": "user",
+      "content": "你是opencode CLI嗎",
+      "created_at": "2026-06-29T14:24:43.720936+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "75487099-5aa7-4a67-90eb-f9fa99bc3007",
+      "session_id": "a9248697-80e6-41f7-b17b-ec65a4a1172d",
+      "role": "assistant",
+      "content": "我是透過 OpenCode CLI 執行的 agent。",
+      "created_at": "2026-06-29T14:24:43.723442+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "4e567a99-e38e-4908-9036-cea04ff4fd39",
+      "session_id": "df26f3fd-d18b-4fa3-8eb3-13a33b12f35a",
+      "role": "user",
+      "content": "hello",
+      "created_at": "2026-06-29T14:24:43.744868+00:00",
+      "kind": "chat"
+    },
+    {
+      "id": "6122254f-792e-4970-8641-c588c35f653e",
+      "session_id": "df26f3fd-d18b-4fa3-8eb3-13a33b12f35a",
+      "role": "assistant",
+      "content": "opencode answer",
+      "created_at": "2026-06-29T14:24:43.749479+00:00",
       "kind": "chat"
     }
   ],

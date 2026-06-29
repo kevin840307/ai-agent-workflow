@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Workflow Designer</title>
-    <link rel="stylesheet" href="/static/styles.css?v=20260629-static-modules9" />
+    <link rel="stylesheet" href="/static/styles.css?v=20260629-static-modules13" />
   </head>
   <body data-page="workflow-designer">
     <div class="designer-shell">
@@ -105,21 +105,30 @@
                 </label>
               </div>
             </div>
-            <div class="designer-editor-actions" aria-label="Workflow editor actions">
-              <div class="designer-editor-action-top">
-                <span id="designerWorkflowDirtyBadge" class="badge passed">Saved</span>
-                <span id="designerWorkflowLockHint" class="designer-lock-hint">Editable</span>
+            <aside class="designer-editor-actions designer-workflow-command-panel" aria-label="Workflow editor actions">
+              <div class="designer-action-panel-section designer-workflow-state-section">
+                <span class="designer-label">Draft State</span>
+                <div class="designer-editor-action-top">
+                  <span id="designerWorkflowDirtyBadge" class="badge passed">Saved</span>
+                  <span id="designerWorkflowLockHint" class="designer-lock-hint">Editable</span>
+                </div>
               </div>
-              <div class="designer-mode-switch" role="group" aria-label="Designer mode">
-                <button type="button" data-designer-action="set-designer-mode" data-mode="simple">Simple</button>
-                <button type="button" data-designer-action="set-designer-mode" data-mode="advanced">Advanced</button>
-                <button type="button" data-designer-action="set-designer-mode" data-mode="json">JSON</button>
+              <div class="designer-action-panel-section designer-workflow-mode-section">
+                <span class="designer-label">Editor Mode</span>
+                <div class="designer-mode-switch" role="group" aria-label="Designer mode">
+                  <button type="button" data-designer-action="set-designer-mode" data-mode="simple">Simple</button>
+                  <button type="button" data-designer-action="set-designer-mode" data-mode="advanced">Advanced</button>
+                  <button type="button" data-designer-action="set-designer-mode" data-mode="json">JSON</button>
+                </div>
               </div>
-              <div class="designer-editor-action-buttons">
-                <button id="designerResetDraft">Reset Draft</button>
-                <button id="designerSaveDraft" class="primary">Save Draft</button>
+              <div class="designer-action-panel-section designer-workflow-save-section">
+                <span class="designer-label">Actions</span>
+                <div class="designer-editor-action-buttons">
+                  <button id="designerResetDraft">Reset</button>
+                  <button id="designerSaveDraft" class="primary">Save</button>
+                </div>
               </div>
-            </div>
+            </aside>
           </div>
 
           <div class="designer-grid">
@@ -193,6 +202,6 @@
       </main>
     </div>
 
-    <script type="module" src="/static/js/main.js?v=20260629-static-modules9"></script>
+    <script type="module" src="/static/js/main.js?v=20260629-static-modules13"></script>
   </body>
 </html>
