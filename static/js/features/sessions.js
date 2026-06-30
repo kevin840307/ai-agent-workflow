@@ -1,3 +1,7 @@
+import { LocalStore } from "../core/storage.js?v=20260630-stability1";
+
+const COLLAPSED_PROJECTS_KEY = "ui.collapsedProjectKeys";
+
 export function createSessions(ctx) {
   const { api, state, ui } = ctx;
 
@@ -33,6 +37,19 @@ export function createSessions(ctx) {
     return groups;
   }
 
+  function collapsedProjects() {
+    try {
+      const value = JSON.parse(LocalStore.getString(COLLAPSED_PROJECTS_KEY, "[]"));
+      return new Set(Array.isArray(value) ? value : []);
+    } catch {
+      return new Set();
+    }
+  }
+
+  function storeCollapsedProjects(keys) {
+    LocalStore.setString(COLLAPSED_PROJECTS_KEY, JSON.stringify([...keys]));
+  }
+
   function chatLabel(session, group, index) {
     const title = session.title || "";
     if (title === group.title) return "Main chat";
@@ -47,11 +64,14 @@ export function createSessions(ctx) {
       list.innerHTML = "";
       groupSessions().forEach((group) => {
         const activeInProject = group.sessions.some((session) => session.id === state.activeSessionId);
+        const collapsedKeys = collapsedProjects();
+        const collapsed = collapsedKeys.has(group.key);
         const project = document.createElement("section");
-        project.className = `project-tree ${activeInProject ? "active" : ""}`;
+        project.className = `project-tree ${activeInProject ? "active" : ""} ${collapsed ? "collapsed" : ""}`;
         project.innerHTML = `
           <div class="project-root-row">
-            <button class="project-root" title="${ui.escapeHtml(group.projectPath || group.title)}">
+            <button class="project-root" title="${ui.escapeHtml(group.projectPath || group.title)}" aria-expanded="${collapsed ? "false" : "true"}">
+              <span class="project-caret" aria-hidden="true">${collapsed ? ">" : "v"}</span>
               <strong>${ui.escapeHtml(group.title)}</strong>
             </button>
             <button class="project-menu-button" title="Project actions" aria-label="Project actions">...</button>
@@ -60,9 +80,9 @@ export function createSessions(ctx) {
               <button data-action="delete-project" class="danger-text">Delete project</button>
             </div>
           </div>
-          <div class="project-children"></div>
+          <div class="project-children" ${collapsed ? "hidden" : ""}></div>
         `;
-        project.querySelector(".project-root").onclick = () => sessions.select(group.sessions[0].id);
+        project.querySelector(".project-root").onclick = () => sessions.toggleProject(group);
         project.querySelector(".project-menu-button").onclick = (event) => {
           event.stopPropagation();
           const menu = project.querySelector(".project-action-menu");
@@ -81,8 +101,11 @@ export function createSessions(ctx) {
           row.className = `project-row child-row ${session.id === state.activeSessionId ? "active" : ""}`;
           row.innerHTML = `
             <button class="project-item">
-              <strong>${ui.escapeHtml(chatLabel(session, group, index))}</strong>
-              <span>${ui.escapeHtml(session.id === state.activeSessionId ? "Current chat" : "Chat session")}</span>
+              <span class="chat-dot" aria-hidden="true"></span>
+              <span class="chat-copy">
+                <strong>${ui.escapeHtml(chatLabel(session, group, index))}</strong>
+                <span>${ui.escapeHtml(session.id === state.activeSessionId ? "Current chat" : "Chat session")}</span>
+              </span>
             </button>
             <button class="icon-button danger" title="Delete chat">x</button>
           `;
@@ -92,6 +115,17 @@ export function createSessions(ctx) {
         });
         list.appendChild(project);
       });
+    },
+
+    toggleProject(group) {
+      const keys = collapsedProjects();
+      if (keys.has(group.key)) {
+        keys.delete(group.key);
+      } else {
+        keys.add(group.key);
+      }
+      storeCollapsedProjects(keys);
+      sessions.renderList();
     },
 
     async load() {
@@ -178,6 +212,9 @@ export function createSessions(ctx) {
 
     async createChat(event, group) {
       event.stopPropagation();
+      const keys = collapsedProjects();
+      keys.delete(group.key);
+      storeCollapsedProjects(keys);
       const title = `Chat ${group.sessions.length + 1}`;
       const session = await api.request("/api/sessions", {
         method: "POST",
