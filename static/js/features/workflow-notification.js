@@ -16,7 +16,7 @@ export function createWorkflowNotification(ctx) {
           <div id="workflowResultCard" class="workflow-result-card" role="dialog" aria-modal="true" aria-labelledby="workflowResultTitle">
             <div class="workflow-result-glow" aria-hidden="true"></div>
             <div class="workflow-result-head">
-              <div id="workflowResultIcon" class="workflow-result-icon" aria-hidden="true">✓</div>
+              <div id="workflowResultIcon" class="workflow-result-icon" aria-hidden="true">OK</div>
               <div class="workflow-result-copy">
                 <span id="workflowResultEyebrow" class="workflow-result-eyebrow">Workflow Complete</span>
                 <h2 id="workflowResultTitle">Workflow finished</h2>
@@ -35,7 +35,7 @@ export function createWorkflowNotification(ctx) {
               </div>
               <div class="workflow-result-stat">
                 <span>Duration</span>
-                <strong id="workflowResultDuration">—</strong>
+                <strong id="workflowResultDuration">-</strong>
               </div>
             </div>
             <div id="workflowResultError" class="workflow-result-error" hidden></div>
@@ -81,7 +81,7 @@ export function createWorkflowNotification(ctx) {
     durationText(run = {}) {
       const started = Date.parse(run.started_at || "");
       const ended = Date.parse(run.ended_at || "");
-      if (!Number.isFinite(started) || !Number.isFinite(ended) || ended < started) return "—";
+      if (!Number.isFinite(started) || !Number.isFinite(ended) || ended < started) return "-";
       const totalSeconds = Math.max(0, Math.round((ended - started) / 1000));
       if (totalSeconds < 60) return `${totalSeconds}s`;
       const minutes = Math.floor(totalSeconds / 60);
@@ -112,7 +112,7 @@ export function createWorkflowNotification(ctx) {
       if (status === "done") {
         return {
           variant: "success",
-          icon: "✓",
+          icon: "OK",
           eyebrow: "Workflow Complete",
           title: `${workflowName} completed`,
           description: `All enabled steps finished successfully${location}.`,
@@ -125,7 +125,7 @@ export function createWorkflowNotification(ctx) {
       if (status === "cancelled") {
         return {
           variant: "cancelled",
-          icon: "■",
+          icon: "X",
           eyebrow: "Workflow Stopped",
           title: `${workflowName} was cancelled`,
           description: `The workflow stopped before completion${location}.`,

@@ -1,4 +1,4 @@
-import { LocalStore, StorageKeys } from "../core/storage.js?v=20260630-stability1";
+import { LocalStore, StorageKeys } from "../core/storage.js?v=20260630-resize1";
 
 function applyActiveNav() {
   const page = document.body?.dataset.page || "";

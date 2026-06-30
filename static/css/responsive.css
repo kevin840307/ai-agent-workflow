@@ -77,6 +77,10 @@ body.details-collapsed .panel { display: none !important; }
 
 /* Responsive */
 @media (max-width: 1180px) {
+  .rail-resizer {
+    display: none;
+  }
+
   body {
     grid-template-columns: 240px 1fr;
     overflow: auto;

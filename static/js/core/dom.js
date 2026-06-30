@@ -33,6 +33,8 @@ export const UI = {
     qwenReuseSession: "qwenReuseSession",
     resultText: "resultText",
     resetSession: "resetSession",
+    resizeDetails: "resizeDetails",
+    resizeProjects: "resizeProjects",
     retryRun: "retryRun",
     runMeta: "runMeta",
     runStatusMeta: "runStatusMeta",

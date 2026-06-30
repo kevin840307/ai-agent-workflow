@@ -3,6 +3,8 @@ const STORAGE_PREFIX = "qwenWorkflow.";
 export const StorageKeys = Object.freeze({
   projectsCollapsed: "layout.projectsCollapsed",
   detailsCollapsed: "layout.detailsCollapsed",
+  detailsWidth: "layout.detailsWidth",
+  projectsWidth: "layout.projectsWidth",
   qwenReuseSession: "qwen.reuseSession",
   runMode: "ui.runMode",
   selectedWorkflowId: "ui.selectedWorkflowId",

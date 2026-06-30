@@ -1,4 +1,4 @@
-import { tabsForStep } from "./step-tabs.js?v=20260630-stability1";
+import { tabsForStep } from "./step-tabs.js?v=20260630-resize1";
 
 export function installStepSettingsRenderer(ctx) {
   const {

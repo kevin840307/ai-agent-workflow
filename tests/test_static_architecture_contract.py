@@ -74,7 +74,7 @@ class StaticArchitectureContractTests(unittest.TestCase):
                 continue
             source = path.read_text(encoding="utf-8")
             versions.update(re.findall(r"\?v=([A-Za-z0-9_-]+)", source))
-        self.assertEqual(versions, {"20260630-stability1"})
+        self.assertEqual(versions, {"20260630-resize1"})
 
     def test_static_structure_document_mentions_designer_modules(self):
         source = (ROOT / "static/FRONTEND_STRUCTURE.md").read_text(encoding="utf-8")

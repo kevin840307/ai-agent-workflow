@@ -21,11 +21,96 @@ function updateDetailsButton(ui, collapsed) {
   button.setAttribute("aria-pressed", String(collapsed));
 }
 
+function clamp(value, min, max) {
+  return Math.min(Math.max(value, min), max);
+}
+
+function numberFromStore(key) {
+  const value = Number(LocalStore.getString(key, ""));
+  return Number.isFinite(value) && value > 0 ? value : null;
+}
+
 export function createLayout(ctx) {
   const { ui } = ctx;
+  let resizeBound = false;
+
+  function setRailWidth(side, width, persist = true) {
+    const viewport = window.innerWidth || 1280;
+    const limits = side === "projects"
+      ? { min: 180, max: Math.min(440, Math.max(220, viewport * 0.45)) }
+      : { min: 300, max: Math.min(760, Math.max(360, viewport * 0.58)) };
+    const next = Math.round(clamp(width, limits.min, limits.max));
+    const property = side === "projects" ? "--rail-left" : "--rail-right";
+    const key = side === "projects" ? StorageKeys.projectsWidth : StorageKeys.detailsWidth;
+    document.documentElement.style.setProperty(property, `${next}px`);
+    if (persist) LocalStore.setString(key, String(next));
+  }
+
+  function restoreRailWidths() {
+    const projectsWidth = numberFromStore(StorageKeys.projectsWidth);
+    const detailsWidth = numberFromStore(StorageKeys.detailsWidth);
+    if (projectsWidth) setRailWidth("projects", projectsWidth, false);
+    if (detailsWidth) setRailWidth("details", detailsWidth, false);
+  }
+
+  function beginResize(side, event) {
+    event.preventDefault();
+    if (side === "projects" && document.body.classList.contains("projects-collapsed")) return;
+    if (side === "details" && document.body.classList.contains("details-collapsed")) return;
+    document.body.classList.add("rail-resizing");
+
+    const onMove = (moveEvent) => {
+      const width = side === "projects"
+        ? moveEvent.clientX
+        : window.innerWidth - moveEvent.clientX;
+      setRailWidth(side, width, false);
+    };
+
+    const onUp = (upEvent) => {
+      document.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerup", onUp);
+      document.body.classList.remove("rail-resizing");
+      const width = side === "projects"
+        ? upEvent.clientX
+        : window.innerWidth - upEvent.clientX;
+      setRailWidth(side, width, true);
+    };
+
+    document.addEventListener("pointermove", onMove);
+    document.addEventListener("pointerup", onUp, { once: true });
+  }
+
+  function nudgeRail(side, delta) {
+    const current = side === "projects"
+      ? document.querySelector(".projects")?.getBoundingClientRect().width
+      : document.querySelector(".details")?.getBoundingClientRect().width;
+    if (!current) return;
+    setRailWidth(side, current + delta, true);
+  }
+
+  function bindRailResize() {
+    if (resizeBound) return;
+    resizeBound = true;
+    ui.byKey("resizeProjects")?.addEventListener("pointerdown", (event) => beginResize("projects", event));
+    ui.byKey("resizeDetails")?.addEventListener("pointerdown", (event) => beginResize("details", event));
+    ui.byKey("resizeProjects")?.addEventListener("keydown", (event) => {
+      if (!["ArrowLeft", "ArrowRight"].includes(event.key)) return;
+      event.preventDefault();
+      if (event.key === "ArrowLeft") nudgeRail("projects", -16);
+      if (event.key === "ArrowRight") nudgeRail("projects", 16);
+    });
+    ui.byKey("resizeDetails")?.addEventListener("keydown", (event) => {
+      if (!["ArrowLeft", "ArrowRight"].includes(event.key)) return;
+      event.preventDefault();
+      if (event.key === "ArrowLeft") nudgeRail("details", 16);
+      if (event.key === "ArrowRight") nudgeRail("details", -16);
+    });
+  }
 
   const layout = {
     restorePreferences() {
+      restoreRailWidths();
+      bindRailResize();
       layout.setProjectsCollapsed(LocalStore.getBoolean(StorageKeys.projectsCollapsed, false), false);
       layout.setDetailsCollapsed(LocalStore.getBoolean(StorageKeys.detailsCollapsed, false), false);
     },

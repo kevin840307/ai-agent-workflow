@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Agent Workflow</title>
-    <link rel="stylesheet" href="/static/styles.css?v=20260630-stability1" />
+    <link rel="stylesheet" href="/static/styles.css?v=20260630-resize1" />
   </head>
   <body data-page="workflow-runner">
     <!-- App region: Project sessions -->
@@ -30,10 +30,10 @@
         </div>
         <div class="header-tools">
           <button id="resetSession" class="header-icon reset-session" title="Reset session" aria-label="Reset session">
-            <span class="icon-mark" aria-hidden="true">↻</span>
+            <span class="icon-mark" aria-hidden="true">&#8635;</span>
           </button>
           <button id="toggleSettings" class="header-icon" title="Agent settings" aria-label="Agent settings" aria-expanded="false">
-            <span class="icon-mark" aria-hidden="true">⚙</span>
+            <span class="icon-mark" aria-hidden="true">&#9881;</span>
           </button>
           <button id="toggleDetails" class="header-icon" title="Collapse details" aria-label="Collapse details" aria-pressed="false">
             <span class="icon-mark">&gt;</span>
@@ -152,6 +152,8 @@
       </section>
     </aside>
 
+    <div id="resizeProjects" class="rail-resizer rail-resizer-left" role="separator" aria-label="Resize projects panel" aria-orientation="vertical" tabindex="0"></div>
+    <div id="resizeDetails" class="rail-resizer rail-resizer-right" role="separator" aria-label="Resize details panel" aria-orientation="vertical" tabindex="0"></div>
 
 
     <!-- Shared modal: used instead of browser prompt() for workflow inputs -->
@@ -175,6 +177,6 @@
       </div>
     </div>
 
-    <script type="module" src="/static/js/main.js?v=20260630-stability1"></script>
+    <script type="module" src="/static/js/main.js?v=20260630-resize1"></script>
   </body>
 </html>

@@ -1,4 +1,4 @@
-import { LocalStore, StorageKeys } from "./storage.js?v=20260630-stability1";
+import { LocalStore, StorageKeys } from "./storage.js?v=20260630-resize1";
 
 export const AppState = {
   sessions: [],
