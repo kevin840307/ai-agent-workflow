@@ -10,8 +10,12 @@ body.projects-collapsed .projects {
 
 body.projects-collapsed .brand,
 body.projects-collapsed .button-text,
+body.projects-collapsed .project-root span,
+body.projects-collapsed .project-root strong,
 body.projects-collapsed .project-item span,
 body.projects-collapsed .project-item strong,
+body.projects-collapsed .project-menu-button,
+body.projects-collapsed .project-children,
 body.projects-collapsed .project-row .danger {
   display: none;
 }
@@ -21,6 +25,7 @@ body.projects-collapsed .projects-head {
 }
 
 body.projects-collapsed .new-project-button,
+body.projects-collapsed .project-root,
 body.projects-collapsed .project-item {
   width: 42px;
   height: 42px;
@@ -30,7 +35,9 @@ body.projects-collapsed .project-item {
 }
 
 body.projects-collapsed .project-list { justify-items: center; }
+body.projects-collapsed .project-root-row,
 body.projects-collapsed .project-row { grid-template-columns: 42px; }
+body.projects-collapsed .project-root::before,
 body.projects-collapsed .project-item::before {
   content: "P";
   font-weight: 800;

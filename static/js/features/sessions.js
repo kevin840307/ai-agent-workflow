@@ -1,24 +1,97 @@
 export function createSessions(ctx) {
   const { api, state, ui } = ctx;
 
+  function projectKey(session) {
+    return (session.project_path || session.id || "").toLowerCase();
+  }
+
+  function isGeneratedChatTitle(title) {
+    return !title || title === "Main chat" || /^Chat \d+$/i.test(title);
+  }
+
+  function groupSessions() {
+    const groups = [];
+    const byPath = new Map();
+    state.sessions.forEach((session) => {
+      const key = projectKey(session);
+      if (!byPath.has(key)) {
+        const group = {
+          key,
+          title: session.title || "Project",
+          projectPath: session.project_path || "",
+          sessions: [],
+        };
+        byPath.set(key, group);
+        groups.push(group);
+      }
+      const group = byPath.get(key);
+      if (isGeneratedChatTitle(group.title) && !isGeneratedChatTitle(session.title || "")) {
+        group.title = session.title;
+      }
+      group.sessions.push(session);
+    });
+    return groups;
+  }
+
+  function chatLabel(session, group, index) {
+    const title = session.title || "";
+    if (title === group.title) return "Main chat";
+    if (!title) return index === 0 ? "Main chat" : `Chat ${index + 1}`;
+    return title;
+  }
+
   const sessions = {
     renderList() {
       const list = ui.byKey("projectList");
       if (!list) return;
       list.innerHTML = "";
-      state.sessions.forEach((session) => {
-        const row = document.createElement("div");
-        row.className = `project-row ${session.id === state.activeSessionId ? "active" : ""}`;
-        row.innerHTML = `
-          <button class="project-item">
-            <strong>${ui.escapeHtml(session.title || "Project")}</strong>
-            <span>${ui.escapeHtml(ui.shortPath(session.project_path || ""))}</span>
-          </button>
-          <button class="icon-button danger" title="Delete project">x</button>
+      groupSessions().forEach((group) => {
+        const activeInProject = group.sessions.some((session) => session.id === state.activeSessionId);
+        const project = document.createElement("section");
+        project.className = `project-tree ${activeInProject ? "active" : ""}`;
+        project.innerHTML = `
+          <div class="project-root-row">
+            <button class="project-root" title="${ui.escapeHtml(group.projectPath || group.title)}">
+              <strong>${ui.escapeHtml(group.title)}</strong>
+              <span>${ui.escapeHtml(ui.shortPath(group.projectPath || ""))}</span>
+            </button>
+            <button class="project-menu-button" title="Project actions" aria-label="Project actions">...</button>
+            <div class="project-action-menu" hidden>
+              <button data-action="new-chat">New chat</button>
+              <button data-action="delete-project" class="danger-text">Delete project</button>
+            </div>
+          </div>
+          <div class="project-children"></div>
         `;
-        row.querySelector(".project-item").onclick = () => sessions.select(session.id);
-        row.querySelector(".danger").onclick = (event) => sessions.delete(event, session.id);
-        list.appendChild(row);
+        project.querySelector(".project-root").onclick = () => sessions.select(group.sessions[0].id);
+        project.querySelector(".project-menu-button").onclick = (event) => {
+          event.stopPropagation();
+          const menu = project.querySelector(".project-action-menu");
+          const shouldOpen = menu.hidden;
+          list.querySelectorAll(".project-action-menu").forEach((node) => {
+            node.hidden = true;
+          });
+          menu.hidden = !shouldOpen;
+        };
+        project.querySelector("[data-action='new-chat']").onclick = (event) => sessions.createChat(event, group);
+        project.querySelector("[data-action='delete-project']").onclick = (event) => sessions.deleteProject(event, group);
+
+        const children = project.querySelector(".project-children");
+        group.sessions.forEach((session, index) => {
+          const row = document.createElement("div");
+          row.className = `project-row child-row ${session.id === state.activeSessionId ? "active" : ""}`;
+          row.innerHTML = `
+            <button class="project-item">
+              <strong>${ui.escapeHtml(chatLabel(session, group, index))}</strong>
+              <span>${ui.escapeHtml(session.id === state.activeSessionId ? "Current chat" : "Chat session")}</span>
+            </button>
+            <button class="icon-button danger" title="Delete chat">x</button>
+          `;
+          row.querySelector(".project-item").onclick = () => sessions.select(session.id);
+          row.querySelector(".danger").onclick = (event) => sessions.delete(event, session.id);
+          children.appendChild(row);
+        });
+        list.appendChild(project);
       });
     },
 
@@ -79,7 +152,7 @@ export function createSessions(ctx) {
     async delete(event, sessionId) {
       event.stopPropagation();
       const session = state.sessions.find((item) => item.id === sessionId);
-      if (!confirm(`Delete "${session?.title || "Project"}"?`)) return;
+      if (!confirm(`Delete "${session?.title || "Chat"}"?`)) return;
       await api.request(`/api/sessions/${sessionId}`, { method: "DELETE" });
       if (state.activeSessionId === sessionId) {
         state.activeSessionId = null;
@@ -87,6 +160,32 @@ export function createSessions(ctx) {
         ctx.features.eventStream.close();
       }
       await sessions.load();
+    },
+
+    async deleteProject(event, group) {
+      event.stopPropagation();
+      if (!confirm(`Delete project "${group.title}" and all ${group.sessions.length} chat session(s)?`)) return;
+      const activeDeleted = group.sessions.some((session) => session.id === state.activeSessionId);
+      for (const session of group.sessions) {
+        await api.request(`/api/sessions/${session.id}`, { method: "DELETE" });
+      }
+      if (activeDeleted) {
+        state.activeSessionId = null;
+        state.activeRunId = null;
+        ctx.features.eventStream.close();
+      }
+      await sessions.load();
+    },
+
+    async createChat(event, group) {
+      event.stopPropagation();
+      const title = `Chat ${group.sessions.length + 1}`;
+      const session = await api.request("/api/sessions", {
+        method: "POST",
+        body: JSON.stringify({ project_path: group.projectPath, title }),
+      });
+      state.sessions.unshift(session);
+      await sessions.select(session.id);
     },
 
     async create() {

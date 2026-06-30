@@ -235,6 +235,141 @@ body.projects-collapsed .project-nav-link strong {
   padding-bottom: 10px;
 }
 
+.project-tree {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.project-root-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 28px;
+  align-items: stretch;
+  gap: 4px;
+}
+
+.project-root {
+  position: relative;
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  min-height: 42px;
+  padding: 6px 9px 6px 12px;
+  border: 1px solid rgba(203, 213, 225, 0.72);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.82);
+  text-align: left;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.035);
+  transition: transform 150ms ease, border-color 150ms ease, box-shadow 150ms ease, background 150ms ease;
+}
+
+.project-root::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  border-radius: 999px;
+  background: transparent;
+}
+
+.project-root:hover,
+.project-tree.active .project-root {
+  border-color: rgba(15, 118, 110, 0.42);
+  background: #ffffff;
+}
+
+.project-tree.active .project-root::before {
+  background: var(--accent);
+}
+
+.project-root strong,
+.project-root span {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.project-root strong {
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.project-root span {
+  color: #7b8798;
+  font-size: 11px;
+}
+
+.project-menu-button {
+  width: 28px;
+  height: 42px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: #64748b;
+  font-size: 16px;
+  line-height: 1;
+  opacity: 0;
+  transition: opacity 150ms ease, background 150ms ease, color 150ms ease, border-color 150ms ease;
+}
+
+.project-tree:hover .project-menu-button,
+.project-tree.active .project-menu-button,
+.project-menu-button:focus-visible {
+  opacity: 1;
+}
+
+.project-menu-button:hover {
+  border-color: rgba(15, 118, 110, 0.18);
+  background: #eef7f5;
+  color: var(--accent-dark);
+}
+
+.project-action-menu {
+  position: absolute;
+  top: 44px;
+  right: 0;
+  z-index: 30;
+  display: grid;
+  min-width: 136px;
+  padding: 6px;
+  border: 1px solid rgba(203, 213, 225, 0.88);
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 16px 34px rgba(15, 23, 42, 0.14);
+}
+
+.project-action-menu button {
+  min-height: 32px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  font-size: 12px;
+}
+
+.project-action-menu button:hover {
+  background: #f1f5f9;
+}
+
+.project-action-menu .danger-text {
+  color: var(--fail);
+}
+
+.project-children {
+  display: grid;
+  gap: 3px;
+  margin-left: 12px;
+  padding-left: 9px;
+  border-left: 1px solid rgba(203, 213, 225, 0.78);
+}
+
 .project-row {
   grid-template-columns: minmax(0, 1fr) 28px;
   align-items: stretch;
@@ -244,7 +379,7 @@ body.projects-collapsed .project-nav-link strong {
 .project-item {
   position: relative;
   min-height: 40px;
-  padding: 6px 9px 6px 12px;
+  padding: 6px 9px 6px 10px;
   border-color: rgba(203, 213, 225, 0.72);
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.78);
@@ -283,8 +418,8 @@ body.projects-collapsed .project-nav-link strong {
 
 .project-row.active .project-item {
   border-color: rgba(15, 118, 110, 0.58);
-  background: linear-gradient(180deg, #effaf7, #f8fdfc);
-  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.10), 0 10px 26px rgba(15, 23, 42, 0.08);
+  background: #effaf7;
+  box-shadow: 0 0 0 2px rgba(15, 118, 110, 0.10);
 }
 
 .project-row.active .project-item::before {
@@ -332,6 +467,7 @@ body.projects-collapsed .projects-head {
 }
 
 body.projects-collapsed .new-project-button,
+body.projects-collapsed .project-root,
 body.projects-collapsed .project-item,
 body.projects-collapsed .project-nav-link {
   width: 42px;
@@ -341,10 +477,24 @@ body.projects-collapsed .project-nav-link {
   border-radius: 14px;
 }
 
+body.projects-collapsed .project-root strong,
+body.projects-collapsed .project-root span,
+body.projects-collapsed .project-menu-button,
+body.projects-collapsed .project-action-menu,
+body.projects-collapsed .project-children {
+  display: none;
+}
+
 body.projects-collapsed .project-nav-link span {
   background: transparent;
 }
 
+body.projects-collapsed .project-root-row,
+body.projects-collapsed .project-row {
+  grid-template-columns: 42px;
+}
+
+body.projects-collapsed .project-root::before,
 body.projects-collapsed .project-item::before {
   inset: auto;
   position: static;
