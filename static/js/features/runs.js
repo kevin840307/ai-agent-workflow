@@ -80,16 +80,14 @@ export function createRuns(ctx) {
         row.className = `step${state.selectedStepKey === step.key ? " selected" : ""}`;
         const retry = step.retry_count ? `<span class="retry-count">retry ${step.retry_count}</span>` : "";
         const error = step.error ? `<small>${ui.escapeHtml(step.error)}</small>` : "";
-        const relatedArtifacts = ctx.features.artifacts.artifactsForStep(step, run.artifacts || []);
         row.innerHTML = `
           <div class="step-title"><span>${ui.escapeHtml(step.title)}</span>${retry}</div>
           <div class="step-message">${error}</div>
           <div class="step-actions">
-            <button class="mini-button detail-step" data-step-key="${ui.escapeHtml(step.key)}">Details</button>
-            ${relatedArtifacts.length ? `<button class="mini-button inspect-step" data-step-key="${ui.escapeHtml(step.key)}">Files ${relatedArtifacts.length}</button>` : ""}
-            <button class="mini-button guide-step" data-step-key="${ui.escapeHtml(step.key)}">Guide</button>
-            <button class="mini-button retry-step" data-step-key="${ui.escapeHtml(step.key)}">Retry</button>
             <span class="badge ${step.status}">${step.status}</span>
+            <button class="step-more-button detail-step" data-step-key="${ui.escapeHtml(step.key)}" title="Step details" aria-label="Step details">
+              <span aria-hidden="true"></span>
+            </button>
           </div>
         `;
         row.onclick = (event) => {
@@ -100,13 +98,6 @@ export function createRuns(ctx) {
           event.stopPropagation();
           runs.openStepDetailModal(run, step);
         };
-        const inspect = row.querySelector(".inspect-step");
-        if (inspect) inspect.onclick = (event) => {
-          event.stopPropagation();
-          ctx.features.artifacts.openStepFilesModal(run, step);
-        };
-        row.querySelector(".guide-step").onclick = () => runs.addGuidance(step.key);
-        row.querySelector(".retry-step").onclick = () => runs.retry(step.key);
         steps.appendChild(row);
       });
     },
@@ -422,8 +413,8 @@ export function createRuns(ctx) {
 
     defaultGuidanceStepKey() {
       const failed = document.querySelector(".step .badge.failed, .step .badge.waiting_input, .step .badge.running");
-      if (failed) return failed.closest(".step")?.querySelector(".guide-step")?.dataset.stepKey || null;
-      return document.querySelector(".step .guide-step")?.dataset.stepKey || null;
+      if (failed) return failed.closest(".step")?.querySelector(".detail-step")?.dataset.stepKey || null;
+      return state.selectedStepKey || document.querySelector(".step .detail-step")?.dataset.stepKey || null;
     },
 
     async addGuidance(stepKey = null) {

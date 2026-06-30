@@ -1,4 +1,4 @@
-import { LocalStore } from "../core/storage.js?v=20260630-resize1";
+import { LocalStore } from "../core/storage.js?v=20260701-step-actions1";
 
 const COLLAPSED_PROJECTS_KEY = "ui.collapsedProjectKeys";
 

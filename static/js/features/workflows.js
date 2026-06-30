@@ -1,4 +1,4 @@
-import { LocalStore, StorageKeys } from "../core/storage.js?v=20260630-resize1";
+import { LocalStore, StorageKeys } from "../core/storage.js?v=20260701-step-actions1";
 
 export function createWorkflows(ctx) {
   const { api, state, ui } = ctx;
