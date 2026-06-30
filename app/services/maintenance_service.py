@@ -4,7 +4,7 @@ import shutil
 from pathlib import Path
 from typing import Any
 
-from app.repositories import store_repository
+from app.persistence.repositories import store as store_repository
 from app.core.metrics import metrics
 
 

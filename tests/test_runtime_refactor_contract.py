@@ -148,6 +148,33 @@ class RuntimeRefactorContractTests(unittest.TestCase):
                         violations.append(f"{rel_path}: contains {pattern!r}")
         self.assertEqual(violations, [])
 
+    def test_services_use_new_persistence_repository_imports(self) -> None:
+        repo = Path(__file__).resolve().parents[1]
+        violations: list[str] = []
+        for path in (repo / "app" / "services").rglob("*.py"):
+            text = path.read_text(encoding="utf-8")
+            if "from app.repositories import store_repository" in text:
+                violations.append(str(path.relative_to(repo)))
+        self.assertEqual(violations, [])
+
+    def test_source_files_do_not_contain_replacement_mojibake(self) -> None:
+        repo = Path(__file__).resolve().parents[1]
+        extensions = {".py", ".js", ".css", ".html", ".md", ".json"}
+        ignored_parts = {".git", "__pycache__", ".pytest_cache", "node_modules"}
+        bad_markers = ["\ufffd"]
+        violations: list[str] = []
+
+        for path in repo.rglob("*"):
+            if not path.is_file() or path.suffix.lower() not in extensions:
+                continue
+            if any(part in ignored_parts for part in path.parts):
+                continue
+            text = path.read_text(encoding="utf-8", errors="replace")
+            if any(marker in text for marker in bad_markers):
+                violations.append(str(path.relative_to(repo)))
+
+        self.assertEqual(violations, [])
+
     def test_agent_provider_code_is_split_by_adapter(self) -> None:
         repo = Path(__file__).resolve().parents[1]
         adapter_dir = repo / "app" / "workflow" / "agents"

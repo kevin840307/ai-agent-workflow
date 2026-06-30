@@ -7,7 +7,8 @@ from fastapi import HTTPException
 from app.runtime_modules import api as runtime
 from app.core.locks import reject_if_chat_busy
 from app.core.metrics import metrics
-from app.repositories import store_repository
+from app.persistence.repositories import store as store_repository
+from app.services.agent_session_service import get_agent_session_id, update_agent_session_id
 from app.workflow_runtime.agents import AgentRequest
 
 
@@ -46,9 +47,9 @@ def _looks_like_tool_call_json(text: str) -> bool:
 
 def _chat_repair_prompt(content: str) -> str:
     return (
-        "請直接用自然語言回答使用者問題。"
-        "不要輸出 JSON，不要輸出工具呼叫，不要使用 markdown code block。\n\n"
-        f"使用者問題：{content.strip()}"
+        "Please answer the user directly in natural language. "
+        "Do not output JSON, tool calls, or markdown code blocks.\n\n"
+        f"User question: {content.strip()}"
     )
 
 
@@ -113,13 +114,7 @@ async def chat(session_id: str, body: runtime.CreateMessageRequest) -> dict:
             await runtime.update_message(assistant_msg["id"], status="running")
             agent = runtime.agent_manager.resolve()
             prompt = _chat_prompt(history, body.content, reuse_session=bool(agent.health().get("reuse_session")))
-            provider_sessions = session.get("agent_session_ids") or {}
-            if isinstance(provider_sessions, dict) and agent.name in provider_sessions:
-                agent_session_id = provider_sessions.get(agent.name)
-            elif agent.name == "qwen":
-                agent_session_id = session.get("qwen_session_id") or session_id
-            else:
-                agent_session_id = None
+            agent_session_id = get_agent_session_id(session, agent.name, session_id)
             result = await agent.run_stream(
                 AgentRequest(
                     run_id=f"chat-{session_id}",
@@ -130,7 +125,7 @@ async def chat(session_id: str, body: runtime.CreateMessageRequest) -> dict:
                 )
             )
             if result.session_id != agent_session_id:
-                await _update_agent_session_id(session_id, agent.name, result.session_id)
+                await update_agent_session_id(session_id, agent.name, result.session_id)
             answer = result.output
             if _looks_like_tool_call_json(answer):
                 repair_result = await agent.run_stream(
@@ -143,7 +138,7 @@ async def chat(session_id: str, body: runtime.CreateMessageRequest) -> dict:
                     )
                 )
                 if repair_result.session_id != result.session_id:
-                    await _update_agent_session_id(session_id, agent.name, repair_result.session_id)
+                    await update_agent_session_id(session_id, agent.name, repair_result.session_id)
                 answer = repair_result.output
         except Exception as exc:
             metrics.increment("chat.failed")
@@ -161,16 +156,3 @@ async def chat(session_id: str, body: runtime.CreateMessageRequest) -> dict:
             status="completed",
         )
         return {"user": user_msg, "assistant": completed or assistant_msg}
-
-
-async def _update_agent_session_id(session_id: str, agent_name: str, agent_session_id: str | None) -> None:
-    def update(data):
-        target = next((item for item in data["sessions"] if item["id"] == session_id), None)
-        if not target:
-            return None
-        target.setdefault("agent_session_ids", {})
-        target["agent_session_ids"][agent_name] = agent_session_id
-        target["updated_at"] = runtime.utc_now()
-        return None
-
-    await store_repository.mutate(update)

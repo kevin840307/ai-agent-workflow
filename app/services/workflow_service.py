@@ -10,7 +10,8 @@ from fastapi import HTTPException
 from app.runtime_modules import api as runtime
 from app.core.locks import project_run_creation_lock
 from app.core.metrics import metrics
-from app.repositories import store_repository
+from app.persistence.repositories import store as store_repository
+from app.services.agent_session_service import default_agent_session_ids
 from app.services import workflow_config_service
 
 
@@ -103,7 +104,7 @@ async def create_workflow_run(session_id: str, body: runtime.CreateRunRequest) -
                 "session_id": session_id,
                 "qwen_session_id": session.get("qwen_session_id") or session_id,
                 "agent_session_ids": session.get("agent_session_ids")
-                or {"qwen": session.get("qwen_session_id") or session_id, "opencode": session_id},
+                or default_agent_session_ids(session_id, session.get("qwen_session_id") or session_id),
                 "status": "queued",
                 "error": None,
                 "workspace": str(run_dir),
@@ -307,8 +308,9 @@ async def simulate_question(run_id: str) -> dict:
     run_dir = Path(run["workspace"])
     question = (
         "## Test Interaction\n\n"
-        "這是一個測試用的互動問題，用來確認 workflow 可以暫停、顯示問題，並在使用者回覆後繼續執行。\n\n"
-        "- 請回覆缺少的資訊，例如要使用哪一種語言、測試框架，或需要補充的需求細節。\n"
+        "This is a simulated workflow question used to verify that a run can pause, "
+        "show a question, and continue after the user replies.\n\n"
+        "- Reply with the missing information, such as language, test framework, or requirement details.\n"
     )
     runtime.write_text(run_dir / "input" / "questions.md", question)
     await runtime.log(run, f"{step_key}: simulated user-input request")

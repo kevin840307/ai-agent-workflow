@@ -22,7 +22,7 @@ class ProjectAndConfigApiTests(unittest.TestCase):
 
             message_response = client.post(
                 f"/api/sessions/{session['id']}/messages",
-                json={"content": "請做一個測試需求"},
+                json={"content": "write a sorting helper"},
             )
             self.assertEqual(message_response.status_code, 200, message_response.text)
             messages = client.get(f"/api/sessions/{session['id']}/messages").json()
@@ -81,8 +81,8 @@ class ProjectAndConfigApiTests(unittest.TestCase):
             async def run_stream(self, request, on_output=None):
                 self.requests.append(request)
                 if len(self.requests) == 1:
-                    return AgentResult(output='```json\n{"name":"queryKnowledgebase","arguments":{"prompt":"你是opencode CLI嗎?"}}\n```')
-                return AgentResult(output="我是透過 OpenCode CLI 執行的 agent。")
+                    return AgentResult(output='```json\n{"name":"queryKnowledgebase","arguments":{"prompt":"are you opencode CLI?"}}\n```')
+                return AgentResult(output="I am an agent running through OpenCode CLI.")
 
         fake_agent = FakeAgent()
         with tempfile.TemporaryDirectory() as tmp, TestClient(app) as client, patch(
@@ -90,13 +90,13 @@ class ProjectAndConfigApiTests(unittest.TestCase):
             return_value=fake_agent,
         ):
             session = client.post("/api/sessions", json={"title": "Chat Repair", "project_path": tmp}).json()
-            response = client.post(f"/api/sessions/{session['id']}/chat", json={"content": "你是opencode CLI嗎"})
+            response = client.post(f"/api/sessions/{session['id']}/chat", json={"content": "are you opencode CLI?"})
 
             self.assertEqual(response.status_code, 200, response.text)
-            self.assertEqual(response.json()["assistant"]["content"], "我是透過 OpenCode CLI 執行的 agent。")
+            self.assertEqual(response.json()["assistant"]["content"], "I am an agent running through OpenCode CLI.")
             self.assertEqual(len(fake_agent.requests), 2)
-            self.assertEqual(fake_agent.requests[0].prompt, "你是opencode CLI嗎")
-            self.assertIn("不要輸出 JSON", fake_agent.requests[1].prompt)
+            self.assertEqual(fake_agent.requests[0].prompt, "are you opencode CLI?")
+            self.assertIn("Do not output JSON", fake_agent.requests[1].prompt)
 
     def test_chat_prompt_excludes_workflow_requirement_history(self) -> None:
         class FakeAgent:

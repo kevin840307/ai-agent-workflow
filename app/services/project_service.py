@@ -8,7 +8,8 @@ from pathlib import Path
 from fastapi import HTTPException
 
 from app.runtime_modules import api as runtime
-from app.repositories import store_repository
+from app.persistence.repositories import store as store_repository
+from app.services.agent_session_service import default_agent_session_ids
 from app.services import chat_service
 from app.workflow_runtime.qwen_serve import forget_qwen_serve_session
 
@@ -63,7 +64,7 @@ async def create_project(body: runtime.CreateSessionRequest | None = None) -> di
     session = {
         "id": session_id,
         "qwen_session_id": session_id,
-        "agent_session_ids": {"qwen": session_id, "opencode": session_id},
+        "agent_session_ids": default_agent_session_ids(session_id),
         "title": title,
         "project_path": project_path,
         "created_at": runtime.utc_now(),
@@ -119,7 +120,7 @@ async def reset_project(session_id: str) -> dict:
         if not target:
             raise HTTPException(status_code=404, detail="Session not found")
         target["qwen_session_id"] = new_agent_session_id
-        target["agent_session_ids"] = {"qwen": new_agent_session_id, "opencode": new_agent_session_id}
+        target["agent_session_ids"] = default_agent_session_ids(session_id, new_agent_session_id)
         target["updated_at"] = runtime.utc_now()
         data["messages"] = [message for message in data["messages"] if message["session_id"] != session_id]
         data["runs"] = [run for run in data["runs"] if run["session_id"] != session_id]
