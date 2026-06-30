@@ -4,6 +4,7 @@ const COLLAPSED_PROJECTS_KEY = "ui.collapsedProjectKeys";
 
 export function createSessions(ctx) {
   const { api, state, ui } = ctx;
+  let menuDismissBound = false;
 
   function projectKey(session) {
     return (session.project_path || session.id || "").toLowerCase();
@@ -57,10 +58,31 @@ export function createSessions(ctx) {
     return title;
   }
 
+  function closeProjectMenus(except = null) {
+    const list = ui.byKey("projectList");
+    if (!list) return;
+    list.querySelectorAll(".project-action-menu").forEach((node) => {
+      if (node !== except) node.hidden = true;
+    });
+  }
+
+  function ensureMenuDismissHandlers() {
+    if (menuDismissBound) return;
+    menuDismissBound = true;
+    document.addEventListener("pointerdown", (event) => {
+      if (event.target.closest?.(".project-root-row")) return;
+      closeProjectMenus();
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") closeProjectMenus();
+    });
+  }
+
   const sessions = {
     renderList() {
       const list = ui.byKey("projectList");
       if (!list) return;
+      ensureMenuDismissHandlers();
       list.innerHTML = "";
       groupSessions().forEach((group) => {
         const activeInProject = group.sessions.some((session) => session.id === state.activeSessionId);
@@ -89,9 +111,7 @@ export function createSessions(ctx) {
           event.stopPropagation();
           const menu = project.querySelector(".project-action-menu");
           const shouldOpen = menu.hidden;
-          list.querySelectorAll(".project-action-menu").forEach((node) => {
-            node.hidden = true;
-          });
+          closeProjectMenus(menu);
           menu.hidden = !shouldOpen;
         };
         project.querySelector("[data-action='new-chat']").onclick = (event) => sessions.createChat(event, group);
