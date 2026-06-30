@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import json
 import tempfile
 import time
 import unittest
@@ -227,6 +228,21 @@ class ObservabilityAndPerformanceTests(_WorkflowTestSupport, unittest.TestCase):
                 self.assertIn("raw_artifact: started", log_text)
                 self.assertIn("raw_artifact: passed", log_text)
                 self.assertIn("workflow: done", log_text)
+
+                summary_artifact = next(item for item in run["artifacts"] if item["path"] == ".workflow/run-summary.md")
+                summary_payload = client.get(f"/api/artifacts/{summary_artifact['id']}").json()
+                self.assertIn("# Run Summary", summary_payload["content"])
+                self.assertIn("Status: DONE", summary_payload["content"])
+                self.assertIn("Raw Artifact", summary_payload["content"])
+
+                trace_artifact = next(item for item in run["artifacts"] if item["path"] == ".workflow/run-trace.json")
+                trace_payload = client.get(f"/api/artifacts/{trace_artifact['id']}").json()
+                trace = json.loads(trace_payload["content"])
+                self.assertEqual(trace["run_id"], run["id"])
+                self.assertEqual(trace["status"], "done")
+                self.assertEqual(trace["step_count"], 1)
+                self.assertEqual(trace["steps"][0]["key"], "raw_artifact")
+                self.assertGreater(trace["steps"][0]["prompt_chars"], 0)
                 client.delete(f"/api/sessions/{session['id']}")
 
     def test_core_api_performance_baseline_uses_generous_thresholds(self) -> None:

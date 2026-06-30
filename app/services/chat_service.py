@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import time
 
 from fastapi import HTTPException
 
@@ -109,12 +110,16 @@ async def chat(session_id: str, body: runtime.CreateMessageRequest) -> dict:
             status="pending",
         )
         project_path = runtime.resolve_project_path(session.get("project_path"), runtime.ROOT)
+        chat_started = time.perf_counter()
 
         try:
             await runtime.update_message(assistant_msg["id"], status="running")
             agent = runtime.agent_manager.resolve()
-            prompt = _chat_prompt(history, body.content, reuse_session=bool(agent.health().get("reuse_session")))
+            agent_health = agent.health()
+            reuse_session = bool(agent_health.get("reuse_session"))
+            prompt = _chat_prompt(history, body.content, reuse_session=reuse_session)
             agent_session_id = get_agent_session_id(session, agent.name, session_id)
+            repaired_tool_call = False
             result = await agent.run_stream(
                 AgentRequest(
                     run_id=f"chat-{session_id}",
@@ -128,6 +133,7 @@ async def chat(session_id: str, body: runtime.CreateMessageRequest) -> dict:
                 await update_agent_session_id(session_id, agent.name, result.session_id)
             answer = result.output
             if _looks_like_tool_call_json(answer):
+                repaired_tool_call = True
                 repair_result = await agent.run_stream(
                     AgentRequest(
                         run_id=f"chat-{session_id}-repair",
@@ -147,6 +153,11 @@ async def chat(session_id: str, body: runtime.CreateMessageRequest) -> dict:
                 content=f"Chat failed: {exc}",
                 status="failed",
                 error=str(exc),
+                trace={
+                    "agent": locals().get("agent").name if "agent" in locals() else "",
+                    "duration_ms": int((time.perf_counter() - chat_started) * 1000),
+                    "error": str(exc),
+                },
             )
             raise HTTPException(status_code=500, detail=str(exc)) from exc
 
@@ -154,5 +165,15 @@ async def chat(session_id: str, body: runtime.CreateMessageRequest) -> dict:
             assistant_msg["id"],
             content=answer.strip() or "(Agent returned no text.)",
             status="completed",
+            trace={
+                "agent": agent.name,
+                "provider_health": {key: agent_health.get(key) for key in ["type", "mock", "reuse_session", "timeout_sec", "exists"]},
+                "session_reused": bool(agent_session_id),
+                "agent_session_id": result.session_id,
+                "prompt_chars": len(prompt),
+                "output_chars": len(answer or ""),
+                "duration_ms": int((time.perf_counter() - chat_started) * 1000),
+                "repaired_tool_call": repaired_tool_call,
+            },
         )
         return {"user": user_msg, "assistant": completed or assistant_msg}

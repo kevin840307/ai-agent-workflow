@@ -61,7 +61,12 @@ class ProjectAndConfigApiTests(unittest.TestCase):
 
             self.assertEqual(response.status_code, 200, response.text)
             resolve.assert_called_once_with()
-            self.assertEqual(response.json()["assistant"]["content"], "opencode answer")
+            assistant = response.json()["assistant"]
+            self.assertEqual(assistant["content"], "opencode answer")
+            self.assertEqual(assistant["trace"]["agent"], "opencode")
+            self.assertEqual(assistant["trace"]["prompt_chars"], len("hello"))
+            self.assertEqual(assistant["trace"]["output_chars"], len("opencode answer"))
+            self.assertGreaterEqual(assistant["trace"]["duration_ms"], 0)
             self.assertEqual(fake_agent.request.session_id, session["id"])
             self.assertEqual(fake_agent.request.prompt, "hello")
             sessions = client.get("/api/sessions").json()

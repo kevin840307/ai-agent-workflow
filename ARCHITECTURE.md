@@ -48,6 +48,11 @@ Project run workspace:
   .workflow/
 ```
 
+Terminal workflow states write two human/debug artifacts under `.workflow/`:
+
+- `run-summary.md`: readable run result, step outcomes, retries, project changes, and key artifacts.
+- `run-trace.json`: structured run trace with timing, agent/session metadata, prompt/output sizes, step events, artifacts, and error codes.
+
 ## Agent Layer
 
 Agent support is provider-neutral.
@@ -68,6 +73,7 @@ Recommended extension path for a new agent:
 Chat mode calls `AgentManager.resolve()` without forcing a provider, so it follows `agents.default`. Workflow steps can override that with their `agent` or `provider` field.
 Project sessions store provider session ids in `agent_session_ids`; legacy `qwen_session_id` remains for backward compatibility.
 Adapters should support the same baseline contract where possible: session reuse, timeout handling, command preview, health metadata, mock mode for local tests, and streamed output callbacks.
+Chat responses include lightweight trace metadata on the assistant message: agent, provider health subset, session reuse, prompt/output size, duration, and tool-call repair status.
 
 ## Workflow Bundles
 

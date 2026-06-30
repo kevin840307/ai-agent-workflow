@@ -256,6 +256,8 @@ class RunState:
                 "input/failure-feedback.md",
                 "prompts/skill-context.md",
                 ".workflow/run-log.md",
+                ".workflow/run-summary.md",
+                ".workflow/run-trace.json",
                 ".workflow/state.json",
             ]
 

@@ -14,6 +14,7 @@ from .actions import WorkflowActions
 from .error_codes import classify_exception
 from .retry_policy import retry_target_for_failure
 from .step_utils import bool_config, expected_file_candidates, expected_files, format_exception, step_config, timeout_seconds
+from .trace import write_run_trace_artifacts
 
 
 class WorkflowExecutor:
@@ -204,6 +205,7 @@ class WorkflowExecutor:
 
         final_run = await self.update_run(run_id, finish)
         write_text(run_dir / ".workflow" / "state.json", json.dumps(final_run, indent=2, ensure_ascii=False))
+        write_run_trace_artifacts(final_run, run_dir)
         await self.refresh_artifacts(run_id)
         await self.log(run, "workflow: done")
         await self.bus.publish(run_id, {"type": "done"})
@@ -220,6 +222,7 @@ class WorkflowExecutor:
 
         waiting_run = await self.update_run(run_id, wait)
         write_text(run_dir / ".workflow" / "state.json", json.dumps(waiting_run, indent=2, ensure_ascii=False))
+        write_run_trace_artifacts(waiting_run, run_dir)
         await self.refresh_artifacts(run_id)
         await self.bus.publish(run_id, {"type": "waiting_input", "error": str(exc)})
 
@@ -240,6 +243,7 @@ class WorkflowExecutor:
 
         cancelled_run = await self.update_run(run_id, cancel)
         write_text(run_dir / ".workflow" / "state.json", json.dumps(cancelled_run, indent=2, ensure_ascii=False))
+        write_run_trace_artifacts(cancelled_run, run_dir)
         await self.refresh_artifacts(run_id)
         await self.bus.publish(run_id, {"type": "cancelled", "error": "Workflow cancelled by user."})
 
@@ -257,5 +261,6 @@ class WorkflowExecutor:
 
         failed_run = await self.update_run(run_id, fail)
         write_text(run_dir / ".workflow" / "state.json", json.dumps(failed_run, indent=2, ensure_ascii=False))
+        write_run_trace_artifacts(failed_run, run_dir)
         await self.refresh_artifacts(run_id)
         await self.bus.publish(run_id, {"type": "failed", "error": str(error)})
