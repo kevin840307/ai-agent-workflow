@@ -5,13 +5,15 @@ import json
 from pathlib import Path
 from typing import Any, Awaitable, Callable
 
-from app.runtime_modules.errors import UserInputRequired, WorkflowError
+from app.runtime_modules.errors import UserInputRequired, WorkflowCancelled, WorkflowError
 from app.core.paths import utc_now, write_text
 from app.core.metrics import metrics, now
+from app.runtime_modules.files import project_file_snapshot, snapshot_changed
 
 from .actions import WorkflowActions
+from .error_codes import classify_exception
 from .retry_policy import retry_target_for_failure
-from .step_utils import expected_file_candidates, expected_files, format_exception, timeout_seconds
+from .step_utils import bool_config, expected_file_candidates, expected_files, format_exception, step_config, timeout_seconds
 
 
 class WorkflowExecutor:
@@ -96,7 +98,7 @@ class WorkflowExecutor:
                             f"Retry stopped: {retry_key} already reached max retries "
                             f"({current_retry_count}/{max_retries}). Last failure from {key}: {exc}"
                         )
-                        await self.set_step(run_id, key, "failed", message)
+                        await self.set_step(run_id, key, "failed", message, error_code=classify_exception(message))
                         await self.log(run, f"{key}: max retries reached for {retry_key}: {exc}")
                         raise WorkflowError(message) from exc
                     retry_count = await self.increment_step_retry(run_id, retry_key)
@@ -124,6 +126,7 @@ class WorkflowExecutor:
         await self.set_step(run_id, key, "running")
         await self.log(run, f"{key}: started")
         step_started = now()
+        before_project_snapshot = self._project_snapshot_if_required(run, step_record)
         if self.record_step_event:
             await self.record_step_event(run_id, key, "started", f"{key}: started")
         try:
@@ -133,21 +136,22 @@ class WorkflowExecutor:
             else:
                 await action()
             self._validate_expected_files(run, step_record)
+            self._validate_project_changes(run, step_record, before_project_snapshot)
         except asyncio.TimeoutError as exc:
             message = f"{key}: timed out after {timeout_seconds(step_record) or 0:.0f} seconds."
-            await self.set_step(run_id, key, "failed", message)
+            await self.set_step(run_id, key, "failed", message, error_code=classify_exception(message))
             metrics.increment("workflow.step.failed")
             metrics.observe("workflow.step.durationSec", now() - step_started)
             if self.record_step_event:
                 await self.record_step_event(run_id, key, "failed", message)
             raise WorkflowError(message) from exc
         except UserInputRequired as exc:
-            await self.set_step(run_id, key, "waiting_input", str(exc))
+            await self.set_step(run_id, key, "waiting_input", str(exc), error_code=classify_exception(exc))
             if self.record_step_event:
                 await self.record_step_event(run_id, key, "waiting_input", str(exc))
             raise
         except Exception as exc:
-            await self.set_step(run_id, key, "failed", str(exc))
+            await self.set_step(run_id, key, "failed", str(exc), error_code=classify_exception(exc))
             metrics.increment("workflow.step.failed")
             metrics.observe("workflow.step.durationSec", now() - step_started)
             if self.record_step_event:
@@ -168,9 +172,33 @@ class WorkflowExecutor:
         if missing:
             raise WorkflowError(f"{step_record.get('key')}: expected file(s) not found: {', '.join(missing)}")
 
+    def _project_snapshot_if_required(self, run: dict[str, Any], step_record: dict[str, Any]) -> dict[str, tuple[int, int]] | None:
+        config = step_config(step_record)
+        require_changes = bool_config(config, "requireProjectChanges", False) or bool_config(config, "projectDiffGate", False)
+        if not require_changes:
+            return None
+        return project_file_snapshot(Path(run.get("project_path") or run["workspace"]))
+
+    def _validate_project_changes(
+        self,
+        run: dict[str, Any],
+        step_record: dict[str, Any],
+        before_snapshot: dict[str, tuple[int, int]] | None,
+    ) -> None:
+        if before_snapshot is None:
+            return
+        project_dir = Path(run.get("project_path") or run["workspace"])
+        after_snapshot = project_file_snapshot(project_dir)
+        if not snapshot_changed(before_snapshot, after_snapshot):
+            raise WorkflowError(
+                f"{step_record.get('key')}: project changes were required, but no files changed under Project Path: {project_dir}"
+            )
+
     async def _mark_done(self, run_id: str, run: dict[str, Any], run_dir: Path) -> None:
         def finish(r: dict[str, Any]) -> None:
             r["status"] = "done"
+            r["error"] = None
+            r["error_code"] = None
             r["ended_at"] = utc_now()
             r["updated_at"] = utc_now()
 
@@ -186,6 +214,7 @@ class WorkflowExecutor:
         def wait(r: dict[str, Any]) -> None:
             r["status"] = "waiting_input"
             r["error"] = str(exc)
+            r["error_code"] = classify_exception(exc)
             r["ended_at"] = utc_now()
             r["updated_at"] = utc_now()
 
@@ -200,6 +229,7 @@ class WorkflowExecutor:
         def cancel(r: dict[str, Any]) -> None:
             r["status"] = "cancelled"
             r["error"] = "Workflow cancelled by user."
+            r["error_code"] = classify_exception(WorkflowCancelled(r["error"]))
             r["ended_at"] = utc_now()
             r["updated_at"] = utc_now()
             for step in r.get("steps", []):
@@ -215,11 +245,13 @@ class WorkflowExecutor:
 
     async def _mark_failed(self, run_id: str, run: dict[str, Any], run_dir: Path, exc: Exception) -> None:
         error = format_exception(exc)
+        error_code = classify_exception(exc)
         await self.log(run, f"workflow: failed: {error}")
 
         def fail(r: dict[str, Any]) -> None:
             r["status"] = "failed"
             r["error"] = str(error)
+            r["error_code"] = error_code
             r["ended_at"] = utc_now()
             r["updated_at"] = utc_now()
 

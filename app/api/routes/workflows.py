@@ -17,6 +17,11 @@ async def get_workflow_functions():
     return await workflow_config_service.get_functions()
 
 
+@router.post("/api/workflows/lint")
+async def lint_workflow(workflow: dict = Body(...)):
+    return await workflow_config_service.lint_workflow_config(workflow)
+
+
 @router.get("/api/workflows/{workflow_id}")
 async def get_workflow(workflow_id: str):
     return await workflow_config_service.get_workflow(workflow_id)

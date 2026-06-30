@@ -5,7 +5,9 @@ import shutil
 import unittest
 
 from fastapi import HTTPException
+from fastapi.testclient import TestClient
 
+from app.main import app
 from app.services import workflow_config_service
 
 
@@ -55,6 +57,65 @@ class WorkflowConfigServiceTests(unittest.TestCase):
 
     def test_system_workflow_is_protected_and_custom_delete_removes_folder(self) -> None:
         asyncio.run(self._run_delete_protection_case())
+
+    def test_workflow_lint_rejects_bad_targets_paths_and_functions(self) -> None:
+        asyncio.run(self._run_lint_rejection_case())
+
+    def test_workflow_lint_api_returns_issues_without_saving(self) -> None:
+        with TestClient(app) as client:
+            response = client.post(
+                "/api/workflows/lint",
+                json={
+                    "id": "lint-api-test",
+                    "name": "Lint API",
+                    "steps": [
+                        {
+                            "id": "step-1",
+                            "key": "validate",
+                            "type": "python",
+                            "validator": "missing_function",
+                        }
+                    ],
+                },
+            )
+
+        self.assertEqual(response.status_code, 200, response.text)
+        payload = response.json()
+        self.assertFalse(payload["ok"])
+        self.assertTrue(payload["issues"])
+
+    async def _run_lint_rejection_case(self) -> None:
+        workflow = {
+            "id": "test-invalid-workflow",
+            "name": "Invalid Workflow",
+            "kind": "custom",
+            "folderName": "test-invalid-workflow",
+            "steps": [
+                {
+                    "id": "step-1",
+                    "key": "build",
+                    "name": "Build",
+                    "type": "ai",
+                    "templatePath": "../outside.md",
+                    "filename": "build-result.md",
+                    "outputFile": "build-result.md",
+                    "expectedFiles": ["../outside.md"],
+                    "retryFromStepKey": "missing_step",
+                    "validator": "missing_function",
+                }
+            ],
+        }
+
+        with self.assertRaises(HTTPException) as raised:
+            await workflow_config_service.upsert_workflow(workflow)
+
+        self.assertEqual(raised.exception.status_code, 400)
+        detail = raised.exception.detail
+        self.assertEqual(detail["code"], "WORKFLOW_CONFIG_INVALID")
+        messages = " ".join(issue["message"] for issue in detail["details"]["issues"])
+        self.assertIn("Unknown validator/function", messages)
+        self.assertIn("Step target does not exist", messages)
+        self.assertIn("Unsafe expected file path", messages)
 
     async def _run_delete_protection_case(self) -> None:
         workflow_id = "test-delete-workflow"

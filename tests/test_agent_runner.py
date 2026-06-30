@@ -8,6 +8,7 @@ from pathlib import Path
 from app.workflow_runtime.agent_step_runner import AgentStepRunner
 from app.workflow_runtime.agents import AgentResult
 from app.workflow_runtime.prompt_builder import PromptBuildResult
+from app.runtime_modules.errors import WorkflowError
 
 
 class FakeBus:
@@ -33,6 +34,14 @@ class FakeAgent:
 
     def health(self) -> dict:
         return {"name": self.name}
+
+
+class RecoveringFakeAgent(FakeAgent):
+    async def run_stream(self, request, on_output=None) -> AgentResult:
+        self.requests.append(request)
+        if len(self.requests) == 1:
+            raise WorkflowError("session not found")
+        return AgentResult(output="Status: PASS\n\nrecovered", session_id=request.session_id)
 
 
 class FakeAgentManager:
@@ -63,6 +72,42 @@ class AgentRunnerTests(unittest.TestCase):
 
     def test_fresh_session_without_force_flag_keeps_project_session_id(self) -> None:
         asyncio.run(self._run_session_case(fresh_session=True, fresh_per_agent=False, expected_session="qwen-session-1"))
+
+    def test_recoverable_session_error_retries_once_without_session_id(self) -> None:
+        asyncio.run(self._run_session_recovery_case())
+
+    async def _run_session_recovery_case(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp) / "run"
+            project = Path(tmp) / "project"
+            (workspace / "output").mkdir(parents=True)
+            (workspace / "input").mkdir(parents=True)
+            project.mkdir()
+            (workspace / "requirement.md").write_text("hello", encoding="utf-8")
+
+            agent = RecoveringFakeAgent()
+            runner = AgentStepRunner(
+                agent_manager=FakeAgentManager(agent),
+                prompt_builder=FakePromptBuilder(),
+                bus=FakeBus(),
+                log=lambda run, message: _noop(),
+                refresh_artifacts=lambda run_id: _noop(),
+                append_session_message=lambda session_id, role, content: _noop_dict(),
+            )
+            run = {
+                "id": "run-1",
+                "session_id": "session-1",
+                "qwen_session_id": "qwen-session-1",
+                "workspace": str(workspace),
+                "project_path": str(project),
+                "steps": [{"key": "build", "agent": "qwen", "allow_interaction": False, "config": {}}],
+            }
+
+            await runner.run(run, "build", "05_build.md", "build-result.md")
+
+            self.assertEqual(len(agent.requests), 2)
+            self.assertEqual(agent.requests[0].session_id, "qwen-session-1")
+            self.assertIsNone(agent.requests[1].session_id)
 
     async def _run_session_case(self, *, fresh_session: bool, fresh_per_agent: bool, expected_session: str | None) -> None:
         with tempfile.TemporaryDirectory() as tmp:

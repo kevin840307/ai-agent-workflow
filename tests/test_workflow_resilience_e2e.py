@@ -431,6 +431,34 @@ class WorkflowResilienceE2ETests(unittest.TestCase):
             apply_extracted_files(project_dir, test_files, output_label="test output")
             self.assertTrue((project_dir / "tests" / "test_workflow_mock_feature.py").exists())
 
+    def test_project_diff_gate_fails_when_required_step_does_not_change_project(self) -> None:
+        workflow = _workflow(
+            "project-diff-gate-workflow",
+            [
+                {
+                    **_step("raw_artifact", output="raw.md", expected=["raw.md"]),
+                    "requireProjectChanges": True,
+                }
+            ],
+        )
+
+        def qwen_response(prompt: str) -> str:
+            return "Status: DONE\n\nGenerated analysis only.\n"
+
+        with mock_qwen_env(), tempfile.TemporaryDirectory() as tmp, self._patched_workflow(workflow), patch(
+            "app.runtime_modules.qwen.mock_qwen_response", side_effect=qwen_response
+        ):
+            project_dir = Path(tmp)
+            project_dir.joinpath("seed.py").write_text("VALUE = 1\n", encoding="utf-8")
+            with TestClient(app) as client:
+                session = self._session(client, project_dir, "Diff Gate")
+                run = self._wait_for_terminal_run(client, self._run(client, session, workflow["id"], project_dir))
+
+                self.assertEqual(run["status"], "failed")
+                self.assertEqual(run.get("error_code"), "PROJECT_DIFF_MISSING")
+                step = next(item for item in run["steps"] if item["key"] == "raw_artifact")
+                self.assertEqual(step.get("error_code"), "PROJECT_DIFF_MISSING")
+
     def test_timeout_marks_step_failed_and_does_not_hang(self) -> None:
         workflow = _workflow(
             "timeout-workflow",

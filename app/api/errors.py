@@ -7,6 +7,8 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from app.workflow_runtime.error_codes import classify_exception
+
 
 def error_payload(code: str, message: str, details: dict[str, Any] | None = None) -> dict[str, Any]:
     return {
@@ -26,7 +28,11 @@ def _from_detail(status_code: int, detail: Any) -> tuple[str, str, dict[str, Any
         message = str(detail.get("message") or detail.get("detail") or "Request failed")
         details = detail.get("details") if isinstance(detail.get("details"), dict) else {}
         return code, message, details
-    return f"HTTP_{status_code}", str(detail or "Request failed"), {}
+    message = str(detail or "Request failed")
+    code = classify_exception(message)
+    if code == "WORKFLOW_FAILED":
+        code = f"HTTP_{status_code}"
+    return code, message, {}
 
 
 async def http_exception_handler(_request: Request, exc: StarletteHTTPException) -> JSONResponse:

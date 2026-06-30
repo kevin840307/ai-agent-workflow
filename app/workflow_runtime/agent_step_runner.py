@@ -8,6 +8,7 @@ from app.runtime_modules.errors import UserInputRequired, WorkflowError
 from app.core.paths import read_text, write_text
 
 from .agents import AgentManager, AgentRequest
+from .error_codes import is_recoverable_session_error
 from .prompt_builder import PromptBuilder
 from .questions import extract_user_questions
 
@@ -103,7 +104,22 @@ class AgentStepRunner:
             if agent_name == "qwen":
                 await self.bus.publish(run["id"], {"type": "qwen_output", "step": step_key, "stream": stream, "text": text})
 
-        result = await agent.run_stream(request, on_output=publish_agent_output)
+        try:
+            result = await agent.run_stream(request, on_output=publish_agent_output)
+        except WorkflowError as exc:
+            if not request.session_id or not is_recoverable_session_error(exc):
+                raise
+            await self.log(run, f"{step_key}: {agent_name} session failed; retrying once with a fresh session: {exc}")
+            await self._publish_status(run["id"], agent_name, step_key, f"{agent_name} session recovered; retrying...")
+            fresh_request = AgentRequest(
+                run_id=run["id"],
+                step_key=step_key,
+                prompt=prompt_text,
+                cwd=cwd,
+                session_id=None,
+                metadata={"recovered_from_session_id": request.session_id},
+            )
+            result = await agent.run_stream(fresh_request, on_output=publish_agent_output)
         output = result.output
         if not output.strip():
             raise WorkflowError(f"{step_key}: {agent_name} returned empty stdout.")

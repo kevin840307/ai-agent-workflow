@@ -99,7 +99,14 @@ class RunState:
         write_text(log_path, content)
         await self.bus.publish(run["id"], {"type": "log", "message": line})
 
-    async def set_step(self, run_id: str, key: str, status: str, error: str | None = None) -> None:
+    async def set_step(
+        self,
+        run_id: str,
+        key: str,
+        status: str,
+        error: str | None = None,
+        error_code: str | None = None,
+    ) -> None:
         def apply(run):
             for step in run["steps"]:
                 if step["key"] == key:
@@ -107,9 +114,11 @@ class RunState:
                     if status == "running":
                         step["started_at"] = utc_now()
                         step["error"] = None
+                        step["error_code"] = None
                     if status in {"passed", "failed", "skipped", "waiting_input", "cancelled"}:
                         step["ended_at"] = utc_now()
                         step["error"] = error
+                        step["error_code"] = error_code
             run["updated_at"] = utc_now()
 
         run = await self.update_run(run_id, apply)
@@ -124,8 +133,10 @@ class RunState:
                     step["started_at"] = None
                     step["ended_at"] = None
                     step["error"] = None
+                    step["error_code"] = None
             run["status"] = "queued"
             run["error"] = None
+            run["error_code"] = None
             run["ended_at"] = None
             run["updated_at"] = utc_now()
 

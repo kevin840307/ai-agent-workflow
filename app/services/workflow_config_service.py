@@ -11,6 +11,8 @@ from fastapi import HTTPException
 
 from app.runtime_modules import api as runtime
 from app.core.paths import write_text
+from app.services.workflow_lint_service import assert_workflow_valid
+from app.services.workflow_lint_service import lint_workflow
 from app.workflow_functions import AVAILABLE_WORKFLOW_FUNCTIONS
 
 
@@ -201,6 +203,7 @@ def normalize_step_config(step: dict) -> dict:
     item.setdefault("timeoutMinutes", 0)
     item.setdefault("allowInteraction", True)
     item.setdefault("expectedFiles", [item["outputFile"]] if item.get("outputFile") else [])
+    item.setdefault("requireProjectChanges", item.get("key") == "build")
     item.setdefault("validator", "")
     return item
 
@@ -407,6 +410,7 @@ async def upsert_workflow(workflow: dict) -> dict:
     existing = read_workflow_file(existing_path) if existing_path else None
     existing_folder = existing_path.parent.name if existing_path else None
     item = _normalize_workflow(workflow, existing_folder)
+    assert_workflow_valid(item)
     if existing:
         item["created_at"] = existing.get("created_at", item["created_at"])
     item = write_prompt_files(item)
@@ -430,3 +434,9 @@ async def delete_workflow(workflow_id: str) -> dict:
 
 async def get_functions() -> dict:
     return AVAILABLE_WORKFLOW_FUNCTIONS
+
+
+async def lint_workflow_config(workflow: dict) -> dict:
+    item = _normalize_workflow(workflow, workflow.get("folderName"))
+    issues = lint_workflow(item)
+    return {"ok": not issues, "issues": issues}

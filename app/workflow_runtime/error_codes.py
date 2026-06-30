@@ -1,0 +1,63 @@
+from __future__ import annotations
+
+from app.runtime_modules.errors import UserInputRequired, ValidationError, WorkflowCancelled, WorkflowError
+
+
+ERROR_AGENT_CLI_NOT_FOUND = "AGENT_CLI_NOT_FOUND"
+ERROR_AGENT_OUTPUT_EMPTY = "AGENT_OUTPUT_EMPTY"
+ERROR_AGENT_OUTPUT_FORMAT = "AGENT_OUTPUT_FORMAT"
+ERROR_AGENT_SESSION = "AGENT_SESSION_RECOVERABLE"
+ERROR_AGENT_TIMEOUT = "AGENT_TIMEOUT"
+ERROR_AGENT_PROCESS = "AGENT_PROCESS_FAILED"
+ERROR_CONFIG_INVALID = "WORKFLOW_CONFIG_INVALID"
+ERROR_EXPECTED_FILES = "EXPECTED_FILES_MISSING"
+ERROR_PROJECT_DIFF = "PROJECT_DIFF_MISSING"
+ERROR_USER_INPUT_REQUIRED = "USER_INPUT_REQUIRED"
+ERROR_VALIDATION = "VALIDATION_FAILED"
+ERROR_WORKFLOW_CANCELLED = "WORKFLOW_CANCELLED"
+ERROR_WORKFLOW_FAILED = "WORKFLOW_FAILED"
+
+SESSION_RECOVERY_MARKERS = (
+    "session not found",
+    "invalid session",
+    "unknown session",
+    "could not find session",
+    "no session found",
+    "session is already in use",
+    "already in use",
+)
+
+
+def is_recoverable_session_error(exc: BaseException | str) -> bool:
+    message = str(exc).lower()
+    return any(marker in message for marker in SESSION_RECOVERY_MARKERS)
+
+
+def classify_exception(exc: BaseException | str) -> str:
+    if isinstance(exc, WorkflowCancelled):
+        return ERROR_WORKFLOW_CANCELLED
+    if isinstance(exc, UserInputRequired):
+        return ERROR_USER_INPUT_REQUIRED
+    if isinstance(exc, ValidationError):
+        return ERROR_VALIDATION
+
+    message = str(exc).lower()
+    if is_recoverable_session_error(message):
+        return ERROR_AGENT_SESSION
+    if "cli not found" in message:
+        return ERROR_AGENT_CLI_NOT_FOUND
+    if "timed out" in message or "timeout" in message:
+        return ERROR_AGENT_TIMEOUT
+    if "returned empty" in message or "empty stdout" in message:
+        return ERROR_AGENT_OUTPUT_EMPTY
+    if "tool-call json" in message or "artifact content" in message or "did not treat the prompt file" in message:
+        return ERROR_AGENT_OUTPUT_FORMAT
+    if "process failed with exit code" in message:
+        return ERROR_AGENT_PROCESS
+    if "expected file(s) not found" in message:
+        return ERROR_EXPECTED_FILES
+    if "did not create or modify" in message or "project changes" in message:
+        return ERROR_PROJECT_DIFF
+    if isinstance(exc, WorkflowError):
+        return ERROR_WORKFLOW_FAILED
+    return ERROR_WORKFLOW_FAILED

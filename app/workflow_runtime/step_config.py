@@ -45,6 +45,7 @@ def initial_steps(workflow_steps: list[dict[str, Any]] | None = None) -> list[di
                 "started_at": None,
                 "ended_at": None,
                 "error": None,
+                "error_code": None,
                 "retry_count": 0,
                 "config": workflow_step,
                 "max_retries": int(workflow_step.get("maxRetries", 2) or 0),

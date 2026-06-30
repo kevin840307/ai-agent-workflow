@@ -122,8 +122,17 @@ Retry is workflow-driven.
 - `maxRetries` is counted on the retry target step.
 - `run_test` may classify failure as a test-generation issue or build issue.
 - Failure feedback is appended to `input/failure-feedback.md` and injected into retry prompts when enabled.
+- Step and run failures include `error_code` so the UI can choose stable actions without parsing English messages.
 
 Manual Retry from the UI resets retry counts from the selected step and resumes from there.
+
+## Stability Guards
+
+- `app/workflow_runtime/error_codes.py` classifies workflow, validation, timeout, agent process, session, expected-file, and project-diff failures.
+- `AgentStepRunner` retries once with a fresh agent session when a provider reports a recoverable session problem.
+- `WorkflowExecutor` supports `requireProjectChanges` / `projectDiffGate` for steps that must modify the selected project path.
+- `app/services/workflow_lint_service.py` validates workflow config before save; `/api/workflows/lint` returns non-throwing lint issues for UI previews.
+- `build` steps default `requireProjectChanges` to true when workflow config is normalized.
 
 ## Python Functions
 
