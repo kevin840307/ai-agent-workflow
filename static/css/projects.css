@@ -230,14 +230,14 @@ body.projects-collapsed .project-nav-link strong {
 }
 
 .project-list {
-  gap: 5px;
+  gap: 8px;
   margin-top: 10px;
   padding-bottom: 10px;
 }
 
 .project-tree {
   display: grid;
-  gap: 4px;
+  gap: 5px;
   min-width: 0;
 }
 
@@ -251,16 +251,16 @@ body.projects-collapsed .project-nav-link strong {
 
 .project-root {
   position: relative;
-  display: grid;
-  gap: 2px;
+  display: flex;
+  align-items: center;
   min-width: 0;
-  min-height: 42px;
-  padding: 6px 9px 6px 12px;
-  border: 1px solid rgba(203, 213, 225, 0.72);
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.82);
+  min-height: 38px;
+  padding: 0 10px 0 14px;
+  border: 1px solid rgba(203, 213, 225, 0.70);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.68);
   text-align: left;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.035);
+  box-shadow: none;
   transition: transform 150ms ease, border-color 150ms ease, box-shadow 150ms ease, background 150ms ease;
 }
 
@@ -277,16 +277,16 @@ body.projects-collapsed .project-nav-link strong {
 
 .project-root:hover,
 .project-tree.active .project-root {
-  border-color: rgba(15, 118, 110, 0.42);
+  border-color: rgba(15, 118, 110, 0.34);
   background: #ffffff;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
 }
 
 .project-tree.active .project-root::before {
   background: var(--accent);
 }
 
-.project-root strong,
-.project-root span {
+.project-root strong {
   min-width: 0;
   overflow: hidden;
   white-space: nowrap;
@@ -295,23 +295,18 @@ body.projects-collapsed .project-nav-link strong {
 
 .project-root strong {
   color: var(--text);
-  font-size: 12px;
+  font-size: 12.5px;
   font-weight: 850;
-}
-
-.project-root span {
-  color: #7b8798;
-  font-size: 11px;
 }
 
 .project-menu-button {
   width: 28px;
-  height: 42px;
+  height: 38px;
   border: 1px solid transparent;
-  border-radius: 10px;
+  border-radius: 9px;
   background: transparent;
   color: #64748b;
-  font-size: 16px;
+  font-size: 15px;
   line-height: 1;
   opacity: 0;
   transition: opacity 150ms ease, background 150ms ease, color 150ms ease, border-color 150ms ease;
@@ -331,16 +326,20 @@ body.projects-collapsed .project-nav-link strong {
 
 .project-action-menu {
   position: absolute;
-  top: 44px;
+  top: 40px;
   right: 0;
   z-index: 30;
   display: grid;
-  min-width: 136px;
+  min-width: 142px;
   padding: 6px;
   border: 1px solid rgba(203, 213, 225, 0.88);
   border-radius: 10px;
   background: #ffffff;
   box-shadow: 0 16px 34px rgba(15, 23, 42, 0.14);
+}
+
+.project-action-menu[hidden] {
+  display: none;
 }
 
 .project-action-menu button {
@@ -365,9 +364,9 @@ body.projects-collapsed .project-nav-link strong {
 .project-children {
   display: grid;
   gap: 3px;
-  margin-left: 12px;
-  padding-left: 9px;
-  border-left: 1px solid rgba(203, 213, 225, 0.78);
+  margin-left: 10px;
+  padding-left: 10px;
+  border-left: 1px solid rgba(15, 118, 110, 0.16);
 }
 
 .project-row {
@@ -378,12 +377,12 @@ body.projects-collapsed .project-nav-link strong {
 
 .project-item {
   position: relative;
-  min-height: 40px;
-  padding: 6px 9px 6px 10px;
-  border-color: rgba(203, 213, 225, 0.72);
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.78);
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.035);
+  min-height: 34px;
+  padding: 4px 8px 4px 10px;
+  border-color: transparent;
+  border-radius: 8px;
+  background: transparent;
+  box-shadow: none;
   transition: transform 150ms ease, border-color 150ms ease, box-shadow 150ms ease, background 150ms ease;
 }
 
@@ -391,18 +390,18 @@ body.projects-collapsed .project-nav-link strong {
   content: "";
   position: absolute;
   left: 0;
-  top: 8px;
-  bottom: 8px;
-  width: 3px;
+  top: 9px;
+  bottom: 9px;
+  width: 2px;
   border-radius: 999px;
   background: transparent;
 }
 
 .project-item:hover {
-  transform: translateY(-1px);
-  border-color: rgba(15, 118, 110, 0.30);
-  background: #ffffff;
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+  transform: none;
+  border-color: rgba(15, 118, 110, 0.18);
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: none;
 }
 
 .project-item strong {
@@ -417,9 +416,9 @@ body.projects-collapsed .project-nav-link strong {
 }
 
 .project-row.active .project-item {
-  border-color: rgba(15, 118, 110, 0.58);
+  border-color: rgba(15, 118, 110, 0.30);
   background: #effaf7;
-  box-shadow: 0 0 0 2px rgba(15, 118, 110, 0.10);
+  box-shadow: none;
 }
 
 .project-row.active .project-item::before {
@@ -432,9 +431,9 @@ body.projects-collapsed .project-nav-link strong {
 
 .project-row .danger {
   width: 28px;
-  height: 40px;
+  height: 34px;
   border-color: transparent;
-  border-radius: 10px;
+  border-radius: 8px;
   background: transparent;
   color: #94a3b8;
   font-size: 16px;

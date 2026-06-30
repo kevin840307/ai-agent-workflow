@@ -53,7 +53,6 @@ export function createSessions(ctx) {
           <div class="project-root-row">
             <button class="project-root" title="${ui.escapeHtml(group.projectPath || group.title)}">
               <strong>${ui.escapeHtml(group.title)}</strong>
-              <span>${ui.escapeHtml(ui.shortPath(group.projectPath || ""))}</span>
             </button>
             <button class="project-menu-button" title="Project actions" aria-label="Project actions">...</button>
             <div class="project-action-menu" hidden>
