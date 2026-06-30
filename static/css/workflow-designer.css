@@ -3252,3 +3252,58 @@ body.projects-collapsed .designer-sidebar-section {
   background: var(--accent);
   color: #ffffff;
 }
+
+.designer-lint-panel {
+  display: grid;
+  gap: 4px;
+  padding: 9px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #f8fafc;
+  font-size: 12px;
+}
+
+.designer-lint-panel strong {
+  color: var(--text);
+  font-size: 12px;
+}
+
+.designer-lint-panel span,
+.designer-lint-panel small {
+  color: var(--muted);
+}
+
+.designer-lint-panel.ok {
+  border-color: #b7e4c7;
+  background: #ecfdf3;
+}
+
+.designer-lint-panel.issues,
+.designer-lint-panel.error {
+  border-color: #fac2ba;
+  background: #fff1ef;
+}
+
+.designer-lint-panel.checking {
+  border-color: #f4d48a;
+  background: #fff8e7;
+}
+
+.designer-lint-panel ul {
+  display: grid;
+  gap: 4px;
+  margin: 2px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.designer-lint-panel li {
+  display: grid;
+  gap: 1px;
+  color: var(--text);
+}
+
+.designer-lint-panel li span {
+  font-weight: 800;
+  color: var(--fail);
+}

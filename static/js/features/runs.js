@@ -13,6 +13,10 @@ export function createRuns(ctx) {
       ui.byKey("artifacts").innerHTML = "";
       ui.byKey("artifactContent").textContent = "";
       if (ui.byKey("stepDetails")) ui.byKey("stepDetails").innerHTML = "";
+      if (ui.byKey("runResultPanel")) {
+        ui.byKey("runResultPanel").hidden = true;
+        ui.byKey("runResultPanel").innerHTML = "";
+      }
     },
 
     renderStepSkeleton(stepTitles = []) {
@@ -63,6 +67,7 @@ export function createRuns(ctx) {
       runs.renderSteps(run);
       runs.renderStepDetails(run, selectedStep);
       ctx.features.artifacts.render(run.artifacts || []);
+      runs.renderResultPanel(run);
       ctx.features.interactions.render(run);
       ctx.features.workflows?.renderPreview?.();
     },
@@ -80,6 +85,7 @@ export function createRuns(ctx) {
           <div class="step-title"><span>${ui.escapeHtml(step.title)}</span>${retry}</div>
           <div class="step-message">${error}</div>
           <div class="step-actions">
+            <button class="mini-button detail-step" data-step-key="${ui.escapeHtml(step.key)}">Details</button>
             ${relatedArtifacts.length ? `<button class="mini-button inspect-step" data-step-key="${ui.escapeHtml(step.key)}">Files ${relatedArtifacts.length}</button>` : ""}
             <button class="mini-button guide-step" data-step-key="${ui.escapeHtml(step.key)}">Guide</button>
             <button class="mini-button retry-step" data-step-key="${ui.escapeHtml(step.key)}">Retry</button>
@@ -89,6 +95,10 @@ export function createRuns(ctx) {
         row.onclick = (event) => {
           if (event.target.closest("button")) return;
           runs.selectStep(run, step.key);
+        };
+        row.querySelector(".detail-step").onclick = (event) => {
+          event.stopPropagation();
+          runs.openStepDetailModal(run, step);
         };
         const inspect = row.querySelector(".inspect-step");
         if (inspect) inspect.onclick = (event) => {
@@ -147,6 +157,7 @@ export function createRuns(ctx) {
           ${step.error ? `<div class="step-detail-error"><strong>Failure</strong><span>${ui.escapeHtml(step.error)}</span></div>` : ""}
           <div class="step-detail-actions">
             ${promptArtifact ? `<button class="mini-button step-detail-open-prompt" type="button">Prompt</button>` : ""}
+            <button class="mini-button step-detail-open-drawer" type="button">Details</button>
             ${relatedArtifacts.length ? `<button class="mini-button step-detail-open-files" type="button">Files ${relatedArtifacts.length}</button>` : ""}
             <button class="mini-button step-detail-guide" type="button">Guide</button>
             <button class="mini-button step-detail-retry" type="button">Retry from here</button>
@@ -171,12 +182,148 @@ export function createRuns(ctx) {
       `;
 
       target.querySelector(".step-detail-open-files")?.addEventListener("click", () => ctx.features.artifacts.openStepFilesModal(run, step));
+      target.querySelector(".step-detail-open-drawer")?.addEventListener("click", () => runs.openStepDetailModal(run, step));
       target.querySelector(".step-detail-open-prompt")?.addEventListener("click", () => ctx.features.artifacts.open(promptArtifact.id));
       target.querySelector(".step-detail-guide")?.addEventListener("click", () => runs.addGuidance(step.key));
       target.querySelector(".step-detail-retry")?.addEventListener("click", () => runs.retry(step.key));
       target.querySelectorAll("[data-artifact-id]").forEach((button) => {
         button.addEventListener("click", () => ctx.features.artifacts.open(button.dataset.artifactId));
       });
+    },
+
+    renderResultPanel(run) {
+      const panel = ui.byKey("runResultPanel");
+      if (!panel) return;
+      if (!["done", "failed", "cancelled", "waiting_input"].includes(run.status)) {
+        panel.hidden = true;
+        panel.innerHTML = "";
+        return;
+      }
+      const summary = (run.artifacts || []).find((artifact) => artifact.path === ".workflow/run-summary.md");
+      const trace = (run.artifacts || []).find((artifact) => artifact.path === ".workflow/run-trace.json");
+      const failed = (run.steps || []).find((step) => ["failed", "waiting_input", "cancelled"].includes(step.status));
+      const passed = (run.steps || []).filter((step) => step.status === "passed").length;
+      const retries = (run.steps || []).reduce((total, step) => total + Number(step.retry_count || 0), 0);
+      panel.hidden = false;
+      panel.innerHTML = `
+        <div class="run-result-head">
+          <div>
+            <span class="run-result-eyebrow">${ui.escapeHtml(String(run.status || "").toUpperCase())}</span>
+            <h2>${ui.escapeHtml(run.status === "done" ? "Workflow complete" : "Workflow needs attention")}</h2>
+            <p>${ui.escapeHtml(failed?.error || run.error || (run.status === "done" ? "All enabled steps finished." : "Inspect the failed step for details."))}</p>
+          </div>
+          <div class="run-result-actions">
+            ${summary ? `<button class="mini-button" data-result-artifact="${ui.escapeHtml(summary.id)}">Summary</button>` : ""}
+            ${trace ? `<button class="mini-button" data-result-artifact="${ui.escapeHtml(trace.id)}">Trace</button>` : ""}
+            <button class="mini-button" data-result-tab="logsPanel">Logs</button>
+          </div>
+        </div>
+        <div class="run-result-grid">
+          <div><span>Steps</span><strong>${passed} / ${(run.steps || []).length}</strong></div>
+          <div><span>Retries</span><strong>${retries}</strong></div>
+          <div><span>Error Code</span><strong>${ui.escapeHtml(failed?.error_code || run.error_code || "-")}</strong></div>
+        </div>
+      `;
+      panel.querySelectorAll("[data-result-artifact]").forEach((button) => {
+        button.addEventListener("click", () => ctx.features.artifacts.open(button.dataset.resultArtifact));
+      });
+      panel.querySelector("[data-result-tab]")?.addEventListener("click", () => ctx.features.layout.activateTab("logsPanel"));
+    },
+
+    async openStepDetailModal(run, step) {
+      const modal = runs.ensureStepDetailModal();
+      const related = ctx.features.artifacts.artifactsForStep(step, run.artifacts || []);
+      const promptArtifact = related.find((artifact) => artifact.path === `prompts/${step.key}.md`);
+      const outputArtifact = related.find((artifact) => artifact.path === `output/${step.config?.outputFile || step.config?.filename || ""}`);
+      const traceArtifact = (run.artifacts || []).find((artifact) => artifact.path === ".workflow/run-trace.json");
+      modal.title.textContent = step.title || step.key || "Step Details";
+      modal.meta.textContent = `${step.status} · retry ${step.retry_count || 0}`;
+      modal.body.innerHTML = `
+        <div class="step-drawer-grid">
+          <div><span>Agent</span><strong>${ui.escapeHtml(step.agent || step.config?.agent || step.config?.provider || "-")}</strong></div>
+          <div><span>Output</span><strong>${ui.escapeHtml(step.config?.outputFile || step.config?.filename || "-")}</strong></div>
+          <div><span>Error Code</span><strong>${ui.escapeHtml(step.error_code || "-")}</strong></div>
+        </div>
+        ${step.error ? `<div class="step-detail-error"><strong>Error</strong><span>${ui.escapeHtml(step.error)}</span></div>` : ""}
+        <div class="step-detail-section"><strong>Recent Events</strong>${
+          (step.events || []).length
+            ? `<ol class="step-detail-events">${(step.events || []).slice(-8).reverse().map((event) => `<li><span>${ui.escapeHtml(event.kind || "event")}</span>${ui.escapeHtml(event.message || "")}</li>`).join("")}</ol>`
+            : "<p>No events recorded.</p>"
+        }</div>
+        <div class="step-detail-actions">
+          ${promptArtifact ? `<button class="mini-button" data-artifact-id="${ui.escapeHtml(promptArtifact.id)}">Prompt</button>` : ""}
+          ${outputArtifact ? `<button class="mini-button" data-artifact-id="${ui.escapeHtml(outputArtifact.id)}">Output</button>` : ""}
+          ${traceArtifact ? `<button class="mini-button" data-artifact-id="${ui.escapeHtml(traceArtifact.id)}">Trace</button>` : ""}
+          ${related.length ? `<button class="mini-button" data-open-files="1">Files ${related.length}</button>` : ""}
+          <button class="mini-button" data-guide="1">Guide</button>
+          <button class="mini-button" data-retry="1">Retry</button>
+        </div>
+      `;
+      modal.body.querySelectorAll("[data-artifact-id]").forEach((button) => {
+        button.addEventListener("click", () => {
+          runs.closeStepDetailModal();
+          ctx.features.artifacts.open(button.dataset.artifactId);
+        });
+      });
+      modal.body.querySelector("[data-open-files]")?.addEventListener("click", () => {
+        runs.closeStepDetailModal();
+        ctx.features.artifacts.openStepFilesModal(run, step);
+      });
+      modal.body.querySelector("[data-guide]")?.addEventListener("click", () => {
+        runs.closeStepDetailModal();
+        runs.addGuidance(step.key);
+      });
+      modal.body.querySelector("[data-retry]")?.addEventListener("click", () => {
+        runs.closeStepDetailModal();
+        runs.retry(step.key);
+      });
+      modal.backdrop.hidden = false;
+      document.body.classList.add("step-detail-modal-open");
+      modal.close.focus();
+    },
+
+    ensureStepDetailModal() {
+      let backdrop = document.getElementById("stepDetailModalBackdrop");
+      if (!backdrop) {
+        backdrop = document.createElement("div");
+        backdrop.id = "stepDetailModalBackdrop";
+        backdrop.className = "step-detail-modal-backdrop";
+        backdrop.hidden = true;
+        backdrop.innerHTML = `
+          <div class="step-detail-modal" role="dialog" aria-modal="true" aria-labelledby="stepDetailModalTitle">
+            <div class="step-detail-modal-head">
+              <div>
+                <h2 id="stepDetailModalTitle">Step Details</h2>
+                <p id="stepDetailModalMeta"></p>
+              </div>
+              <button id="stepDetailModalClose" class="modal-close" type="button" aria-label="Close step details">x</button>
+            </div>
+            <div id="stepDetailModalBody" class="step-detail-modal-body"></div>
+          </div>
+        `;
+        document.body.appendChild(backdrop);
+        backdrop.addEventListener("click", (event) => {
+          if (event.target === backdrop) runs.closeStepDetailModal();
+        });
+        document.addEventListener("keydown", (event) => {
+          if (!backdrop.hidden && event.key === "Escape") runs.closeStepDetailModal();
+        });
+      }
+      const close = document.getElementById("stepDetailModalClose");
+      close.onclick = () => runs.closeStepDetailModal();
+      return {
+        backdrop,
+        close,
+        title: document.getElementById("stepDetailModalTitle"),
+        meta: document.getElementById("stepDetailModalMeta"),
+        body: document.getElementById("stepDetailModalBody"),
+      };
+    },
+
+    closeStepDetailModal() {
+      const backdrop = document.getElementById("stepDetailModalBackdrop");
+      if (backdrop) backdrop.hidden = true;
+      document.body.classList.remove("step-detail-modal-open");
     },
 
     async loadLatest() {

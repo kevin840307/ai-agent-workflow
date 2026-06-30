@@ -94,11 +94,15 @@ let state = {
   stepActionMenuExpanded: false,
   apiLoaded: false,
   apiError: "",
+  lintStatus: "idle",
+  lintIssues: [],
 };
 
 let workflowDirty = false;
 let pendingWorkflowAction = null;
 let availableWorkflowFunctions = { validators: [], reviewStrategies: [], aggregators: [], promptParams: [] };
+let lintTimer = null;
+let lintRequestId = 0;
 
 async function initWorkflowDesignerPage() {
   await loadState();
@@ -153,7 +157,9 @@ function bindEvents() {
   on("designerNewWorkflowMini", "click", createNewWorkflow);
   on("designerAddStep", "click", addStep);
   on("designerSaveDraft", "click", () => {
-    saveState().then(() => toast("Workflow saved to API."));
+    saveState().then((saved) => {
+      if (saved !== false) toast("Workflow saved to API.");
+    });
   });
   on("designerResetDraft", "click", () => {
     const wf = getSelectedWorkflow();
@@ -737,6 +743,12 @@ async function saveState(options = {}) {
   try {
     const workflow = getSelectedWorkflow();
     if (workflow && !isReadonly()) {
+      const lint = await lintWorkflowNow(workflow);
+      if (!lint.ok) {
+        if (!options.quiet) toast(`Fix ${lint.issues.length} workflow issue${lint.issues.length === 1 ? "" : "s"} before saving.`);
+        renderWorkflowLintState();
+        return false;
+      }
       const saved = await designerApi(`${WORKFLOW_API}/${encodeURIComponent(workflow.id)}`, {
         method: "PUT",
         body: JSON.stringify(workflow),
@@ -748,8 +760,11 @@ async function saveState(options = {}) {
     saveUiState();
     workflowDirty = false;
     renderWorkflowDirtyState();
+    scheduleWorkflowLint();
+    return true;
   } catch {
     if (!options.quiet) toast("Could not save workflow to API.");
+    return false;
   }
 }
 
@@ -776,6 +791,7 @@ function markWorkflowDirty() {
   if (isReadonly()) return;
   workflowDirty = true;
   renderWorkflowDirtyState();
+  scheduleWorkflowLint();
 }
 
 function setDesignerMode(mode) {
@@ -820,6 +836,65 @@ function renderWorkflowDirtyState() {
   badge.classList.toggle("passed", !dirty);
   const saveButton = el("designerSaveDraft");
   if (saveButton) saveButton.classList.toggle("designer-save-attention", dirty);
+  renderWorkflowLintState();
+}
+
+function scheduleWorkflowLint(delay = 350) {
+  clearTimeout(lintTimer);
+  lintTimer = setTimeout(() => {
+    lintWorkflowNow().catch((error) => {
+      state.lintStatus = "error";
+      state.lintIssues = [{ field: "workflow", message: error.message }];
+      renderWorkflowLintState();
+    });
+  }, delay);
+}
+
+async function lintWorkflowNow(workflow = getSelectedWorkflow()) {
+  if (!workflow || isReadonly()) {
+    state.lintStatus = "idle";
+    state.lintIssues = [];
+    renderWorkflowLintState();
+    return { ok: true, issues: [] };
+  }
+  const requestId = ++lintRequestId;
+  state.lintStatus = "checking";
+  renderWorkflowLintState();
+  const result = await designerApi(`${WORKFLOW_API}/lint`, {
+    method: "POST",
+    body: JSON.stringify(workflow),
+  });
+  if (requestId !== lintRequestId) return { ok: !state.lintIssues.length, issues: state.lintIssues };
+  state.lintStatus = result.ok ? "ok" : "issues";
+  state.lintIssues = Array.isArray(result.issues) ? result.issues : [];
+  renderWorkflowLintState();
+  return { ok: Boolean(result.ok), issues: state.lintIssues };
+}
+
+function renderWorkflowLintState() {
+  const panel = el("designerLintPanel");
+  if (!panel) return;
+  if (isReadonly()) {
+    panel.className = "designer-lint-panel";
+    panel.innerHTML = `<strong>System workflow</strong><span>Read only configuration.</span>`;
+    return;
+  }
+  const issues = state.lintIssues || [];
+  const status = state.lintStatus || "idle";
+  panel.className = `designer-lint-panel ${status}`;
+  if (status === "checking") {
+    panel.innerHTML = `<strong>Checking workflow...</strong><span>Validating steps, functions, paths, retry targets.</span>`;
+    return;
+  }
+  if (issues.length) {
+    panel.innerHTML = `
+      <strong>${issues.length} issue${issues.length === 1 ? "" : "s"} found</strong>
+      <ul>${issues.slice(0, 5).map((issue) => `<li><span>${escapeHtml(issue.field || "workflow")}</span>${escapeHtml(issue.message || "Invalid setting")}</li>`).join("")}</ul>
+      ${issues.length > 5 ? `<small>+ ${issues.length - 5} more</small>` : ""}
+    `;
+    return;
+  }
+  panel.innerHTML = `<strong>Ready to save</strong><span>No workflow config issues detected.</span>`;
 }
 
 function guardedWorkflowAction(action) {
@@ -994,6 +1069,7 @@ const layoutRenderer = installLayoutRenderer({
   renderSettings: () => stepSettingsRenderer.renderSettings(),
   renderStepEditorHeader,
   renderStepEditorModal,
+  renderWorkflowLintState,
   renderWorkflowDirtyState,
   saveUiState,
   setText,

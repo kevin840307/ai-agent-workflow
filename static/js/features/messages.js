@@ -20,7 +20,21 @@ export function createMessages(ctx) {
       }
 
       const status = msg.status && !["completed"].includes(msg.status) ? ` [${msg.status}]` : "";
-      div.textContent = `${msg.content || ""}${status}`;
+      const content = document.createElement("div");
+      content.textContent = `${msg.content || ""}${status}`;
+      div.appendChild(content);
+      if (msg.role !== "user" && msg.trace) {
+        const trace = document.createElement("div");
+        trace.className = "message-trace";
+        const bits = [
+          msg.trace.agent ? `Agent ${msg.trace.agent}` : "",
+          Number.isFinite(msg.trace.duration_ms) ? `${(msg.trace.duration_ms / 1000).toFixed(1)}s` : "",
+          Number.isFinite(msg.trace.prompt_chars) ? `Prompt ${msg.trace.prompt_chars} chars` : "",
+          msg.trace.session_reused ? "reused session" : "fresh session",
+        ].filter(Boolean);
+        trace.textContent = bits.join(" · ");
+        div.appendChild(trace);
+      }
       return div;
     },
 

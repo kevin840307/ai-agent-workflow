@@ -33,7 +33,7 @@
             <span class="icon-mark">Reset</span>
           </button>
           <button id="toggleSettings" class="header-icon" title="Agent settings" aria-label="Agent settings" aria-expanded="false">
-            <span class="icon-mark">Settings</span>
+            <span class="icon-mark" aria-hidden="true">⚙</span>
           </button>
           <button id="toggleDetails" class="header-icon" title="Collapse details" aria-label="Collapse details" aria-pressed="false">
             <span class="icon-mark">&gt;</span>
@@ -84,6 +84,8 @@
         <div><span>Progress</span><strong id="progressText">0 / 14</strong></div>
         <div><span>Status</span><strong id="resultText">Waiting</strong></div>
       </section>
+
+      <section id="runResultPanel" class="run-result-panel" hidden></section>
 
       <section id="messages" class="history"></section>
 
