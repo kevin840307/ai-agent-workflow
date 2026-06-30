@@ -74,7 +74,9 @@ export function createSessions(ctx) {
               <span class="project-caret" aria-hidden="true">${collapsed ? ">" : "v"}</span>
               <strong>${ui.escapeHtml(group.title)}</strong>
             </button>
-            <button class="project-menu-button" title="Project actions" aria-label="Project actions">...</button>
+            <button class="project-menu-button" title="Project actions" aria-label="Project actions">
+              <span aria-hidden="true"></span>
+            </button>
             <div class="project-action-menu" hidden>
               <button data-action="new-chat">New chat</button>
               <button data-action="delete-project" class="danger-text">Delete project</button>
