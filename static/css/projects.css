@@ -396,9 +396,9 @@ body.projects-collapsed .project-nav-link strong {
 }
 
 .project-row {
-  grid-template-columns: minmax(0, 1fr) 28px;
+  position: relative;
+  grid-template-columns: minmax(0, 1fr);
   align-items: stretch;
-  gap: 4px;
 }
 
 .project-item {
@@ -408,7 +408,7 @@ body.projects-collapsed .project-nav-link strong {
   align-items: center;
   gap: 7px;
   min-height: 34px;
-  padding: 4px 8px 4px 7px;
+  padding: 4px 30px 4px 7px;
   border-color: transparent;
   border-radius: 8px;
   background: transparent;
@@ -433,21 +433,14 @@ body.projects-collapsed .project-nav-link strong {
   background: #ffffff;
 }
 
-.chat-copy {
-  display: grid;
-  gap: 1px;
-  min-width: 0;
-}
-
 .project-item strong {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
   color: var(--text);
   font-size: 12px;
   font-weight: 760;
-}
-
-.chat-copy > span {
-  color: #7b8798;
-  font-size: 11px;
 }
 
 .project-row.active .project-item {
@@ -467,10 +460,13 @@ body.projects-collapsed .project-nav-link strong {
 }
 
 .project-row .danger {
+  position: absolute;
+  top: 3px;
+  right: 3px;
   width: 28px;
-  height: 34px;
+  height: 28px;
   border-color: transparent;
-  border-radius: 8px;
+  border-radius: 7px;
   background: transparent;
   color: #94a3b8;
   font-size: 16px;

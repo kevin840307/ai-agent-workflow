@@ -102,10 +102,7 @@ export function createSessions(ctx) {
           row.innerHTML = `
             <button class="project-item">
               <span class="chat-dot" aria-hidden="true"></span>
-              <span class="chat-copy">
-                <strong>${ui.escapeHtml(chatLabel(session, group, index))}</strong>
-                <span>${ui.escapeHtml(session.id === state.activeSessionId ? "Current chat" : "Chat session")}</span>
-              </span>
+              <strong>${ui.escapeHtml(chatLabel(session, group, index))}</strong>
             </button>
             <button class="icon-button danger" title="Delete chat">x</button>
           `;
