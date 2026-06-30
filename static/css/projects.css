@@ -230,23 +230,23 @@ body.projects-collapsed .project-nav-link strong {
 }
 
 .project-list {
-  gap: 7px;
-  margin-top: 12px;
-  padding-bottom: 12px;
+  gap: 5px;
+  margin-top: 10px;
+  padding-bottom: 10px;
 }
 
 .project-row {
-  grid-template-columns: minmax(0, 1fr) 32px;
+  grid-template-columns: minmax(0, 1fr) 28px;
   align-items: stretch;
-  gap: 6px;
+  gap: 4px;
 }
 
 .project-item {
   position: relative;
-  min-height: 50px;
-  padding: 9px 11px 9px 13px;
+  min-height: 40px;
+  padding: 6px 9px 6px 12px;
   border-color: rgba(203, 213, 225, 0.72);
-  border-radius: 14px;
+  border-radius: 10px;
   background: rgba(255, 255, 255, 0.78);
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.035);
   transition: transform 150ms ease, border-color 150ms ease, box-shadow 150ms ease, background 150ms ease;
@@ -256,8 +256,8 @@ body.projects-collapsed .project-nav-link strong {
   content: "";
   position: absolute;
   left: 0;
-  top: 10px;
-  bottom: 10px;
+  top: 8px;
+  bottom: 8px;
   width: 3px;
   border-radius: 999px;
   background: transparent;
@@ -272,7 +272,7 @@ body.projects-collapsed .project-nav-link strong {
 
 .project-item strong {
   color: var(--text);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 850;
 }
 
@@ -296,13 +296,13 @@ body.projects-collapsed .project-nav-link strong {
 }
 
 .project-row .danger {
-  width: 32px;
-  height: 50px;
+  width: 28px;
+  height: 40px;
   border-color: transparent;
-  border-radius: 12px;
+  border-radius: 10px;
   background: transparent;
   color: #94a3b8;
-  font-size: 18px;
+  font-size: 16px;
   opacity: 0;
   transition: opacity 150ms ease, background 150ms ease, color 150ms ease, border-color 150ms ease;
 }
