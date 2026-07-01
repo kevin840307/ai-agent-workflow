@@ -7,7 +7,7 @@ type: gate
 skill: steps/system-controlled-qwen/final_gate.md
 command: ''
 agent: ''
-validator: require_status_pass
+function: require_status_pass
 retry: 10
 failAction: selected_step
 retryFromStepKey: final_review

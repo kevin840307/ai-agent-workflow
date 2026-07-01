@@ -102,7 +102,7 @@ let state = {
 
 let workflowDirty = false;
 let pendingWorkflowAction = null;
-let availableWorkflowFunctions = { validators: [], reviewStrategies: [], aggregators: [], promptParams: [] };
+let availableWorkflowFunctions = { functions: [], reviewStrategies: [], aggregators: [], promptParams: [] };
 let lintTimer = null;
 let lintRequestId = 0;
 
@@ -421,7 +421,7 @@ function updateFromInput(input) {
       return;
     }
 
-    if (["validator", "reviewMode"].includes(field)) {
+    if (["function", "reviewMode"].includes(field)) {
       handleStepCapabilityChange(step);
       markWorkflowDirty();
       return;
@@ -981,8 +981,8 @@ async function designerApi(path, options = {}) {
 function summarizeStep(step) {
   if (step.type === "review") return `${formatReviewMode(step.reviewMode)} - confidence >= ${step.confidenceThreshold} - retry ${step.maxRetries}${step.retryFromStepKey ? ` -> ${step.retryFromStepKey}` : ""}`;
   if (step.type === "validation" || step.type === "python") {
-    const meta = functionMeta("validators", step.validator);
-    return `${step.type === "python" ? "Python function" : "Validation function"}: ${meta?.label || step.validator || "not set"}`;
+    const meta = functionMeta("functions", step.function || step.function);
+    return `${step.type === "python" ? "Python function" : "Check function"}: ${meta?.label || step.function || "not set"}`;
   }
   if (step.type === "gate" || step.type === "manual") return step.pauseAfterStep ? "Pause and wait for human approval." : "Gate decision step.";
   if (step.command) return `Command ${step.command} - template ${step.templatePath || "not set"} - retry ${step.maxRetries}${step.retryFromStepKey ? ` -> ${step.retryFromStepKey}` : ""}.`;

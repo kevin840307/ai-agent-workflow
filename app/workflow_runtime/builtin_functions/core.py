@@ -5,7 +5,7 @@ import os
 import subprocess
 from pathlib import Path
 
-from app.workflow_function_modules.base import WorkflowFunctionContext, WorkflowFunctionError
+from app.workflow_runtime.builtin_functions.base import WorkflowFunctionContext, WorkflowFunctionError
 
 
 def ids_with_prefix(text: str, prefix: str) -> set[str]:

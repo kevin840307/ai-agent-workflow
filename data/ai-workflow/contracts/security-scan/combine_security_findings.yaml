@@ -10,7 +10,7 @@ command: ''
 agent: ''
 outputs:
 - security-findings.md
-validator: combine_security_candidates
+function: combine_security_candidates
 retry: 1
 failAction: same_step
 retryFromStepKey: combine_security_findings

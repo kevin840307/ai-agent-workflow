@@ -6,14 +6,15 @@ from typing import Any
 
 from fastapi import HTTPException
 
-from app.workflow_function_modules.registry import PYTHON_FUNCTIONS
+from app.workflow_runtime.builtin_functions.registry import PYTHON_FUNCTIONS
+from app.services import workflow_asset_service
 from app.workflow_runtime.step_utils import expected_files
 
 VALID_STEP_TYPES = {"ai", "agent", "qwen", "review", "validation", "validator", "python", "test", "gate", "manual"}
 VALID_FAIL_ACTIONS = {"same_step", "previous_step", "selected_step", "stop"}
 VALID_REVIEW_MODES = {"", "none", "disabled", "current_session", "new_agent", "multi_agent"}
 VALID_AGGREGATORS = {"", "keyword_confidence", "majority_vote", "all_must_pass"}
-VALIDATORS_REQUIRING_ARTIFACT = {"require_status_pass", "validate_security_candidates", "validate_security_report"}
+FUNCTIONS_REQUIRING_ARTIFACT = {"require_status_pass", "validate_security_candidates", "validate_security_report"}
 
 
 def lint_workflow(workflow: dict[str, Any]) -> list[dict[str, Any]]:
@@ -50,11 +51,13 @@ def lint_workflow(workflow: dict[str, Any]) -> list[dict[str, Any]]:
         for rel_path in expected_files({"config": step}):
             _check_expected_path(rel_path, f"{location}.expectedFiles", errors)
 
-        validator = _validator_id(step.get("validator"))
-        if validator and validator not in PYTHON_FUNCTIONS and validator != "consensus_agent":
-            errors.append(_issue(f"{location}.validator", f"Unknown validator/function: {validator}"))
-        if validator in VALIDATORS_REQUIRING_ARTIFACT and not (step.get("outputFile") or step.get("filename")):
-            errors.append(_issue(f"{location}.outputFile", f"{validator} requires an output filename/artifact."))
+        function_id = _function_id(step.get("function") if step.get("function") is not None else step.get("validator"))
+        if function_id and function_id != "consensus_agent":
+            known_asset = workflow_asset_service.resolve_function_reference(function_id)
+            if function_id not in PYTHON_FUNCTIONS and not known_asset:
+                errors.append(_issue(f"{location}.function", f"Unknown Python function: {function_id}"))
+        if function_id in FUNCTIONS_REQUIRING_ARTIFACT and not (step.get("outputFile") or step.get("filename")):
+            errors.append(_issue(f"{location}.outputFile", f"{function_id} requires an output filename/artifact."))
 
         review_mode = str(step.get("reviewMode") or "")
         if review_mode not in VALID_REVIEW_MODES:
@@ -107,9 +110,9 @@ def assert_workflow_valid(workflow: dict[str, Any]) -> None:
         )
 
 
-def _validator_id(value: Any) -> str:
+def _function_id(value: Any) -> str:
     if isinstance(value, dict):
-        return str(value.get("id") or "")
+        return str(value.get("id") or value.get("function") or "")
     return str(value or "")
 
 

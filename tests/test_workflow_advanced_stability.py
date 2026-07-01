@@ -54,7 +54,7 @@ MINIMAL_WORKFLOW = {
             "retryFromStepKey": "",
             "reviewMode": "none",
             "allowInteraction": False,
-            "validator": "",
+            "function": "",
         }
     ],
 }

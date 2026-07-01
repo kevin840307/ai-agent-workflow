@@ -11,7 +11,7 @@ from fastapi import HTTPException
 
 from app.services import artifact_service, workflow_service
 from app.core.paths import atomic_write_text
-from app.workflow_functions import _security_heuristic_candidates_from_context
+from app.workflow_runtime.builtin_functions.security_candidates import _security_heuristic_candidates_from_context
 from app.workflow_runtime.step_config import initial_steps
 
 
@@ -23,7 +23,7 @@ class RuntimeSafetyTests(unittest.TestCase):
                     "key": "consensus_security_scan",
                     "name": "Consensus Security Scan",
                     "type": "python",
-                    "validator": "consensus_agent",
+                    "function": "consensus_agent",
                     "maxRetries": 7,
                     "retryFromStepKey": "collect_security_manifest",
                     "freshSessionPerAgent": True,
@@ -34,7 +34,7 @@ class RuntimeSafetyTests(unittest.TestCase):
         self.assertEqual(steps[0]["max_retries"], 7)
         self.assertEqual(steps[0]["retry_from_step_key"], "collect_security_manifest")
         self.assertTrue(steps[0]["config"]["freshSessionPerAgent"])
-        self.assertEqual(steps[0]["config"]["validator"], "consensus_agent")
+        self.assertEqual(steps[0]["config"]["function"], "consensus_agent")
 
     def test_artifact_api_rejects_paths_outside_workspace(self) -> None:
         async def run_case() -> None:

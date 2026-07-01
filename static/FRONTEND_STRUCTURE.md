@@ -80,7 +80,7 @@ Module responsibilities:
 
 - `controller.js`: owns page lifecycle, event delegation, state transitions, API persistence, and module wiring. It should stay orchestration-only.
 - `asset-tools.js`: owns `.ai-workflow` skill creation and Python asset upload actions used by the existing step editor.
-- `asset-manager.js`: owns asset CRUD UI for `steps/`, `contracts/`, `validators/`, `tools/`, and `workflows/` so manually added files are visible without code changes.
+- `asset-manager.js`: owns asset CRUD UI for `steps/`, `contracts/`, `functions/`, and `workflows/` so manually added files are visible without code changes.
 - `layout-renderer.js`: owns top-level designer rendering, sidebar/workflow labels, step list, canvas, filters, density controls, context menu, and drag/drop.
 - `step-settings-renderer.js`: owns step settings tab rendering, including basic/prompt/review/retry/gate/advanced/consensus forms.
 - `template-editor.js`: owns the step editor modal, prompt template editor, template diagnostics, prompt preview, and template preset loading.
@@ -108,7 +108,7 @@ Workflow Designer is API-backed.
 
 The designer supports step settings for:
 
-- Basic type/output/validator/agent settings
+- Basic type/output/function/agent settings
 - Prompt template editing
 - Sources and skill paths
 - Review strategy and aggregation

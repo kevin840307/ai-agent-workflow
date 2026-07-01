@@ -44,12 +44,17 @@ def normalize_artifact_name(value: str) -> str:
     return raw.lstrip("/") or "result.md"
 
 
-def step_validator_name(step_record: dict[str, Any]) -> str:
+def step_function_name(step_record: dict[str, Any]) -> str:
     config = step_config(step_record)
-    validator = config.get("validator")
-    if isinstance(validator, dict):
-        return str(validator.get("id") or "")
-    return str(validator or "")
+    value = config.get("function") if config.get("function") is not None else config.get("validator")
+    if isinstance(value, dict):
+        return str(value.get("id") or value.get("function") or "")
+    return str(value or "")
+
+
+def step_validator_name(step_record: dict[str, Any]) -> str:
+    """Legacy alias. New code should use step_function_name()."""
+    return step_function_name(step_record)
 
 
 def step_agent_name(step_record: dict[str, Any], default: str = "") -> str:

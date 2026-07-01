@@ -6,8 +6,9 @@ from typing import Any, Awaitable, Callable
 
 from app.runtime_modules.errors import ValidationError, WorkflowError
 from app.core.paths import ROOT, read_text, write_text
-from app.services.workflow_asset_service import run_python_asset
-from app.workflow_functions import PYTHON_FUNCTIONS, WorkflowFunctionContext, WorkflowFunctionError
+from app.services.workflow_asset_service import resolve_function_reference, run_python_asset
+from app.workflow_runtime.builtin_functions.base import WorkflowFunctionContext, WorkflowFunctionError
+from app.workflow_runtime.builtin_functions.registry import PYTHON_FUNCTIONS
 
 LogFn = Callable[[dict[str, Any], str], Awaitable[None]]
 RefreshArtifactsFn = Callable[[str], Awaitable[Any]]
@@ -63,22 +64,25 @@ class WorkflowFunctionService:
         output_dir: Path,
         artifact: str | None = None,
     ) -> None:
+        function_id = str(function_id or "").strip()
+        if not function_id:
+            raise WorkflowError("Python function is required")
+
         function = PYTHON_FUNCTIONS.get(function_id)
-        if not function:
-            normalized = str(function_id or "").replace("\\", "/")
-            if normalized.startswith(".ai-workflow/"):
-                normalized = normalized[len(".ai-workflow/") :]
-            if normalized.startswith(("validators/", "tools/")) and normalized.endswith(".py"):
-                try:
-                    await run_python_asset(run, normalized, output_dir, artifact)
-                    return
-                except Exception as exc:
-                    raise WorkflowError(str(exc)) from exc
+        if function:
+            try:
+                ctx = self.context(run, output_dir)
+                result = function(ctx, artifact) if artifact else function(ctx)
+                if asyncio.iscoroutine(result):
+                    await result
+                return
+            except WorkflowFunctionError as exc:
+                raise WorkflowError(str(exc)) from exc
+
+        function_path = resolve_function_reference(function_id, str(run.get("project_path") or ROOT))
+        if not function_path:
             raise WorkflowError(f"Unknown workflow Python function: {function_id}")
         try:
-            ctx = self.context(run, output_dir)
-            result = function(ctx, artifact) if artifact else function(ctx)
-            if asyncio.iscoroutine(result):
-                await result
-        except WorkflowFunctionError as exc:
+            await run_python_asset(run, function_path, output_dir, artifact)
+        except Exception as exc:
             raise WorkflowError(str(exc)) from exc

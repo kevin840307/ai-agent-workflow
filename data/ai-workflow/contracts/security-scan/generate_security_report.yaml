@@ -10,7 +10,7 @@ command: ''
 agent: ''
 outputs:
 - security-report.md
-validator: generate_security_report
+function: generate_security_report
 retry: 1
 failAction: same_step
 retryFromStepKey: generate_security_report

@@ -84,7 +84,7 @@ class WorkflowConfigServiceTests(unittest.TestCase):
                             "id": "step-1",
                             "key": "validate",
                             "type": "python",
-                            "validator": "missing_function",
+                            "function": "missing_function",
                         }
                     ],
                 },
@@ -112,7 +112,7 @@ class WorkflowConfigServiceTests(unittest.TestCase):
                     "outputFile": "build-result.md",
                     "expectedFiles": ["../outside.md"],
                     "retryFromStepKey": "missing_step",
-                    "validator": "missing_function",
+                    "function": "missing_function",
                 }
             ],
         }
@@ -124,7 +124,7 @@ class WorkflowConfigServiceTests(unittest.TestCase):
         detail = raised.exception.detail
         self.assertEqual(detail["code"], "WORKFLOW_CONFIG_INVALID")
         messages = " ".join(issue["message"] for issue in detail["details"]["issues"])
-        self.assertIn("Unknown validator/function", messages)
+        self.assertIn("Unknown Python function", messages)
         self.assertIn("Step target does not exist", messages)
         self.assertIn("Unsafe expected file path", messages)
 

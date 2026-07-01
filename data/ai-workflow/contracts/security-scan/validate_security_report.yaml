@@ -11,7 +11,7 @@ agent: ''
 outputs:
 - security-report.md
 - security-report-score.md
-validator: validate_security_report
+function: validate_security_report
 retry: 2
 failAction: selected_step
 retryFromStepKey: generate_security_report

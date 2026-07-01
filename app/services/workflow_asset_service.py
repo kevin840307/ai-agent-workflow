@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import importlib.util
+import ast
 import inspect
 import io
 import json
@@ -17,7 +18,7 @@ import yaml
 from fastapi import HTTPException
 
 from app.core.paths import DATA_DIR, ROOT, read_text, write_text
-from app.workflow_function_modules.base import WorkflowFunctionContext, WorkflowFunctionError
+from app.workflow_runtime.builtin_functions.base import WorkflowFunctionContext, WorkflowFunctionError
 
 
 GLOBAL_ASSET_ROOT = DATA_DIR / "ai-workflow"
@@ -25,8 +26,7 @@ PROJECT_ASSET_DIR = ".ai-workflow"
 ASSET_DIRS = {
     "steps": {".md", ".markdown", ".txt"},
     "contracts": {".yaml", ".yml", ".json"},
-    "validators": {".py"},
-    "tools": {".py"},
+    "functions": {".py"},
     "workflows": {".workflow"},
 }
 
@@ -34,6 +34,7 @@ ASSET_DIRS = {
 def ensure_asset_dirs(project_path: str | None = None) -> None:
     for name in ASSET_DIRS:
         (GLOBAL_ASSET_ROOT / name).mkdir(parents=True, exist_ok=True)
+    (GLOBAL_ASSET_ROOT / "steps" / "common").mkdir(parents=True, exist_ok=True)
     if project_path:
         project_root = Path(project_path).expanduser().resolve()
         for name in ASSET_DIRS:
@@ -207,9 +208,134 @@ def list_assets(project_path: str | None = None) -> dict[str, Any]:
         "projectRoot": str(project_root / PROJECT_ASSET_DIR) if project_root else "",
         "assets": items,
         "contracts": contracts,
+        "functions": list_python_functions(project_path),
         "workflows": workflows,
     }
 
+
+
+# Built-in function metadata that is not tied to Python execution, but is still
+# displayed by the UI as selectable runtime functions.
+REVIEW_STRATEGIES = [
+    {"id": "current_session", "label": "Current Session Review", "description": "Reuse the current agent session and evaluate pass/fail keywords plus confidence threshold.", "ui": {"supportsPrompt": True, "supportsAgent": True, "tabs": ["basic", "review", "retry", "advanced"], "promptDefaults": True}},
+    {"id": "new_agent", "label": "New Agent Review", "description": "Run review in a fresh agent session, then evaluate pass/fail keywords plus confidence threshold.", "ui": {"supportsPrompt": True, "supportsAgent": True, "tabs": ["basic", "review", "retry", "advanced"], "promptDefaults": True}},
+    {"id": "multi_agent", "label": "Multi-Agent Review", "description": "Run one or more reviewer agents and aggregate with keyword_confidence, majority_vote, or all_must_pass.", "ui": {"supportsPrompt": True, "supportsAgent": True, "tabs": ["basic", "review", "retry", "advanced"], "promptDefaults": True}},
+]
+
+AGGREGATORS = [
+    {"id": "keyword_confidence", "label": "Keyword + Confidence", "description": "Combine pass/fail keywords with a confidence threshold."},
+    {"id": "majority_vote", "label": "Majority Vote", "description": "Pass when most reviewers pass."},
+    {"id": "all_must_pass", "label": "All Must Pass", "description": "Pass only when every reviewer passes."},
+]
+
+PROMPT_PARAMS = [
+    {"id": "requirement", "label": "Requirement", "description": "Main user input from the runner composer.", "sample": "Create a controllable agent workflow UI."},
+    {"id": "project_path", "label": "Project Path", "description": "Current project folder path.", "sample": "C:\\Users\\kevin\\sort"},
+    {"id": "workspace_path", "label": "Workspace Path", "description": "Workflow run workspace path.", "sample": "runs/workflow-001"},
+    {"id": "project_overview", "label": "Project Overview", "description": "Auto-generated overview of project files and folders.", "sample": "Project files:\n- app/main.py"},
+    {"id": "project_profile", "label": "Project Profile", "description": "Detected language, test framework, source files, and test files from the selected project path.", "sample": "Primary language: Python\nTest framework: pytest"},
+    {"id": "architecture", "label": "Architecture", "description": "Content of architecture.md from the selected project path.", "sample": "# Architecture\nFastAPI backend with static frontend."},
+    {"id": "spec", "label": "Spec", "description": "Content of output/spec.md.", "sample": "## Goal\nBuild the requested workflow feature."},
+    {"id": "spec_review", "label": "Spec Review", "description": "Content of output/spec-review.md.", "sample": "Status: PASS"},
+    {"id": "todo", "label": "Todo", "description": "Content of output/todo.md.", "sample": "## Todo List\n- TODO-001 Implement UI."},
+    {"id": "todo_review", "label": "Todo Review", "description": "Content of output/todo-review.md.", "sample": "Status: PASS"},
+    {"id": "test_plan", "label": "Test Plan", "description": "Content of output/test-plan.md.", "sample": "## Test Plan\n- TEST-001 Verify output."},
+    {"id": "test_result", "label": "Test Result", "description": "Content of output/test-result.md.", "sample": "Status: FAIL\nAssertionError: expected file missing."},
+    {"id": "build_result", "label": "Build Result", "description": "Content of output/build-result.md.", "sample": "FILE: app/main.py\nCONTENT:\n..."},
+    {"id": "final_review", "label": "Final Review", "description": "Content of output/final-review.md.", "sample": "Status: PASS"},
+    {"id": "raw_spec", "label": "Raw Spec", "description": "Alias of output/spec.md for older templates.", "sample": "## Goal\nBuild the requested workflow feature."},
+    {"id": "answers", "label": "Answers", "description": "User answers from previous workflow interaction.", "sample": "Use Python and FastAPI."},
+    {"id": "guidance", "label": "Guidance", "description": "User guidance added during the workflow.", "sample": "Keep implementation minimal."},
+    {"id": "last_error", "label": "Last Error", "description": "Latest validation, review, timeout, or runner error.", "sample": "Missing Acceptance Criteria section."},
+    {"id": "failure_feedback", "label": "Failure Feedback", "description": "Accumulated failure feedback for retry prompts.", "sample": "Retry 1/2 from build: tests failed."},
+    {"id": "step_output", "label": "Step Output", "description": "Current step output text when available.", "sample": "Step completed successfully."},
+    {"id": "security_context", "label": "Security Scope", "description": "Content of output/security-context.md.", "sample": "# Security Scan Scope"},
+    {"id": "security_candidates", "label": "Security Candidates", "description": "Multi-agent candidate files such as security-candidates-auth-config.md.", "sample": "## CAND-001"},
+    {"id": "security_findings", "label": "Security Findings", "description": "Python-combined normalized findings from output/security-findings.md.", "sample": "## SEC-001"},
+]
+
+
+def _function_meta_from_file(path: Path, root: Path, scope: str) -> dict[str, Any]:
+    rel = path.relative_to(root).as_posix()
+    meta: dict[str, Any] = {}
+    try:
+        tree = ast.parse(read_text(path), filename=str(path))
+        for node in tree.body:
+            if isinstance(node, ast.Assign):
+                names = [target.id for target in node.targets if isinstance(target, ast.Name)]
+                if "FUNCTION_META" in names:
+                    value = ast.literal_eval(node.value)
+                    if isinstance(value, dict):
+                        meta = value
+                    break
+    except Exception:
+        meta = {}
+    function_id = str(meta.get("id") or path.stem).strip()
+    return {
+        "id": function_id,
+        "label": str(meta.get("label") or function_id.replace("_", " ").replace("-", " ").title()),
+        "description": str(meta.get("description") or f"Python function asset: {rel}"),
+        "path": rel,
+        "scope": scope,
+        "ui": meta.get("ui") if isinstance(meta.get("ui"), dict) else {},
+    }
+
+
+def list_python_functions(project_path: str | None = None) -> list[dict[str, Any]]:
+    ensure_asset_dirs(project_path)
+    roots: list[tuple[str, Path]] = [("global", GLOBAL_ASSET_ROOT)]
+    project_root = _project_root(project_path)
+    if project_root:
+        roots.insert(0, ("project", project_root / PROJECT_ASSET_DIR))
+    items: list[dict[str, Any]] = []
+    seen_ids: set[str] = set()
+    seen_paths: set[str] = set()
+    for scope, root in roots:
+        functions_dir = root / "functions"
+        if not functions_dir.exists():
+            continue
+        for path in sorted(functions_dir.rglob("*.py")):
+            rel = path.relative_to(root).as_posix()
+            if rel in seen_paths:
+                continue
+            meta = _function_meta_from_file(path, root, scope)
+            if meta["id"] in seen_ids:
+                continue
+            seen_paths.add(rel)
+            seen_ids.add(meta["id"])
+            items.append(meta)
+    return items
+
+
+def function_catalog(project_path: str | None = None) -> dict[str, Any]:
+    return {
+        "functions": list_python_functions(project_path),
+        "reviewStrategies": deepcopy(REVIEW_STRATEGIES),
+        "aggregators": deepcopy(AGGREGATORS),
+        "promptParams": deepcopy(PROMPT_PARAMS),
+    }
+
+
+def resolve_function_reference(function_ref: str, project_path: str | None = None) -> str | None:
+    raw = str(function_ref or "").strip().replace("\\", "/")
+    if not raw:
+        return None
+    if raw.startswith("functions/") and raw.endswith(".py"):
+        return _clean_relative_path(raw)
+    legacy = _legacy_function_path(raw)
+    if legacy:
+        return legacy
+    for item in list_python_functions(project_path):
+        if raw in {str(item.get("id") or ""), str(item.get("path") or "")}:
+            return str(item.get("path") or "")
+    return None
+
+
+def _legacy_function_path(value: str) -> str | None:
+    normalized = str(value or "").strip().replace("\\", "/")
+    if normalized.startswith(("validators/", "tools/")) and normalized.endswith(".py"):
+        return "functions/" + normalized.split("/", 1)[1]
+    return None
 
 def read_asset(relative_path: str, project_path: str | None = None, *, scope: str = "auto") -> dict[str, Any]:
     path = resolve_asset_path(relative_path, project_path, scope=scope)
@@ -334,10 +460,17 @@ def normalize_contract(contract: dict[str, Any], *, fallback_id: str = "contract
         item["outputs"] = item["expectedFiles"]
     if item.get("timeout") is None and item.get("timeoutMinutes") is not None:
         item["timeout"] = float(item.get("timeoutMinutes") or 0) * 60
-    if isinstance(item.get("validation"), str) and not item.get("validator"):
-        item["validator"] = item["validation"]
-    if isinstance(item.get("validation"), dict) and not item.get("validator"):
-        item["validator"] = item["validation"].get("function") or item["validation"].get("path") or item["validation"].get("id")
+    if item.get("functionPath") and not item.get("function"):
+        item["function"] = item["functionPath"]
+    if item.get("pythonFunction") and not item.get("function"):
+        item["function"] = item["pythonFunction"]
+    if item.get("validator") and not item.get("function"):
+        # Legacy alias only. New metadata should use `function:`.
+        item["function"] = item["validator"]
+    if isinstance(item.get("validation"), str) and not item.get("function"):
+        item["function"] = item["validation"]
+    if isinstance(item.get("validation"), dict) and not item.get("function"):
+        item["function"] = item["validation"].get("function") or item["validation"].get("path") or item["validation"].get("id")
     if item.get("approval") is None and item.get("approvalRequired") is not None:
         item["approval"] = item.get("approvalRequired")
     return item
@@ -416,8 +549,8 @@ def apply_contract_to_step(step: dict[str, Any], contract: dict[str, Any]) -> di
         if outputs:
             item["outputFile"] = str(outputs[0])
             item["filename"] = str(outputs[0])
-    if metadata.get("validator") is not None:
-        item["validator"] = str(metadata.get("validator") or "")
+    if metadata.get("function") is not None:
+        item["function"] = str(metadata.get("function") or "")
     if metadata.get("timeout") is not None:
         seconds = float(metadata.get("timeout") or 0)
         item["timeoutEnabled"] = seconds > 0
@@ -616,7 +749,7 @@ def step_from_contract(contract: dict[str, Any], index: int = 0) -> dict[str, An
         "filename": output_file,
         "outputFile": output_file,
         "expectedFiles": [str(item) for item in outputs],
-        "validator": str(metadata.get("validator") or ""),
+        "function": str(metadata.get("function") or ""),
         "maxRetries": int(metadata.get("retry") or metadata.get("maxRetries") or 0),
         "timeoutEnabled": bool(metadata.get("timeout")),
         "timeoutMinutes": round(float(metadata.get("timeout") or 0) / 60, 3) if metadata.get("timeout") else 0,
@@ -664,7 +797,7 @@ def load_workflow_asset(workflow_id_or_path: str, project_path: str | None = Non
         "id": workflow_id,
         "kind": kind,
         "name": name,
-        "description": str(document.get("description") or f"Filesystem workflow loaded from {rel_path}. Add/edit .workflow, contracts, steps, validators, and tools without code changes."),
+        "description": str(document.get("description") or f"Filesystem workflow loaded from {rel_path}. Add/edit .workflow, contracts, steps, shared markdown, and Python functions without code changes."),
         "active": _coerce_bool(document.get("active"), False),
         "protected": protected,
         "deletable": _coerce_bool(document.get("deletable"), (not protected) if isinstance(document.get("steps"), list) else False),

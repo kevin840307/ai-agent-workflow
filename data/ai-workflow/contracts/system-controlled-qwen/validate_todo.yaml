@@ -7,7 +7,7 @@ type: validation
 skill: steps/system-controlled-qwen/validate_todo.md
 command: ''
 agent: ''
-validator: validate_todo
+function: validate_todo
 retry: 10
 failAction: selected_step
 retryFromStepKey: generate_todo

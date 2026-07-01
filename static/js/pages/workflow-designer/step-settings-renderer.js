@@ -113,12 +113,12 @@ function renderBasicTypeConfig(step, disabled, capabilities) {
       : "";
     return `
       <label class="designer-form-row">
-        <span class="designer-label">${step.type === "python" ? "Python Function" : "Validation Function"}</span>
-        <select class="designer-select" data-step-field="validator" ${disabled}>
-          ${functionOptions("validators", [["", "None"], ["validate_spec", "Validate Spec"], ["validate_todo", "Validate Todo"], ["run_pytest", "Run Pytest"]], step.validator)}
+        <span class="designer-label">${step.type === "python" ? "Python Function" : "Check Function"}</span>
+        <select class="designer-select" data-step-field="function" ${disabled}>
+          ${functionOptions("functions", [["", "None"], ["validate_spec", "Validate Spec"], ["validate_todo", "Validate Todo"], ["run_pytest", "Run Pytest"]], step.function)}
         </select>
       </label>
-      ${functionHelp("validators", step.validator, "Choose the Python function this step should run.")}
+      ${functionHelp("functions", step.function, "Choose the Python function this step should run.")}
       ${promptHint}
       ${expectedFilesPreview(step)}
     `;
@@ -385,18 +385,18 @@ function renderAdvanced(step, disabled, readonly) {
       ${switchRow("Allow Interaction", "The selected agent can pause and ask the user questions.", "allowInteraction", step.allowInteraction, disabled)}
       ${switchRow("Thinking", "Pass a thinking/reasoning flag to compatible agents such as OpenCode.", "thinking", step.thinking, disabled)}
       <label class="designer-form-row">
-        <span class="designer-label">Python Validator</span>
-        <input class="designer-input" list="designerValidatorOptions" value="${escapeAttr(step.validator || "")}" placeholder="validate_spec or validators/check.py" data-step-field="validator" ${disabled} />
-        <datalist id="designerValidatorOptions">
-          ${functionOptions("validators", [["", "None"], ["validate_spec", "Validate Spec"], ["validate_todo", "Validate Todo"], ["run_pytest", "Run Pytest"]], step.validator)
+        <span class="designer-label">Python Function</span>
+        <input class="designer-input" list="designerFunctionOptions" value="${escapeAttr(step.function || "")}" placeholder="validate_spec or functions/check.py" data-step-field="function" ${disabled} />
+        <datalist id="designerFunctionOptions">
+          ${functionOptions("functions", [["", "None"], ["validate_spec", "Validate Spec"], ["validate_todo", "Validate Todo"], ["run_pytest", "Run Pytest"]], step.function)
             .replace(/<option value="([^"]*)">([^<]*)<\/option>/g, '<option value="$1">$2</option>')}
         </datalist>
       </label>
       <div class="designer-footer-actions compact">
-        <button type="button" data-designer-action="edit-python-asset" ${disabled}>Edit Python Validator</button>
-        <button type="button" data-designer-action="upload-python-asset" ${disabled}>Upload Python Validator</button>
+        <button type="button" data-designer-action="edit-python-asset" ${disabled}>Edit Python Function</button>
+        <button type="button" data-designer-action="upload-python-asset" ${disabled}>Upload Python Function</button>
       </div>
-      ${functionHelp("validators", step.validator, "Optional validator used by validation and Python function steps.")}
+      ${functionHelp("functions", step.function, "Optional Python function used by check and Python steps.")}
       ${showConsensus ? renderConsensusSettings(step, disabled) : ""}
       <div class="designer-list-editor">
         <div class="designer-section-row">
@@ -428,9 +428,9 @@ function renderConsensusSettings(step, disabled) {
         ${switchRow("Fresh Session Per Agent", "Run each internal agent in a separate session for independent answers.", "freshSessionPerAgent", step.freshSessionPerAgent ?? true, disabled)}
         ${inputRow("Artifact Pattern", "artifactPattern", step.artifactPattern || step.filename || "", disabled, "result-agent-{index}.md")}
         <label class="designer-form-row">
-          <span class="designer-label">Inner Validator</span>
+          <span class="designer-label">Inner Function</span>
           <select class="designer-select" data-step-field="candidateValidator" ${disabled}>
-            ${functionOptions("validators", [["", "None"], ["validate_security_candidates", "Validate Security Candidates"]], step.candidateValidator)}
+            ${functionOptions("functions", [["", "None"], ["validate_security_candidates", "Validate Security Candidates"]], step.candidateValidator)}
           </select>
         </label>
       </div>

@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from app.workflow_function_modules.base import WorkflowFunctionContext, WorkflowFunctionError
-from app.workflow_function_modules.core import require_sections
+from app.workflow_runtime.builtin_functions.base import WorkflowFunctionContext, WorkflowFunctionError
+from app.workflow_runtime.builtin_functions.core import require_sections
 
 
 def _markdown_section_body(text: str, section: str) -> str:
@@ -494,7 +494,7 @@ def _security_confidence_guess_score(value: str, evidence_score: int, *, status:
 def _normalize_security_candidate_artifact_text(text: str) -> tuple[str, list[str]]:
     """Repair small AI formatting mistakes before strict scoring.
 
-    This validator no longer trusts an AI-produced final Confidence Score.
+    This function no longer trusts an AI-produced final Confidence Score.
     AI may provide only a qualitative AI Confidence Guess; Python computes the
     official numeric Confidence Score later during combine_security_candidates.
     """

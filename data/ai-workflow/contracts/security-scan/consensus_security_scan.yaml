@@ -15,7 +15,7 @@ outputs:
 - security-candidates-agent-2-score.md
 - security-candidates-agent-3.md
 - security-candidates-agent-3-score.md
-validator: consensus_agent
+function: consensus_agent
 retry: 1
 failAction: same_step
 retryFromStepKey: consensus_security_scan

@@ -6,26 +6,25 @@ from pathlib import Path
 
 from app.runtime_modules.errors import WorkflowError
 from app.runtime_modules.files import apply_extracted_files, classify_test_retry_target, extract_build_files
-from app.services import workflow_config_service
-from app.workflow_function_catalog import AVAILABLE_WORKFLOW_FUNCTIONS
-from app.workflow_functions import PYTHON_FUNCTIONS
+from app.services import workflow_asset_service, workflow_config_service
+from app.workflow_runtime.builtin_functions.registry import PYTHON_FUNCTIONS
 from app.workflow_runtime.agents import ADAPTER_FACTORIES, create_agent_manager
 from app.workflow_runtime.retry_policy import retry_target_for_failure, retry_target_for_step
 from app.workflow_runtime.step_config import initial_steps
 
 
 class WorkflowCoreTests(unittest.TestCase):
-    def test_catalog_validator_ids_are_executable_or_runtime_special_cases(self) -> None:
-        validator_ids = {item["id"] for item in AVAILABLE_WORKFLOW_FUNCTIONS["validators"]}
+    def test_catalog_function_ids_are_executable_or_runtime_special_cases(self) -> None:
+        function_ids = {item["id"] for item in workflow_asset_service.function_catalog()["functions"]}
         executable_or_special = set(PYTHON_FUNCTIONS) | {"consensus_agent"}
-        missing = sorted(validator_ids - executable_or_special)
+        missing = sorted(function_ids - executable_or_special)
         self.assertEqual(missing, [])
 
     def test_retry_policy_uses_configured_retry_target(self) -> None:
         steps = initial_steps(
             [
                 {"key": "build", "type": "ai", "maxRetries": 3},
-                {"key": "run_test", "type": "python", "validator": "run_pytest", "retryFromStepKey": "build"},
+                {"key": "run_test", "type": "python", "function": "run_pytest", "retryFromStepKey": "build"},
             ]
         )
 
@@ -36,7 +35,7 @@ class WorkflowCoreTests(unittest.TestCase):
             [
                 {"key": "generate_tests", "type": "ai", "maxRetries": 3},
                 {"key": "build", "type": "ai", "maxRetries": 3},
-                {"key": "run_test", "type": "python", "validator": "run_pytest", "retryFromStepKey": "build"},
+                {"key": "run_test", "type": "python", "function": "run_pytest", "retryFromStepKey": "build"},
             ]
         )
         with tempfile.TemporaryDirectory() as tmp:

@@ -11,7 +11,7 @@ Important multi-agent rule:
 - This prompt also includes bounded Security Context from the workflow. If direct file tools are unavailable, base your review on those excerpts and clearly state the limitation in Evidence/Notes.
 - Ignore previous conclusions in the same project/session; this step should be an independent security review.
 - Produce the same candidate Markdown schema every time so Python can compare and combine agents.
-- A Python validator will score this document. Weak evidence, weak coverage, or invalid schema will fail this step and retry the same agent.
+- A Python function will score this document. Weak evidence, weak coverage, or invalid schema will fail this step and retry the same agent.
 - Do NOT output final numeric Confidence Score. Python computes the official numeric Confidence Score later.
 - Never include retry feedback, prompt text, or instruction text in the artifact.
 

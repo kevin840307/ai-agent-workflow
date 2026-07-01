@@ -48,10 +48,10 @@ export function installWorkflowAssetTools(ctx) {
     input.addEventListener("change", async () => {
       const file = input.files?.[0];
       if (!file) return;
-      const path = normalizeAssetPath(`validators/${file.name}`, "validators");
+      const path = normalizeAssetPath(`functions/${file.name}`, "functions");
       try {
         await putFile(path, await file.text());
-        step.validator = path;
+        step.function = path;
         if (step.type === "ai") step.type = "python";
         refresh();
         toast(`Python asset uploaded: ${path}`);
@@ -63,7 +63,7 @@ export function installWorkflowAssetTools(ctx) {
   async function editPythonAssetForSelectedStep() {
     const step = getSelectedStep();
     if (!step || isReadonly()) return;
-    const path = normalizeAssetPath(step.validator || `validators/${step.key || "step"}.py`, "validators");
+    const path = normalizeAssetPath(step.function || `functions/${step.key || "step"}.py`, "functions");
     let content = defaultPython();
     try {
       const file = await designerApi(`${WORKFLOW_ASSET_API}/file?path=${encodeURIComponent(path)}`);
@@ -72,7 +72,7 @@ export function installWorkflowAssetTools(ctx) {
     openPythonEditor(path, content, async (nextContent) => {
       try {
         await putFile(path, nextContent);
-        step.validator = path;
+        step.function = path;
         if (step.type === "ai") step.type = "python";
         refresh();
         toast(`Python asset saved: ${path}`);
@@ -108,7 +108,7 @@ function metadataYaml(step, id, path) {
   lines.push(`retry: ${Number(step.maxRetries || 0)}`);
   const outputs = Array.isArray(step.expectedFiles) && step.expectedFiles.length ? step.expectedFiles : [step.outputFile || step.filename].filter(Boolean);
   if (outputs.length) lines.push("outputs:", ...outputs.map((file) => `  - ${cleanValue(file)}`));
-  if (step.validator) lines.push(`validator: ${cleanValue(step.validator)}`);
+  if (step.function) lines.push(`function: ${cleanValue(step.function)}`);
   if (step.timeoutEnabled && step.timeoutMinutes) lines.push(`timeout: ${Math.round(Number(step.timeoutMinutes) * 60)}`);
   lines.push(`allowInteraction: ${Boolean(step.allowInteraction)}`);
   lines.push(`thinking: ${Boolean(step.thinking)}`);
@@ -129,14 +129,14 @@ function metadataYaml(step, id, path) {
 }
 
 function defaultPython() {
-  return `def run(context, artifact=None):\n    context.write_text(context.output_dir / "validator-result.md", "Status: PASS\\n")\n    return "Status: PASS\\n"\n`;
+  return `def run(context, artifact=None):\n    context.write_text(context.output_dir / "function-result.md", "Status: PASS\\n")\n    return "Status: PASS\\n"\n`;
 }
 
 function normalizeAssetPath(value = "", defaultDir = "steps") {
   const cleanedName = (name) => String(name || "asset").replace(/\\/g, "/").split("/").filter(Boolean).pop()?.replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/^-+|-+$/g, "") || "asset";
   let normalized = String(value || "").trim().replace(/\\/g, "/");
   if (normalized.startsWith(".ai-workflow/")) normalized = normalized.slice(".ai-workflow/".length);
-  if (!normalized || !/^(steps|validators|tools|contracts)\//.test(normalized)) {
+  if (!normalized || !/^(steps|functions|contracts)\//.test(normalized)) {
     const ext = defaultDir === "steps" ? "md" : defaultDir === "contracts" ? "yaml" : "py";
     normalized = `${defaultDir}/${cleanedName(normalized || `asset.${ext}`)}`;
   }

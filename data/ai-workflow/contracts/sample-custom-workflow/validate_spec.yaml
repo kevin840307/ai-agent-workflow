@@ -7,7 +7,7 @@ type: validation
 skill: steps/sample-custom-workflow/validate_spec.md
 command: ''
 agent: ''
-validator: validate_spec
+function: validate_spec
 retry: 10
 failAction: same_step
 retryFromStepKey: generate_spec

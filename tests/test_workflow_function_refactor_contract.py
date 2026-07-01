@@ -3,16 +3,19 @@ from __future__ import annotations
 import unittest
 from pathlib import Path
 
-import app.workflow_functions as workflow_functions
-from app.workflow_function_modules import security_validation
-from app.workflow_function_modules.registry import PYTHON_FUNCTIONS
+from app.services import workflow_asset_service
+from app.workflow_runtime.builtin_functions import security_validation
+from app.workflow_runtime.builtin_functions.registry import PYTHON_FUNCTIONS
 
 
 class WorkflowFunctionRefactorContractTests(unittest.TestCase):
-    def test_compatibility_facade_still_exports_existing_functions(self) -> None:
+    def test_function_catalog_is_filesystem_discovered(self) -> None:
+        catalog = workflow_asset_service.function_catalog()
+        function_ids = {item["id"] for item in catalog["functions"]}
         expected = {
             "collect_security_context",
             "combine_security_candidates",
+            "consensus_agent",
             "generate_security_report",
             "finalize_security_report",
             "require_status_pass",
@@ -21,15 +24,10 @@ class WorkflowFunctionRefactorContractTests(unittest.TestCase):
             "validate_security_report",
             "validate_spec",
             "validate_todo",
-            "WorkflowFunctionContext",
-            "WorkflowFunctionError",
         }
+        self.assertTrue(expected.issubset(function_ids))
 
-        for name in expected:
-            with self.subTest(name=name):
-                self.assertTrue(hasattr(workflow_functions, name), f"app.workflow_functions must still export {name}")
-
-    def test_registry_keeps_same_callable_import_path_contract(self) -> None:
+    def test_registry_contains_builtin_callable_contract(self) -> None:
         expected_registry_names = {
             "collect_security_context",
             "combine_security_candidates",
@@ -43,31 +41,18 @@ class WorkflowFunctionRefactorContractTests(unittest.TestCase):
             "run_pytest",
         }
         self.assertEqual(expected_registry_names, set(PYTHON_FUNCTIONS))
-        for name in expected_registry_names:
-            with self.subTest(name=name):
-                self.assertIs(PYTHON_FUNCTIONS[name], getattr(workflow_functions, name))
 
-    def test_legacy_security_validation_import_path_is_a_facade(self) -> None:
-        self.assertIs(
-            security_validation.validate_security_candidates,
-            workflow_functions.validate_security_candidates,
-        )
-        self.assertIs(
-            security_validation.combine_security_candidates,
-            workflow_functions.combine_security_candidates,
-        )
-        self.assertIs(
-            security_validation.validate_security_report,
-            workflow_functions.validate_security_report,
-        )
+    def test_security_validation_facade_stays_focused(self) -> None:
+        self.assertTrue(callable(security_validation.validate_security_candidates))
+        self.assertTrue(callable(security_validation.combine_security_candidates))
+        self.assertTrue(callable(security_validation.validate_security_report))
 
-    def test_workflow_function_files_stay_modular(self) -> None:
+    def test_builtin_function_files_stay_modular(self) -> None:
         limits = {
-            "app/workflow_functions.py": 200,
-            "app/workflow_function_modules/security_validation.py": 120,
-            "app/workflow_function_modules/security_common.py": 1100,
-            "app/workflow_function_modules/security_candidates.py": 800,
-            "app/workflow_function_modules/security_report.py": 700,
+            "app/workflow_runtime/builtin_functions/security_validation.py": 120,
+            "app/workflow_runtime/builtin_functions/security_common.py": 1100,
+            "app/workflow_runtime/builtin_functions/security_candidates.py": 800,
+            "app/workflow_runtime/builtin_functions/security_report.py": 700,
         }
         for file_name, max_lines in limits.items():
             with self.subTest(file=file_name):

@@ -7,7 +7,7 @@ type: validation
 skill: steps/system-controlled-qwen/validate_spec.md
 command: ''
 agent: ''
-validator: validate_spec
+function: validate_spec
 retry: 10
 failAction: selected_step
 retryFromStepKey: generate_spec

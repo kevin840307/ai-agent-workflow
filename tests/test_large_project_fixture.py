@@ -138,7 +138,7 @@ class LargeProjectFixtureTests(unittest.TestCase):
                     "retryFromStepKey": "",
                     "reviewMode": "none",
                     "allowInteraction": False,
-                    "validator": "",
+                    "function": "",
                     "contextArtifacts": [],
                 }
             ],

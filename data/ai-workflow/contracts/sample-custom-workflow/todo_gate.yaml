@@ -7,7 +7,7 @@ type: gate
 skill: steps/sample-custom-workflow/todo_gate.md
 command: ''
 agent: ''
-validator: require_status_pass
+function: require_status_pass
 retry: 10
 failAction: same_step
 retryFromStepKey: review_todo

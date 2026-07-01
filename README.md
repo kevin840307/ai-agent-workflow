@@ -86,18 +86,17 @@ data/ai-workflow/
   workflows/*.workflow        # workflow order/include manifest
   steps/**/*.md               # skill / prompt markdown
   contracts/**/*.yaml         # step metadata
-  validators/**/*.py          # Python validators
-  tools/**/*.py               # Python tools
+  functions/**/*.py           # Python functions
 ```
 
 The built-in workflow is `data/ai-workflow/workflows/system-controlled-qwen.workflow` and is read-only in the UI. Custom workflows use the same separated asset format and can edit:
 
-- step type, prompt template, expected files, validator, retry target, retry count, timeout
+- step type, prompt template, expected files, function, retry target, retry count, timeout
 - interaction mode
 - review strategy
 - consensus agent settings such as `agentCount`, `agentMaxRetries`, and `freshSessionPerAgent`
 
-Python validation steps do not need to call an agent. Their `validator` field selects a backend function from `/api/workflows/functions`.
+Python steps do not need to call an agent. Their `function` field selects a Python Function from `/api/workflows/functions`, discovered from `data/ai-workflow/functions/**/*.py` and project `.ai-workflow/functions/**/*.py`.
 
 Runtime safety:
 
@@ -159,3 +158,21 @@ Get-Content -Raw static\js\pages\workflow-designer\template-editor.js | node --i
 ## Architecture
 
 See `ARCHITECTURE.md` for module responsibilities and extension points.
+
+
+## Python Function Assets
+
+新版 Python validator / tool 已合併為單一 Python Function。
+
+```text
+data/ai-workflow/functions/**/*.py
+<project>/.ai-workflow/functions/**/*.py
+```
+
+metadata 使用：
+
+```yaml
+function: validate_spec
+```
+
+詳細請看 `PYTHON_FUNCTION_ASSET_GUIDE.md`。

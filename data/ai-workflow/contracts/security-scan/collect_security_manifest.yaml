@@ -10,7 +10,7 @@ command: ''
 agent: ''
 outputs:
 - security-context.md
-validator: collect_security_context
+function: collect_security_context
 retry: 1
 failAction: same_step
 retryFromStepKey: collect_security_manifest

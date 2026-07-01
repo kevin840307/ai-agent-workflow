@@ -9,7 +9,7 @@ command: ''
 agent: ''
 outputs:
 - test-result.md
-validator: run_pytest
+function: run_pytest
 retry: 10
 failAction: same_step
 retryFromStepKey: build

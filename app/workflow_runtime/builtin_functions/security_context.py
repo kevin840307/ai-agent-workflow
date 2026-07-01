@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from app.workflow_function_modules.base import WorkflowFunctionContext, WorkflowFunctionError
+from app.workflow_runtime.builtin_functions.base import WorkflowFunctionContext, WorkflowFunctionError
 
 
 SECURITY_CONTEXT_EXTENSIONS = {

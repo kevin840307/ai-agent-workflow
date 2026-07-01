@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from app.workflow_function_modules.core import (
+from app.workflow_runtime.builtin_functions.core import (
     require_status_pass,
     run_pytest,
     validate_spec,
     validate_todo,
 )
-from app.workflow_function_modules.security_context import collect_security_context
-from app.workflow_function_modules.security_validation import (
+from app.workflow_runtime.builtin_functions.security_context import collect_security_context
+from app.workflow_runtime.builtin_functions.security_validation import (
     combine_security_candidates,
     finalize_security_report,
     generate_security_report,

@@ -47,7 +47,7 @@ from app.workflow_runtime.qwen_serve import QwenCliClient
 from app.workflow_runtime.retry_policy import retry_target_for_failure, retry_target_for_step
 from app.workflow_runtime.settings import default_settings, load_settings, resolve_project_path, save_settings
 from app.workflow_runtime.step_config import initial_steps, step_kind_from_type
-from app.workflow_runtime.step_utils import format_exception, step_artifact_name, step_prompt_name, step_validator_name
+from app.workflow_runtime.step_utils import format_exception, step_artifact_name, step_prompt_name, step_function_name
 
 
 store = Store(

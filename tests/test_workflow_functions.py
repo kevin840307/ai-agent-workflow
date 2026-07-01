@@ -5,15 +5,10 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from app.workflow_functions import (
-    WorkflowFunctionContext,
-    WorkflowFunctionError,
-    collect_security_context,
-    combine_security_candidates,
-    require_status_pass,
-    validate_spec,
-    validate_todo,
-)
+from app.workflow_runtime.builtin_functions.base import WorkflowFunctionContext, WorkflowFunctionError
+from app.workflow_runtime.builtin_functions.core import require_status_pass, validate_spec, validate_todo
+from app.workflow_runtime.builtin_functions.security_context import collect_security_context
+from app.workflow_runtime.builtin_functions.security_validation import combine_security_candidates
 
 
 def _context(workspace: Path, project: Path) -> WorkflowFunctionContext:

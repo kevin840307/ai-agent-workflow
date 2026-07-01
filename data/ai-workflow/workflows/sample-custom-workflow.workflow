@@ -1,7 +1,7 @@
 id: sample-custom-workflow
 name: Sample Custom Workflow
 description: Editable example copied from the system workflow. Use it to learn how
-  steps, validators, review, retry, and gates are configured.
+  steps, functions, review, retry, and gates are configured.
 kind: custom
 active: false
 protected: false

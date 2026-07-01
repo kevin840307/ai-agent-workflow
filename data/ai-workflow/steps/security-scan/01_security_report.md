@@ -15,7 +15,7 @@ Important report rules:
 - Every security bug/finding must visibly include numeric Confidence Score in the finding body and in the Risk Matrix row.
 - Keep Status and Confidence Score separate. Never write values like `Needs Review: High confidence`, `Likely - 80`, or `Status: High`.
 - In every VULN block, place Confidence Score directly after Severity so reviewers can see each bug numeric security confidence immediately.
-- A Python validator will score this final report. Low Evidence, Confidence Score, Coverage, or Source Mapping scores will fail and retry this report step.
+- A Python function will score this final report. Low Evidence, Confidence Score, Coverage, or Source Mapping scores will fail and retry this report step.
 - If security-findings.md has no accepted findings, produce a complete no-finding report with the required table row format.
 
 Project Path: {{project_path}}

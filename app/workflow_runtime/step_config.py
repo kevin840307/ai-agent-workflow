@@ -9,7 +9,7 @@ def step_kind_from_type(step_type: str) -> str:
     Backward compatibility:
     - old ``ai`` / ``review`` / ``qwen`` steps now become provider-neutral
       ``agent`` steps.
-    - validator/gate/python keep their dedicated runtime semantics.
+    - legacy validation steps and python/gate/manual steps keep their dedicated runtime semantics.
     """
     return {
         "ai": "agent",

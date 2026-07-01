@@ -7,7 +7,7 @@ type: validation
 skill: steps/sample-custom-workflow/validate_todo.md
 command: ''
 agent: ''
-validator: validate_todo
+function: validate_todo
 retry: 10
 failAction: same_step
 retryFromStepKey: generate_todo

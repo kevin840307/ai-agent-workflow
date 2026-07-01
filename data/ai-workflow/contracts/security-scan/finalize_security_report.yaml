@@ -2,7 +2,7 @@ id: finalize_security_report
 key: finalize_security_report
 name: Finalize Security Report
 description: Finalize the security scan by writing output/security-final.md after
-  the report validator passes.
+  the report function passes.
 enabled: true
 type: python
 skill: steps/security-scan/finalize_security_report.md
@@ -10,7 +10,7 @@ command: ''
 agent: ''
 outputs:
 - security-final.md
-validator: finalize_security_report
+function: finalize_security_report
 retry: 1
 failAction: same_step
 retryFromStepKey: finalize_security_report

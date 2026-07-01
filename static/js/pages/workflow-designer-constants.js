@@ -4,7 +4,7 @@
 
 export const StepTypes = [
   ["ai", "AI Prompt"],
-  ["validation", "Validation Function"],
+  ["validation", "Check Function"],
   ["review", "Review"],
   ["gate", "Human Gate"],
   ["command", "Command Prompt"],

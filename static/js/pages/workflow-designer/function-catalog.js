@@ -18,7 +18,7 @@ function functionOptionsFor(catalog, groupName, fallbackItems, selected) {
   if (selected && !normalized.some(([value]) => String(value) === String(selected))) {
     normalized.unshift([selected, `${selected} (custom)`]);
   }
-  return options(groupName === "validators" || groupName === "aggregators" ? [["", "None"], ...normalized] : normalized, selected);
+  return options(groupName === "functions" || groupName === "aggregators" ? [["", "None"], ...normalized] : normalized, selected);
 }
 
 function functionMetaFor(catalog, groupName, selected) {
@@ -46,7 +46,7 @@ function functionHelpFor(catalog, groupName, selected, emptyText = "Select a bac
 
 function workflowFunctionCountsFor(catalog) {
   return {
-    validators: (catalog.validators || []).length,
+    functions: (catalog.functions || []).length,
     reviewStrategies: (catalog.reviewStrategies || []).length,
     aggregators: (catalog.aggregators || []).length,
     promptParams: availablePromptParamsFor(catalog).length,
@@ -75,13 +75,13 @@ function availablePromptParamsFor(catalog) {
 function stepFunctionSelection(step = {}) {
   const type = String(step?.type || "ai");
   if (type === "validation" || type === "python") {
-    return { groupName: "validators", id: step.validator || "" };
+    return { groupName: "functions", id: step.function || step.validator || "" };
   }
   if (type === "review") {
     return { groupName: "reviewStrategies", id: step.reviewMode || "" };
   }
   if (type === "gate" || type === "manual") {
-    return { groupName: "validators", id: step.validator || "" };
+    return { groupName: "functions", id: step.function || step.validator || "" };
   }
   return { groupName: "", id: "" };
 }
@@ -118,7 +118,7 @@ function normalizedFunctionUi(meta) {
 function isLegacyConsensusAgentStep(step) {
   return Boolean(
     step &&
-      (step.validator === "consensus_agent" ||
+      ((step.function === "consensus_agent" || step.validator === "consensus_agent") ||
         step.key === "consensus_agent" ||
         step.key === "consensus_security_scan")
   );

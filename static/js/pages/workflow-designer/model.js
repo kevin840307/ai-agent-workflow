@@ -25,7 +25,7 @@ function createStep(overrides = {}) {
     templateContent: defaultTemplateContent({ ...overrides, key, type }),
     filename,
     outputFile: overrides.outputFile || "",
-    validator: normalizeFunctionId(overrides.validator || ""),
+    function: normalizeFunctionId(overrides.function || overrides.validator || ""),
     expectedFiles: clone(overrides.expectedFiles || (filename ? [filename] : [])),
     reviewMode: overrides.reviewMode || "none",
     reviewers: clone(overrides.reviewers || []),
@@ -102,7 +102,7 @@ function normalizeStep(step = {}) {
     agent: step?.agent || step?.provider || base.agent || "qwen",
     provider: step?.provider || step?.agent || base.provider || "qwen",
     templateContent: step?.templateContent || base.templateContent,
-    validator: normalizeFunctionId(step?.validator || base.validator || ""),
+    function: normalizeFunctionId(step?.function || step?.validator || base.function || ""),
     contractId: step?.contractId || base.contractId || "",
     contractPath: step?.contractPath || base.contractPath || "",
     metadataPath: step?.metadataPath || base.metadataPath || "",
@@ -125,6 +125,9 @@ function normalizeFunctionId(value = "") {
     "validators/run_tests.py": "run_pytest",
     "validators/run_pytest.py": "run_pytest",
     "validators/validate.py": "validate_spec",
+    "functions/validate_spec.py": "validate_spec",
+    "functions/validate_todo.py": "validate_todo",
+    "functions/run_pytest.py": "run_pytest",
   };
   return aliases[raw] || raw;
 }

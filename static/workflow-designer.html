@@ -82,7 +82,7 @@
           <div class="designer-panel-head compact">
             <div>
               <h3>.ai-workflow Assets</h3>
-              <p>CRUD shared workflow assets: skill markdown, metadata YAML/JSON, Python validators/tools, and .workflow files.</p>
+              <p>CRUD shared workflow assets: skill markdown, metadata YAML/JSON, Python functions, and .workflow files.</p>
             </div>
             <div class="designer-footer-actions compact">
               <button type="button" data-asset-manager-action="refresh">Refresh</button>
@@ -110,8 +110,7 @@
                     <select id="designerAssetType" class="designer-select">
                       <option value="steps">Skill</option>
                       <option value="contracts">Metadata</option>
-                      <option value="validators">Validator Python</option>
-                      <option value="tools">Tool Python</option>
+                      <option value="functions">Python Function</option>
                       <option value="workflows">Workflow</option>
                     </select>
                   </label>
@@ -122,7 +121,7 @@
             <section class="designer-asset-editor-panel">
               <label class="designer-form-row">
                 <span class="designer-label">Asset Path</span>
-                <input id="designerAssetPath" class="designer-input" placeholder="steps/my-skill.md / contracts/my-step.yaml / validators/check.py" />
+                <input id="designerAssetPath" class="designer-input" placeholder="steps/my-skill.md / contracts/my-step.yaml / functions/check.py" />
               </label>
               <textarea id="designerAssetContent" class="designer-textarea designer-asset-editor" spellcheck="false" placeholder="Select or create an asset..."></textarea>
               <div class="designer-footer-actions compact">
@@ -203,14 +202,14 @@
               <div class="designer-step-toolbar" aria-label="Step filters and display mode">
                 <label class="designer-step-search-wrap" for="designerStepSearch">
                   <span>Search</span>
-                  <input id="designerStepSearch" class="designer-input designer-step-search" placeholder="name / key / validator / file" data-step-filter-field="search" />
+                  <input id="designerStepSearch" class="designer-input designer-step-search" placeholder="name / key / function / file" data-step-filter-field="search" />
                 </label>
                 <label class="designer-step-type-wrap" for="designerStepTypeFilter">
                   <span>Type</span>
                   <select id="designerStepTypeFilter" class="designer-select designer-step-type-filter" data-step-filter-field="type">
                     <option value="all">All types</option>
                     <option value="ai">AI</option>
-                    <option value="validation">Validation</option>
+                    <option value="validation">Check</option>
                     <option value="review">Review</option>
                     <option value="gate">Gate</option>
                     <option value="command">Command</option>

@@ -9,7 +9,7 @@ command: ''
 agent: qwen
 outputs:
 - spec-review.md
-validator: ''
+function: ''
 retry: 10
 failAction: same_step
 retryFromStepKey: ''

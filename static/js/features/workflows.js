@@ -39,7 +39,8 @@ export function createWorkflows(ctx) {
   function outputLabel(step) {
     const output = step.outputFile || step.filename || "";
     if (output) return output;
-    if (step.validator) return `validator: ${step.validator}`;
+    if (step.function) return `function: ${step.function}`;
+    if (step.validator) return `legacy function: ${step.validator}`;
     if (step.command) return "command";
     return step.type || "step";
   }

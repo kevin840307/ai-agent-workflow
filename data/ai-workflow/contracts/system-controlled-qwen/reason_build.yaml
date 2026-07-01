@@ -9,7 +9,7 @@ command: ''
 agent: qwen
 outputs:
 - build-reasoning.md
-validator: ''
+function: ''
 retry: 3
 failAction: same_step
 retryFromStepKey: reason_build

@@ -58,7 +58,7 @@ function renderBackendStatus() {
   }
   target.classList.remove("error");
   target.textContent = "API Ready";
-  target.title = `${counts.validators} validators, ${counts.reviewStrategies} review strategies, ${counts.aggregators} aggregators, ${counts.promptParams} prompt params loaded`;
+  target.title = `${counts.functions} functions, ${counts.reviewStrategies} review strategies, ${counts.aggregators} aggregators, ${counts.promptParams} prompt params loaded`;
 }
 
 function renderSidebar() {
@@ -239,7 +239,7 @@ function stepSearchText(step) {
     step.command,
     step.templatePath,
     step.filename,
-    step.validator,
+    step.function,
     step.reviewMode,
     step.aggregatorFunction,
     ...(step.expectedFiles || []),
@@ -438,7 +438,7 @@ function renderStepList() {
     const badges = [
       step.timeoutEnabled ? `<span class="badge running">${step.timeoutMinutes || 0}m</span>` : "",
       step.pauseAfterStep ? `<span class="badge waiting_input">human</span>` : "",
-      step.validator ? `<span class="badge passed">${escapeHtml(functionMeta("validators", step.validator)?.label || step.validator)}</span>` : "",
+      step.function ? `<span class="badge passed">${escapeHtml(functionMeta("functions", step.function || step.function)?.label || step.function)}</span>` : "",
       step.reviewMode !== "none" ? `<span class="badge passed">${escapeHtml(formatReviewMode(step.reviewMode))}</span>` : "",
     ].filter(Boolean).join("");
     const detailItems = [
@@ -524,14 +524,14 @@ function ensureActiveTabForStep(step) {
 function applyStepTypeDefaults(step) {
   if (!step) return;
   if (step.type === "validation") {
-    step.validator = step.validator || "validate_spec";
+    step.function = step.function || "validate_spec";
     step.reviewMode = "none";
     step.command = "";
     step.pauseAfterStep = false;
     step.approvalRequired = false;
   }
   if (step.type === "python") {
-    step.validator = step.validator || "run_pytest";
+    step.function = step.function || "run_pytest";
     step.reviewMode = "none";
     step.command = "";
   }
@@ -550,14 +550,14 @@ function applyStepTypeDefaults(step) {
   if (step.type === "ai") {
     step.agent = step.agent || step.provider || "qwen";
     step.provider = step.provider || step.agent || "qwen";
-    step.validator = "";
+    step.function = "";
     step.reviewMode = "none";
     step.command = step.command || "";
   }
   if (step.type === "command") {
     step.agent = step.agent || step.provider || "qwen";
     step.provider = step.provider || step.agent || "qwen";
-    step.validator = "";
+    step.function = "";
     step.reviewMode = "none";
     step.command = step.command || "custom";
   }

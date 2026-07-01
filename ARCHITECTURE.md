@@ -1,179 +1,164 @@
 # Architecture
 
-## Overview
+## Goal
 
-The app is split into a FastAPI backend, a static frontend, workflow asset data, and project run workspaces.
-
-```text
-app/
-  api/routes/               HTTP routes only
-  core/                     paths, locks, metrics, API error helpers
-  persistence/              JSON store and repositories
-  services/                 API use cases and persistence orchestration
-  workflow/agents/          provider-neutral agent contracts and providers
-  workflow_runtime/          workflow execution, agent calls, prompt building, retry
-  workflow_functions.py      executable Python workflow functions
-  workflow_function_catalog.py
-                             function metadata exposed to Workflow Designer
-  runtime_modules/           runtime compatibility facade package
-static/
-  index.html                 runner/chat UI
-  workflow-designer.html     workflow configuration UI
-data/
-  ai-workflow/               canonical workflow asset root
-    workflows/*.workflow     workflow manifests and includes
-    steps/**/*.md            skill/prompt markdown
-    contracts/**/*.yaml      step metadata
-    validators/**/*.py       Python validators
-    tools/**/*.py            Python tools
-  settings.json              local runtime settings
-  store.json                 sessions, messages, runs
-```
-
-## Request Flow
-
-1. The runner creates or selects a project session.
-2. A workflow run is created with a project path and workflow id.
-3. `WorkflowExecutor` runs enabled steps in order.
-4. `WorkflowActions` resolves each step into an action.
-5. Agent steps call `AgentStepRunner`.
-6. Python steps call `WorkflowFunctionService`.
-7. Artifacts, logs, prompts, answers, guidance, and failure feedback are written under the run workspace.
-
-Project run workspace:
+讓 Workflow 的 UI 與 CLI 使用同一套 filesystem-first 架構：
 
 ```text
-<project>/.qwen-workflow/runs/session-<session-id>/run-<run-id>/
-  requirement.md
-  input/
-  output/
-  prompts/
-  .workflow/
+workflow manifest + markdown skill + metadata contract + python function
 ```
 
-Terminal workflow states write two human/debug artifacts under `.workflow/`:
-
-- `run-summary.md`: readable run result, step outcomes, retries, project changes, and key artifacts.
-- `run-trace.json`: structured run trace with timing, agent/session metadata, prompt/output sizes, step events, artifacts, and error codes.
-
-## Agent Layer
-
-Agent support is provider-neutral.
-
-- `AgentManager` resolves a configured provider name.
-- `QwenAdapter` prefers Qwen serve and can fall back to CLI when configured.
-- `OpenCodeCliAdapter` runs `opencode run --session <project-session> <prompt>` or `opencode --prompt <prompt> --session <project-session>` and is selectable as the default agent or per step provider.
-- `GenericCliAdapter` supports future CLI agents through `data/settings.json` without new code.
-- New custom adapters should implement `AgentClient` in `app/workflow/agents/providers/<provider>.py` and register their provider type in `ADAPTER_FACTORIES`.
-
-Recommended extension path for a normal new CLI agent:
-
-1. Add provider config to `data/settings.json` with `type: cli`.
-2. Choose `promptMode`: `stdin`, `last_arg`, or `prompt_flag`.
-3. Select it from workflow step `agent` / `provider` or set it as `agents.default`.
-
-Chat mode calls `AgentManager.resolve()` without forcing a provider, so it follows `agents.default`. Workflow steps can override that with their `agent` or `provider` field.
-Project sessions store provider session ids in `agent_session_ids`; legacy `qwen_session_id` remains for backward compatibility.
-Adapters should support the same baseline contract where possible: session reuse, timeout handling, command preview, health metadata, mock mode for local tests, and streamed output callbacks.
-Chat responses include lightweight trace metadata on the assistant message: agent, provider health subset, session reuse, prompt/output size, duration, and tool-call repair status.
-
-## Workflow Assets
-
-Every workflow uses the same canonical asset root:
+## Canonical Asset Layout
 
 ```text
 data/ai-workflow/
-  workflows/*.workflow
+  workflows/**/*.workflow
   steps/**/*.md
+  steps/common/**/*.md
   contracts/**/*.yaml
-  validators/**/*.py
-  tools/**/*.py
+  contracts/**/*.json
+  functions/**/*.py
 ```
 
-`workflows/*.workflow` is the source of truth for workflow order/includes. `contracts/**/*.yaml` stores step metadata, and `steps/**/*.md` stores the editable skill/prompt text. Together they define:
+Project local override：
 
-- step order and enabled state
-- step type
-- prompt template path
-- output filename
-- validator function
-- retry behavior
-- timeout
-- human interaction
-- expected files
-- review and consensus settings
+```text
+<project>/.ai-workflow/
+  workflows/
+  steps/
+  contracts/
+  functions/
+```
 
-The system workflow is read-only in the UI. Custom workflows are stored in their own folders.
+解析順序永遠是：
 
-## Prompt Building
+```text
+project .ai-workflow → global data/ai-workflow
+```
 
-`PromptBuilder` loads the step template, fills runtime placeholders, and appends context when the template does not explicitly include it.
+## Main Backend Modules
 
-Common placeholders:
+```text
+app/services/workflow_asset_service.py
+  - canonical asset resolver
+  - asset CRUD
+  - workflow manifest loader
+  - metadata contract mapper
+  - Python function discovery
 
-- `{{requirement}}`
-- `{{project_profile}}`
-- `{{architecture}}`
-- `{{spec}}`
-- `{{todo}}`
-- `{{test_result}}`
-- `{{failure_feedback}}`
-- `{{security_context}}`
-- `{{security_findings}}`
+app/services/workflow_config_service.py
+  - UI workflow save/load
+  - converts UI workflow into workflows + contracts + steps assets
 
-Prompt copies are saved to `prompts/<step-key>.md` inside each run workspace so the UI can inspect what was sent.
+app/services/workflow_lint_service.py
+  - validates workflow config before save/run
 
-## Retry Model
+app/workflow_runtime/
+  - executor, retry policy, prompt builder, step actions
+  - agent provider abstraction
+  - built-in Python function implementation library
 
-Retry is workflow-driven.
+app/workflow/agents/providers/
+  - qwen provider
+  - opencode provider
+  - generic CLI provider
+```
 
-- `retryFromStepKey` selects where to restart after a failure.
-- `maxRetries` is counted on the retry target step.
-- `run_test` may classify failure as a test-generation issue or build issue.
-- Failure feedback is appended to `input/failure-feedback.md` and injected into retry prompts when enabled.
-- Step and run failures include `error_code` so the UI can choose stable actions without parsing English messages.
+## Python Function Model
 
-Manual Retry from the UI resets retry counts from the selected step and resumes from there.
+新版只有一種 Python asset：
 
-## Stability Guards
+```text
+functions/**/*.py
+```
 
-- `app/workflow_runtime/error_codes.py` classifies workflow, validation, timeout, agent process, session, expected-file, and project-diff failures.
-- `AgentStepRunner` retries once with a fresh agent session when a provider reports a recoverable session problem.
-- `WorkflowExecutor` supports `requireProjectChanges` / `projectDiffGate` for steps that must modify the selected project path.
-- `app/services/workflow_lint_service.py` validates workflow config before save; `/api/workflows/lint` returns non-throwing lint issues for UI previews.
-- `build` steps default `requireProjectChanges` to true when workflow config is normalized.
+metadata 使用：
 
-## Python Functions
+```yaml
+function: validate_spec
+```
 
-Executable functions live in `app/workflow_functions.py` and are registered in `PYTHON_FUNCTIONS`.
+或：
 
-UI metadata lives in `app/workflow_function_catalog.py` and is returned by `/api/workflows/functions`.
+```yaml
+function: functions/check_spec.py
+```
 
-When adding a new Python workflow function:
+UI 下拉選單不是 hard-code catalog，而是掃描 `data/ai-workflow/functions/**/*.py` 與 project `.ai-workflow/functions/**/*.py` 的 `FUNCTION_META`。
 
-1. Implement `def my_function(ctx: WorkflowFunctionContext, artifact: str | None = None)`.
-2. Add it to `PYTHON_FUNCTIONS`.
-3. Add metadata to `AVAILABLE_WORKFLOW_FUNCTIONS`.
-4. Add or update tests if it affects validation, file writes, or retry routing.
+內建 function 的執行邏輯在：
 
-## Consensus Agent
+```text
+app/workflow_runtime/builtin_functions/
+```
 
-`consensus_agent` is a generic Python-controlled agent step. It can run several internal agent attempts while the UI shows one visible step.
+它是 runtime library，不是使用者要改的設定檔。使用者新增 function 時，只要放到：
 
-Important config:
+```text
+data/ai-workflow/functions/
+```
 
-- `agentCount`
-- `agentMaxRetries`
-- `candidateValidator`
-- `artifactPattern`
-- `freshSessionPerAgent`
+或：
 
-This is used by the security workflow, but the same concept can support any generate + validate + retry loop.
+```text
+<project>/.ai-workflow/functions/
+```
 
-## Safety Rules
+## Metadata Contract Fields
 
-- Artifact API resolves paths and rejects access outside the run workspace.
-- Build file blocks cannot escape the selected project path.
-- Build step must write production files, not tests.
-- Generate Tests owns `tests/`.
-- Python validators should fail loudly with actionable messages because those messages are sent back into retry prompts.
+常用欄位：
+
+```yaml
+id: check_spec
+key: check_spec
+name: Check Spec
+type: python
+skill: steps/my-workflow/check_spec.md
+function: validate_spec
+agent: qwen
+outputs:
+  - spec.md
+retry: 2
+retryFromStepKey: generate_spec
+failAction: selected_step
+allowInteraction: false
+thinking: false
+confidenceThreshold: 0.9
+passKeywords: PASS
+failKeywords: FAIL
+aggregatorFunction: keyword_confidence
+```
+
+舊版 `validator:` 僅保留 runtime 相容邏輯；新文件、UI、範例都使用 `function:`。
+
+## UI / CLI Sharing
+
+UI 儲存 workflow 時，會寫入：
+
+```text
+data/ai-workflow/workflows/*.workflow
+data/ai-workflow/contracts/<workflow-id>/*.yaml
+data/ai-workflow/steps/<workflow-id>/*.md
+```
+
+CLI 執行 workflow 時，讀取同一批 asset。
+
+因此：
+
+```text
+UI 新增 → CLI 可跑
+手動放檔案 → UI Refresh 可看到
+project .ai-workflow 覆蓋 global asset
+```
+
+## Extension Rules
+
+新增 agent provider：改 `data/settings.json` 加 provider 設定。
+
+新增 skill：放 `steps/**/*.md`。
+
+新增 metadata：放 `contracts/**/*.yaml`。
+
+新增 Python function：放 `functions/**/*.py`，加 `FUNCTION_META` 可讓 UI 顯示較友善名稱。
+
+新增 workflow：放 `workflows/*.workflow`。

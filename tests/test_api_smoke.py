@@ -28,10 +28,10 @@ class ApiSmokeTests(unittest.TestCase):
         with TestClient(app) as client:
             payload = client.get("/api/workflows/functions").json()
 
-        validator_ids = {item["id"] for item in payload.get("validators", [])}
-        self.assertIn("consensus_agent", validator_ids)
-        self.assertIn("validate_spec", validator_ids)
-        self.assertIn("run_pytest", validator_ids)
+        function_ids = {item["id"] for item in payload.get("functions", [])}
+        self.assertIn("consensus_agent", function_ids)
+        self.assertIn("validate_spec", function_ids)
+        self.assertIn("run_pytest", function_ids)
         self.assertEqual(len(payload.get("reviewStrategies", [])), 3)
         self.assertEqual(len(payload.get("aggregators", [])), 3)
 

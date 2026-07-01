@@ -2,8 +2,7 @@ const WORKFLOW_ASSET_API = "/api/workflow-assets";
 const TYPE_DEFAULTS = {
   steps: { path: "steps/new-skill.md", content: "FILENAME: result.md\n\nRequirement:\n{{requirement}}\n" },
   contracts: { path: "contracts/new-step.yaml", content: "id: new-step\nskill: steps/new-skill.md\ntype: ai\nagent: qwen\nretry: 2\nallowInteraction: false\nthinking: false\noutputs:\n  - result.md\n" },
-  validators: { path: "validators/check.py", content: "def run(context, artifact=None):\n    return 'Status: PASS\\n'\n" },
-  tools: { path: "tools/helper.py", content: "def run(context, artifact=None):\n    return 'ok'\n" },
+  functions: { path: "functions/check.py", content: "FUNCTION_META = {'id': 'check', 'label': 'Check', 'description': 'Example Python function.'}\n\ndef run(context, artifact=None):\n    return 'Status: PASS\\n'\n" },
   workflows: { path: "workflows/demo.workflow", content: "contract: new-step\n" },
 };
 
@@ -145,9 +144,9 @@ export function installWorkflowAssetManager(ctx) {
       step.contractPath = path;
       step.metadataPath = path;
       step.contractId = path.split("/").pop().replace(/\.(ya?ml|json)$/i, "");
-    } else if (type === "validators" || type === "tools") {
-      step.validator = path;
-      if (type === "validators" && step.type === "ai") step.type = "python";
+    } else if (type === "functions") {
+      step.function = path;
+      if (step.type === "ai") step.type = "python";
     } else if (type === "workflows") {
       toast("Workflow assets appear in the workflow list after Refresh; select them from the sidebar.");
       return;
@@ -195,7 +194,7 @@ function typeFromFilename(filename, fallback) {
   const ext = filename.toLowerCase().split(".").pop();
   if (["md", "markdown", "txt"].includes(ext)) return "steps";
   if (["yaml", "yml", "json"].includes(ext)) return "contracts";
-  if (ext === "py") return fallback === "tools" ? "tools" : "validators";
+  if (ext === "py") return "functions";
   if (ext === "workflow") return "workflows";
   return fallback;
 }
@@ -203,7 +202,7 @@ function typeFromFilename(filename, fallback) {
 function normalizeAssetPath(value = "", defaultDir = "steps") {
   let normalized = String(value || "").trim().replace(/\\/g, "/");
   if (normalized.startsWith(".ai-workflow/")) normalized = normalized.slice(".ai-workflow/".length);
-  if (!/^(steps|contracts|validators|tools|workflows)\//.test(normalized)) {
+  if (!/^(steps|contracts|functions|workflows)\//.test(normalized)) {
     const ext = defaultDir === "steps" ? "md" : defaultDir === "contracts" ? "yaml" : defaultDir === "workflows" ? "workflow" : "py";
     normalized = `${defaultDir}/${cleanName(normalized || `asset.${ext}`)}`;
   }

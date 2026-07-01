@@ -155,7 +155,7 @@ class WorkflowDefinitionIntegrityTests(unittest.TestCase):
                             self.assertIn(first, allowed_first_segments, f"{key}.expectedFiles has unsupported prefix")
 
                     if step.get("type") == "gate":
-                        self.assertTrue(step.get("validator") or step.get("filename") or step.get("outputFile"), f"{key} gate needs a validator or artifact")
+                        self.assertTrue(step.get("function") or step.get("filename") or step.get("outputFile"), f"{key} gate needs a function or artifact")
 
     def test_system_controlled_qwen_has_expected_order_and_gates(self) -> None:
         workflow = workflow_config_service.system_workflow_with_folder()
@@ -163,7 +163,7 @@ class WorkflowDefinitionIntegrityTests(unittest.TestCase):
         gates = {step["key"]: step for step in workflow["steps"] if step.get("type") == "gate"}
         self.assertEqual(set(gates), {"spec_gate", "todo_gate", "final_gate"})
         for gate in gates.values():
-            self.assertEqual(gate.get("validator"), "require_status_pass")
+            self.assertEqual(gate.get("function"), "require_status_pass")
             self.assertTrue(gate.get("retryFromStepKey"))
 
 
@@ -311,7 +311,7 @@ class QwenRunnerUnitTests(unittest.TestCase):
         self.assertNotIn("--session-id", calls[1])
 
 
-class PromptAndArtifactValidatorTests(unittest.TestCase):
+class PromptAndArtifactFunctionTests(unittest.TestCase):
     def test_prompt_templates_require_expected_outputs_and_context(self) -> None:
         prompts = Path("data/ai-workflow/steps/system-controlled-qwen")
         spec_prompt = (prompts / "01_spec.md").read_text(encoding="utf-8")
@@ -374,7 +374,7 @@ class PromptAndArtifactValidatorTests(unittest.TestCase):
         self.assertIn("at least one non-test production file", hardened)
         self.assertEqual(AgentStepRunner._harden_prompt_for_step("generate_tests", "Base prompt"), "Base prompt")
 
-    def test_artifact_validator_rejects_empty_or_invalid_files(self) -> None:
+    def test_artifact_function_rejects_empty_or_invalid_files(self) -> None:
         service = WorkflowFunctionService(log=_noop_log, refresh_artifacts=_noop_refresh)
         with tempfile.TemporaryDirectory() as tmp:
             output_dir = Path(tmp) / "output"
@@ -448,7 +448,7 @@ class ApiWorkflowContractTests(unittest.TestCase):
                     "retryFromStepKey": "",
                     "reviewMode": "none",
                     "allowInteraction": False,
-                    "validator": "",
+                    "function": "",
                 }
             ],
         }

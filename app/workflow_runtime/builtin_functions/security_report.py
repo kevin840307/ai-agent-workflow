@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from app.workflow_function_modules.base import WorkflowFunctionContext, WorkflowFunctionError
-from app.workflow_function_modules.core import require_sections
-from app.workflow_function_modules.security_common import *
+from app.workflow_runtime.builtin_functions.base import WorkflowFunctionContext, WorkflowFunctionError
+from app.workflow_runtime.builtin_functions.core import require_sections
+from app.workflow_runtime.builtin_functions.security_common import *
 
 
 def _synthesize_security_report_from_findings(security_findings_text: str, project_dir: Path) -> str:

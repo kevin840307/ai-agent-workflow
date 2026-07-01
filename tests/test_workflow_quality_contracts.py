@@ -25,7 +25,7 @@ def _step(
     step_type: str = "ai",
     output: str | None = None,
     expected: list[str] | None = None,
-    validator: str = "",
+    function: str = "",
     template_path: str = "prompts/01_spec.md",
 ) -> dict:
     return {
@@ -42,7 +42,7 @@ def _step(
         "retryFromStepKey": "",
         "allowInteraction": False,
         "expectedFiles": expected if expected is not None else ([] if not output else [output]),
-        "validator": validator,
+        "function": function,
         "reviewMode": "none",
         "timeoutEnabled": False,
         "timeoutMinutes": 0,

@@ -22,7 +22,8 @@ from app.runtime_modules.files import (
     validate_generated_test_files,
 )
 from app.core.paths import ROOT, read_text, write_text
-from app.workflow_functions import PYTHON_FUNCTIONS, WorkflowFunctionError
+from app.workflow_runtime.builtin_functions.registry import PYTHON_FUNCTIONS
+from app.workflow_runtime.builtin_functions.base import WorkflowFunctionError
 
 from .agent_step_runner import AgentStepRunner
 from .functions import WorkflowFunctionService
@@ -34,7 +35,7 @@ from .step_utils import (
     step_config,
     step_prompt_name,
     step_review_mode,
-    step_validator_name,
+    step_function_name,
 )
 
 LogFn = Callable[[dict[str, Any], str], Awaitable[None]]
@@ -45,7 +46,7 @@ class WorkflowActions:
     """Step action registry driven by workflow.json.
 
     Built-in step keys keep their specialized safety behavior, but prompt path,
-    artifact name, agent/provider, review strategy, retry, timeout, and validator
+    artifact name, agent/provider, review strategy, retry, timeout, and function
     settings all come from the persisted workflow step config.
     """
 
@@ -465,7 +466,7 @@ class WorkflowActions:
         max_retries = int(config.get("agentMaxRetries") or config.get("maxRetries") or 3)
         prompt_name = step_prompt_name(step_record, prompt_name)
         agent_name = agent_name or step_agent_name(step_record) or "qwen"
-        validator = str(config.get("candidateValidator") or config.get("innerValidator") or config.get("validator") or "").strip()
+        function = str(config.get("candidateValidator") or config.get("innerValidator") or config.get("function") or "").strip()
         artifact_pattern = str(
             config.get("artifactPattern")
             or config.get("outputPattern")
@@ -494,9 +495,9 @@ class WorkflowActions:
                         agent_name=agent_name,
                         fresh_session=fresh_session_per_agent,
                     )
-                    if validator and validator != "consensus_agent":
-                        await self.functions.call_python_function(run, validator, output_dir, artifact)
-                        await self.log(run, f"{step_key}: agent {agent_index} validated {artifact} with {validator}")
+                    if function and function != "consensus_agent":
+                        await self.functions.call_python_function(run, function, output_dir, artifact)
+                        await self.log(run, f"{step_key}: agent {agent_index} validated {artifact} with {function}")
                     else:
                         await self.log(run, f"{step_key}: agent {agent_index} wrote {artifact}")
                     last_error = None
@@ -597,7 +598,7 @@ class WorkflowActions:
                 step_artifact_name(step_record, "build-result.md"),
                 agent_name=agent_name,
             ),
-            "run_test": lambda: self.functions.call_python_function(run, step_validator_name(step_record) or "run_pytest", output_dir),
+            "run_test": lambda: self.functions.call_python_function(run, step_function_name(step_record) or "run_pytest", output_dir),
             "consensus_security_scan": lambda: self.consensus_security_scan_step(
                 run,
                 step_prompt_name(step_record, "00_security_candidate_scan.md"),
@@ -622,28 +623,28 @@ class WorkflowActions:
         if key in registry:
             return registry[key]
 
-        validator = step_validator_name(step_record)
-        if step_type == "validation" and validator == "validate_spec":
+        function = step_function_name(step_record)
+        if step_type == "validation" and function == "validate_spec":
             return lambda: self.validate_or_repair_spec(run, output_dir)
-        if step_type == "validation" and validator == "validate_todo":
+        if step_type == "validation" and function == "validate_todo":
             return lambda: self.validate_or_repair_todo(run, output_dir)
-        if validator == "consensus_agent":
+        if function == "consensus_agent":
             return lambda: self.consensus_agent_step(
                 run,
                 key,
                 step_prompt_name(step_record, f"{key}.md"),
                 agent_name=agent_name,
             )
-        if validator in PYTHON_FUNCTIONS:
-            artifact_validators = {"require_status_pass", "validate_security_candidates", "validate_security_report"}
-            artifact = (step_artifact_name(step_record, "") or None) if validator in artifact_validators else None
-            return lambda: self.functions.call_python_function(run, validator, output_dir, artifact)
+        if function in PYTHON_FUNCTIONS:
+            artifact_functions = {"require_status_pass", "validate_security_candidates", "validate_security_report"}
+            artifact = (step_artifact_name(step_record, "") or None) if function in artifact_functions else None
+            return lambda: self.functions.call_python_function(run, function, output_dir, artifact)
         if step_type == "python":
-            function_id = validator or "run_pytest"
-            artifact_validators = {"validate_security_candidates", "validate_security_report"}
-            artifact = (step_artifact_name(step_record, "") or None) if function_id in artifact_validators else None
+            function_id = function or "run_pytest"
+            artifact_functions = {"validate_security_candidates", "validate_security_report"}
+            artifact = (step_artifact_name(step_record, "") or None) if function_id in artifact_functions else None
             return lambda: self.functions.call_python_function(run, function_id, output_dir, artifact)
-        if validator == "require_status_pass" or step_type in {"gate", "manual"}:
+        if function == "require_status_pass" or step_type in {"gate", "manual"}:
             artifact = step_artifact_name(step_record, step_record.get("key", "review") + ".md")
             return lambda: asyncio.to_thread(self.functions.require_status, output_dir / artifact, "PASS")
         if step_type == "review":

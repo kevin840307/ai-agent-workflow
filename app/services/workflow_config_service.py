@@ -14,28 +14,26 @@ from app.runtime_modules import api as runtime
 from app.core.paths import write_text
 from app.services.workflow_lint_service import assert_workflow_valid, lint_workflow
 from app.services import workflow_asset_service
-from app.workflow_functions import AVAILABLE_WORKFLOW_FUNCTIONS
 
 
 SYSTEM_WORKFLOW_ID = "system-controlled-qwen"
 SAMPLE_WORKFLOW_ID = "sample-custom-workflow"
 SAMPLE_WORKFLOW_FOLDER = "sample-custom-workflow"
 
-# Canonical workflow root.  The old data/workflows bundle source is intentionally
+# Canonical workflow root. The old data/workflows bundle source is intentionally
 # no longer a first-class runtime location; workflows, skill prompts, metadata,
-# validators, and tools all live under data/ai-workflow/.
+# and Python functions all live under data/ai-workflow/.
 AI_WORKFLOW_ROOT = workflow_asset_service.GLOBAL_ASSET_ROOT
 WORKFLOWS_DIR = AI_WORKFLOW_ROOT / "workflows"
 STEPS_DIR = AI_WORKFLOW_ROOT / "steps"
 CONTRACTS_DIR = AI_WORKFLOW_ROOT / "contracts"
-VALIDATORS_DIR = AI_WORKFLOW_ROOT / "validators"
-TOOLS_DIR = AI_WORKFLOW_ROOT / "tools"
-WORKFLOW_ASSET_DIRS = ("steps", "contracts", "validators", "tools", "workflows")
+FUNCTIONS_DIR = AI_WORKFLOW_ROOT / "functions"
+WORKFLOW_ASSET_DIRS = ("steps", "contracts", "functions", "workflows")
 
 
 def _sync_asset_paths() -> None:
     """Keep this module aligned when tests or callers override the asset root."""
-    global AI_WORKFLOW_ROOT, WORKFLOWS_DIR, STEPS_DIR, CONTRACTS_DIR, VALIDATORS_DIR, TOOLS_DIR
+    global AI_WORKFLOW_ROOT, WORKFLOWS_DIR, STEPS_DIR, CONTRACTS_DIR, FUNCTIONS_DIR
     root = workflow_asset_service.GLOBAL_ASSET_ROOT
     if AI_WORKFLOW_ROOT == root:
         return
@@ -43,8 +41,7 @@ def _sync_asset_paths() -> None:
     WORKFLOWS_DIR = root / "workflows"
     STEPS_DIR = root / "steps"
     CONTRACTS_DIR = root / "contracts"
-    VALIDATORS_DIR = root / "validators"
-    TOOLS_DIR = root / "tools"
+    FUNCTIONS_DIR = root / "functions"
 
 PROMPT_FILE_BY_STEP_KEY = {
     "prepare_project": "00_prepare.md",
@@ -207,7 +204,7 @@ def normalize_step_config(step: dict) -> dict:
     item.setdefault("agentOptions", {})
     item.setdefault("expectedFiles", [item["outputFile"]] if item.get("outputFile") else [])
     item.setdefault("requireProjectChanges", item.get("key") == "build")
-    item.setdefault("validator", "")
+    item.setdefault("function", item.get("validator") or "")
     return item
 
 
@@ -265,7 +262,7 @@ def _contract_from_step(workflow_id: str, step: dict) -> dict[str, Any]:
         "command": item.get("command") or "",
         "agent": item.get("agent") or item.get("provider") or "qwen",
         "outputs": [str(value) for value in outputs or []],
-        "validator": item.get("validator") or "",
+        "function": item.get("function") or item.get("validator") or "",
         "retry": int(item.get("maxRetries") or 0),
         "failAction": item.get("failAction") or "same_step",
         "retryFromStepKey": item.get("retryFromStepKey") or "",
@@ -508,7 +505,7 @@ def sample_workflow_config() -> dict:
             "id": SAMPLE_WORKFLOW_ID,
             "kind": "custom",
             "name": "Sample Custom Workflow",
-            "description": "Editable example copied from the system workflow. Use it to learn separated steps, contracts, validators, review, retry, and gates.",
+            "description": "Editable example copied from the system workflow. Use it to learn separated steps, contracts, Python functions, review, retry, and gates.",
             "active": False,
             "protected": False,
             "deletable": True,
@@ -555,7 +552,7 @@ async def list_workflows(project_path: str | None = None) -> dict:
             custom.append(read_prompt_files(normalize_workflow_steps(workflow), workflow.get("folderName") or workflow.get("id")))
 
     custom.sort(key=lambda item: (item.get("kind") == "asset", item.get("updated_at") or item.get("name") or ""), reverse=True)
-    return {"system": system_workflow_with_folder(), "custom": custom, "functions": AVAILABLE_WORKFLOW_FUNCTIONS}
+    return {"system": system_workflow_with_folder(), "custom": custom, "functions": workflow_asset_service.function_catalog(project_path)}
 
 
 async def get_workflow(workflow_id: str, project_path: str | None = None) -> dict:
@@ -600,7 +597,7 @@ async def delete_workflow(workflow_id: str) -> dict:
 
 
 async def get_functions() -> dict:
-    return AVAILABLE_WORKFLOW_FUNCTIONS
+    return workflow_asset_service.function_catalog()
 
 
 async def lint_workflow_config(workflow: dict) -> dict:

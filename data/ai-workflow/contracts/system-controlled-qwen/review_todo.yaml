@@ -9,7 +9,7 @@ command: ''
 agent: qwen
 outputs:
 - todo-review.md
-validator: ''
+function: ''
 retry: 10
 failAction: selected_step
 retryFromStepKey: generate_todo
