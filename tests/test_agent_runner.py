@@ -97,6 +97,25 @@ class AgentRunnerTests(unittest.TestCase):
         self.assertEqual(health["type"], "cli")
         self.assertTrue(health["mock"])
 
+
+    def test_step_metadata_overrides_provider_options_like_thinking(self) -> None:
+        manager = create_agent_manager({
+            "agents": {
+                "default": "opencode",
+                "providers": {
+                    "opencode": {"type": "opencode_cli", "bin": "opencode", "mock": True, "thinking": False},
+                },
+            }
+        })
+
+        agent = manager.resolve({"agent": "opencode", "thinking": True, "model": "qwen3-coder", "timeoutSec": 99})
+        health = agent.health()
+
+        self.assertEqual(health["type"], "opencode_cli")
+        self.assertTrue(health["thinking"])
+        self.assertEqual(health["model"], "qwen3-coder")
+        self.assertEqual(health["timeout_sec"], 99)
+
     async def _run_session_recovery_case(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             workspace = Path(tmp) / "run"

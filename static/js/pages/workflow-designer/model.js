@@ -45,6 +45,8 @@ function createStep(overrides = {}) {
     timeoutEnabled: overrides.timeoutEnabled ?? false,
     timeoutMinutes: overrides.timeoutMinutes ?? 0,
     allowInteraction: overrides.allowInteraction ?? false,
+    thinking: overrides.thinking ?? false,
+    agentOptions: clone(overrides.agentOptions || {}),
     agentCount: overrides.agentCount ?? 3,
     agentMaxRetries: overrides.agentMaxRetries ?? 3,
     freshSessionPerAgent: overrides.freshSessionPerAgent ?? true,

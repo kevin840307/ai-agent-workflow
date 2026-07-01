@@ -207,6 +207,8 @@ def normalize_step_config(step: dict) -> dict:
     item.setdefault("timeoutEnabled", False)
     item.setdefault("timeoutMinutes", 0)
     item.setdefault("allowInteraction", True)
+    item.setdefault("thinking", False)
+    item.setdefault("agentOptions", {})
     item.setdefault("expectedFiles", [item["outputFile"]] if item.get("outputFile") else [])
     item.setdefault("requireProjectChanges", item.get("key") == "build")
     item.setdefault("validator", "")

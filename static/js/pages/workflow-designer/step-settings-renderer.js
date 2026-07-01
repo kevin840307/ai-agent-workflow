@@ -383,6 +383,7 @@ function renderAdvanced(step, disabled, readonly) {
       ${switchRow("Enable Timeout", "Timeout counts as failure and follows retry policy.", "timeoutEnabled", step.timeoutEnabled, disabled)}
       ${numberRow("Timeout Minutes", "timeoutMinutes", step.timeoutMinutes, disabled, "0", "1440", "1")}
       ${switchRow("Allow Interaction", "The selected agent can pause and ask the user questions.", "allowInteraction", step.allowInteraction, disabled)}
+      ${switchRow("Thinking", "Pass a thinking/reasoning flag to compatible agents such as OpenCode.", "thinking", step.thinking, disabled)}
       <label class="designer-form-row">
         <span class="designer-label">Python Validator</span>
         <input class="designer-input" list="designerValidatorOptions" value="${escapeAttr(step.validator || "")}" placeholder="validate_spec or validators/check.py" data-step-field="validator" ${disabled} />

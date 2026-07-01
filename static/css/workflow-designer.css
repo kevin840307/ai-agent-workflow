@@ -3307,3 +3307,76 @@ body.projects-collapsed .designer-sidebar-section {
   font-weight: 800;
   color: var(--fail);
 }
+
+.designer-asset-manager {
+  display: grid;
+  gap: 12px;
+  margin: 0 0 18px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: #ffffff;
+  box-shadow: var(--shadow-sm);
+}
+
+.designer-asset-grid {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.75fr) minmax(360px, 1.25fr);
+  gap: 14px;
+}
+
+.designer-asset-list-panel,
+.designer-asset-editor-panel {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+}
+
+.designer-asset-list {
+  display: grid;
+  gap: 8px;
+  max-height: 300px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.designer-asset-item {
+  display: grid;
+  gap: 3px;
+  width: 100%;
+  padding: 10px 11px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #f8fafc;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.designer-asset-item.active,
+.designer-asset-item:hover {
+  border-color: rgba(15, 118, 110, 0.42);
+  background: #eef7f5;
+}
+
+.designer-asset-item strong {
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.designer-asset-item span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.designer-asset-editor {
+  min-height: 260px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+@media (max-width: 980px) {
+  .designer-asset-grid {
+    grid-template-columns: 1fr;
+  }
+}

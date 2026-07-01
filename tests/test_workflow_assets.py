@@ -59,6 +59,114 @@ class WorkflowAssetServiceTests(unittest.TestCase):
             self.assertIn("contracts/spec.yaml", paths)
             self.assertIn("validators/check.py", paths)
 
+
+    def test_asset_api_supports_full_crud_delete_and_rename(self) -> None:
+        with TestClient(app) as client:
+            created = client.put(
+                "/api/workflow-assets/file",
+                json={"path": "steps/crud.md", "content": "CRUD skill", "scope": "project", "project_path": str(self.project_root)},
+            )
+            self.assertEqual(created.status_code, 200)
+
+            read = client.get(
+                "/api/workflow-assets/file",
+                params={"path": "steps/crud.md", "scope": "project", "project_path": str(self.project_root)},
+            )
+            self.assertEqual(read.status_code, 200)
+            self.assertEqual(read.json()["content"], "CRUD skill")
+
+            renamed = client.post(
+                "/api/workflow-assets/rename",
+                json={
+                    "old_path": "steps/crud.md",
+                    "new_path": "steps/crud-renamed.md",
+                    "scope": "project",
+                    "project_path": str(self.project_root),
+                },
+            )
+            self.assertEqual(renamed.status_code, 200)
+            self.assertEqual(renamed.json()["path"], "steps/crud-renamed.md")
+
+            deleted = client.delete(
+                "/api/workflow-assets/file",
+                params={"path": "steps/crud-renamed.md", "scope": "project", "project_path": str(self.project_root)},
+            )
+            self.assertEqual(deleted.status_code, 200)
+            self.assertTrue(deleted.json()["ok"])
+            listed = client.get("/api/workflow-assets", params={"project_path": str(self.project_root)})
+            self.assertNotIn("steps/crud-renamed.md", {item["path"] for item in listed.json()["assets"]})
+
+    def test_contract_metadata_maps_full_runtime_and_ui_fields(self) -> None:
+        workflow_asset_service.write_asset("steps/full.md", "Full prompt", scope="global")
+        workflow_asset_service.write_asset(
+            "contracts/full.yaml",
+            "\n".join(
+                [
+                    "id: full",
+                    "name: Full Step",
+                    "description: Full metadata",
+                    "skill: steps/full.md",
+                    "type: review",
+                    "command: /review",
+                    "agent: opencode",
+                    "retry: 5",
+                    "outputs:",
+                    "  - full.md",
+                    "validator: validators/full.py",
+                    "timeout: 180",
+                    "allowInteraction: false",
+                    "thinking: true",
+                    "confidenceThreshold: 0.91",
+                    "passKeywords: PASS",
+                    "failKeywords: FAIL",
+                    "aggregatorFunction: keyword_confidence",
+                    "failAction: retry_from_step",
+                    "retryFromStepKey: build",
+                    "keepSameSession: false",
+                    "injectFailureFeedback: false",
+                    "stopAfterFailures: 4",
+                    "approvalRequired: true",
+                    "pauseAfterStep: true",
+                    "approvalMessage: Please approve",
+                    "agentOptions:",
+                    "  model: test-model",
+                    "  thinking: true",
+                    "",
+                ]
+            ),
+            scope="global",
+        )
+        workflow = {"steps": [{"key": "review", "name": "Review", "contractId": "full", "allowInteraction": True}]}
+
+        applied = workflow_asset_service.apply_contracts_to_workflow(workflow, str(self.project_root))
+        step = applied["steps"][0]
+
+        self.assertEqual(step["name"], "Full Step")
+        self.assertEqual(step["description"], "Full metadata")
+        self.assertEqual(step["type"], "review")
+        self.assertEqual(step["command"], "/review")
+        self.assertEqual(step["agent"], "opencode")
+        self.assertEqual(step["provider"], "opencode")
+        self.assertEqual(step["maxRetries"], 5)
+        self.assertEqual(step["expectedFiles"], ["full.md"])
+        self.assertEqual(step["validator"], "validators/full.py")
+        self.assertEqual(step["timeoutMinutes"], 3)
+        self.assertFalse(step["allowInteraction"])
+        self.assertTrue(step["thinking"])
+        self.assertAlmostEqual(step["confidenceThreshold"], 0.91)
+        self.assertEqual(step["passKeywords"], "PASS")
+        self.assertEqual(step["failKeywords"], "FAIL")
+        self.assertEqual(step["aggregatorFunction"], "keyword_confidence")
+        self.assertEqual(step["failAction"], "retry_from_step")
+        self.assertEqual(step["retryFromStepKey"], "build")
+        self.assertFalse(step["keepSameSession"])
+        self.assertFalse(step["injectFailureFeedback"])
+        self.assertEqual(step["stopAfterFailures"], 4)
+        self.assertTrue(step["approvalRequired"])
+        self.assertTrue(step["pauseAfterStep"])
+        self.assertEqual(step["approvalMessage"], "Please approve")
+        self.assertEqual(step["agentOptions"]["model"], "test-model")
+
     def test_apply_contract_to_workflow_keeps_skill_and_metadata_separate(self) -> None:
         workflow_asset_service.write_asset("steps/build.md", "Build prompt", scope="global")
         workflow_asset_service.write_asset(

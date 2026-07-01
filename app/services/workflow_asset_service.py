@@ -118,6 +118,31 @@ def _dump_contract(contract: dict[str, Any]) -> str:
     return yaml.safe_dump(contract, sort_keys=False, allow_unicode=True)
 
 
+def _coerce_bool(value: Any, default: bool = False) -> bool:
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return bool(value)
+    return str(value).strip().lower() not in {"", "0", "false", "no", "off", "none"}
+
+
+def _first_present(mapping: dict[str, Any], *keys: str, default: Any = None) -> Any:
+    for key in keys:
+        if key in mapping and mapping[key] is not None:
+            return mapping[key]
+    return default
+
+
+def _set_if_present(target: dict[str, Any], source: dict[str, Any], target_key: str, *source_keys: str, transform=None) -> None:
+    marker = object()
+    value = _first_present(source, *(source_keys or (target_key,)), default=marker)
+    if value is marker:
+        return
+    target[target_key] = transform(value) if transform else value
+
+
 def _validate_content(relative_path: str, content: str) -> None:
     rel = _clean_relative_path(relative_path)
     path = Path(rel)
@@ -186,11 +211,11 @@ def list_assets(project_path: str | None = None) -> dict[str, Any]:
     }
 
 
-def read_asset(relative_path: str, project_path: str | None = None) -> dict[str, Any]:
-    path = resolve_asset_path(relative_path, project_path)
+def read_asset(relative_path: str, project_path: str | None = None, *, scope: str = "auto") -> dict[str, Any]:
+    path = resolve_asset_path(relative_path, project_path, scope=scope)
     rel = _clean_relative_path(relative_path)
-    scope = "project" if _project_root(project_path) and (Path(project_path).expanduser().resolve() / PROJECT_ASSET_DIR) in path.parents else "global"
-    return {"scope": scope, "path": rel, "content": read_text(path)}
+    resolved_scope = scope if scope in {"project", "global"} else ("project" if _project_root(project_path) and (Path(project_path).expanduser().resolve() / PROJECT_ASSET_DIR) in path.parents else "global")
+    return {"scope": resolved_scope, "path": rel, "content": read_text(path)}
 
 
 def write_asset(relative_path: str, content: str, project_path: str | None = None, *, scope: str = "global", overwrite: bool = True) -> dict[str, Any]:
@@ -200,7 +225,48 @@ def write_asset(relative_path: str, content: str, project_path: str | None = Non
     if path.exists() and not overwrite:
         raise HTTPException(status_code=409, detail=f"Workflow asset already exists: {rel}")
     write_text(path, content)
-    return read_asset(rel, project_path if scope == "project" else None)
+    return read_asset(rel, project_path if scope == "project" else None, scope=scope)
+
+
+def delete_asset(relative_path: str, project_path: str | None = None, *, scope: str = "global") -> dict[str, Any]:
+    rel = _clean_relative_path(relative_path)
+    path = resolve_asset_path(rel, project_path, scope=scope)
+    if not path.is_file():
+        raise HTTPException(status_code=404, detail=f"Workflow asset not found: {rel}")
+    path.unlink()
+    # Keep the top-level asset folders stable, but remove empty nested folders.
+    root = (Path(project_path).expanduser().resolve() / PROJECT_ASSET_DIR) if scope == "project" and project_path else GLOBAL_ASSET_ROOT
+    parent = path.parent
+    while parent != root and parent.parent != parent:
+        try:
+            parent.rmdir()
+        except OSError:
+            break
+        parent = parent.parent
+    return {"ok": True, "path": rel, "scope": scope}
+
+
+def rename_asset(
+    old_path: str,
+    new_path: str,
+    project_path: str | None = None,
+    *,
+    scope: str = "global",
+    overwrite: bool = False,
+) -> dict[str, Any]:
+    old_rel = _clean_relative_path(old_path)
+    new_rel = _clean_relative_path(new_path)
+    if old_rel.split("/", 1)[0] != new_rel.split("/", 1)[0]:
+        raise HTTPException(status_code=400, detail="Cannot move workflow assets between asset categories")
+    old_file = resolve_asset_path(old_rel, project_path, scope=scope)
+    new_file = resolve_asset_path(new_rel, project_path, must_exist=False, scope=scope)
+    if new_file.exists() and not overwrite:
+        raise HTTPException(status_code=409, detail=f"Workflow asset already exists: {new_rel}")
+    content = read_text(old_file)
+    _validate_content(new_rel, content)
+    new_file.parent.mkdir(parents=True, exist_ok=True)
+    old_file.replace(new_file) if overwrite else old_file.rename(new_file)
+    return read_asset(new_rel, project_path if scope == "project" else None, scope=scope)
 
 
 def write_contract(contract: dict[str, Any], project_path: str | None = None, *, scope: str = "global") -> dict[str, Any]:
@@ -215,10 +281,45 @@ def normalize_contract(contract: dict[str, Any], *, fallback_id: str = "contract
     item = deepcopy(contract or {})
     item.setdefault("id", fallback_id)
     item["id"] = str(item["id"]).strip() or fallback_id
+
+    aliases = {
+        "skill_path": "skillPath",
+        "template_path": "templatePath",
+        "metadata_path": "metadataPath",
+        "contract_path": "contractPath",
+        "max_retries": "maxRetries",
+        "expected_files": "expectedFiles",
+        "output_file": "outputFile",
+        "confidence_threshold": "confidenceThreshold",
+        "pass_keywords": "passKeywords",
+        "fail_keywords": "failKeywords",
+        "aggregator_function": "aggregatorFunction",
+        "fail_action": "failAction",
+        "retry_from_step_key": "retryFromStepKey",
+        "keep_same_session": "keepSameSession",
+        "inject_failure_feedback": "injectFailureFeedback",
+        "stop_after_failures": "stopAfterFailures",
+        "allow_interaction": "allowInteraction",
+        "approval_required": "approvalRequired",
+        "pause_after_step": "pauseAfterStep",
+        "approval_message": "approvalMessage",
+        "timeout_minutes": "timeoutMinutes",
+        "review_mode": "reviewMode",
+        "session_mode": "sessionMode",
+        "agent_options": "agentOptions",
+    }
+    for old_key, new_key in aliases.items():
+        if old_key in item and new_key not in item:
+            item[new_key] = item[old_key]
+
     if item.get("skillPath") and not item.get("skill"):
         item["skill"] = item["skillPath"]
     if item.get("templatePath") and not item.get("skill"):
         item["skill"] = item["templatePath"]
+    if item.get("metadataPath") and not item.get("path"):
+        item["path"] = item["metadataPath"]
+    if item.get("contractPath") and not item.get("path"):
+        item["path"] = item["contractPath"]
     if item.get("retry") is None and item.get("maxRetries") is not None:
         item["retry"] = item.get("maxRetries")
     if item.get("provider") and not item.get("agent"):
@@ -227,12 +328,19 @@ def normalize_contract(contract: dict[str, Any], *, fallback_id: str = "contract
         item["agent"] = item["engine"]
     if item.get("output") and not item.get("outputs"):
         item["outputs"] = [item["output"]]
+    if item.get("outputFile") and not item.get("outputs"):
+        item["outputs"] = [item["outputFile"]]
+    if item.get("expectedFiles") and not item.get("outputs"):
+        item["outputs"] = item["expectedFiles"]
+    if item.get("timeout") is None and item.get("timeoutMinutes") is not None:
+        item["timeout"] = float(item.get("timeoutMinutes") or 0) * 60
     if isinstance(item.get("validation"), str) and not item.get("validator"):
         item["validator"] = item["validation"]
     if isinstance(item.get("validation"), dict) and not item.get("validator"):
         item["validator"] = item["validation"].get("function") or item["validation"].get("path") or item["validation"].get("id")
+    if item.get("approval") is None and item.get("approvalRequired") is not None:
+        item["approval"] = item.get("approvalRequired")
     return item
-
 
 def _load_contract_by_id_or_path(value: str, project_path: str | None = None) -> dict[str, Any]:
     raw = str(value or "").strip()
@@ -266,14 +374,35 @@ def apply_contract_to_step(step: dict[str, Any], contract: dict[str, Any]) -> di
     item = deepcopy(step)
     metadata = normalize_contract(contract)
     item["contractId"] = metadata.get("id") or item.get("contractId") or ""
+    item["contractPath"] = metadata.get("path") or item.get("contractPath") or ""
     item["metadataPath"] = metadata.get("path") or item.get("metadataPath") or ""
+
+    direct_fields = {
+        "name": str,
+        "description": str,
+        "type": str,
+        "command": str,
+        "reviewMode": str,
+        "passKeywords": str,
+        "failKeywords": str,
+        "aggregatorFunction": str,
+        "failAction": str,
+        "retryFromStepKey": str,
+        "approvalMessage": str,
+        "sessionMode": str,
+    }
+    for field, transform in direct_fields.items():
+        _set_if_present(item, metadata, field, field, transform=transform)
+
+    for field in ["enabled", "keepSameSession", "injectFailureFeedback", "allowInteraction", "thinking"]:
+        _set_if_present(item, metadata, field, field, transform=_coerce_bool)
+    for field in ["stopAfterFailures"]:
+        _set_if_present(item, metadata, field, field, transform=lambda value: int(value or 0))
+    _set_if_present(item, metadata, "confidenceThreshold", "confidenceThreshold", transform=lambda value: float(value or 0))
+
     if metadata.get("skill"):
         item["skillPath"] = metadata["skill"]
         item["templatePath"] = metadata["skill"]
-    if metadata.get("type"):
-        item["type"] = metadata["type"]
-    if metadata.get("command") is not None:
-        item["command"] = metadata.get("command") or ""
     if metadata.get("agent"):
         item["agent"] = metadata["agent"]
         item["provider"] = metadata["agent"]
@@ -284,22 +413,32 @@ def apply_contract_to_step(step: dict[str, Any], contract: dict[str, Any]) -> di
         if isinstance(outputs, str):
             outputs = [outputs]
         item["expectedFiles"] = [str(value) for value in outputs or []]
-        if outputs and not item.get("outputFile"):
+        if outputs:
             item["outputFile"] = str(outputs[0])
             item["filename"] = str(outputs[0])
-    if metadata.get("validator"):
-        item["validator"] = metadata["validator"]
+    if metadata.get("validator") is not None:
+        item["validator"] = str(metadata.get("validator") or "")
     if metadata.get("timeout") is not None:
         seconds = float(metadata.get("timeout") or 0)
         item["timeoutEnabled"] = seconds > 0
         item["timeoutMinutes"] = round(seconds / 60, 3) if seconds > 0 else 0
-    if metadata.get("approval") is not None:
-        item["approvalRequired"] = bool(metadata.get("approval"))
-        item["pauseAfterStep"] = bool(metadata.get("approval"))
-    if metadata.get("sessionMode"):
-        item["sessionMode"] = metadata["sessionMode"]
-    if metadata.get("allowInteraction") is not None:
-        item["allowInteraction"] = bool(metadata.get("allowInteraction"))
+    if metadata.get("timeoutEnabled") is not None:
+        item["timeoutEnabled"] = _coerce_bool(metadata.get("timeoutEnabled"))
+    if metadata.get("timeoutMinutes") is not None:
+        item["timeoutMinutes"] = float(metadata.get("timeoutMinutes") or 0)
+        item["timeoutEnabled"] = item["timeoutMinutes"] > 0 or bool(item.get("timeoutEnabled"))
+    approval = _first_present(metadata, "approval", "approvalRequired", "pauseAfterStep")
+    if approval is not None:
+        item["approvalRequired"] = _coerce_bool(approval)
+        item["pauseAfterStep"] = _coerce_bool(approval)
+    if metadata.get("pauseAfterStep") is not None:
+        item["pauseAfterStep"] = _coerce_bool(metadata.get("pauseAfterStep"))
+    if isinstance(metadata.get("reviewers"), list):
+        item["reviewers"] = deepcopy(metadata["reviewers"])
+    if isinstance(metadata.get("sources"), list):
+        item["sources"] = deepcopy(metadata["sources"])
+    if isinstance(metadata.get("agentOptions"), dict):
+        item["agentOptions"] = deepcopy(metadata["agentOptions"])
     return item
 
 
@@ -442,9 +581,10 @@ def step_from_contract(contract: dict[str, Any], index: int = 0) -> dict[str, An
         "maxRetries": int(metadata.get("retry") or metadata.get("maxRetries") or 0),
         "timeoutEnabled": bool(metadata.get("timeout")),
         "timeoutMinutes": round(float(metadata.get("timeout") or 0) / 60, 3) if metadata.get("timeout") else 0,
-        "allowInteraction": bool(metadata.get("allowInteraction", metadata.get("allow_interaction", False))),
-        "pauseAfterStep": bool(metadata.get("approval")),
-        "approvalRequired": bool(metadata.get("approval")),
+        "allowInteraction": _coerce_bool(metadata.get("allowInteraction", False)),
+        "thinking": _coerce_bool(metadata.get("thinking", False)),
+        "pauseAfterStep": _coerce_bool(metadata.get("approval", False)),
+        "approvalRequired": _coerce_bool(metadata.get("approval", False)),
         "sources": [],
         "reviewers": metadata.get("reviewers") if isinstance(metadata.get("reviewers"), list) else [],
         "reviewMode": str(metadata.get("reviewMode") or metadata.get("review_strategy") or ("current_session" if str(metadata.get("type") or "") == "review" else "none")),
@@ -454,7 +594,7 @@ def step_from_contract(contract: dict[str, Any], index: int = 0) -> dict[str, An
         "aggregatorFunction": str(metadata.get("aggregatorFunction") or metadata.get("aggregator") or ""),
         "failAction": str(metadata.get("failAction") or "same_step"),
         "retryFromStepKey": str(metadata.get("retryFromStepKey") or ""),
-        "keepSameSession": str(metadata.get("sessionMode") or metadata.get("session_mode") or "") not in {"isolated", "fresh", "new"},
+        "keepSameSession": _coerce_bool(metadata.get("keepSameSession", True)) and str(metadata.get("sessionMode") or "") not in {"isolated", "fresh", "new"},
         "injectFailureFeedback": bool(metadata.get("injectFailureFeedback", True)),
         "stopAfterFailures": int(metadata.get("stopAfterFailures") or 3),
         "templateContent": "",

@@ -101,7 +101,8 @@ function openPythonEditor(path, content, onSave) {
 }
 
 function metadataYaml(step, id, path) {
-  const lines = [`id: ${id}`, `skill: ${cleanValue(step.skillPath || step.templatePath || `steps/${id}.md`)}`, `type: ${cleanValue(step.type || "ai")}`];
+  const lines = [`id: ${id}`, `name: ${cleanValue(step.name || id)}`, `skill: ${cleanValue(step.skillPath || step.templatePath || `steps/${id}.md`)}`, `type: ${cleanValue(step.type || "ai")}`];
+  if (step.description) lines.push(`description: ${cleanValue(step.description)}`);
   if (step.command) lines.push(`command: ${cleanValue(step.command)}`);
   if (step.agent || step.provider) lines.push(`agent: ${cleanValue(step.agent || step.provider)}`);
   lines.push(`retry: ${Number(step.maxRetries || 0)}`);
@@ -109,8 +110,20 @@ function metadataYaml(step, id, path) {
   if (outputs.length) lines.push("outputs:", ...outputs.map((file) => `  - ${cleanValue(file)}`));
   if (step.validator) lines.push(`validator: ${cleanValue(step.validator)}`);
   if (step.timeoutEnabled && step.timeoutMinutes) lines.push(`timeout: ${Math.round(Number(step.timeoutMinutes) * 60)}`);
-  if (step.approvalRequired) lines.push("approval: true");
-  if (step.allowInteraction) lines.push("allowInteraction: true");
+  lines.push(`allowInteraction: ${Boolean(step.allowInteraction)}`);
+  lines.push(`thinking: ${Boolean(step.thinking)}`);
+  lines.push(`confidenceThreshold: ${Number(step.confidenceThreshold ?? 0.75)}`);
+  if (step.passKeywords) lines.push(`passKeywords: ${cleanValue(step.passKeywords)}`);
+  if (step.failKeywords) lines.push(`failKeywords: ${cleanValue(step.failKeywords)}`);
+  if (step.aggregatorFunction) lines.push(`aggregatorFunction: ${cleanValue(step.aggregatorFunction)}`);
+  lines.push(`failAction: ${cleanValue(step.failAction || "same_step")}`);
+  if (step.retryFromStepKey) lines.push(`retryFromStepKey: ${cleanValue(step.retryFromStepKey)}`);
+  lines.push(`keepSameSession: ${Boolean(step.keepSameSession)}`);
+  lines.push(`injectFailureFeedback: ${Boolean(step.injectFailureFeedback)}`);
+  lines.push(`stopAfterFailures: ${Number(step.stopAfterFailures || 1)}`);
+  lines.push(`approvalRequired: ${Boolean(step.approvalRequired)}`);
+  lines.push(`pauseAfterStep: ${Boolean(step.pauseAfterStep)}`);
+  if (step.approvalMessage) lines.push(`approvalMessage: ${cleanValue(step.approvalMessage)}`);
   lines.push(`path: ${cleanValue(path)}`);
   return `${lines.join("\n")}\n`;
 }

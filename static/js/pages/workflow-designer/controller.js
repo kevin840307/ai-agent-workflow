@@ -44,6 +44,7 @@ import { installStepSettingsRenderer } from "./step-settings-renderer.js?v=20260
 import { installTemplateEditor } from "./template-editor.js?v=20260701-step-detail-polish1";
 import { installImportExportTools } from "./import-export.js?v=20260701-step-detail-polish1";
 import { installWorkflowAssetTools } from "./asset-tools.js?v=20260701-step-detail-polish1";
+import { installWorkflowAssetManager } from "./asset-manager.js?v=20260701-step-detail-polish1";
 
 const STORAGE_KEY = "qwenWorkflow.workflowDesigner.ui.v1";
 const WORKFLOW_API = "/api/workflows";
@@ -109,6 +110,7 @@ async function initWorkflowDesignerPage() {
   await loadState();
   bindEvents();
   render();
+  assetManager.refreshAssetList();
 }
 
 async function loadState() {
@@ -176,6 +178,7 @@ function bindEvents() {
   on("designerDuplicateCustomWorkflow", "click", duplicateCurrentWorkflow);
   on("designerExportWorkflow", "click", exportWorkflow);
   on("designerDeleteWorkflow", "click", () => deleteWorkflow(state.selectedWorkflowId));
+  assetManager.bindEvents();
 
   const nameInput = el("workflowNameInput");
   if (nameInput) {
@@ -430,7 +433,7 @@ function updateFromInput(input) {
     if (field === "skillPath" && isAiWorkflowStepPath(value)) {
       step.templatePath = value;
     }
-    if (["name", "templatePath", "filename", "outputFile", "contractId", "contractPath", "metadataPath", "skillPath", "aggregatorFunction", "agent", "provider", "maxRetries", "failAction", "retryFromStepKey", "keepSameSession", "injectFailureFeedback", "timeoutEnabled", "timeoutMinutes"].includes(field)) renderWorkflowViewOnly();
+    if (["name", "templatePath", "filename", "outputFile", "contractId", "contractPath", "metadataPath", "skillPath", "aggregatorFunction", "agent", "provider", "maxRetries", "failAction", "retryFromStepKey", "keepSameSession", "injectFailureFeedback", "timeoutEnabled", "timeoutMinutes", "thinking"].includes(field)) renderWorkflowViewOnly();
     renderStepEditorHeader();
     markWorkflowDirty();
     return;
@@ -983,7 +986,7 @@ function summarizeStep(step) {
   }
   if (step.type === "gate" || step.type === "manual") return step.pauseAfterStep ? "Pause and wait for human approval." : "Gate decision step.";
   if (step.command) return `Command ${step.command} - template ${step.templatePath || "not set"} - retry ${step.maxRetries}${step.retryFromStepKey ? ` -> ${step.retryFromStepKey}` : ""}.`;
-  return `${step.templatePath || "no template"} - retry ${step.maxRetries}${step.retryFromStepKey ? ` -> ${step.retryFromStepKey}` : ""} - ${step.allowInteraction ? "interactive" : "fully automatic"}`;
+  return `${step.templatePath || "no template"} - retry ${step.maxRetries}${step.retryFromStepKey ? ` -> ${step.retryFromStepKey}` : ""} - ${step.allowInteraction ? "interactive" : "fully automatic"}${step.thinking ? " - thinking" : ""}`;
 }
 
 function uniqueWorkflowName(base) {
@@ -1067,6 +1070,20 @@ const stepSettingsRenderer = installStepSettingsRenderer({
 const assetTools = installWorkflowAssetTools({
   defaultTemplateContent,
   designerApi,
+  getSelectedStep,
+  isReadonly,
+  markWorkflowDirty,
+  renderSettings: () => renderSettings(),
+  renderWorkflowViewOnly: () => renderWorkflowViewOnly(),
+  toast,
+});
+
+
+const assetManager = installWorkflowAssetManager({
+  designerApi,
+  el,
+  escapeAttr,
+  escapeHtml,
   getSelectedStep,
   isReadonly,
   markWorkflowDirty,

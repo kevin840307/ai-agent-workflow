@@ -13,7 +13,6 @@ app/
   services/                 API use cases and persistence orchestration
   workflow/agents/          provider-neutral agent contracts and providers
   workflow_runtime/          workflow execution, agent calls, prompt building, retry
-    agent_adapters/          compatibility facades for old adapter imports
   workflow_functions.py      executable Python workflow functions
   workflow_function_catalog.py
                              function metadata exposed to Workflow Designer
@@ -60,15 +59,14 @@ Agent support is provider-neutral.
 - `AgentManager` resolves a configured provider name.
 - `QwenAdapter` prefers Qwen serve and can fall back to CLI when configured.
 - `OpenCodeCliAdapter` runs `opencode run --session <project-session> <prompt>` or `opencode --prompt <prompt> --session <project-session>` and is selectable as the default agent or per step provider.
-- New agents should implement `AgentClient` in `app/workflow_runtime/agent_adapters/<provider>.py`.
-- Provider construction is registered through `ADAPTER_FACTORIES`, keyed by provider `type`.
+- `GenericCliAdapter` supports future CLI agents through `data/settings.json` without new code.
+- New custom adapters should implement `AgentClient` in `app/workflow/agents/providers/<provider>.py` and register their provider type in `ADAPTER_FACTORIES`.
 
-Recommended extension path for a new agent:
+Recommended extension path for a normal new CLI agent:
 
-1. Add provider config to `data/settings.json`.
-2. Add an adapter implementing `run_stream`, `command_preview`, and `health`.
-3. Register its provider type in `ADAPTER_FACTORIES`.
-4. Expose UI choices through workflow step `agent` / `provider`.
+1. Add provider config to `data/settings.json` with `type: cli`.
+2. Choose `promptMode`: `stdin`, `last_arg`, or `prompt_flag`.
+3. Select it from workflow step `agent` / `provider` or set it as `agents.default`.
 
 Chat mode calls `AgentManager.resolve()` without forcing a provider, so it follows `agents.default`. Workflow steps can override that with their `agent` or `provider` field.
 Project sessions store provider session ids in `agent_session_ids`; legacy `qwen_session_id` remains for backward compatibility.

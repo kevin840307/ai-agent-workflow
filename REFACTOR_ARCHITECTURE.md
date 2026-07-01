@@ -136,7 +136,7 @@ app/
    - project CRUD remains in `project_service.py`.
 5. Move workflow runtime:
    - `workflow_runtime/*` -> `workflow/*`
-   - `workflow_runtime/agent_adapters/*` -> `workflow/agents/providers/*`
+   - `workflow_runtime/agent_adapters/*` -> `workflow/agents/providers/*` (facades deleted after internal imports were removed)
 6. Move workflow functions:
    - keep `app/workflow_functions.py` as a temporary facade.
    - make `workflow/functions/registry.py` the only implementation registry.

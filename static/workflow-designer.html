@@ -77,6 +77,65 @@
           </article>
         </section>
 
+
+        <section class="designer-asset-manager" aria-label="Workflow asset manager">
+          <div class="designer-panel-head compact">
+            <div>
+              <h3>.ai-workflow Assets</h3>
+              <p>CRUD shared workflow assets: skill markdown, metadata YAML/JSON, Python validators/tools, and .workflow files.</p>
+            </div>
+            <div class="designer-footer-actions compact">
+              <button type="button" data-asset-manager-action="refresh">Refresh</button>
+              <button type="button" data-asset-manager-action="new">New</button>
+              <button type="button" data-asset-manager-action="upload">Upload</button>
+            </div>
+          </div>
+          <div class="designer-asset-grid">
+            <aside class="designer-asset-list-panel">
+              <div class="designer-form-grid compact">
+                <label class="designer-form-row">
+                  <span class="designer-label">Project Path</span>
+                  <input id="designerAssetProjectPath" class="designer-input" placeholder="Optional: C:\project to read .ai-workflow" />
+                </label>
+                <div class="designer-template-summary-grid compact">
+                  <label class="designer-form-row">
+                    <span class="designer-label">Scope</span>
+                    <select id="designerAssetScope" class="designer-select">
+                      <option value="global">Global</option>
+                      <option value="project">Project</option>
+                    </select>
+                  </label>
+                  <label class="designer-form-row">
+                    <span class="designer-label">Type</span>
+                    <select id="designerAssetType" class="designer-select">
+                      <option value="steps">Skill</option>
+                      <option value="contracts">Metadata</option>
+                      <option value="validators">Validator Python</option>
+                      <option value="tools">Tool Python</option>
+                      <option value="workflows">Workflow</option>
+                    </select>
+                  </label>
+                </div>
+              </div>
+              <div id="designerAssetList" class="designer-asset-list"></div>
+            </aside>
+            <section class="designer-asset-editor-panel">
+              <label class="designer-form-row">
+                <span class="designer-label">Asset Path</span>
+                <input id="designerAssetPath" class="designer-input" placeholder="steps/my-skill.md / contracts/my-step.yaml / validators/check.py" />
+              </label>
+              <textarea id="designerAssetContent" class="designer-textarea designer-asset-editor" spellcheck="false" placeholder="Select or create an asset..."></textarea>
+              <div class="designer-footer-actions compact">
+                <button type="button" data-asset-manager-action="save" class="primary">Save Asset</button>
+                <button type="button" data-asset-manager-action="rename">Rename</button>
+                <button type="button" data-asset-manager-action="apply">Apply to Step</button>
+                <button type="button" data-asset-manager-action="delete" class="designer-danger-button">Delete</button>
+              </div>
+              <div class="designer-form-hint">Files are discovered automatically. Manual changes under .ai-workflow are visible after Refresh; CLI and UI use the same backend resolver.</div>
+            </section>
+          </div>
+        </section>
+
         <section class="designer-editor">
           <div class="designer-editor-head">
             <div class="designer-workflow-title-fields" aria-label="Workflow details">

@@ -52,6 +52,7 @@ def initial_steps(workflow_steps: list[dict[str, Any]] | None = None) -> list[di
                 "retry_from_step_key": workflow_step.get("retryFromStepKey") or "",
                 "fail_action": workflow_step.get("failAction") or "same_step",
                 "allow_interaction": bool(workflow_step.get("allowInteraction")),
+                "thinking": bool(workflow_step.get("thinking")),
                 "pause_after_step": bool(workflow_step.get("pauseAfterStep")),
             }
         )

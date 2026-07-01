@@ -446,7 +446,7 @@ function renderStepList() {
       ["Template", step.templatePath || "-"],
       ["File", step.filename || normalizeFilename(step.outputFile || "-")],
       ["Retry", `${step.maxRetries ?? 0}${step.retryFromStepKey ? ` -> ${step.retryFromStepKey}` : ""}`],
-      ["Agent", step.agent || step.provider || "default"],
+      ["Agent", `${step.agent || step.provider || "default"}${step.thinking ? " + thinking" : ""}`],
       ["Expected", (step.expectedFiles || []).length ? step.expectedFiles.join(", ") : "-"],
     ];
 
@@ -500,6 +500,7 @@ function renderCanvas() {
         <span class="badge">retry ${step.maxRetries}${step.retryFromStepKey ? ` -> ${escapeHtml(step.retryFromStepKey)}` : ""}</span>
         ${step.agent || step.provider ? `<span class="badge">agent ${escapeHtml(step.agent || step.provider)}</span>` : ""}
         ${step.allowInteraction ? `<span class="badge waiting_input">interaction</span>` : `<span class="badge">auto</span>`}
+        ${step.thinking ? `<span class="badge">thinking</span>` : ""}
         ${step.pauseAfterStep ? `<span class="badge running">pause</span>` : ""}
       </div>
     </article>

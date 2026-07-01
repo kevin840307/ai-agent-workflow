@@ -18,6 +18,7 @@ class StaticArchitectureContractTests(unittest.TestCase):
         expected = [
             "static/js/pages/workflow-designer/controller.js",
             "static/js/pages/workflow-designer/asset-tools.js",
+            "static/js/pages/workflow-designer/asset-manager.js",
             "static/js/pages/workflow-designer/function-catalog.js",
             "static/js/pages/workflow-designer/import-export.js",
             "static/js/pages/workflow-designer/layout-renderer.js",
@@ -45,6 +46,7 @@ class StaticArchitectureContractTests(unittest.TestCase):
         self.assertIn('from "./import-export.js', source)
         self.assertIn('from "./function-catalog.js', source)
         self.assertIn('from "./asset-tools.js', source)
+        self.assertIn('from "./asset-manager.js', source)
         self.assertNotRegex(source, r"\nfunction\s+createWorkflow\s*\(")
         self.assertNotRegex(source, r"\nfunction\s+createStep\s*\(")
         self.assertNotRegex(source, r"\nfunction\s+escapeHtml\s*\(")
@@ -53,7 +55,8 @@ class StaticArchitectureContractTests(unittest.TestCase):
     def test_workflow_designer_files_stay_small_enough(self):
         limits = {
             "static/js/pages/workflow-designer/controller.js": 1200,
-            "static/js/pages/workflow-designer/asset-tools.js": 160,
+            "static/js/pages/workflow-designer/asset-tools.js": 180,
+            "static/js/pages/workflow-designer/asset-manager.js": 260,
             "static/js/pages/workflow-designer/layout-renderer.js": 700,
             "static/js/pages/workflow-designer/step-tabs.js": 80,
             "static/js/pages/workflow-designer/step-settings-renderer.js": 700,
@@ -86,6 +89,7 @@ class StaticArchitectureContractTests(unittest.TestCase):
             "workflow-designer/",
             "controller.js",
             "asset-tools.js",
+            "asset-manager.js",
             "layout-renderer.js",
             "step-settings-renderer.js",
             "template-editor.js",

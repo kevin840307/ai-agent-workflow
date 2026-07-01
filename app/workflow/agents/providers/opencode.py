@@ -23,7 +23,7 @@ class OpenCodeCliAdapter:
         self.model = os.environ.get("OPENCODE_MODEL") or config.get("model")
         self.agent = os.environ.get("OPENCODE_AGENT") or config.get("agent")
         self.timeout_sec = int(os.environ.get("OPENCODE_TIMEOUT_SEC") or config.get("timeoutSec") or config.get("timeout_sec") or 1200)
-        self.mock = os.environ.get("OPENCODE_MOCK", "").lower() in {"1", "true", "yes"}
+        self.mock = bool(config.get("mock", False)) or os.environ.get("OPENCODE_MOCK", "").lower() in {"1", "true", "yes"}
         env_reuse = os.environ.get("OPENCODE_REUSE_SESSION")
         self.reuse_session = (
             env_reuse.lower() not in {"0", "false", "no", "off"}

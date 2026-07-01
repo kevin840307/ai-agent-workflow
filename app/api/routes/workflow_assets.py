@@ -25,14 +25,26 @@ class WorkflowContractWriteRequest(BaseModel):
     scope: str = "global"
 
 
+class WorkflowAssetRenameRequest(BaseModel):
+    old_path: str
+    new_path: str
+    project_path: str | None = None
+    scope: str = "global"
+    overwrite: bool = False
+
+
 @router.get("/api/workflow-assets")
 async def list_workflow_assets(project_path: str | None = Query(default=None)):
     return workflow_asset_service.list_assets(project_path)
 
 
 @router.get("/api/workflow-assets/file")
-async def read_workflow_asset(path: str = Query(...), project_path: str | None = Query(default=None)):
-    return workflow_asset_service.read_asset(path, project_path)
+async def read_workflow_asset(
+    path: str = Query(...),
+    project_path: str | None = Query(default=None),
+    scope: str = Query(default="auto"),
+):
+    return workflow_asset_service.read_asset(path, project_path, scope=scope)
 
 
 @router.put("/api/workflow-assets/file")
@@ -40,6 +52,26 @@ async def write_workflow_asset(body: WorkflowAssetWriteRequest):
     return workflow_asset_service.write_asset(
         body.path,
         body.content,
+        body.project_path,
+        scope=body.scope,
+        overwrite=body.overwrite,
+    )
+
+
+@router.delete("/api/workflow-assets/file")
+async def delete_workflow_asset(
+    path: str = Query(...),
+    project_path: str | None = Query(default=None),
+    scope: str = Query(default="global"),
+):
+    return workflow_asset_service.delete_asset(path, project_path, scope=scope)
+
+
+@router.post("/api/workflow-assets/rename")
+async def rename_workflow_asset(body: WorkflowAssetRenameRequest):
+    return workflow_asset_service.rename_asset(
+        body.old_path,
+        body.new_path,
         body.project_path,
         scope=body.scope,
         overwrite=body.overwrite,
