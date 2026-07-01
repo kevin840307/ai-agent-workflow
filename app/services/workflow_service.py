@@ -162,7 +162,13 @@ async def create_workflow_run(session_id: str, body: runtime.CreateRunRequest) -
         if not session:
             raise HTTPException(status_code=404, detail="Session not found")
         project_path = str(runtime.resolve_project_path(body.project_path or session.get("project_path") or str(runtime.ROOT)))
-        workflow = await workflow_config_service.get_workflow(body.workflow_id or workflow_config_service.SYSTEM_WORKFLOW_ID)
+        workflow_id = body.workflow_id or workflow_config_service.SYSTEM_WORKFLOW_ID
+        try:
+            workflow = await workflow_config_service.get_workflow(workflow_id, project_path=project_path)
+        except TypeError as exc:
+            if "project_path" not in str(exc) and "positional" not in str(exc):
+                raise
+            workflow = await workflow_config_service.get_workflow(workflow_id)
         workflow = workflow_asset_service.apply_contracts_to_workflow(workflow, project_path)
         async with project_run_creation_lock(project_path):
             data = await store_repository.read()

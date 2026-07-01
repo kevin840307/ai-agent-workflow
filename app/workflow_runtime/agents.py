@@ -9,6 +9,7 @@ from app.workflow.agents import (
     AgentOutputCallback,
     AgentRequest,
     AgentResult,
+    GenericCliAdapter,
     OpenCodeCliAdapter,
     QwenAdapter,
     run_process_stream,
@@ -21,11 +22,15 @@ ADAPTER_FACTORIES: dict[str, AdapterFactory] = {
     "qwen_cli": QwenAdapter,
     "qwen_serve": QwenAdapter,
     "opencode_cli": OpenCodeCliAdapter,
+    "cli": GenericCliAdapter,
+    "generic_cli": GenericCliAdapter,
 }
 
 PROVIDER_TYPE_ALIASES = {
     "qwen": "qwen_cli",
     "opencode": "opencode_cli",
+    "codex": "cli",
+    "generic": "cli",
 }
 
 
@@ -47,7 +52,8 @@ class AgentManager:
 
         agents: dict[str, AgentClient] = {}
         for name, config in providers.items():
-            config = config or {}
+            config = dict(config or {})
+            config.setdefault("name", name)
             provider_type = config.get("type") or PROVIDER_TYPE_ALIASES.get(name) or f"{name}_cli"
             factory = ADAPTER_FACTORIES.get(provider_type)
             if factory:
@@ -92,6 +98,7 @@ __all__ = [
     "AgentRequest",
     "AgentResult",
     "ADAPTER_FACTORIES",
+    "GenericCliAdapter",
     "OpenCodeCliAdapter",
     "PROVIDER_TYPE_ALIASES",
     "QwenAdapter",

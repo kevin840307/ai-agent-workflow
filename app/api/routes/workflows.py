@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Body
+from fastapi import APIRouter, Body, Query
 
 from app.services import workflow_config_service
 
@@ -8,8 +8,8 @@ router = APIRouter()
 
 
 @router.get("/api/workflows")
-async def list_workflows():
-    return await workflow_config_service.list_workflows()
+async def list_workflows(project_path: str | None = Query(default=None)):
+    return await workflow_config_service.list_workflows(project_path)
 
 
 @router.get("/api/workflows/functions")
@@ -23,8 +23,8 @@ async def lint_workflow(workflow: dict = Body(...)):
 
 
 @router.get("/api/workflows/{workflow_id}")
-async def get_workflow(workflow_id: str):
-    return await workflow_config_service.get_workflow(workflow_id)
+async def get_workflow(workflow_id: str, project_path: str | None = Query(default=None)):
+    return await workflow_config_service.get_workflow(workflow_id, project_path)
 
 
 @router.post("/api/workflows")

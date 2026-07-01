@@ -6,6 +6,7 @@ import importlib.util
 import inspect
 import io
 import json
+import re
 import subprocess
 import sys
 from copy import deepcopy
@@ -26,6 +27,7 @@ ASSET_DIRS = {
     "contracts": {".yaml", ".yml", ".json"},
     "validators": {".py"},
     "tools": {".py"},
+    "workflows": {".workflow"},
 }
 
 
@@ -167,7 +169,21 @@ def list_assets(project_path: str | None = None) -> dict[str, Any]:
             contracts.append({"scope": item["scope"], "path": item["path"], "contract": metadata})
         except Exception as exc:
             contracts.append({"scope": item["scope"], "path": item["path"], "error": str(exc)})
-    return {"root": str(GLOBAL_ASSET_ROOT), "projectRoot": str(project_root / PROJECT_ASSET_DIR) if project_root else "", "assets": items, "contracts": contracts}
+    workflows = []
+    for item in items:
+        if item["type"] != "workflows":
+            continue
+        try:
+            workflows.append(load_workflow_asset(item["path"], project_path, scope=item["scope"]))
+        except Exception as exc:
+            workflows.append({"scope": item["scope"], "path": item["path"], "error": str(exc)})
+    return {
+        "root": str(GLOBAL_ASSET_ROOT),
+        "projectRoot": str(project_root / PROJECT_ASSET_DIR) if project_root else "",
+        "assets": items,
+        "contracts": contracts,
+        "workflows": workflows,
+    }
 
 
 def read_asset(relative_path: str, project_path: str | None = None) -> dict[str, Any]:
@@ -286,6 +302,213 @@ def apply_contract_to_step(step: dict[str, Any], contract: dict[str, Any]) -> di
         item["allowInteraction"] = bool(metadata.get("allowInteraction"))
     return item
 
+
+
+def _slug(value: str, fallback: str = "step") -> str:
+    slug = re.sub(r"[^a-zA-Z0-9._-]+", "-", str(value or "").strip().lower()).strip("-")
+    return slug or fallback
+
+
+def _step_key(value: str, fallback: str = "step") -> str:
+    return _slug(value, fallback).replace("-", "_")
+
+
+def _workflow_roots(project_path: str | None = None) -> list[tuple[str, Path]]:
+    roots: list[tuple[str, Path]] = []
+    project_root = _project_root(project_path)
+    if project_root:
+        roots.append(("project", project_root / PROJECT_ASSET_DIR))
+    roots.append(("global", GLOBAL_ASSET_ROOT))
+    return roots
+
+
+def list_workflow_asset_paths(project_path: str | None = None) -> list[tuple[str, Path]]:
+    ensure_asset_dirs(project_path)
+    seen: set[str] = set()
+    paths: list[tuple[str, Path]] = []
+    for scope, root in _workflow_roots(project_path):
+        workflows_dir = root / "workflows"
+        if not workflows_dir.exists():
+            continue
+        for path in sorted(workflows_dir.glob("*.workflow")):
+            if path.stem in seen:
+                continue
+            seen.add(path.stem)
+            paths.append((scope, path))
+    return paths
+
+
+def _workflow_path_by_id(workflow_id: str, project_path: str | None = None) -> tuple[str, Path] | None:
+    target = str(workflow_id or "").strip()
+    if not target:
+        return None
+    if target.endswith(".workflow") or target.startswith("workflows/") or target.startswith(f"{PROJECT_ASSET_DIR}/workflows/"):
+        rel = target
+        if rel.startswith(f"{PROJECT_ASSET_DIR}/"):
+            rel = rel[len(PROJECT_ASSET_DIR) + 1:]
+        try:
+            path = resolve_asset_path(rel, project_path)
+        except HTTPException:
+            return None
+        scope = "project" if _project_root(project_path) and (_project_root(project_path) / PROJECT_ASSET_DIR) in path.parents else "global"
+        return scope, path
+    for scope, path in list_workflow_asset_paths(project_path):
+        if path.stem == target:
+            return scope, path
+    return None
+
+
+def _workflow_lines(path: Path) -> list[str]:
+    lines: list[str] = []
+    for raw_line in read_text(path).splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        lines.append(line)
+    return lines
+
+
+def _expand_workflow_refs(path: Path, project_path: str | None = None, seen: set[Path] | None = None) -> list[str]:
+    seen = seen or set()
+    resolved = path.resolve()
+    if resolved in seen:
+        raise HTTPException(status_code=400, detail=f"Workflow include cycle detected: {path.name}")
+    seen.add(resolved)
+    refs: list[str] = []
+    for line in _workflow_lines(path):
+        if line.startswith("workflow:"):
+            include = line.split(":", 1)[1].strip()
+            found = _workflow_path_by_id(include, project_path)
+            if not found:
+                raise HTTPException(status_code=404, detail=f"Included workflow not found: {include}")
+            refs.extend(_expand_workflow_refs(found[1], project_path, seen))
+        elif line.startswith("@"):
+            include = line[1:].strip()
+            found = _workflow_path_by_id(include, project_path)
+            if not found:
+                raise HTTPException(status_code=404, detail=f"Included workflow not found: {include}")
+            refs.extend(_expand_workflow_refs(found[1], project_path, seen))
+        elif any(line.startswith(prefix) for prefix in ("step:", "skill:", "contract:")):
+            refs.append(line.split(":", 1)[1].strip())
+        else:
+            refs.append(line)
+    seen.remove(resolved)
+    return refs
+
+
+def _contract_for_ref(ref: str, project_path: str | None = None) -> dict[str, Any]:
+    value = str(ref or "").strip()
+    if not value:
+        raise HTTPException(status_code=400, detail="Workflow step reference cannot be empty")
+    try:
+        return _load_contract_by_id_or_path(value, project_path)
+    except HTTPException as exc:
+        normalized = value.replace("\\", "/")
+        if exc.status_code != 404 or not (normalized.startswith("steps/") or normalized.startswith(f"{PROJECT_ASSET_DIR}/steps/") or normalized.endswith((".md", ".markdown", ".txt"))):
+            raise
+        skill = normalized[len(PROJECT_ASSET_DIR) + 1:] if normalized.startswith(f"{PROJECT_ASSET_DIR}/") else normalized
+        path = resolve_asset_path(skill if skill.startswith("steps/") else f"steps/{Path(skill).name}", project_path)
+        rel = path.relative_to(_project_root(project_path) / PROJECT_ASSET_DIR).as_posix() if _project_root(project_path) and (_project_root(project_path) / PROJECT_ASSET_DIR) in path.parents else path.relative_to(GLOBAL_ASSET_ROOT).as_posix()
+        return normalize_contract({"id": Path(rel).stem, "skill": rel, "type": "ai", "path": ""}, fallback_id=Path(rel).stem)
+
+
+def step_from_contract(contract: dict[str, Any], index: int = 0) -> dict[str, Any]:
+    metadata = normalize_contract(contract, fallback_id=f"step-{index + 1}")
+    step_id = str(metadata.get("id") or f"step-{index + 1}")
+    key = _step_key(step_id, f"step_{index + 1}")
+    outputs = metadata.get("outputs") or []
+    if isinstance(outputs, str):
+        outputs = [outputs]
+    output_file = str(outputs[0]) if outputs else ""
+    step = {
+        "id": f"asset-{key}",
+        "key": key,
+        "name": str(metadata.get("name") or step_id.replace("_", " ").replace("-", " ").title()),
+        "description": str(metadata.get("description") or ""),
+        "type": str(metadata.get("type") or "ai"),
+        "enabled": bool(metadata.get("enabled", True)),
+        "contractId": step_id,
+        "contractPath": str(metadata.get("path") or ""),
+        "metadataPath": str(metadata.get("path") or ""),
+        "skillPath": str(metadata.get("skill") or ""),
+        "templatePath": str(metadata.get("skill") or ""),
+        "command": str(metadata.get("command") or ""),
+        "agent": str(metadata.get("agent") or metadata.get("provider") or "qwen"),
+        "provider": str(metadata.get("agent") or metadata.get("provider") or "qwen"),
+        "filename": output_file,
+        "outputFile": output_file,
+        "expectedFiles": [str(item) for item in outputs],
+        "validator": str(metadata.get("validator") or ""),
+        "maxRetries": int(metadata.get("retry") or metadata.get("maxRetries") or 0),
+        "timeoutEnabled": bool(metadata.get("timeout")),
+        "timeoutMinutes": round(float(metadata.get("timeout") or 0) / 60, 3) if metadata.get("timeout") else 0,
+        "allowInteraction": bool(metadata.get("allowInteraction", metadata.get("allow_interaction", False))),
+        "pauseAfterStep": bool(metadata.get("approval")),
+        "approvalRequired": bool(metadata.get("approval")),
+        "sources": [],
+        "reviewers": metadata.get("reviewers") if isinstance(metadata.get("reviewers"), list) else [],
+        "reviewMode": str(metadata.get("reviewMode") or metadata.get("review_strategy") or ("current_session" if str(metadata.get("type") or "") == "review" else "none")),
+        "confidenceThreshold": float(metadata.get("confidenceThreshold") or metadata.get("confidence_threshold") or 0.75),
+        "passKeywords": str(metadata.get("passKeywords") or "PASS, APPROVED"),
+        "failKeywords": str(metadata.get("failKeywords") or "FAIL, BLOCKED"),
+        "aggregatorFunction": str(metadata.get("aggregatorFunction") or metadata.get("aggregator") or ""),
+        "failAction": str(metadata.get("failAction") or "same_step"),
+        "retryFromStepKey": str(metadata.get("retryFromStepKey") or ""),
+        "keepSameSession": str(metadata.get("sessionMode") or metadata.get("session_mode") or "") not in {"isolated", "fresh", "new"},
+        "injectFailureFeedback": bool(metadata.get("injectFailureFeedback", True)),
+        "stopAfterFailures": int(metadata.get("stopAfterFailures") or 3),
+        "templateContent": "",
+    }
+    return apply_contract_to_step(step, metadata)
+
+
+def load_workflow_asset(workflow_id_or_path: str, project_path: str | None = None, *, scope: str = "auto") -> dict[str, Any]:
+    if scope in {"global", "project"} and str(workflow_id_or_path).startswith("workflows/"):
+        path = resolve_asset_path(workflow_id_or_path, project_path, scope=scope)
+        resolved_scope = scope
+    else:
+        found = _workflow_path_by_id(workflow_id_or_path, project_path)
+        if not found:
+            raise HTTPException(status_code=404, detail=f"Workflow asset not found: {workflow_id_or_path}")
+        resolved_scope, path = found
+    refs = _expand_workflow_refs(path, project_path)
+    steps = [step_from_contract(_contract_for_ref(ref, project_path), index) for index, ref in enumerate(refs)]
+    rel_path = path.relative_to(_project_root(project_path) / PROJECT_ASSET_DIR).as_posix() if _project_root(project_path) and (_project_root(project_path) / PROJECT_ASSET_DIR) in path.parents else path.relative_to(GLOBAL_ASSET_ROOT).as_posix()
+    name = path.stem.replace("-", " ").replace("_", " ").title()
+    return {
+        "id": path.stem,
+        "kind": "asset",
+        "name": name,
+        "description": f"Filesystem workflow loaded from {rel_path}. Add/edit .workflow, contracts, steps, validators, and tools without code changes.",
+        "active": False,
+        "protected": False,
+        "deletable": False,
+        "folderName": f"asset-{resolved_scope}-{path.stem}",
+        "skillRoot": ".ai-workflow",
+        "promptRoot": "steps/",
+        "workflowPath": rel_path,
+        "scope": resolved_scope,
+        "projectPath": str(_project_root(project_path) or ""),
+        "steps": steps,
+    }
+
+
+def list_workflow_assets(project_path: str | None = None) -> list[dict[str, Any]]:
+    workflows: list[dict[str, Any]] = []
+    for scope, path in list_workflow_asset_paths(project_path):
+        try:
+            workflows.append(load_workflow_asset(path.stem, project_path, scope=scope))
+        except Exception as exc:
+            workflows.append({
+                "id": path.stem,
+                "kind": "asset",
+                "name": path.stem,
+                "scope": scope,
+                "workflowPath": path.name,
+                "error": str(exc),
+                "steps": [],
+            })
+    return workflows
 
 async def run_python_asset(
     run: dict[str, Any],

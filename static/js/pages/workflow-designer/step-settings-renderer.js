@@ -234,6 +234,8 @@ function renderSources(step, disabled, readonly) {
         </div>
         <div class="designer-footer-actions compact">
           <button type="button" data-designer-action="save-skill-asset" ${disabled}>Save Skill</button>
+          <button type="button" data-designer-action="save-metadata-asset" ${disabled}>Save Metadata</button>
+          <button type="button" data-designer-action="edit-python-asset" ${disabled}>Edit Python</button>
           <button type="button" data-designer-action="upload-python-asset" ${disabled}>Upload Python</button>
         </div>
         <div class="designer-form-hint">Runtime applies contract metadata first. Skill Path points to pure prompt markdown and can also be used as Template Path.</div>
@@ -390,6 +392,7 @@ function renderAdvanced(step, disabled, readonly) {
         </datalist>
       </label>
       <div class="designer-footer-actions compact">
+        <button type="button" data-designer-action="edit-python-asset" ${disabled}>Edit Python Validator</button>
         <button type="button" data-designer-action="upload-python-asset" ${disabled}>Upload Python Validator</button>
       </div>
       ${functionHelp("validators", step.validator, "Optional validator used by validation and Python function steps.")}

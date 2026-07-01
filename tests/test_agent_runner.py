@@ -6,6 +6,7 @@ import unittest
 from pathlib import Path
 
 from app.workflow_runtime.agent_step_runner import AgentStepRunner
+from app.workflow_runtime.agents import create_agent_manager, AgentRequest
 from app.workflow_runtime.agents import AgentResult
 from app.workflow_runtime.prompt_builder import PromptBuildResult
 from app.runtime_modules.errors import WorkflowError
@@ -75,6 +76,26 @@ class AgentRunnerTests(unittest.TestCase):
 
     def test_recoverable_session_error_retries_once_without_session_id(self) -> None:
         asyncio.run(self._run_session_recovery_case())
+
+    def test_generic_cli_provider_can_be_added_from_settings(self) -> None:
+        manager = create_agent_manager({
+            "agents": {
+                "default": "codex",
+                "providers": {
+                    "codex": {"type": "cli", "bin": "codex", "promptMode": "stdin", "mock": True},
+                },
+            }
+        })
+
+        agent = manager.resolve(agent_name="codex")
+        preview = agent.command_preview(AgentRequest(run_id="run-1", step_key="demo", prompt="hello", cwd="/tmp", session_id="s1"))
+        health = agent.health()
+
+        self.assertIn("codex", manager.available_agent_names())
+        self.assertEqual(manager.default_agent_name(), "codex")
+        self.assertIn("codex", preview)
+        self.assertEqual(health["type"], "cli")
+        self.assertTrue(health["mock"])
 
     async def _run_session_recovery_case(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

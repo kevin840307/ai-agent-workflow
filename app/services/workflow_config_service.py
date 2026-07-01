@@ -13,6 +13,7 @@ from app.runtime_modules import api as runtime
 from app.core.paths import write_text
 from app.services.workflow_lint_service import assert_workflow_valid
 from app.services.workflow_lint_service import lint_workflow
+from app.services import workflow_asset_service
 from app.workflow_functions import AVAILABLE_WORKFLOW_FUNCTIONS
 
 
@@ -255,7 +256,21 @@ def write_prompt_files(workflow: dict) -> dict:
 
 def read_prompt_files(workflow: dict, folder_name: str) -> dict:
     item = deepcopy(workflow)
+    is_asset_workflow = item.get("kind") == "asset"
+    project_path = item.get("projectPath") or item.get("project_path")
     for step in item.get("steps", []):
+        raw_template_path = str(step.get("templatePath") or step.get("skillPath") or "")
+        if is_asset_workflow and raw_template_path.replace("\\", "/").startswith(("steps/", f"{workflow_asset_service.PROJECT_ASSET_DIR}/steps/")):
+            normalized = raw_template_path.replace("\\", "/")
+            if normalized.startswith(f"{workflow_asset_service.PROJECT_ASSET_DIR}/"):
+                normalized = normalized[len(workflow_asset_service.PROJECT_ASSET_DIR) + 1:]
+            step["templatePath"] = normalized
+            try:
+                path = workflow_asset_service.resolve_asset_path(normalized, project_path)
+                step["templateContent"] = path.read_text(encoding="utf-8-sig")
+            except Exception:
+                step.setdefault("templateContent", "")
+            continue
         template_path = safe_bundle_relative_path(step.get("templatePath", ""), default_prompt_path(step))
         step["templatePath"] = template_path
         path = bundle_path(folder_name, template_path)
@@ -376,7 +391,7 @@ def ensure_sample_workflow() -> None:
     write_workflow_file(item)
 
 
-async def list_workflows() -> dict:
+async def list_workflows(project_path: str | None = None) -> dict:
     ensure_sample_workflow()
     custom = []
     for path in list_custom_workflow_files():
@@ -385,7 +400,13 @@ async def list_workflows() -> dict:
             normalized = _normalize_workflow(workflow, path.parent.name)
             normalized = ensure_workflow_prompt_files(path.parent.name, normalized)
             custom.append(read_prompt_files(normalized, path.parent.name))
-    custom.sort(key=lambda item: item.get("updated_at", ""), reverse=True)
+    for workflow in workflow_asset_service.list_workflow_assets(project_path):
+        if workflow.get("error"):
+            custom.append(workflow)
+            continue
+        normalized = normalize_workflow_steps(workflow)
+        custom.append(read_prompt_files(normalized, normalized.get("folderName", "")))
+    custom.sort(key=lambda item: (item.get("kind") != "asset", item.get("updated_at", item.get("name", ""))), reverse=True)
     return {
         "system": system_workflow_with_folder(),
         "custom": custom,
@@ -393,12 +414,17 @@ async def list_workflows() -> dict:
     }
 
 
-async def get_workflow(workflow_id: str) -> dict:
+async def get_workflow(workflow_id: str, project_path: str | None = None) -> dict:
     if workflow_id == SYSTEM_WORKFLOW_ID:
         return system_workflow_with_folder()
     path = find_workflow_path(workflow_id)
     if not path:
-        raise HTTPException(status_code=404, detail="Workflow not found")
+        try:
+            workflow = workflow_asset_service.load_workflow_asset(workflow_id, project_path)
+        except HTTPException:
+            raise HTTPException(status_code=404, detail="Workflow not found")
+        normalized = normalize_workflow_steps(workflow)
+        return read_prompt_files(normalized, normalized.get("folderName", ""))
     workflow = read_workflow_file(path)
     if not workflow:
         raise HTTPException(status_code=404, detail="Workflow not found")
@@ -427,7 +453,11 @@ async def delete_workflow(workflow_id: str) -> dict:
         raise HTTPException(status_code=400, detail="System workflow cannot be deleted")
     path = find_workflow_path(workflow_id)
     if not path:
-        raise HTTPException(status_code=404, detail="Workflow not found")
+        try:
+            workflow_asset_service.load_workflow_asset(workflow_id)
+        except HTTPException:
+            raise HTTPException(status_code=404, detail="Workflow not found")
+        raise HTTPException(status_code=400, detail="Filesystem workflow assets are deleted by removing the .workflow file.")
     folder = path.parent.resolve()
     workflows_root = WORKFLOWS_DIR.resolve()
     if workflows_root not in folder.parents:
