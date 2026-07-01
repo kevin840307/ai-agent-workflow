@@ -1,4 +1,4 @@
-import { LocalStore, StorageKeys } from "../core/storage.js?v=20260701-step-actions1";
+import { LocalStore, StorageKeys } from "../core/storage.js?v=20260701-step-detail-polish1";
 
 function applyActiveNav() {
   const page = document.body?.dataset.page || "";

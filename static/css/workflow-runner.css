@@ -877,22 +877,47 @@ body.chat-mode .composer-box {
   align-items: center;
   gap: 6px;
   flex-wrap: wrap;
-  padding-top: 2px;
+  margin-top: 2px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(216, 222, 232, 0.72);
+}
+
+.step-detail-actions .mini-button {
+  border-color: rgba(203, 213, 225, 0.78);
+  background: #ffffff;
 }
 
 .step-detail-section {
   display: grid;
-  gap: 7px;
-  padding-top: 2px;
+  gap: 9px;
+  padding: 10px;
+  border: 1px solid rgba(216, 222, 232, 0.64);
+  border-radius: 9px;
+  background: #ffffff;
 }
 
-.step-detail-section > strong {
+.step-detail-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+.step-detail-section-head strong {
   font-size: 12px;
+}
+
+.step-detail-section-head span {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 750;
 }
 
 .step-detail-events {
   display: grid;
-  gap: 6px;
+  gap: 7px;
   margin: 0;
   padding-left: 0;
   color: var(--text);
@@ -902,6 +927,10 @@ body.chat-mode .composer-box {
 
 .step-detail-events li {
   position: relative;
+  display: grid;
+  grid-template-columns: minmax(64px, auto) minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
   padding-left: 12px;
   line-height: 1.35;
 }
@@ -917,11 +946,24 @@ body.chat-mode .composer-box {
   background: rgba(15, 118, 110, 0.22);
 }
 
-.step-detail-events span {
+.step-detail-events .event-kind {
   display: inline-flex;
-  margin-right: 6px;
-  color: var(--muted);
+  justify-content: center;
+  min-width: 58px;
+  max-width: 96px;
+  padding: 2px 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #eef7f5;
+  color: var(--accent-dark);
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-weight: 800;
+}
+
+.step-detail-events .event-message {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .step-detail-files {
@@ -1009,6 +1051,16 @@ body.chat-mode .composer-box {
 
   .step-detail-grid {
     grid-template-columns: 1fr;
+  }
+
+  .step-detail-events li {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  .step-detail-events .event-kind {
+    justify-content: flex-start;
+    width: max-content;
   }
 }
 

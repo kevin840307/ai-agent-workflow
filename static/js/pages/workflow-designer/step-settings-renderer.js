@@ -1,4 +1,4 @@
-import { tabsForStep } from "./step-tabs.js?v=20260701-step-actions1";
+import { tabsForStep } from "./step-tabs.js?v=20260701-step-detail-polish1";
 
 export function installStepSettingsRenderer(ctx) {
   const {

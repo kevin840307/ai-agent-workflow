@@ -1,1 +1,1 @@
-export { initSharedSidebar } from "../shared/sidebar.js?v=20260701-step-actions1";
+export { initSharedSidebar } from "../shared/sidebar.js?v=20260701-step-detail-polish1";

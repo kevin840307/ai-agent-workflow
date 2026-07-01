@@ -146,28 +146,39 @@ export function createRuns(ctx) {
             <div><span>Output</span><strong>${ui.escapeHtml(config.outputFile || config.filename || "-")}</strong><small>${files.length} related file${files.length === 1 ? "" : "s"}</small></div>
           </div>
           ${step.error ? `<div class="step-detail-error"><strong>Failure</strong><span>${ui.escapeHtml(step.error)}</span></div>` : ""}
-          <div class="step-detail-actions">
-            ${promptArtifact ? `<button class="mini-button step-detail-open-prompt" type="button">Prompt</button>` : ""}
-            <button class="mini-button step-detail-open-drawer" type="button">Details</button>
-            ${relatedArtifacts.length ? `<button class="mini-button step-detail-open-files" type="button">Files ${relatedArtifacts.length}</button>` : ""}
-            <button class="mini-button step-detail-guide" type="button">Guide</button>
-            <button class="mini-button step-detail-retry" type="button">Retry from here</button>
-          </div>
           <div class="step-detail-section">
-            <strong>Recent Events</strong>
+            <div class="step-detail-section-head">
+              <strong>Recent Events</strong>
+              <span>${events.length ? `${events.length} shown` : "empty"}</span>
+            </div>
             ${events.length ? `
               <ol class="step-detail-events">
-                ${events.map((event) => `<li><span>${ui.escapeHtml(event.kind || "event")}</span>${ui.escapeHtml(event.message || "")}</li>`).join("")}
+                ${events.map((event) => `
+                  <li>
+                    <span class="event-kind">${ui.escapeHtml(event.kind || "event")}</span>
+                    <span class="event-message">${ui.escapeHtml(event.message || "")}</span>
+                  </li>
+                `).join("")}
               </ol>
             ` : `<p>No step events yet.</p>`}
           </div>
           <div class="step-detail-section">
-            <strong>Files</strong>
+            <div class="step-detail-section-head">
+              <strong>Files</strong>
+              <span>${files.length ? `${files.length} related` : "none"}</span>
+            </div>
             ${files.length ? `
               <div class="step-detail-files">
                 ${files.map((artifact) => `<button class="step-detail-file" data-artifact-id="${ui.escapeHtml(artifact.id)}" title="${ui.escapeHtml(artifact.path)}">${ui.escapeHtml(artifact.path)}</button>`).join("")}
               </div>
             ` : `<p>No files found for this step yet.</p>`}
+          </div>
+          <div class="step-detail-actions" aria-label="Step actions">
+            ${promptArtifact ? `<button class="mini-button step-detail-open-prompt" type="button">Prompt</button>` : ""}
+            <button class="mini-button step-detail-open-drawer" type="button">Details</button>
+            ${relatedArtifacts.length ? `<button class="mini-button step-detail-open-files" type="button">Files ${relatedArtifacts.length}</button>` : ""}
+            <button class="mini-button step-detail-guide" type="button">Guide</button>
+            <button class="mini-button step-detail-retry" type="button">Retry</button>
           </div>
         </article>
       `;
