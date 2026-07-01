@@ -12,7 +12,7 @@ from app.core.locks import project_run_creation_lock
 from app.core.metrics import metrics
 from app.persistence.repositories import store as store_repository
 from app.services.agent_session_service import default_agent_session_ids
-from app.services import workflow_config_service
+from app.services import workflow_asset_service, workflow_config_service
 
 
 ACTIVE_RUN_STATUSES = {"queued", "running", "waiting_input", "cancelling"}
@@ -161,8 +161,9 @@ async def create_workflow_run(session_id: str, body: runtime.CreateRunRequest) -
         session = next((session for session in data["sessions"] if session["id"] == session_id), None)
         if not session:
             raise HTTPException(status_code=404, detail="Session not found")
-        workflow = await workflow_config_service.get_workflow(body.workflow_id or workflow_config_service.SYSTEM_WORKFLOW_ID)
         project_path = str(runtime.resolve_project_path(body.project_path or session.get("project_path") or str(runtime.ROOT)))
+        workflow = await workflow_config_service.get_workflow(body.workflow_id or workflow_config_service.SYSTEM_WORKFLOW_ID)
+        workflow = workflow_asset_service.apply_contracts_to_workflow(workflow, project_path)
         async with project_run_creation_lock(project_path):
             data = await store_repository.read()
             active_run = next(

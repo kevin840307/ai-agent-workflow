@@ -6,6 +6,7 @@ from typing import Any, Awaitable, Callable
 
 from app.runtime_modules.errors import ValidationError, WorkflowError
 from app.core.paths import ROOT, read_text, write_text
+from app.services.workflow_asset_service import run_python_asset
 from app.workflow_functions import PYTHON_FUNCTIONS, WorkflowFunctionContext, WorkflowFunctionError
 
 LogFn = Callable[[dict[str, Any], str], Awaitable[None]]
@@ -64,6 +65,15 @@ class WorkflowFunctionService:
     ) -> None:
         function = PYTHON_FUNCTIONS.get(function_id)
         if not function:
+            normalized = str(function_id or "").replace("\\", "/")
+            if normalized.startswith(".ai-workflow/"):
+                normalized = normalized[len(".ai-workflow/") :]
+            if normalized.startswith(("validators/", "tools/")) and normalized.endswith(".py"):
+                try:
+                    await run_python_asset(run, normalized, output_dir, artifact)
+                    return
+                except Exception as exc:
+                    raise WorkflowError(str(exc)) from exc
             raise WorkflowError(f"Unknown workflow Python function: {function_id}")
         try:
             ctx = self.context(run, output_dir)

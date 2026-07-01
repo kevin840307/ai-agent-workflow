@@ -422,7 +422,10 @@ function updateFromInput(input) {
     if (field === "templateContent") {
       renderPromptDiagnostics(step);
     }
-    if (["name", "templatePath", "filename", "outputFile", "aggregatorFunction", "agent", "provider", "maxRetries", "failAction", "retryFromStepKey", "keepSameSession", "injectFailureFeedback", "timeoutEnabled", "timeoutMinutes"].includes(field)) renderWorkflowViewOnly();
+    if (field === "skillPath" && isAiWorkflowStepPath(value)) {
+      step.templatePath = value;
+    }
+    if (["name", "templatePath", "filename", "outputFile", "contractId", "contractPath", "metadataPath", "skillPath", "aggregatorFunction", "agent", "provider", "maxRetries", "failAction", "retryFromStepKey", "keepSameSession", "injectFailureFeedback", "timeoutEnabled", "timeoutMinutes"].includes(field)) renderWorkflowViewOnly();
     renderStepEditorHeader();
     markWorkflowDirty();
     return;
@@ -441,6 +444,11 @@ function updateFromInput(input) {
     markWorkflowDirty();
     renderWorkflowViewOnly();
   }
+}
+
+function isAiWorkflowStepPath(value = "") {
+  const normalized = String(value || "").trim().replace(/\\/g, "/");
+  return normalized.startsWith("steps/") || normalized.startsWith(".ai-workflow/steps/");
 }
 
 function selectWorkflow(workflowId, stepId = null) {

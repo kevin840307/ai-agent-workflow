@@ -8,6 +8,7 @@ from app.runtime_modules.errors import WorkflowError
 from app.runtime_modules.files import failure_feedback_for_step, project_overview, project_profile
 from app.core.paths import DEFAULT_SKILL_PATH, ROOT, SYSTEM_WORKFLOW_ID, WORKFLOW_BUNDLES_DIR, read_text, write_text
 from app.runtime_modules.skills import load_skill_context
+from app.services.workflow_asset_service import GLOBAL_ASSET_ROOT, PROJECT_ASSET_DIR
 
 from .questions import interaction_instruction
 from .step_utils import bool_config
@@ -16,6 +17,25 @@ from .step_utils import bool_config
 def workflow_prompt_path(name: str, run: dict[str, Any] | None = None) -> Path:
     workflow_folder = (run or {}).get("workflow_folder") or (run or {}).get("workflow_id") or SYSTEM_WORKFLOW_ID
     normalized = name.replace("\\", "/").lstrip("/")
+    raw_path = Path(name).expanduser()
+    if raw_path.is_absolute():
+        return raw_path
+    project_path = (run or {}).get("project_path")
+    if normalized.startswith(f"{PROJECT_ASSET_DIR}/"):
+        asset_rel = normalized[len(PROJECT_ASSET_DIR) + 1 :]
+        if project_path:
+            project_asset = Path(project_path) / PROJECT_ASSET_DIR / asset_rel
+            if project_asset.exists():
+                return project_asset
+        return GLOBAL_ASSET_ROOT / asset_rel
+    if normalized.startswith("steps/"):
+        if project_path:
+            project_asset = Path(project_path) / PROJECT_ASSET_DIR / normalized
+            if project_asset.exists():
+                return project_asset
+        global_asset = GLOBAL_ASSET_ROOT / normalized
+        if global_asset.exists():
+            return global_asset
     if normalized.startswith("prompts/"):
         return WORKFLOW_BUNDLES_DIR / workflow_folder / normalized
     return WORKFLOW_BUNDLES_DIR / workflow_folder / "prompts" / normalized

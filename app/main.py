@@ -10,9 +10,9 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.runtime_modules import api as runtime
 from app.api.errors import http_exception_handler, validation_exception_handler
-from app.api.routes import artifacts, config, maintenance, projects, workflow_runs, workflows
+from app.api.routes import artifacts, config, maintenance, projects, workflow_assets, workflow_runs, workflows
 from app.core.metrics import metrics
-from app.services import workflow_config_service
+from app.services import workflow_asset_service, workflow_config_service
 
 
 app = FastAPI(title="Agent Workflow Web MVP")
@@ -28,6 +28,7 @@ async def startup() -> None:
     runtime.ensure_dirs()
     runtime.store.load_sync()
     runtime.mark_interrupted_runs()
+    workflow_asset_service.ensure_asset_dirs()
     workflow_config_service.ensure_system_workflow()
     workflow_config_service.ensure_sample_workflow()
 
@@ -70,6 +71,7 @@ app.mount("/static", StaticFiles(directory=runtime.STATIC_DIR), name="static")
 app.include_router(config.router)
 app.include_router(projects.router)
 app.include_router(workflows.router)
+app.include_router(workflow_assets.router)
 app.include_router(workflow_runs.router)
 app.include_router(artifacts.router)
 app.include_router(maintenance.router)

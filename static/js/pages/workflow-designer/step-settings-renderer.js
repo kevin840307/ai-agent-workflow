@@ -222,6 +222,18 @@ function renderSources(step, disabled, readonly) {
   return `
     <div class="designer-form-grid">
       ${readonly ? readonlyNotice() : ""}
+      <section class="designer-template-summary-card">
+        <div>
+          <span class="designer-label">Separated Skill / Metadata</span>
+          <h4>.ai-workflow compatible step assets</h4>
+        </div>
+        <div class="designer-template-summary-grid compact">
+          ${inputRow("Contract ID", "contractId", step.contractId || "", disabled, "my-step")}
+          ${inputRow("Metadata Path", "metadataPath", step.metadataPath || step.contractPath || "", disabled, "contracts/my-step.yaml")}
+          ${inputRow("Skill Path", "skillPath", step.skillPath || "", disabled, "steps/my-step.md")}
+        </div>
+        <div class="designer-form-hint">Runtime applies contract metadata first. Skill Path points to pure prompt markdown and can also be used as Template Path.</div>
+      </section>
       <label class="designer-form-row">
         <span class="designer-label">Command</span>
         <select class="designer-select" data-step-field="command" ${disabled}>

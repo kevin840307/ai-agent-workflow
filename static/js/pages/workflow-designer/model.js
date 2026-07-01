@@ -16,6 +16,10 @@ function createStep(overrides = {}) {
     agent: overrides.agent || overrides.provider || "qwen",
     provider: overrides.provider || overrides.agent || "qwen",
     command: overrides.command || "",
+    contractId: overrides.contractId || "",
+    contractPath: overrides.contractPath || "",
+    metadataPath: overrides.metadataPath || "",
+    skillPath: overrides.skillPath || "",
     sources: clone(overrides.sources || []),
     templatePath,
     templateContent: defaultTemplateContent({ ...overrides, key, type }),
@@ -97,6 +101,10 @@ function normalizeStep(step = {}) {
     provider: step?.provider || step?.agent || base.provider || "qwen",
     templateContent: step?.templateContent || base.templateContent,
     validator: normalizeFunctionId(step?.validator || base.validator || ""),
+    contractId: step?.contractId || base.contractId || "",
+    contractPath: step?.contractPath || base.contractPath || "",
+    metadataPath: step?.metadataPath || base.metadataPath || "",
+    skillPath: step?.skillPath || base.skillPath || "",
   };
 }
 
