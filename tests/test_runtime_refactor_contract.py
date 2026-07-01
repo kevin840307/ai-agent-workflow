@@ -160,7 +160,7 @@ class RuntimeRefactorContractTests(unittest.TestCase):
     def test_source_files_do_not_contain_replacement_mojibake(self) -> None:
         repo = Path(__file__).resolve().parents[1]
         extensions = {".py", ".js", ".css", ".html", ".md", ".json"}
-        ignored_parts = {".git", "__pycache__", ".pytest_cache", "node_modules"}
+        ignored_parts = {".git", "__pycache__", ".pytest_cache", ".venv", "venv", "env", "node_modules"}
         bad_markers = ["\ufffd"]
         violations: list[str] = []
 

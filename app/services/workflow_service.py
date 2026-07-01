@@ -46,11 +46,113 @@ def latest_session_run(data: dict, session_id: str) -> dict | None:
     return sorted(runs, key=lambda run: run.get("created_at", ""), reverse=True)[0]
 
 
+def _candidate_run_state_paths(data: dict, *, run_id: str | None = None, session_id: str | None = None) -> list[Path]:
+    paths: list[Path] = []
+    seen: set[str] = set()
+    for session in data.get("sessions", []):
+        if session_id and session.get("id") != session_id:
+            continue
+        try:
+            project_path = runtime.resolve_project_path(session.get("project_path") or str(runtime.ROOT))
+        except HTTPException:
+            continue
+        runs_root = Path(project_path) / ".qwen-workflow" / "runs"
+        if not runs_root.exists():
+            continue
+        if run_id:
+            candidates = [runs_root / f"session-{session.get('id')}" / f"run-{run_id}" / ".workflow" / "state.json"]
+            candidates.extend(runs_root.glob(f"session-*/run-{run_id}/.workflow/state.json"))
+        else:
+            candidates = list((runs_root / f"session-{session.get('id')}").glob("run-*/.workflow/state.json"))
+        for path in candidates:
+            key = str(path)
+            if key not in seen and path.exists():
+                seen.add(key)
+                paths.append(path)
+    return paths
+
+
+def _normalize_rehydrated_run(run: dict, state_path: Path, session: dict | None) -> dict:
+    now = runtime.utc_now()
+    run = dict(run)
+    run["workspace"] = str(state_path.parent.parent)
+    if session:
+        run.setdefault("session_id", session.get("id"))
+        run.setdefault("project_path", session.get("project_path"))
+        run.setdefault("qwen_session_id", session.get("qwen_session_id") or session.get("id"))
+        run.setdefault(
+            "agent_session_ids",
+            session.get("agent_session_ids") or default_agent_session_ids(session.get("id"), session.get("qwen_session_id") or session.get("id")),
+        )
+    run.setdefault("status", "failed")
+    run.setdefault("error", None)
+    run.setdefault("error_code", None)
+    run.setdefault("project_path", str(Path(run["workspace"]).parents[3]) if len(Path(run["workspace"]).parents) >= 4 else str(runtime.ROOT))
+    run.setdefault("workflow_id", "")
+    run.setdefault("workflow_folder", "")
+    run.setdefault("workflow_name", run.get("workflow_id") or "")
+    run.setdefault("skill_root", "")
+    run.setdefault("test_command", None)
+    run.setdefault("steps", [])
+    run.setdefault("artifacts", [])
+    run.setdefault("timeline", [])
+    run.setdefault("created_at", now)
+    run.setdefault("updated_at", now)
+    run.setdefault("started_at", None)
+    run.setdefault("ended_at", None)
+    if not isinstance(run.get("agent_session_ids"), dict):
+        run["agent_session_ids"] = default_agent_session_ids(run.get("session_id"), run.get("qwen_session_id") or run.get("session_id"))
+    for step in run.get("steps", []):
+        step.setdefault("status", "pending")
+        step.setdefault("started_at", None)
+        step.setdefault("ended_at", None)
+        step.setdefault("error", None)
+        step.setdefault("error_code", None)
+        step.setdefault("retry_count", 0)
+        step.setdefault("events", [])
+    return run
+
+
+async def _rehydrate_runs_from_workspace(*, run_id: str | None = None, session_id: str | None = None) -> list[dict]:
+    data = await store_repository.read()
+    existing_ids = {run.get("id") for run in data.get("runs", [])}
+    recovered: list[dict] = []
+    for state_path in _candidate_run_state_paths(data, run_id=run_id, session_id=session_id):
+        try:
+            raw = json.loads(state_path.read_text(encoding="utf-8-sig"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        if not isinstance(raw, dict) or not raw.get("id"):
+            continue
+        if run_id and raw.get("id") != run_id:
+            continue
+        if raw.get("id") in existing_ids:
+            continue
+        session = next((item for item in data.get("sessions", []) if item.get("id") == raw.get("session_id")), None)
+        if session_id and raw.get("session_id") != session_id:
+            continue
+        run = _normalize_rehydrated_run(raw, state_path, session)
+        await store_repository.mutate(lambda store, item=run: store["runs"].insert(0, item) if not any(r.get("id") == item["id"] for r in store.get("runs", [])) else None)
+        recovered.append(run)
+        existing_ids.add(run["id"])
+    for run in recovered:
+        await runtime.refresh_artifacts(run["id"])
+        await runtime.log(run, "workflow: recovered run state from workspace")
+    return recovered
+
+
 async def get_latest_run_for_session(session_id: str) -> dict | None:
     data = await store_repository.read()
     if not any(session["id"] == session_id for session in data.get("sessions", [])):
         raise HTTPException(status_code=404, detail="Session not found")
-    return latest_session_run(data, session_id)
+    latest = latest_session_run(data, session_id)
+    if latest:
+        return latest
+    recovered = await _rehydrate_runs_from_workspace(session_id=session_id)
+    if recovered:
+        data = await store_repository.read()
+        return latest_session_run(data, session_id)
+    return None
 
 
 async def create_workflow_run(session_id: str, body: runtime.CreateRunRequest) -> dict:
@@ -131,7 +233,15 @@ async def create_workflow_run(session_id: str, body: runtime.CreateRunRequest) -
 
 
 async def get_run(run_id: str) -> dict:
-    return await runtime.get_run_record(run_id)
+    try:
+        return await runtime.get_run_record(run_id)
+    except HTTPException as exc:
+        if exc.status_code != 404:
+            raise
+    recovered = await _rehydrate_runs_from_workspace(run_id=run_id)
+    if recovered:
+        return await runtime.get_run_record(run_id)
+    raise HTTPException(status_code=404, detail="Run not found")
 
 
 async def retry_run(run_id: str, body: runtime.RetryRunRequest | None = None) -> dict:

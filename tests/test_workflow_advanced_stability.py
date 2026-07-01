@@ -237,6 +237,92 @@ class StoreMigrationAndCrashRecoveryTests(unittest.TestCase):
             self.assertEqual(active, [])
 
 
+class WorkflowRunRehydrationTests(unittest.IsolatedAsyncioTestCase):
+    async def test_submit_answers_rehydrates_missing_store_run_from_workspace_state(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            project_dir = Path(tmp) / "project"
+            run_id = "run-rehydrate"
+            session_id = "session-rehydrate"
+            run_dir = project_dir / ".qwen-workflow" / "runs" / f"session-{session_id}" / f"run-{run_id}"
+            (run_dir / ".workflow").mkdir(parents=True)
+            (run_dir / "input").mkdir()
+            (run_dir / "output").mkdir()
+            (run_dir / "input" / "questions.md").write_text("## Question\n\nWhich language should be used?", encoding="utf-8")
+            (run_dir / ".workflow" / "run-log.md").write_text("", encoding="utf-8")
+            state = {
+                "id": run_id,
+                "session_id": session_id,
+                "qwen_session_id": session_id,
+                "agent_session_ids": {"qwen": session_id, "opencode": session_id},
+                "status": "waiting_input",
+                "error": "prepare_project: qwen needs more user input. See input/questions.md.",
+                "workspace": str(run_dir),
+                "project_path": str(project_dir),
+                "workflow_id": workflow_config_service.SYSTEM_WORKFLOW_ID,
+                "workflow_folder": "system-controlled-qwen",
+                "workflow_name": "System Controlled Qwen",
+                "skill_root": "",
+                "test_command": None,
+                "steps": [
+                    {
+                        "key": "prepare_project",
+                        "name": "Prepare Project",
+                        "status": "waiting_input",
+                        "started_at": None,
+                        "ended_at": None,
+                        "error": "prepare_project: qwen needs more user input. See input/questions.md.",
+                        "retry_count": 0,
+                        "events": [],
+                    },
+                    {
+                        "key": "generate_spec",
+                        "name": "Generate Spec",
+                        "status": "pending",
+                        "started_at": None,
+                        "ended_at": None,
+                        "error": None,
+                        "retry_count": 0,
+                        "events": [],
+                    },
+                ],
+                "artifacts": [],
+                "timeline": [],
+                "created_at": runtime.utc_now(),
+                "updated_at": runtime.utc_now(),
+                "started_at": None,
+                "ended_at": runtime.utc_now(),
+            }
+            (run_dir / ".workflow" / "state.json").write_text(json.dumps(state), encoding="utf-8")
+            store = Store(Path(tmp) / "store.json", default_project_path=lambda: str(project_dir), default_steps=lambda: [])
+            store.save_sync(
+                {
+                    "sessions": [
+                        {
+                            "id": session_id,
+                            "title": "Recover",
+                            "project_path": str(project_dir),
+                            "qwen_session_id": session_id,
+                            "agent_session_ids": {"qwen": session_id, "opencode": session_id},
+                        }
+                    ],
+                    "messages": [],
+                    "runs": [],
+                    "workflow_configs": [],
+                }
+            )
+
+            with patch("app.runtime_modules.api.store", store), patch("app.runtime_modules.api.run_state.store", store), patch(
+                "app.services.workflow_service.start_workflow_task"
+            ):
+                run = await workflow_service.submit_answers(run_id, runtime.SubmitAnswersRequest(content="Use Python."))
+
+            self.assertEqual(run["id"], run_id)
+            self.assertEqual(run["status"], "queued")
+            self.assertTrue((run_dir / "input" / "answers.md").read_text(encoding="utf-8").strip())
+            self.assertEqual(store.load_sync()["runs"][0]["id"], run_id)
+            self.assertEqual(store.load_sync()["messages"][0]["kind"], "answer")
+
+
 class WorkflowRunRaceConditionTests(unittest.IsolatedAsyncioTestCase):
     def _temp_runtime_store(self, tmp: str) -> Store:
         project_dir = Path(tmp) / "project"
