@@ -703,3 +703,17 @@ body.projects-collapsed .project-list {
   overflow: hidden;
   padding-right: 0;
 }
+
+/* Keep a small project list compact instead of visually filling the rail. */
+.project-list {
+  align-content: start;
+  grid-auto-rows: max-content;
+}
+
+.project-tree {
+  align-self: start;
+}
+
+.project-list:has(.project-tree:only-child) .project-tree {
+  max-width: 100%;
+}

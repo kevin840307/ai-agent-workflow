@@ -43,6 +43,12 @@ async def workflow_designer():
     return FileResponse(runtime.STATIC_DIR / "workflow-designer.html")
 
 
+@app.get("/ai-workflow-assets")
+@app.get("/ai-workflow-assets.html")
+async def ai_workflow_assets():
+    return FileResponse(runtime.STATIC_DIR / "ai-workflow-assets.html")
+
+
 @app.get("/health")
 async def health():
     return {"ok": True, "status": "healthy"}
@@ -55,6 +61,9 @@ async def ready():
         "storeWritable": os.access(runtime.STORE_FILE.parent, os.W_OK),
         "runsWritable": os.access(runtime.WORKSPACES_DIR, os.W_OK),
         "staticAvailable": (runtime.STATIC_DIR / "index.html").exists(),
+        "designerAvailable": (runtime.STATIC_DIR / "workflow-designer.html").exists(),
+        "assetsPageAvailable": (runtime.STATIC_DIR / "ai-workflow-assets.html").exists(),
+        "aiWorkflowWritable": os.access(workflow_asset_service.GLOBAL_ASSET_ROOT, os.W_OK),
     }
     ok = all(checks.values())
     return {"ok": ok, "status": "ready" if ok else "not_ready", "checks": checks}

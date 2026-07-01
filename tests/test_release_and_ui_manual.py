@@ -27,6 +27,9 @@ class TestingDocumentationContractTests(unittest.TestCase):
             "RUN_REAL_QWEN_STABILITY=1",
             "RUN_CLEAN_REPO_SMOKE=1",
             "RUN_PLAYWRIGHT_UI=1",
+            "Run all 8 opt-in actual scenarios once",
+            "unset RUN_REAL_QWEN RUN_REAL_QWEN_FULL RUN_REAL_QWEN_STABILITY",
+            "Remove-Item Env:RUN_CLEAN_REPO_SMOKE",
             "QWEN_MOCK_SCENARIO=fail_final_review_once",
             "QWEN_MOCK_SCENARIO=generate_tests_no_files",
         ]
@@ -233,6 +236,14 @@ class PlaywrightUiManualTests(unittest.TestCase):
             page.click('#resetSession')
             expect(page.locator('#sessionTitle')).to_contain_text(title, timeout=10000)
             expect(page.locator('#steps')).to_contain_text('No workflow run loaded.', timeout=10000)
+
+            page.goto(base_url + '/ai-workflow-assets', wait_until='domcontentloaded', timeout=15000)
+            expect(page.locator('.designer-asset-manager')).to_be_visible(timeout=10000)
+            expect(page.locator('#designerAssetScope')).to_have_value('global', timeout=10000)
+            page.select_option('#designerAssetType', 'functions')
+            expect(page.locator('#designerAssetSummary')).to_contain_text('Python function', timeout=10000)
+            page.select_option('#designerAssetType', 'steps')
+            expect(page.locator('#designerAssetSummary')).to_contain_text('skill', timeout=10000)
             """,
         )
         self._run_playwright(script)
@@ -251,6 +262,14 @@ class PlaywrightUiManualTests(unittest.TestCase):
             page.click('#resetSession')
             expect(page.locator('#sessionTitle')).to_contain_text(title, timeout=10000)
             expect(page.locator('#steps')).to_contain_text('No workflow run loaded.', timeout=10000)
+
+            page.goto(base_url + '/ai-workflow-assets', wait_until='domcontentloaded', timeout=15000)
+            expect(page.locator('.designer-asset-manager')).to_be_visible(timeout=10000)
+            expect(page.locator('#designerAssetScope')).to_have_value('global', timeout=10000)
+            page.select_option('#designerAssetType', 'functions')
+            expect(page.locator('#designerAssetSummary')).to_contain_text('Python function', timeout=10000)
+            page.select_option('#designerAssetType', 'steps')
+            expect(page.locator('#designerAssetSummary')).to_contain_text('skill', timeout=10000)
             after_reset_project_rows = page.locator('#projectList .project-item').filter(has_text=title).count()
             if after_reset_project_rows != initial_project_rows:
                 raise AssertionError('Reset changed project row count: before=' + str(initial_project_rows) + ' after=' + str(after_reset_project_rows))

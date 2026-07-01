@@ -237,6 +237,7 @@ function renderSources(step, disabled, readonly) {
           <button type="button" data-designer-action="save-metadata-asset" ${disabled}>Save Metadata</button>
           <button type="button" data-designer-action="edit-python-asset" ${disabled}>Edit Python</button>
           <button type="button" data-designer-action="upload-python-asset" ${disabled}>Upload Python</button>
+          <a class="designer-button-link" href="/ai-workflow-assets" target="_blank" rel="noreferrer">Assets Library</a>
         </div>
         <div class="designer-form-hint">Runtime applies contract metadata first. Skill Path points to pure prompt markdown and can also be used as Template Path.</div>
       </section>

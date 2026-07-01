@@ -13,12 +13,14 @@ class ApiSmokeTests(unittest.TestCase):
             for path in [
                 "/",
                 "/workflow-designer",
+                "/ai-workflow-assets",
                 "/health",
                 "/ready",
                 "/metrics",
                 "/api/config",
                 "/api/workflows",
                 "/api/workflows/functions",
+                "/api/workflow-assets",
                 "/api/sessions",
             ]:
                 response = client.get(path)

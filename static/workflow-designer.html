@@ -17,6 +17,7 @@
         <nav class="designer-nav" aria-label="Designer navigation">
           <a href="/" class="designer-nav-link"><span aria-hidden="true">Run</span><strong>Runner</strong></a>
           <a href="/workflow-designer" class="designer-nav-link active"><span aria-hidden="true">Cfg</span><strong>Workflows</strong></a>
+          <a href="/ai-workflow-assets" class="designer-nav-link"><span aria-hidden="true">Lib</span><strong>Assets</strong></a>
         </nav>
 
         <div class="designer-sidebar-section">
@@ -44,6 +45,7 @@
           </div>
           <div class="designer-topbar-actions">
             <div class="designer-action-group" aria-label="Workflow actions">
+              <a class="designer-button-link" href="/ai-workflow-assets">Assets Library</a>
               <button id="designerNewWorkflow" class="primary">+ New Workflow</button>
             </div>
             <span id="designerBackendStatus" class="designer-api-status" title="Loading workflow API...">API...</span>
@@ -78,61 +80,13 @@
         </section>
 
 
-        <section class="designer-asset-manager" aria-label="Workflow asset manager">
-          <div class="designer-panel-head compact">
-            <div>
-              <h3>.ai-workflow Assets</h3>
-              <p>CRUD shared workflow assets: skill markdown, metadata YAML/JSON, Python functions, and .workflow files.</p>
-            </div>
-            <div class="designer-footer-actions compact">
-              <button type="button" data-asset-manager-action="refresh">Refresh</button>
-              <button type="button" data-asset-manager-action="new">New</button>
-              <button type="button" data-asset-manager-action="upload">Upload</button>
-            </div>
+        <section class="designer-assets-callout" aria-label="Workflow asset library shortcut">
+          <div>
+            <span class="designer-eyebrow">.ai-workflow Assets</span>
+            <h3>Skill / metadata / Python function library is maintained in a separate page.</h3>
+            <p>Keep this designer focused on workflow structure. Open Assets Library to CRUD shared steps, contracts, functions, and .workflow files. Step settings still let you save or edit the selected step's skill and Python function directly.</p>
           </div>
-          <div class="designer-asset-grid">
-            <aside class="designer-asset-list-panel">
-              <div class="designer-form-grid compact">
-                <label class="designer-form-row">
-                  <span class="designer-label">Project Path</span>
-                  <input id="designerAssetProjectPath" class="designer-input" placeholder="Optional: C:\project to read .ai-workflow" />
-                </label>
-                <div class="designer-template-summary-grid compact">
-                  <label class="designer-form-row">
-                    <span class="designer-label">Scope</span>
-                    <select id="designerAssetScope" class="designer-select">
-                      <option value="global">Global</option>
-                      <option value="project">Project</option>
-                    </select>
-                  </label>
-                  <label class="designer-form-row">
-                    <span class="designer-label">Type</span>
-                    <select id="designerAssetType" class="designer-select">
-                      <option value="steps">Skill</option>
-                      <option value="contracts">Metadata</option>
-                      <option value="functions">Python Function</option>
-                      <option value="workflows">Workflow</option>
-                    </select>
-                  </label>
-                </div>
-              </div>
-              <div id="designerAssetList" class="designer-asset-list"></div>
-            </aside>
-            <section class="designer-asset-editor-panel">
-              <label class="designer-form-row">
-                <span class="designer-label">Asset Path</span>
-                <input id="designerAssetPath" class="designer-input" placeholder="steps/my-skill.md / contracts/my-step.yaml / functions/check.py" />
-              </label>
-              <textarea id="designerAssetContent" class="designer-textarea designer-asset-editor" spellcheck="false" placeholder="Select or create an asset..."></textarea>
-              <div class="designer-footer-actions compact">
-                <button type="button" data-asset-manager-action="save" class="primary">Save Asset</button>
-                <button type="button" data-asset-manager-action="rename">Rename</button>
-                <button type="button" data-asset-manager-action="apply">Apply to Step</button>
-                <button type="button" data-asset-manager-action="delete" class="designer-danger-button">Delete</button>
-              </div>
-              <div class="designer-form-hint">Files are discovered automatically. Manual changes under .ai-workflow are visible after Refresh; CLI and UI use the same backend resolver.</div>
-            </section>
-          </div>
+          <a class="designer-button-link primary-link" href="/ai-workflow-assets">Open Assets Library</a>
         </section>
 
         <section class="designer-editor">

@@ -120,11 +120,6 @@ function inferStepType(step) {
 function normalizeFunctionId(value = "") {
   const raw = String(value || "").trim();
   const aliases = {
-    "validators/validate_spec.py": "validate_spec",
-    "validators/validate_todo.py": "validate_todo",
-    "validators/run_tests.py": "run_pytest",
-    "validators/run_pytest.py": "run_pytest",
-    "validators/validate.py": "validate_spec",
     "functions/validate_spec.py": "validate_spec",
     "functions/validate_todo.py": "validate_todo",
     "functions/run_pytest.py": "run_pytest",

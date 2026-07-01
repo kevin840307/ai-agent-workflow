@@ -21,6 +21,46 @@ python -m unittest tests.test_large_project_fixture -v
 
 Expected default result includes skipped manual tests. Skips are intentional for checks that need real Qwen, Playwright, or a clean-repo subprocess smoke.
 
+
+## Run all 8 opt-in actual scenarios once
+
+Default CI intentionally skips 8 actual/manual scenarios because they need real Qwen CLI, clean-repo subprocess checks, or Playwright/Chromium. Use this one-shot command when you want to exercise all of them in one pass.
+
+PowerShell:
+
+```powershell
+$env:RUN_REAL_QWEN="1"; $env:RUN_REAL_QWEN_FULL="1"; $env:RUN_REAL_QWEN_STABILITY="1"; $env:RUN_CLEAN_REPO_SMOKE="1"; $env:RUN_PLAYWRIGHT_UI="1"; $env:QWEN_USE_SERVE="0"; $env:QWEN_MOCK="0"; $env:QWEN_TIMEOUT_SEC="300"; $env:REAL_QWEN_STABILITY_RUNS="3"
+python -m unittest tests.test_workflow_advanced_stability.RealQwenSmokeTests tests.test_real_qwen_workflow_manual.RealQwenFullWorkflowManualTests tests.test_real_qwen_workflow_manual.RealQwenStabilityManualTests tests.test_release_and_ui_manual.CleanRepoPatchApplyManualTests tests.test_release_and_ui_manual.PlaywrightUiManualTests -v
+```
+
+Clear PowerShell environment variables after the one-shot run:
+
+```powershell
+Remove-Item Env:RUN_REAL_QWEN -ErrorAction SilentlyContinue
+Remove-Item Env:RUN_REAL_QWEN_FULL -ErrorAction SilentlyContinue
+Remove-Item Env:RUN_REAL_QWEN_STABILITY -ErrorAction SilentlyContinue
+Remove-Item Env:RUN_CLEAN_REPO_SMOKE -ErrorAction SilentlyContinue
+Remove-Item Env:RUN_PLAYWRIGHT_UI -ErrorAction SilentlyContinue
+Remove-Item Env:QWEN_USE_SERVE -ErrorAction SilentlyContinue
+Remove-Item Env:QWEN_MOCK -ErrorAction SilentlyContinue
+Remove-Item Env:QWEN_TIMEOUT_SEC -ErrorAction SilentlyContinue
+Remove-Item Env:REAL_QWEN_STABILITY_RUNS -ErrorAction SilentlyContinue
+Remove-Item Env:QWEN_MOCK_SCENARIO -ErrorAction SilentlyContinue
+Remove-Item Env:PLAYWRIGHT_TEST_PORT -ErrorAction SilentlyContinue
+```
+
+Bash / Git Bash:
+
+```bash
+RUN_REAL_QWEN=1 RUN_REAL_QWEN_FULL=1 RUN_REAL_QWEN_STABILITY=1 RUN_CLEAN_REPO_SMOKE=1 RUN_PLAYWRIGHT_UI=1 QWEN_USE_SERVE=0 QWEN_MOCK=0 QWEN_TIMEOUT_SEC=300 REAL_QWEN_STABILITY_RUNS=3 python -m unittest tests.test_workflow_advanced_stability.RealQwenSmokeTests tests.test_real_qwen_workflow_manual.RealQwenFullWorkflowManualTests tests.test_real_qwen_workflow_manual.RealQwenStabilityManualTests tests.test_release_and_ui_manual.CleanRepoPatchApplyManualTests tests.test_release_and_ui_manual.PlaywrightUiManualTests -v
+```
+
+Clear Bash / Git Bash environment variables after the one-shot run:
+
+```bash
+unset RUN_REAL_QWEN RUN_REAL_QWEN_FULL RUN_REAL_QWEN_STABILITY RUN_CLEAN_REPO_SMOKE RUN_PLAYWRIGHT_UI QWEN_USE_SERVE QWEN_MOCK QWEN_TIMEOUT_SEC REAL_QWEN_STABILITY_RUNS QWEN_MOCK_SCENARIO PLAYWRIGHT_TEST_PORT
+```
+
 ## Real Qwen checks
 
 Minimal real Qwen CLI smoke:

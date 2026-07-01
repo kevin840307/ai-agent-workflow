@@ -7,11 +7,24 @@ const TYPE_DEFAULTS = {
 };
 
 export function installWorkflowAssetManager(ctx) {
-  const { designerApi, el, escapeAttr, escapeHtml, getSelectedStep, isReadonly, markWorkflowDirty, renderSettings, renderWorkflowViewOnly, toast } = ctx;
+  const designerApi = ctx.designerApi;
+  const el = ctx.el;
+  const escapeAttr = ctx.escapeAttr || escapeHtml;
+  const escapeHtmlFn = ctx.escapeHtml || escapeHtml;
+  const toast = ctx.toast || ((message) => console.info(message));
+  const getSelectedStep = ctx.getSelectedStep || (() => null);
+  const isReadonly = ctx.isReadonly || (() => true);
+  const markWorkflowDirty = ctx.markWorkflowDirty || (() => {});
+  const renderSettings = ctx.renderSettings || (() => {});
+  const renderWorkflowViewOnly = ctx.renderWorkflowViewOnly || (() => {});
   const state = { assets: [], selected: null, loading: false };
 
   function bindEvents() {
-    ["designerAssetProjectPath", "designerAssetScope", "designerAssetType", "designerAssetPath", "designerAssetContent"].forEach((id) => {
+    el("designerAssetProjectPath")?.addEventListener("change", refreshAssetList);
+    el("designerAssetProjectPath")?.addEventListener("keydown", (event) => { if (event.key === "Enter") refreshAssetList(); });
+    el("designerAssetScope")?.addEventListener("change", handleFilterChange);
+    el("designerAssetType")?.addEventListener("change", handleFilterChange);
+    ["designerAssetPath", "designerAssetContent"].forEach((id) => {
       el(id)?.addEventListener("input", syncSelectedFromInputs);
       el(id)?.addEventListener("change", syncSelectedFromInputs);
     });
@@ -31,24 +44,44 @@ export function installWorkflowAssetManager(ctx) {
     state.loading = true;
     renderAssetList();
     try {
-      const projectPath = el("designerAssetProjectPath")?.value || "";
-      const query = projectPath ? `?project_path=${encodeURIComponent(projectPath)}` : "";
+      const query = projectPath() ? `?project_path=${encodeURIComponent(projectPath())}` : "";
       const payload = await designerApi(`${WORKFLOW_ASSET_API}${query}`);
       state.assets = Array.isArray(payload.assets) ? payload.assets : [];
       state.selected = keepSelectedOrFirst();
       state.loading = false;
       renderAll();
+      if (state.selected) await readSelectedAsset();
+      return true;
     } catch (error) {
       state.loading = false;
+      renderAssetList(`<div class="designer-empty-state">${escapeHtmlFn(error.message)}</div>`);
       toast(`Could not load assets: ${error.message}`);
-      renderAssetList(`<div class="designer-empty-state">${escapeHtml(error.message)}</div>`);
+      return false;
     }
   }
 
+  function handleFilterChange() {
+    state.selected = keepSelectedOrFirst();
+    if (state.selected) {
+      syncInputsFromSelected();
+      readSelectedAsset();
+    } else {
+      newAsset({ keepContent: false });
+    }
+    renderAssetList();
+  }
+
+  function filteredAssets() {
+    const scope = filterScope();
+    const type = filterType();
+    return state.assets.filter((item) => item.scope === scope && item.type === type);
+  }
+
   function keepSelectedOrFirst() {
-    if (!state.assets.length) return null;
+    const filtered = filteredAssets();
+    if (!filtered.length) return null;
     const key = state.selected ? assetKey(state.selected) : "";
-    return state.assets.find((item) => assetKey(item) === key) || state.assets[0];
+    return filtered.find((item) => assetKey(item) === key) || filtered[0];
   }
 
   async function selectAsset(key) {
@@ -61,34 +94,36 @@ export function installWorkflowAssetManager(ctx) {
   }
 
   async function readSelectedAsset() {
-    const selected = state.selected;
-    if (!selected) return;
+    if (!state.selected) return;
     try {
-      const file = await designerApi(`${WORKFLOW_ASSET_API}/file?path=${encodeURIComponent(selected.path)}&scope=${encodeURIComponent(selected.scope)}${projectQuery()}`);
-      el("designerAssetContent").value = file.content || "";
+      const file = await designerApi(`${WORKFLOW_ASSET_API}/file?path=${encodeURIComponent(state.selected.path)}&scope=${encodeURIComponent(state.selected.scope)}${projectQuery("&")}`);
+      setValue("designerAssetContent", file.content || "");
     } catch (error) {
       toast(`Could not read asset: ${error.message}`);
     }
   }
 
   async function saveAsset() {
-    const path = normalizeAssetPath(el("designerAssetPath")?.value || "", el("designerAssetType")?.value || "steps");
-    const body = { path, content: el("designerAssetContent")?.value || "", scope: el("designerAssetScope")?.value || "global", project_path: projectPath() || null, overwrite: true };
+    const type = filterType();
+    const path = normalizeAssetPath(el("designerAssetPath")?.value || "", type);
+    const scope = filterScope();
+    if (scope === "project" && !projectPath()) return toast("Project scope requires a Project Path.");
+    const body = { path, content: el("designerAssetContent")?.value || "", scope, project_path: projectPath() || null, overwrite: true };
     try {
       const saved = await designerApi(`${WORKFLOW_ASSET_API}/file`, { method: "PUT", body: JSON.stringify(body) });
-      state.selected = { ...saved, type: path.split("/")[0], name: path.split("/").pop() };
+      state.selected = { ...saved, scope, type: path.split("/")[0], name: path.split("/").pop() };
       await refreshAssetList();
       toast(`Asset saved: ${path}`);
     } catch (error) { toast(`Could not save asset: ${error.message}`); }
   }
 
   async function deleteAsset() {
-    const path = el("designerAssetPath")?.value || "";
+    const path = el("designerAssetPath")?.value || state.selected?.path || "";
     if (!path || !confirm(`Delete ${path}?`)) return;
     try {
-      await designerApi(`${WORKFLOW_ASSET_API}/file?path=${encodeURIComponent(path)}&scope=${encodeURIComponent(el("designerAssetScope")?.value || "global")}${projectQuery()}`, { method: "DELETE" });
+      await designerApi(`${WORKFLOW_ASSET_API}/file?path=${encodeURIComponent(path)}&scope=${encodeURIComponent(filterScope())}${projectQuery("&")}`, { method: "DELETE" });
       state.selected = null;
-      el("designerAssetContent").value = "";
+      setValue("designerAssetContent", "");
       await refreshAssetList();
       toast(`Asset deleted: ${path}`);
     } catch (error) { toast(`Could not delete asset: ${error.message}`); }
@@ -96,22 +131,22 @@ export function installWorkflowAssetManager(ctx) {
 
   async function renameAsset() {
     const oldPath = state.selected?.path || "";
-    const newPath = normalizeAssetPath(el("designerAssetPath")?.value || "", state.selected?.type || el("designerAssetType")?.value || "steps");
+    const newPath = normalizeAssetPath(el("designerAssetPath")?.value || "", state.selected?.type || filterType());
     if (!oldPath || oldPath === newPath) return;
     try {
-      const renamed = await designerApi(`${WORKFLOW_ASSET_API}/rename`, { method: "POST", body: JSON.stringify({ old_path: oldPath, new_path: newPath, scope: el("designerAssetScope")?.value || state.selected.scope || "global", project_path: projectPath() || null, overwrite: false }) });
-      state.selected = { ...renamed, type: newPath.split("/")[0], name: newPath.split("/").pop() };
+      const renamed = await designerApi(`${WORKFLOW_ASSET_API}/rename`, { method: "POST", body: JSON.stringify({ old_path: oldPath, new_path: newPath, scope: filterScope(), project_path: projectPath() || null, overwrite: false }) });
+      state.selected = { ...renamed, scope: filterScope(), type: newPath.split("/")[0], name: newPath.split("/").pop() };
       await refreshAssetList();
       toast(`Asset renamed: ${newPath}`);
     } catch (error) { toast(`Could not rename asset: ${error.message}`); }
   }
 
   function newAsset() {
-    const type = el("designerAssetType")?.value || "steps";
+    const type = filterType();
     const sample = TYPE_DEFAULTS[type] || TYPE_DEFAULTS.steps;
-    state.selected = { scope: el("designerAssetScope")?.value || "global", type, path: sample.path, name: sample.path.split("/").pop() };
+    state.selected = { scope: filterScope(), type, path: sample.path, name: sample.path.split("/").pop(), size: 0 };
     syncInputsFromSelected();
-    el("designerAssetContent").value = sample.content;
+    setValue("designerAssetContent", sample.content);
     renderAssetList();
   }
 
@@ -122,10 +157,10 @@ export function installWorkflowAssetManager(ctx) {
     input.addEventListener("change", async () => {
       const file = input.files?.[0];
       if (!file) return;
-      const type = typeFromFilename(file.name, el("designerAssetType")?.value || "steps");
-      el("designerAssetType").value = type;
-      el("designerAssetPath").value = normalizeAssetPath(`${type}/${file.name}`, type);
-      el("designerAssetContent").value = await file.text();
+      const type = typeFromFilename(file.name, filterType());
+      setValue("designerAssetType", type);
+      setValue("designerAssetPath", normalizeAssetPath(`${type}/${file.name}`, type));
+      setValue("designerAssetContent", await file.text());
       await saveAsset();
     }, { once: true });
     input.click();
@@ -135,7 +170,7 @@ export function installWorkflowAssetManager(ctx) {
     const step = getSelectedStep();
     const path = el("designerAssetPath")?.value || state.selected?.path || "";
     const type = path.split("/")[0];
-    if (!step || isReadonly() || !path) return;
+    if (!step || isReadonly() || !path) return toast("Open this from Workflow Designer and select an editable step first.");
     if (type === "steps") {
       step.skillPath = path;
       step.templatePath = path;
@@ -147,10 +182,7 @@ export function installWorkflowAssetManager(ctx) {
     } else if (type === "functions") {
       step.function = path;
       if (step.type === "ai") step.type = "python";
-    } else if (type === "workflows") {
-      toast("Workflow assets appear in the workflow list after Refresh; select them from the sidebar.");
-      return;
-    }
+    } else return toast("Workflow assets appear in the workflow list after Refresh.");
     markWorkflowDirty();
     renderSettings();
     renderWorkflowViewOnly();
@@ -164,28 +196,34 @@ export function installWorkflowAssetManager(ctx) {
   function renderAll() { syncInputsFromSelected(); renderAssetList(); }
   function renderAssetList(errorHtml = "") {
     const target = el("designerAssetList");
+    const summary = el("designerAssetSummary");
     if (!target) return;
     if (errorHtml) { target.innerHTML = errorHtml; return; }
     if (state.loading) { target.innerHTML = `<div class="designer-empty-state">Loading assets...</div>`; return; }
-    if (!state.assets.length) { target.innerHTML = `<div class="designer-empty-state">No assets found. Create one or put files under .ai-workflow.</div>`; return; }
+    const filtered = filteredAssets();
+    if (summary) summary.innerHTML = `${filtered.length} shown / ${state.assets.length} total · ${escapeHtmlFn(filterScope())} · ${escapeHtmlFn(filterTypeLabel(filterType()))}`;
+    if (!filtered.length) { target.innerHTML = `<div class="designer-empty-state">No ${escapeHtmlFn(filterTypeLabel(filterType()))} assets in ${escapeHtmlFn(filterScope())} scope. Click New or put files under ${filterScope() === "project" ? ".ai-workflow" : "data/ai-workflow"}.</div>`; return; }
     const selectedKey = state.selected ? assetKey(state.selected) : "";
-    target.innerHTML = state.assets.map((item) => `<button type="button" class="designer-asset-item ${assetKey(item) === selectedKey ? "active" : ""}" data-asset-key="${escapeAttr(assetKey(item))}"><strong>${escapeHtml(item.path)}</strong><span>${escapeHtml(item.scope)} · ${escapeHtml(item.type)} · ${Number(item.size || 0)} bytes</span></button>`).join("");
+    target.innerHTML = filtered.map((item) => `<button type="button" class="designer-asset-item ${assetKey(item) === selectedKey ? "active" : ""}" data-asset-key="${escapeAttr(assetKey(item))}"><strong>${escapeHtmlFn(item.path)}</strong><span>${escapeHtmlFn(item.scope)} · ${escapeHtmlFn(item.type)} · ${Number(item.size || 0)} bytes</span></button>`).join("");
   }
 
   function syncInputsFromSelected() {
-    const selected = state.selected || { scope: "global", type: "steps", path: "steps/new-skill.md" };
-    if (el("designerAssetScope")) el("designerAssetScope").value = selected.scope || "global";
-    if (el("designerAssetType")) el("designerAssetType").value = selected.type || selected.path?.split("/")[0] || "steps";
-    if (el("designerAssetPath")) el("designerAssetPath").value = selected.path || "";
+    const selected = state.selected || { scope: filterScope(), type: filterType(), path: TYPE_DEFAULTS[filterType()]?.path || "steps/new-skill.md" };
+    setValue("designerAssetScope", selected.scope || "global");
+    setValue("designerAssetType", selected.type || selected.path?.split("/")[0] || "steps");
+    setValue("designerAssetPath", selected.path || "");
   }
 
   function syncSelectedFromInputs() {
     const path = el("designerAssetPath")?.value || "";
-    state.selected = { ...(state.selected || {}), scope: el("designerAssetScope")?.value || "global", type: el("designerAssetType")?.value || path.split("/")[0] || "steps", path, name: path.split("/").pop() || "" };
+    state.selected = { ...(state.selected || {}), scope: filterScope(), type: filterType(), path, name: path.split("/").pop() || "" };
   }
 
+  function filterScope() { return el("designerAssetScope")?.value || "global"; }
+  function filterType() { return el("designerAssetType")?.value || "steps"; }
   function projectPath() { return el("designerAssetProjectPath")?.value?.trim() || ""; }
-  function projectQuery() { const value = projectPath(); return value ? `&project_path=${encodeURIComponent(value)}` : ""; }
+  function projectQuery(prefix = "?") { const value = projectPath(); return value ? `${prefix}project_path=${encodeURIComponent(value)}` : ""; }
+  function setValue(id, value) { const target = el(id); if (target) target.value = value; }
   function assetKey(item) { return `${item.scope}:${item.path}`; }
   return { bindEvents, refreshAssetList };
 }
@@ -212,4 +250,12 @@ function normalizeAssetPath(value = "", defaultDir = "steps") {
 
 function cleanName(value) {
   return String(value || "asset").replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/^-+|-+$/g, "") || "asset";
+}
+
+function filterTypeLabel(type) {
+  return { steps: "skill", contracts: "metadata", functions: "Python function", workflows: "workflow" }[type] || type;
+}
+
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
 }

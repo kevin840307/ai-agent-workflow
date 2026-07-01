@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AI Workflow Assets</title>
+    <link rel="stylesheet" href="/static/styles.css?v=20260701-step-detail-polish1" />
+  </head>
+  <body data-page="ai-workflow-assets">
+    <div class="designer-shell assets-shell">
+      <aside class="designer-sidebar">
+        <div class="designer-brand-block">
+          <div class="brand">Agent Workflow</div>
+          <button id="toggleProjects" class="side-toggle" title="Collapse navigation" aria-label="Collapse navigation" aria-pressed="false">&lt;</button>
+        </div>
+
+        <nav class="designer-nav" aria-label="Application navigation">
+          <a href="/" class="designer-nav-link"><span aria-hidden="true">Run</span><strong>Runner</strong></a>
+          <a href="/workflow-designer" class="designer-nav-link"><span aria-hidden="true">Cfg</span><strong>Workflows</strong></a>
+          <a href="/ai-workflow-assets" class="designer-nav-link active"><span aria-hidden="true">Lib</span><strong>Assets</strong></a>
+        </nav>
+
+        <div class="designer-sidebar-section assets-help-card">
+          <div class="designer-section-title">Canonical Root</div>
+          <p><code>data/ai-workflow</code> is the global asset source. Project assets live under <code>.ai-workflow</code> and override global assets.</p>
+        </div>
+      </aside>
+
+      <main class="designer-main assets-main">
+        <header class="designer-topbar">
+          <div>
+            <h1>AI Workflow Assets</h1>
+            <p>Maintain shared skill Markdown, metadata contracts, Python functions, and .workflow manifests used by both UI and CLI.</p>
+          </div>
+          <div class="designer-topbar-actions">
+            <a class="designer-button-link" href="/workflow-designer">Back to Designer</a>
+            <span id="designerBackendStatus" class="designer-api-status" title="Loading workflow asset API...">API...</span>
+          </div>
+        </header>
+
+        <section class="designer-asset-manager assets-page-manager" aria-label="Workflow asset manager">
+          <div class="designer-panel-head compact">
+            <div>
+              <h3>.ai-workflow Asset Library</h3>
+              <p>Use filters first, then select or create an asset. Manual file changes are visible after Refresh.</p>
+            </div>
+            <div class="designer-footer-actions compact">
+              <button type="button" data-asset-manager-action="refresh">Refresh</button>
+              <button type="button" data-asset-manager-action="new">New</button>
+              <button type="button" data-asset-manager-action="upload">Upload</button>
+            </div>
+          </div>
+          <div class="designer-asset-grid">
+            <aside class="designer-asset-list-panel">
+              <div class="designer-form-grid compact">
+                <label class="designer-form-row">
+                  <span class="designer-label">Project Path</span>
+                  <input id="designerAssetProjectPath" class="designer-input" placeholder="Optional: C:\\project to read project .ai-workflow" />
+                  <span class="designer-form-hint">Leave blank to manage global assets only. Project scope requires this path.</span>
+                </label>
+                <div class="designer-template-summary-grid compact">
+                  <label class="designer-form-row">
+                    <span class="designer-label">Scope</span>
+                    <select id="designerAssetScope" class="designer-select">
+                      <option value="global">Global</option>
+                      <option value="project">Project</option>
+                    </select>
+                  </label>
+                  <label class="designer-form-row">
+                    <span class="designer-label">Type</span>
+                    <select id="designerAssetType" class="designer-select">
+                      <option value="steps">Skill Markdown</option>
+                      <option value="contracts">Metadata Contract</option>
+                      <option value="functions">Python Function</option>
+                      <option value="workflows">Workflow Manifest</option>
+                    </select>
+                  </label>
+                </div>
+              </div>
+              <div id="designerAssetSummary" class="designer-asset-summary"></div>
+              <div id="designerAssetList" class="designer-asset-list"></div>
+            </aside>
+            <section class="designer-asset-editor-panel">
+              <label class="designer-form-row">
+                <span class="designer-label">Asset Path</span>
+                <input id="designerAssetPath" class="designer-input" placeholder="steps/my-skill.md / contracts/my-step.yaml / functions/check.py" />
+              </label>
+              <textarea id="designerAssetContent" class="designer-textarea designer-asset-editor" spellcheck="false" placeholder="Select or create an asset..."></textarea>
+              <div class="designer-footer-actions compact">
+                <button type="button" data-asset-manager-action="save" class="primary">Save Asset</button>
+                <button type="button" data-asset-manager-action="rename">Rename</button>
+                <button type="button" data-asset-manager-action="delete" class="designer-danger-button">Delete</button>
+              </div>
+              <div class="designer-form-hint">CLI and UI use the same resolver. Global assets are reusable across workflows; project assets override by same path.</div>
+            </section>
+          </div>
+        </section>
+      </main>
+    </div>
+    <script type="module" src="/static/js/main.js?v=20260701-step-detail-polish1"></script>
+  </body>
+</html>

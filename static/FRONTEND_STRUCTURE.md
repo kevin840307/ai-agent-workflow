@@ -5,6 +5,7 @@ The frontend is static HTML/CSS/JS served by FastAPI. It intentionally keeps DOM
 ```text
 index.html                  # workflow runner + chat page
 workflow-designer.html      # workflow configuration page
+ai-workflow-assets.html     # dedicated .ai-workflow asset library page
 styles.css                  # CSS entry, imports css/*
 
 css/
@@ -49,6 +50,7 @@ js/
   pages/
     workflow-runner.js
     workflow-designer.js             # thin page entry facade
+    ai-workflow-assets.js            # dedicated asset library page entry
     workflow-designer-constants.js   # static select options and template presets
     workflow-designer/
       controller.js                  # page lifecycle, event delegation, API save/delete, orchestration
@@ -80,7 +82,8 @@ Module responsibilities:
 
 - `controller.js`: owns page lifecycle, event delegation, state transitions, API persistence, and module wiring. It should stay orchestration-only.
 - `asset-tools.js`: owns `.ai-workflow` skill creation and Python asset upload actions used by the existing step editor.
-- `asset-manager.js`: owns asset CRUD UI for `steps/`, `contracts/`, `functions/`, and `workflows/` so manually added files are visible without code changes.
+- `ai-workflow-assets.js`: owns the dedicated Assets page lifecycle and reuses the shared asset manager.
+- `asset-manager.js`: owns asset CRUD UI for `steps/`, `contracts/`, `functions/`, and `workflows/` so manually added files are visible without code changes. It is rendered on the Assets page, while the workflow designer links to it and keeps step-focused edit shortcuts.
 - `layout-renderer.js`: owns top-level designer rendering, sidebar/workflow labels, step list, canvas, filters, density controls, context menu, and drag/drop.
 - `step-settings-renderer.js`: owns step settings tab rendering, including basic/prompt/review/retry/gate/advanced/consensus forms.
 - `template-editor.js`: owns the step editor modal, prompt template editor, template diagnostics, prompt preview, and template preset loading.
@@ -102,7 +105,10 @@ Workflow Designer is API-backed.
 - `GET /api/workflows` loads system and custom workflows plus backend function metadata.
 - `PUT /api/workflows/{id}` saves custom workflows.
 - `DELETE /api/workflows/{id}` deletes custom workflows.
-- `PUT /api/workflow-assets/file` saves shared `.ai-workflow` skill markdown and Python assets.
+- `GET /api/workflow-assets` lists global/project `steps/`, `contracts/`, `functions/`, and `workflows/`.
+- `PUT /api/workflow-assets/file` saves shared `.ai-workflow` skill markdown, metadata, workflow, and Python function assets.
+- `DELETE /api/workflow-assets/file` deletes an asset.
+- `POST /api/workflow-assets/rename` renames an asset.
 - System workflow is read-only and cannot be deleted.
 - Prompt template content is loaded from and saved to the workflow bundle folder.
 

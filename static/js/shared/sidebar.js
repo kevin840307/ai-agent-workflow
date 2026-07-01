@@ -6,7 +6,9 @@ function applyActiveNav() {
     const href = link.getAttribute("href") || "";
     const active = page === "workflow-designer"
       ? href.includes("workflow-designer")
-      : href === "/" || href.endsWith("/index.html");
+      : page === "ai-workflow-assets"
+        ? href.includes("ai-workflow-assets")
+        : href === "/" || href.endsWith("/index.html");
     link.classList.toggle("active", active);
   });
 }

@@ -44,7 +44,6 @@ import { installStepSettingsRenderer } from "./step-settings-renderer.js?v=20260
 import { installTemplateEditor } from "./template-editor.js?v=20260701-step-detail-polish1";
 import { installImportExportTools } from "./import-export.js?v=20260701-step-detail-polish1";
 import { installWorkflowAssetTools } from "./asset-tools.js?v=20260701-step-detail-polish1";
-import { installWorkflowAssetManager } from "./asset-manager.js?v=20260701-step-detail-polish1";
 
 const STORAGE_KEY = "qwenWorkflow.workflowDesigner.ui.v1";
 const WORKFLOW_API = "/api/workflows";
@@ -110,7 +109,6 @@ async function initWorkflowDesignerPage() {
   await loadState();
   bindEvents();
   render();
-  assetManager.refreshAssetList();
 }
 
 async function loadState() {
@@ -178,7 +176,6 @@ function bindEvents() {
   on("designerDuplicateCustomWorkflow", "click", duplicateCurrentWorkflow);
   on("designerExportWorkflow", "click", exportWorkflow);
   on("designerDeleteWorkflow", "click", () => deleteWorkflow(state.selectedWorkflowId));
-  assetManager.bindEvents();
 
   const nameInput = el("workflowNameInput");
   if (nameInput) {
@@ -1078,19 +1075,6 @@ const assetTools = installWorkflowAssetTools({
   toast,
 });
 
-
-const assetManager = installWorkflowAssetManager({
-  designerApi,
-  el,
-  escapeAttr,
-  escapeHtml,
-  getSelectedStep,
-  isReadonly,
-  markWorkflowDirty,
-  renderSettings: () => renderSettings(),
-  renderWorkflowViewOnly: () => renderWorkflowViewOnly(),
-  toast,
-});
 
 const layoutRenderer = installLayoutRenderer({
   el,

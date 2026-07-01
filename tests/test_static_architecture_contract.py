@@ -19,6 +19,7 @@ class StaticArchitectureContractTests(unittest.TestCase):
             "static/js/pages/workflow-designer/controller.js",
             "static/js/pages/workflow-designer/asset-tools.js",
             "static/js/pages/workflow-designer/asset-manager.js",
+            "static/js/pages/ai-workflow-assets.js",
             "static/js/pages/workflow-designer/function-catalog.js",
             "static/js/pages/workflow-designer/import-export.js",
             "static/js/pages/workflow-designer/layout-renderer.js",
@@ -46,7 +47,7 @@ class StaticArchitectureContractTests(unittest.TestCase):
         self.assertIn('from "./import-export.js', source)
         self.assertIn('from "./function-catalog.js', source)
         self.assertIn('from "./asset-tools.js', source)
-        self.assertIn('from "./asset-manager.js', source)
+        self.assertNotIn('installWorkflowAssetManager', source)
         self.assertNotRegex(source, r"\nfunction\s+createWorkflow\s*\(")
         self.assertNotRegex(source, r"\nfunction\s+createStep\s*\(")
         self.assertNotRegex(source, r"\nfunction\s+escapeHtml\s*\(")
@@ -56,7 +57,8 @@ class StaticArchitectureContractTests(unittest.TestCase):
         limits = {
             "static/js/pages/workflow-designer/controller.js": 1200,
             "static/js/pages/workflow-designer/asset-tools.js": 180,
-            "static/js/pages/workflow-designer/asset-manager.js": 260,
+            "static/js/pages/workflow-designer/asset-manager.js": 320,
+            "static/js/pages/ai-workflow-assets.js": 80,
             "static/js/pages/workflow-designer/layout-renderer.js": 700,
             "static/js/pages/workflow-designer/step-tabs.js": 80,
             "static/js/pages/workflow-designer/step-settings-renderer.js": 700,
@@ -72,6 +74,14 @@ class StaticArchitectureContractTests(unittest.TestCase):
                 path = ROOT / rel_path
                 line_count = len(path.read_text(encoding="utf-8").splitlines())
                 self.assertLessEqual(line_count, max_lines, f"{rel_path} has {line_count} lines; split it before it grows past {max_lines}")
+
+    def test_assets_page_is_separate_from_workflow_designer(self):
+        designer = (ROOT / "static/workflow-designer.html").read_text(encoding="utf-8")
+        assets = (ROOT / "static/ai-workflow-assets.html").read_text(encoding="utf-8")
+        self.assertIn('/ai-workflow-assets', designer)
+        self.assertNotIn('designerAssetList', designer, "Asset CRUD list belongs on the dedicated assets page, not in the workflow designer layout")
+        self.assertIn('designerAssetList', assets)
+        self.assertIn('data-page="ai-workflow-assets"', assets)
 
     def test_static_cache_version_is_consistent(self):
         versions = set()
@@ -90,6 +100,7 @@ class StaticArchitectureContractTests(unittest.TestCase):
             "controller.js",
             "asset-tools.js",
             "asset-manager.js",
+            "ai-workflow-assets.js",
             "layout-renderer.js",
             "step-settings-renderer.js",
             "template-editor.js",
