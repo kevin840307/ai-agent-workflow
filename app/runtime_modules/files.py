@@ -136,8 +136,91 @@ def requirement_mentions_language(requirement: str) -> bool:
     return any(keyword in lower for keyword in keywords)
 
 
+def requirement_has_actionable_signal(requirement: str) -> bool:
+    text = requirement.strip().lower()
+    compact = re.sub(r"[\W_]+", "", text, flags=re.UNICODE)
+    if len(compact) < 4:
+        return False
+    if not re.search(r"[a-z0-9\u4e00-\u9fff]", text):
+        return False
+    action_markers = [
+        "add",
+        "build",
+        "create",
+        "implement",
+        "write",
+        "make",
+        "fix",
+        "update",
+        "optimize",
+        "refactor",
+        "review",
+        "test",
+        "scan",
+        "generate",
+        "新增",
+        "加入",
+        "建立",
+        "建置",
+        "製作",
+        "寫",
+        "實作",
+        "修",
+        "修正",
+        "優化",
+        "重構",
+        "檢查",
+        "掃描",
+        "產生",
+        "幫我",
+        "做",
+    ]
+    domain_markers = [
+        "sort",
+        "search",
+        "api",
+        "ui",
+        "workflow",
+        "chat",
+        "test",
+        "security",
+        "bug",
+        "排序",
+        "搜尋",
+        "測試",
+        "掃描",
+        "漏洞",
+        "功能",
+        "頁面",
+        "介面",
+    ]
+    return any(marker in text for marker in action_markers + domain_markers)
+
+
 def should_ask_for_spec_input(requirement: str, project_dir: Path) -> bool:
+    if not requirement_has_actionable_signal(requirement):
+        return True
     return not project_has_user_files(project_dir) and not requirement_mentions_language(requirement)
+
+
+def spec_input_questions(requirement: str, project_dir: Path) -> str:
+    if not requirement_has_actionable_signal(requirement):
+        return (
+            "## Requirement\n\n"
+            "I cannot identify a concrete task from the current message.\n\n"
+            "Please describe what you want to build, change, fix, test, or scan. "
+            "Include the target language or project area if this is a new or empty project.\n"
+        )
+    if not project_has_user_files(project_dir) and not requirement_mentions_language(requirement):
+        return (
+            "## Target Language\n\n"
+            "This project appears empty, and the requirement does not say which language or stack to use.\n\n"
+            "Please tell me the target language or stack, for example Python, JavaScript, TypeScript, Java, Go, or another option.\n"
+        )
+    return (
+        "## Missing Information\n\n"
+        "Please provide the missing blocking detail needed to produce the workflow spec.\n"
+    )
 
 
 

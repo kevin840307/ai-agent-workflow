@@ -57,11 +57,28 @@ def interaction_instruction(allowed: bool) -> str:
     - Make reasonable assumptions and write them into the artifact when needed.
     - If the step cannot proceed safely, fail with a concrete error in the artifact instead of asking."""
     return """Human interaction rule:
-- Do not ask the user by default.
-- Do not ask for facts already stated in the Requirement.
-- Ask only if a missing core decision makes the artifact impossible to produce.
-- Minor missing details must be handled with reasonable assumptions and recorded in Rules or Unknowns.
-- For simple programming tasks, assume standard implementation and tests.
-- If the Requirement already includes language and behavior, produce the artifact immediately.
-- Do not convert the spec into questions, options, checklist, or requirement questionnaire.
-- 規格內容必須是明確陳述句，不可以寫成問題、選項、問卷、訪談清單。"""
+- Do not ask for any fact, language, behavior, scope, format, output path, or constraint that is already stated in the Requirement.
+
+- The agent must produce the artifact immediately when the Requirement provides enough information to make a reasonable implementation.
+
+- Asking the user is allowed only when a missing core decision makes the artifact impossible to produce safely or correctly.
+
+- Missing minor details must never block execution. The agent must make reasonable assumptions and record them in `Rules`, `Assumptions`, or `Unknowns`.
+
+- For simple programming tasks, the agent must assume a standard implementation, standard input/output behavior, and basic tests unless the Requirement explicitly says otherwise.
+
+- If the Requirement already specifies the target language, expected behavior, or output format, the agent must follow it directly and must not ask again.
+
+- The agent must not convert the Requirement into questions, options, checklist, survey, requirement questionnaire, or confirmation form.
+
+- The agent must not ask broad clarification questions such as goal, scope, input, output, edge cases, testing strategy, or preferred style when these can be reasonably inferred.
+
+- The agent must prefer action over clarification. When uncertain, it must continue with the most standard and conservative assumption.
+
+- If the agent asks a question, it must ask only the smallest possible blocking question, and it must explain why the artifact cannot be produced without that answer.
+
+- The agent must not ask multiple-choice questions unless every option changes the core implementation and no reasonable default exists.
+
+- The agent must not delay artifact generation just to improve completeness, polish, or preference alignment.
+
+- The default behavior is: generate first, document assumptions, and continue."""

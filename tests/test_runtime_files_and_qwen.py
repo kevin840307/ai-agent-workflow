@@ -10,7 +10,10 @@ from app.runtime_modules.errors import WorkflowError
 from app.runtime_modules.files import (
     extract_build_files,
     project_profile,
+    requirement_has_actionable_signal,
     requirement_mentions_language,
+    should_ask_for_spec_input,
+    spec_input_questions,
     validate_build_files_are_not_tests,
     validate_generated_test_files,
 )
@@ -56,6 +59,23 @@ END_FILE
             self.assertIn("Primary language: Python", profile)
             self.assertIn("pytest", profile)
             self.assertIn("src/sorter.py", profile)
+
+    def test_requirement_clarification_detection(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            empty_project = Path(tmp) / "empty"
+            empty_project.mkdir()
+            existing_project = Path(tmp) / "existing"
+            existing_project.mkdir()
+            (existing_project / "main.py").write_text("def main(): pass\n", encoding="utf-8")
+
+            self.assertFalse(requirement_has_actionable_signal("asdf qwer zxcv"))
+            self.assertTrue(should_ask_for_spec_input("asdf qwer zxcv", existing_project))
+            self.assertIn("concrete task", spec_input_questions("asdf qwer zxcv", existing_project))
+
+            self.assertTrue(requirement_has_actionable_signal("Add quick sort"))
+            self.assertFalse(should_ask_for_spec_input("Add quick sort", existing_project))
+            self.assertTrue(should_ask_for_spec_input("Add quick sort", empty_project))
+            self.assertIn("Target Language", spec_input_questions("Add quick sort", empty_project))
 
     def test_qwen_mock_client_and_command_options(self) -> None:
         old_mock = os.environ.get("QWEN_MOCK")
