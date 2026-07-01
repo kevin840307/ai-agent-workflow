@@ -197,21 +197,23 @@ def requirement_has_actionable_signal(requirement: str) -> bool:
     return any(marker in text for marker in action_markers + domain_markers)
 
 
-def should_ask_for_spec_input(requirement: str, project_dir: Path) -> bool:
-    if not requirement_has_actionable_signal(requirement):
+def should_ask_for_spec_input(requirement: str, project_dir: Path, supplemental_input: str = "") -> bool:
+    combined_requirement = "\n".join(part.strip() for part in [requirement, supplemental_input] if part and part.strip())
+    if not requirement_has_actionable_signal(combined_requirement):
         return True
-    return not project_has_user_files(project_dir) and not requirement_mentions_language(requirement)
+    return not project_has_user_files(project_dir) and not requirement_mentions_language(combined_requirement)
 
 
-def spec_input_questions(requirement: str, project_dir: Path) -> str:
-    if not requirement_has_actionable_signal(requirement):
+def spec_input_questions(requirement: str, project_dir: Path, supplemental_input: str = "") -> str:
+    combined_requirement = "\n".join(part.strip() for part in [requirement, supplemental_input] if part and part.strip())
+    if not requirement_has_actionable_signal(combined_requirement):
         return (
             "## Requirement\n\n"
             "I cannot identify a concrete task from the current message.\n\n"
             "Please describe what you want to build, change, fix, test, or scan. "
             "Include the target language or project area if this is a new or empty project.\n"
         )
-    if not project_has_user_files(project_dir) and not requirement_mentions_language(requirement):
+    if not project_has_user_files(project_dir) and not requirement_mentions_language(combined_requirement):
         return (
             "## Target Language\n\n"
             "This project appears empty, and the requirement does not say which language or stack to use.\n\n"

@@ -110,19 +110,21 @@ class WorkflowActions:
         agent_name: str | None = None,
     ) -> None:
         output_dir = Path(run["workspace"]) / "output"
+        input_dir = Path(run["workspace"]) / "input"
         requirement = read_text(Path(run["workspace"]) / "requirement.md")
+        answers = read_text(input_dir / "answers.md")
         project_dir = Path(run.get("project_path") or ROOT)
-        if allow_interaction and should_ask_for_spec_input(requirement, project_dir):
-            input_dir = Path(run["workspace"]) / "input"
+        if allow_interaction and should_ask_for_spec_input(requirement, project_dir, answers):
             input_dir.mkdir(parents=True, exist_ok=True)
-            write_text(input_dir / "questions.md", spec_input_questions(requirement, project_dir))
+            write_text(input_dir / "questions.md", spec_input_questions(requirement, project_dir, answers))
             await self.refresh_artifacts(run["id"])
             raise UserInputRequired("generate_spec: requirement needs clarification. See input/questions.md.")
         try:
             await self.run_agent_step(run, "generate_spec", prompt_name, artifact, allow_interaction=allow_interaction, agent_name=agent_name)
             self.functions.validate_spec(output_dir)
         except UserInputRequired as exc:
-            if should_ask_for_spec_input(requirement, project_dir):
+            answers = read_text(input_dir / "answers.md")
+            if should_ask_for_spec_input(requirement, project_dir, answers):
                 raise
             await self.log(run, f"generate_spec: agent asked unnecessarily, writing deterministic fallback: {exc}")
             write_text(output_dir / normalize_artifact_name(artifact), synthesize_spec_from_requirement(requirement))

@@ -3,12 +3,14 @@ from __future__ import annotations
 import json
 import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
 from app.main import app
 from app.core.paths import SETTINGS_FILE
+from app.persistence.json_store import Store
 from app.workflow_runtime.agents import AgentResult
 
 
@@ -39,6 +41,44 @@ class ProjectAndConfigApiTests(unittest.TestCase):
             self.assertEqual(delete_response.status_code, 200, delete_response.text)
             sessions = client.get("/api/sessions").json()
             self.assertFalse(any(item["id"] == session["id"] for item in sessions))
+
+    def test_messages_api_returns_chronological_order(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            store = Store(
+                Path(tmp) / "store.json",
+                default_project_path=lambda: tmp,
+                default_steps=lambda: [],
+            )
+            store.save_sync(
+                {
+                    "sessions": [{"id": "session-order", "title": "Order", "project_path": tmp}],
+                    "messages": [
+                        {
+                            "id": "new",
+                            "session_id": "session-order",
+                            "role": "user",
+                            "kind": "answer",
+                            "content": "second",
+                            "created_at": "2026-07-01T00:00:02+00:00",
+                        },
+                        {
+                            "id": "old",
+                            "session_id": "session-order",
+                            "role": "user",
+                            "kind": "requirement",
+                            "content": "first",
+                            "created_at": "2026-07-01T00:00:01+00:00",
+                        },
+                    ],
+                    "runs": [],
+                    "workflow_configs": [],
+                }
+            )
+            with TestClient(app) as client, patch("app.runtime_modules.api.store", store):
+                response = client.get("/api/sessions/session-order/messages")
+
+            self.assertEqual(response.status_code, 200, response.text)
+            self.assertEqual([message["content"] for message in response.json()], ["first", "second"])
 
     def test_chat_uses_default_agent_resolver(self) -> None:
         class FakeAgent:

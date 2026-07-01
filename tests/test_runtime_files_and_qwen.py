@@ -77,6 +77,9 @@ END_FILE
             self.assertTrue(should_ask_for_spec_input("Add quick sort", empty_project))
             self.assertIn("Target Language", spec_input_questions("Add quick sort", empty_project))
 
+            self.assertFalse(should_ask_for_spec_input("asdf qwer zxcv", existing_project, "Add quick sort in Python."))
+            self.assertFalse(should_ask_for_spec_input("Add quick sort", empty_project, "Use Python."))
+
     def test_qwen_mock_client_and_command_options(self) -> None:
         old_mock = os.environ.get("QWEN_MOCK")
         old_bare = os.environ.get("QWEN_BARE")

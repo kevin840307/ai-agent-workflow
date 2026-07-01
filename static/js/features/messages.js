@@ -71,8 +71,12 @@ export function createMessages(ctx) {
         list.appendChild(div);
       }
 
-      const latest = [...visibleMessages].reverse().find((msg) => msg.role === "user");
-      if (!options.keepDraft) ui.byKey("messageInput").value = state.runMode === "chat" ? "" : (latest?.content || "");
+      const latestRequirement = [...visibleMessages].reverse().find((msg) => msg.role === "user" && (msg.kind || "requirement") === "requirement");
+      if (!options.keepDraft) {
+        ui.byKey("messageInput").value = options.hydrateInput === false
+          ? ""
+          : (state.runMode === "chat" ? "" : (latestRequirement?.content || ""));
+      }
       ctx.features.composer.autoResize();
       list.scrollTop = list.scrollHeight;
     },

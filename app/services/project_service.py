@@ -133,7 +133,8 @@ async def reset_project(session_id: str) -> dict:
 
 async def list_messages(session_id: str) -> list[dict]:
     data = await store_repository.read()
-    return [msg for msg in data["messages"] if msg["session_id"] == session_id]
+    messages = [msg for msg in data["messages"] if msg["session_id"] == session_id]
+    return sorted(messages, key=lambda msg: msg.get("created_at") or "")
 
 
 async def create_message(session_id: str, body: runtime.CreateMessageRequest) -> dict:
