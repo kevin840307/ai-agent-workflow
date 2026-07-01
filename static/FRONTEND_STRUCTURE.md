@@ -52,6 +52,7 @@ js/
     workflow-designer-constants.js   # static select options and template presets
     workflow-designer/
       controller.js                  # page lifecycle, event delegation, API save/delete, orchestration
+      asset-tools.js                 # .ai-workflow skill/python asset save and upload actions
       layout-renderer.js             # overview, sidebar, step list, canvas, drag/drop rendering
       step-settings-renderer.js      # step settings tabs and form HTML
       template-editor.js             # step editor modal, prompt template editor, prompt preview
@@ -77,6 +78,7 @@ Workflow Designer is API-backed. `js/pages/workflow-designer.js` is intentionall
 Module responsibilities:
 
 - `controller.js`: owns page lifecycle, event delegation, state transitions, API persistence, and module wiring. It should stay orchestration-only.
+- `asset-tools.js`: owns `.ai-workflow` skill creation and Python asset upload actions used by the existing step editor.
 - `layout-renderer.js`: owns top-level designer rendering, sidebar/workflow labels, step list, canvas, filters, density controls, context menu, and drag/drop.
 - `step-settings-renderer.js`: owns step settings tab rendering, including basic/prompt/review/retry/gate/advanced/consensus forms.
 - `template-editor.js`: owns the step editor modal, prompt template editor, template diagnostics, prompt preview, and template preset loading.
@@ -98,6 +100,7 @@ Workflow Designer is API-backed.
 - `GET /api/workflows` loads system and custom workflows plus backend function metadata.
 - `PUT /api/workflows/{id}` saves custom workflows.
 - `DELETE /api/workflows/{id}` deletes custom workflows.
+- `PUT /api/workflow-assets/file` saves shared `.ai-workflow` skill markdown and Python assets.
 - System workflow is read-only and cannot be deleted.
 - Prompt template content is loaded from and saved to the workflow bundle folder.
 

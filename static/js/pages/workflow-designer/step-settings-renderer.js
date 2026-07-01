@@ -232,6 +232,10 @@ function renderSources(step, disabled, readonly) {
           ${inputRow("Metadata Path", "metadataPath", step.metadataPath || step.contractPath || "", disabled, "contracts/my-step.yaml")}
           ${inputRow("Skill Path", "skillPath", step.skillPath || "", disabled, "steps/my-step.md")}
         </div>
+        <div class="designer-footer-actions compact">
+          <button type="button" data-designer-action="save-skill-asset" ${disabled}>Save Skill</button>
+          <button type="button" data-designer-action="upload-python-asset" ${disabled}>Upload Python</button>
+        </div>
         <div class="designer-form-hint">Runtime applies contract metadata first. Skill Path points to pure prompt markdown and can also be used as Template Path.</div>
       </section>
       <label class="designer-form-row">
@@ -379,10 +383,15 @@ function renderAdvanced(step, disabled, readonly) {
       ${switchRow("Allow Interaction", "The selected agent can pause and ask the user questions.", "allowInteraction", step.allowInteraction, disabled)}
       <label class="designer-form-row">
         <span class="designer-label">Python Validator</span>
-        <select class="designer-select" data-step-field="validator" ${disabled}>
-          ${functionOptions("validators", [["", "None"], ["validate_spec", "Validate Spec"], ["validate_todo", "Validate Todo"], ["run_pytest", "Run Pytest"]], step.validator)}
-        </select>
+        <input class="designer-input" list="designerValidatorOptions" value="${escapeAttr(step.validator || "")}" placeholder="validate_spec or validators/check.py" data-step-field="validator" ${disabled} />
+        <datalist id="designerValidatorOptions">
+          ${functionOptions("validators", [["", "None"], ["validate_spec", "Validate Spec"], ["validate_todo", "Validate Todo"], ["run_pytest", "Run Pytest"]], step.validator)
+            .replace(/<option value="([^"]*)">([^<]*)<\/option>/g, '<option value="$1">$2</option>')}
+        </datalist>
       </label>
+      <div class="designer-footer-actions compact">
+        <button type="button" data-designer-action="upload-python-asset" ${disabled}>Upload Python Validator</button>
+      </div>
       ${functionHelp("validators", step.validator, "Optional validator used by validation and Python function steps.")}
       ${showConsensus ? renderConsensusSettings(step, disabled) : ""}
       <div class="designer-list-editor">
