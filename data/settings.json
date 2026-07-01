@@ -8,11 +8,12 @@
     "default": "qwen",
     "providers": {
       "qwen": {
-        "type": "qwen_cli"
+        "type": "qwen_cli",
+        "bin": "qwen"
       },
       "opencode": {
         "type": "opencode_cli",
-        "bin": "C:\\Users\\kevin\\AppData\\Roaming\\npm\\opencode.cmd",
+        "bin": "opencode",
         "mode": "run",
         "reuseSession": true,
         "timeoutSec": 1200

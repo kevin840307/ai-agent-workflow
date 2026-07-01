@@ -39,6 +39,19 @@ Supported lines:
 - `step: steps/name.md` creates an implicit AI step from a pure skill markdown file.
 - `workflow: other` or `@other` includes another `.workflow` file.
 
+Structured `.workflow` files are also supported for UI-saved workflows:
+
+```yaml
+id: default
+name: Default Workflow
+kind: custom
+steps:
+  - contract: contracts/default/generate_spec.yaml
+  - contract: contracts/default/review_spec.yaml
+```
+
+This structured format is what the UI writes. The smaller line-based format remains useful for hand-authored includes.
+
 ## Contract Metadata
 
 Skill prompt content and execution metadata are separated:

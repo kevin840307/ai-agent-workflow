@@ -105,15 +105,16 @@ async def _noop_refresh(run_id: str) -> None:
 
 class WorkflowDefinitionIntegrityTests(unittest.TestCase):
     def _workflow_files(self) -> list[Path]:
-        return sorted(Path("data/workflows").glob("*/workflow.json"))
+        return sorted(Path("data/ai-workflow/workflows").glob("*.workflow"))
 
     def test_workflow_definition_integrity(self) -> None:
-        self.assertTrue(self._workflow_files(), "expected workflow bundles under data/workflows")
+        self.assertTrue(self._workflow_files(), "expected workflow assets under data/ai-workflow/workflows")
         allowed_first_segments = {"output", "input", "prompts", ".workflow"}
 
         for path in self._workflow_files():
-            workflow = json.loads(path.read_text(encoding="utf-8-sig"))
-            folder = path.parent
+            workflow = workflow_config_service.read_workflow_file(path)
+            self.assertIsNotNone(workflow, f"workflow asset should load: {path}")
+            folder = Path("data/ai-workflow")
             steps = [step for step in workflow.get("steps", []) if step.get("enabled") is not False]
             keys = [step.get("key") for step in steps]
 
@@ -157,7 +158,7 @@ class WorkflowDefinitionIntegrityTests(unittest.TestCase):
                         self.assertTrue(step.get("validator") or step.get("filename") or step.get("outputFile"), f"{key} gate needs a validator or artifact")
 
     def test_system_controlled_qwen_has_expected_order_and_gates(self) -> None:
-        workflow = json.loads(Path("data/workflows/system-controlled-qwen/workflow.json").read_text(encoding="utf-8-sig"))
+        workflow = workflow_config_service.system_workflow_with_folder()
         self.assertEqual([step["key"] for step in workflow["steps"]], SYSTEM_STEP_ORDER)
         gates = {step["key"]: step for step in workflow["steps"] if step.get("type") == "gate"}
         self.assertEqual(set(gates), {"spec_gate", "todo_gate", "final_gate"})
@@ -312,7 +313,7 @@ class QwenRunnerUnitTests(unittest.TestCase):
 
 class PromptAndArtifactValidatorTests(unittest.TestCase):
     def test_prompt_templates_require_expected_outputs_and_context(self) -> None:
-        prompts = Path("data/workflows/system-controlled-qwen/prompts")
+        prompts = Path("data/ai-workflow/steps/system-controlled-qwen")
         spec_prompt = (prompts / "01_spec.md").read_text(encoding="utf-8")
         todo_prompt = (prompts / "03_todo.md").read_text(encoding="utf-8")
         build_prompt = (prompts / "05_build.md").read_text(encoding="utf-8")
@@ -347,7 +348,7 @@ class PromptAndArtifactValidatorTests(unittest.TestCase):
             (run_dir / "input" / "failure-feedback.md").write_text(
                 "## Retry Feedback for generate_spec\n\nError message to fix:\n\nmissing AC-001\n", encoding="utf-8"
             )
-            workflow = json.loads(Path("data/workflows/system-controlled-qwen/workflow.json").read_text(encoding="utf-8-sig"))
+            workflow = workflow_config_service.system_workflow_with_folder()
             run = {
                 "id": "r1",
                 "workspace": str(run_dir),

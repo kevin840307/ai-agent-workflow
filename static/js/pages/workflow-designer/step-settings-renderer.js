@@ -171,7 +171,7 @@ function isAbsoluteLikePath(value = "") {
 function sourcePathSummary() {
   const wf = getSelectedWorkflow();
   const skillRoot = wf?.skillRoot || "~/.qwen/skills";
-  return `Skill Path accepts absolute paths. Relative skill paths resolve from Skill Root (${skillRoot}), then Project Path. Prompt File resolves inside this workflow bundle.`;
+  return `Skill Path accepts absolute paths. Relative skill paths resolve from Skill Root (${skillRoot}), then Project Path. Prompt File resolves from data/ai-workflow/steps or project .ai-workflow/steps.`;
 }
 
 function describeSourcePath(source = {}) {
@@ -184,7 +184,7 @@ function describeSourcePath(source = {}) {
     return `Skill path: relative to Skill Root (${wf?.skillRoot || "~/.qwen/skills"}), with Project Path fallback.`;
   }
   if (type === "prompt_file") {
-    return "Prompt file: resolved inside this workflow folder, usually under prompts/.";
+    return "Prompt file: resolved from data/ai-workflow/steps or project .ai-workflow/steps.";
   }
   if (type === "context_file") {
     if (isAbsoluteLikePath(value)) return "Context file: absolute path, used directly when available.";

@@ -1,18 +1,18 @@
 from __future__ import annotations
 
-import json
 import re
 import shutil
 import uuid
 from copy import deepcopy
 from pathlib import Path
+from typing import Any
 
+import yaml
 from fastapi import HTTPException
 
 from app.runtime_modules import api as runtime
 from app.core.paths import write_text
-from app.services.workflow_lint_service import assert_workflow_valid
-from app.services.workflow_lint_service import lint_workflow
+from app.services.workflow_lint_service import assert_workflow_valid, lint_workflow
 from app.services import workflow_asset_service
 from app.workflow_functions import AVAILABLE_WORKFLOW_FUNCTIONS
 
@@ -20,9 +20,31 @@ from app.workflow_functions import AVAILABLE_WORKFLOW_FUNCTIONS
 SYSTEM_WORKFLOW_ID = "system-controlled-qwen"
 SAMPLE_WORKFLOW_ID = "sample-custom-workflow"
 SAMPLE_WORKFLOW_FOLDER = "sample-custom-workflow"
-WORKFLOWS_DIR = runtime.DATA_DIR / "workflows"
-GLOBAL_MD_DIR = runtime.DATA_DIR / "global-md"
-WORKFLOW_ASSET_DIRS = ("prompts", "skills", "functions")
+
+# Canonical workflow root.  The old data/workflows bundle source is intentionally
+# no longer a first-class runtime location; workflows, skill prompts, metadata,
+# validators, and tools all live under data/ai-workflow/.
+AI_WORKFLOW_ROOT = workflow_asset_service.GLOBAL_ASSET_ROOT
+WORKFLOWS_DIR = AI_WORKFLOW_ROOT / "workflows"
+STEPS_DIR = AI_WORKFLOW_ROOT / "steps"
+CONTRACTS_DIR = AI_WORKFLOW_ROOT / "contracts"
+VALIDATORS_DIR = AI_WORKFLOW_ROOT / "validators"
+TOOLS_DIR = AI_WORKFLOW_ROOT / "tools"
+WORKFLOW_ASSET_DIRS = ("steps", "contracts", "validators", "tools", "workflows")
+
+
+def _sync_asset_paths() -> None:
+    """Keep this module aligned when tests or callers override the asset root."""
+    global AI_WORKFLOW_ROOT, WORKFLOWS_DIR, STEPS_DIR, CONTRACTS_DIR, VALIDATORS_DIR, TOOLS_DIR
+    root = workflow_asset_service.GLOBAL_ASSET_ROOT
+    if AI_WORKFLOW_ROOT == root:
+        return
+    AI_WORKFLOW_ROOT = root
+    WORKFLOWS_DIR = root / "workflows"
+    STEPS_DIR = root / "steps"
+    CONTRACTS_DIR = root / "contracts"
+    VALIDATORS_DIR = root / "validators"
+    TOOLS_DIR = root / "tools"
 
 PROMPT_FILE_BY_STEP_KEY = {
     "prepare_project": "00_prepare.md",
@@ -42,133 +64,107 @@ PROMPT_FILE_BY_STEP_KEY = {
 ROOT_PROMPT_FILES = tuple(dict.fromkeys(PROMPT_FILE_BY_STEP_KEY.values()))
 
 
+# ---------------------------------------------------------------------------
+# Paths / naming
+# ---------------------------------------------------------------------------
+
 def ensure_workflow_dir() -> None:
-    WORKFLOWS_DIR.mkdir(parents=True, exist_ok=True)
-    GLOBAL_MD_DIR.mkdir(parents=True, exist_ok=True)
-    global_readme = GLOBAL_MD_DIR / "README.md"
-    if not global_readme.exists():
-        write_text(
-            global_readme,
-            "# Global Markdown\n\nShared markdown files that are not owned by one workflow can live here.\n",
-        )
+    _sync_asset_paths()
+    workflow_asset_service.ensure_asset_dirs()
 
 
 def slugify(value: str, fallback: str = "workflow") -> str:
-    slug = re.sub(r"[^a-zA-Z0-9._-]+", "-", value.strip().lower()).strip("-")
+    slug = re.sub(r"[^a-zA-Z0-9._-]+", "-", str(value or "").strip().lower()).strip("-")
     return slug or fallback
+
+
+def _step_key(value: str, fallback: str = "step") -> str:
+    return slugify(value, fallback).replace("-", "_")
 
 
 def unique_folder_name(base: str, workflow_id: str | None = None) -> str:
     ensure_workflow_dir()
-    base_slug = slugify(base)
-    if workflow_id:
-        base_slug = slugify(workflow_id, base_slug)
+    base_slug = slugify(workflow_id or base)
     candidate = base_slug
     index = 2
-    while (WORKFLOWS_DIR / candidate).exists():
+    while workflow_file(candidate).exists() or (CONTRACTS_DIR / candidate).exists() or (STEPS_DIR / candidate).exists():
         candidate = f"{base_slug}-{index}"
         index += 1
     return candidate
 
 
 def workflow_file(folder_name: str) -> Path:
-    return WORKFLOWS_DIR / folder_name / "workflow.json"
+    _sync_asset_paths()
+    name = slugify(folder_name)
+    if name.endswith(".workflow"):
+        return WORKFLOWS_DIR / name
+    return WORKFLOWS_DIR / f"{name}.workflow"
 
 
 def workflow_dir(folder_name: str) -> Path:
-    return WORKFLOWS_DIR / folder_name
+    _sync_asset_paths()
+    # Compatibility helper for older callers/tests.  A workflow is now one
+    # .workflow file plus separated steps/contracts folders, not a bundle folder.
+    return WORKFLOWS_DIR
 
 
-def ensure_bundle_dirs(folder_name: str) -> None:
-    base = workflow_dir(folder_name)
-    for name in WORKFLOW_ASSET_DIRS:
-        (base / name).mkdir(parents=True, exist_ok=True)
-
-
-def default_prompt_path(step: dict) -> str:
-    filename = PROMPT_FILE_BY_STEP_KEY.get(step.get("key") or "")
-    if filename:
-        return f"prompts/{filename}"
-    key = slugify(step.get("key") or step.get("name") or "step")
-    return f"prompts/{key}.md"
+def default_prompt_path(step: dict, workflow_id: str | None = None) -> str:
+    key = _step_key(step.get("key") or step.get("name") or "step")
+    filename = Path(str(step.get("templatePath") or "")).name or PROMPT_FILE_BY_STEP_KEY.get(key) or f"{key}.md"
+    if not filename.endswith((".md", ".markdown", ".txt")):
+        filename = f"{key}.md"
+    prefix = slugify(workflow_id or step.get("workflowId") or "workflow")
+    return f"steps/{prefix}/{filename}"
 
 
 def safe_bundle_relative_path(value: str, default: str) -> str:
-    raw = (value or default).replace("\\", "/").strip()
-    if not raw:
-        raw = default
+    raw = (value or default).replace("\\", "/").strip() or default
     path = Path(raw)
     parts = [part for part in path.parts if part not in {"", ".", ".."}]
     if not parts:
         parts = Path(default).parts
-    if parts[0] not in WORKFLOW_ASSET_DIRS:
+    if parts[0] not in WORKFLOW_ASSET_DIRS and not str(raw).startswith("prompts/"):
+        # Backward-compatible UI input: a bare filename means a prompt file.
         parts = ("prompts", *parts)
     return "/".join(parts)
 
 
 def bundle_path(folder_name: str, relative_path: str) -> Path:
-    base = workflow_dir(folder_name).resolve()
-    target = (base / relative_path).resolve()
-    if base != target and base not in target.parents:
-        raise HTTPException(status_code=400, detail="Invalid workflow bundle path")
-    return target
+    normalized = str(relative_path or "").replace("\\", "/").lstrip("/")
+    if normalized.startswith("steps/") or normalized.startswith("contracts/"):
+        return AI_WORKFLOW_ROOT / normalized
+    return AI_WORKFLOW_ROOT / "steps" / slugify(folder_name) / Path(normalized).name
 
 
-def prompt_seed_source(filename: str, folder_name: str) -> Path | None:
-    bundle_source = WORKFLOWS_DIR / SYSTEM_WORKFLOW_ID / "prompts" / filename
-    if bundle_source.exists() and not (
-        folder_name == SYSTEM_WORKFLOW_ID and bundle_source == (WORKFLOWS_DIR / folder_name / "prompts" / filename)
-    ):
-        return bundle_source
-    legacy_source = runtime.ROOT / "prompts" / filename
-    return legacy_source if legacy_source.exists() else None
+def _workflow_asset_rel(workflow_id: str) -> str:
+    return f"workflows/{slugify(workflow_id)}.workflow"
 
 
-def read_workflow_file(path: Path) -> dict | None:
-    if not path.exists():
-        return None
-    try:
-        return json.loads(path.read_text(encoding="utf-8-sig"))
-    except json.JSONDecodeError:
-        return None
+def _contract_rel(workflow_id: str, step_key: str) -> str:
+    return f"contracts/{slugify(workflow_id)}/{_step_key(step_key)}.yaml"
 
 
-def write_workflow_file(workflow: dict) -> None:
-    ensure_workflow_dir()
-    folder_name = workflow["folderName"]
-    ensure_bundle_dirs(folder_name)
-    target = workflow_file(folder_name)
-    target.parent.mkdir(parents=True, exist_ok=True)
-    write_text(target, json.dumps(workflow, indent=2, ensure_ascii=False))
+def _step_rel(workflow_id: str, step: dict) -> str:
+    raw = str(step.get("templatePath") or step.get("skillPath") or "").replace("\\", "/").strip()
+    if raw.startswith("steps/"):
+        return raw
+    if raw.startswith(f"{workflow_asset_service.PROJECT_ASSET_DIR}/steps/"):
+        return raw[len(workflow_asset_service.PROJECT_ASSET_DIR) + 1 :]
+    key = _step_key(step.get("key") or step.get("name") or "step")
+    filename = Path(raw).name or PROMPT_FILE_BY_STEP_KEY.get(key) or f"{key}.md"
+    if not Path(filename).suffix:
+        filename = f"{filename}.md"
+    return f"steps/{slugify(workflow_id)}/{filename}"
 
 
-def list_custom_workflow_files() -> list[Path]:
-    ensure_workflow_dir()
-    paths: list[Path] = []
-    for path in sorted(WORKFLOWS_DIR.glob("*/workflow.json")):
-        if path.parent.name == SYSTEM_WORKFLOW_ID:
-            continue
-        workflow = read_workflow_file(path)
-        if workflow and (workflow.get("id") == SYSTEM_WORKFLOW_ID or workflow.get("kind") == "system"):
-            continue
-        paths.append(path)
-    return paths
-
-
-def find_workflow_path(workflow_id: str) -> Path | None:
-    for path in list_custom_workflow_files():
-        workflow = read_workflow_file(path)
-        if workflow and workflow.get("id") == workflow_id:
-            return path
-    return None
-
-
-
+# ---------------------------------------------------------------------------
+# Normalization
+# ---------------------------------------------------------------------------
 
 def normalize_step_config(step: dict) -> dict:
     item = deepcopy(step or {})
     item.setdefault("id", f"step-{uuid.uuid4()}")
-    item.setdefault("key", slugify(item.get("name") or item.get("id") or "step").replace("-", "_"))
+    item.setdefault("key", _step_key(item.get("name") or item.get("id") or "step"))
     item.setdefault("name", item.get("key") or "Step")
     item.setdefault("type", "ai")
     item.setdefault("enabled", True)
@@ -178,15 +174,15 @@ def normalize_step_config(step: dict) -> dict:
     item.setdefault("contractPath", "")
     item.setdefault("metadataPath", "")
     item.setdefault("skillPath", "")
-    item.setdefault("templatePath", default_prompt_path(item))
+    item.setdefault("templatePath", item.get("skillPath") or default_prompt_path(item))
     item.setdefault("filename", item.get("outputFile") or "")
     item.setdefault("outputFile", item.get("filename") or "")
-    if item.get("type") in {"ai", "review", "command", "agent"}:
+    if item.get("type") in {"ai", "review", "command", "agent", "qwen"}:
         item.setdefault("agent", item.get("provider") or "qwen")
         item.setdefault("provider", item.get("agent") or "qwen")
     else:
-        item.setdefault("agent", "")
-        item.setdefault("provider", "")
+        item.setdefault("agent", item.get("provider") or "")
+        item.setdefault("provider", item.get("agent") or "")
     item.setdefault("templateContent", "")
     item.setdefault("sources", [])
     item.setdefault("reviewMode", "current_session" if item.get("type") == "review" or "review" in str(item.get("key", "")) else "none")
@@ -220,138 +216,281 @@ def normalize_workflow_steps(workflow: dict) -> dict:
     item["steps"] = [normalize_step_config(step) for step in item.get("steps", [])]
     return item
 
+
 def _normalize_workflow(workflow: dict, existing_folder: str | None = None) -> dict:
     item = deepcopy(workflow or {})
     item.setdefault("id", f"workflow-{uuid.uuid4()}")
+    item["id"] = slugify(str(item.get("id") or item.get("name") or "workflow"))
     item.setdefault("kind", "custom")
     item.setdefault("name", "Untitled Workflow")
     item.setdefault("description", "Custom workflow.")
     item.setdefault("active", False)
-    item.setdefault("skillRoot", "~/.qwen/skills")
-    item.setdefault("promptRoot", "prompts/")
+    item.setdefault("protected", False)
+    item.setdefault("deletable", not bool(item.get("protected")))
+    item.setdefault("skillRoot", ".ai-workflow")
+    item.setdefault("promptRoot", "steps/")
     item.setdefault("steps", [])
-    item["kind"] = "custom" if item.get("kind") != "system" else "custom"
-    item["protected"] = False
-    item["deletable"] = True
-    item["folderName"] = existing_folder or item.get("folderName") or unique_folder_name(item.get("name") or item["id"], item["id"])
+    if item.get("id") == SYSTEM_WORKFLOW_ID:
+        item["kind"] = "system"
+        item["protected"] = True
+        item["deletable"] = False
+        item["active"] = True
+    elif item.get("kind") == "system":
+        item["kind"] = "custom"
+        item["protected"] = False
+        item["deletable"] = True
+    item["folderName"] = existing_folder or item.get("folderName") or item["id"]
+    item["folderName"] = slugify(item["folderName"], item["id"])
+    item["workflowPath"] = _workflow_asset_rel(item["id"])
     item["updated_at"] = runtime.utc_now()
     item.setdefault("created_at", item["updated_at"])
-    item = normalize_workflow_steps(item)
-    return item
+    return normalize_workflow_steps(item)
+
+
+def _contract_from_step(workflow_id: str, step: dict) -> dict[str, Any]:
+    item = normalize_step_config(step)
+    key = _step_key(item.get("key") or item.get("name") or "step")
+    skill_rel = _step_rel(workflow_id, item)
+    outputs = item.get("expectedFiles") or ([item.get("outputFile")] if item.get("outputFile") else [])
+    if isinstance(outputs, str):
+        outputs = [outputs]
+    contract = {
+        "id": item.get("contractId") or key,
+        "key": key,
+        "name": item.get("name") or key,
+        "description": item.get("description") or "",
+        "enabled": item.get("enabled", True),
+        "type": item.get("type") or "ai",
+        "skill": skill_rel,
+        "command": item.get("command") or "",
+        "agent": item.get("agent") or item.get("provider") or "qwen",
+        "outputs": [str(value) for value in outputs or []],
+        "validator": item.get("validator") or "",
+        "retry": int(item.get("maxRetries") or 0),
+        "failAction": item.get("failAction") or "same_step",
+        "retryFromStepKey": item.get("retryFromStepKey") or "",
+        "keepSameSession": bool(item.get("keepSameSession", True)),
+        "injectFailureFeedback": bool(item.get("injectFailureFeedback", True)),
+        "stopAfterFailures": int(item.get("stopAfterFailures") or 3),
+        "allowInteraction": bool(item.get("allowInteraction", True)),
+        "thinking": bool(item.get("thinking", False)),
+        "approvalRequired": bool(item.get("approvalRequired", False)),
+        "pauseAfterStep": bool(item.get("pauseAfterStep", False)),
+        "approvalMessage": item.get("approvalMessage") or "",
+        "timeoutMinutes": float(item.get("timeoutMinutes") or 0),
+        "timeoutEnabled": bool(item.get("timeoutEnabled", False)),
+        "reviewMode": item.get("reviewMode") or "none",
+        "reviewers": item.get("reviewers") or [],
+        "confidenceThreshold": float(item.get("confidenceThreshold") or 0.75),
+        "passKeywords": item.get("passKeywords") or "PASS, APPROVED",
+        "failKeywords": item.get("failKeywords") or "FAIL, BLOCKED",
+        "aggregatorFunction": item.get("aggregatorFunction") or "",
+        "sources": item.get("sources") or [],
+        "agentOptions": item.get("agentOptions") or {},
+        "path": _contract_rel(workflow_id, key),
+    }
+    if contract["timeoutEnabled"] and contract["timeoutMinutes"]:
+        contract["timeout"] = float(contract["timeoutMinutes"]) * 60
+    return workflow_asset_service.normalize_contract(contract, fallback_id=key)
+
+
+def _workflow_manifest(workflow: dict, contract_refs: list[str]) -> dict[str, Any]:
+    return {
+        "id": workflow["id"],
+        "name": workflow.get("name") or workflow["id"],
+        "description": workflow.get("description") or "",
+        "kind": workflow.get("kind") or "custom",
+        "active": bool(workflow.get("active", False)),
+        "protected": bool(workflow.get("protected", False)),
+        "deletable": bool(workflow.get("deletable", not workflow.get("protected", False))),
+        "skillRoot": workflow.get("skillRoot") or ".ai-workflow",
+        "promptRoot": "steps/",
+        "created_at": workflow.get("created_at"),
+        "updated_at": workflow.get("updated_at"),
+        "steps": [{"contract": ref} for ref in contract_refs],
+    }
+
+
+def _dump_yaml(data: dict[str, Any]) -> str:
+    return yaml.safe_dump(data, sort_keys=False, allow_unicode=True)
+
+
+# ---------------------------------------------------------------------------
+# Persistence: workflow = .workflow manifest + contracts + step markdown
+# ---------------------------------------------------------------------------
+
+def write_workflow_assets(workflow: dict) -> dict:
+    ensure_workflow_dir()
+    item = _normalize_workflow(workflow, workflow.get("folderName") or workflow.get("id"))
+    workflow_id = item["id"]
+    (STEPS_DIR / workflow_id).mkdir(parents=True, exist_ok=True)
+    (CONTRACTS_DIR / workflow_id).mkdir(parents=True, exist_ok=True)
+    assert_workflow_valid(item)
+
+    contract_refs: list[str] = []
+    for step in item.get("steps", []):
+        key = _step_key(step.get("key") or step.get("name") or "step")
+        skill_rel = _step_rel(workflow_id, step)
+        step["templatePath"] = skill_rel
+        step["skillPath"] = skill_rel
+        step["contractPath"] = _contract_rel(workflow_id, key)
+        step["metadataPath"] = step["contractPath"]
+        step["contractId"] = step.get("contractId") or key
+
+        content = step.get("templateContent")
+        if not isinstance(content, str) or not content.strip():
+            existing = workflow_asset_service.resolve_asset_path(skill_rel, must_exist=False, scope="global")
+            if existing.exists():
+                content = existing.read_text(encoding="utf-8-sig")
+            else:
+                content = ""
+        workflow_asset_service.write_asset(skill_rel, content or "", scope="global", overwrite=True)
+
+        contract = _contract_from_step(workflow_id, step)
+        contract_refs.append(contract["path"])
+        workflow_asset_service.write_asset(contract["path"], _dump_yaml(contract), scope="global", overwrite=True)
+
+    manifest = _workflow_manifest(item, contract_refs)
+    workflow_asset_service.write_asset(_workflow_asset_rel(workflow_id), _dump_yaml(manifest), scope="global", overwrite=True)
+    return read_prompt_files(workflow_asset_service.load_workflow_asset(workflow_id), item["folderName"])
 
 
 def write_prompt_files(workflow: dict) -> dict:
-    item = deepcopy(workflow)
-    folder_name = item["folderName"]
-    ensure_bundle_dirs(folder_name)
-    for step in item.get("steps", []):
-        content = step.get("templateContent")
-        template_path = safe_bundle_relative_path(step.get("templatePath", ""), default_prompt_path(step))
-        step["templatePath"] = template_path
-        if isinstance(content, str) and content.strip():
-            target = bundle_path(folder_name, template_path)
-            target.parent.mkdir(parents=True, exist_ok=True)
-            write_text(target, content)
-        step["templateContent"] = ""
-    return item
+    return write_workflow_assets(workflow)
 
 
-def read_prompt_files(workflow: dict, folder_name: str) -> dict:
+def read_prompt_files(workflow: dict, folder_name: str | None = None) -> dict:
     item = deepcopy(workflow)
-    is_asset_workflow = item.get("kind") == "asset"
     project_path = item.get("projectPath") or item.get("project_path")
     for step in item.get("steps", []):
         raw_template_path = str(step.get("templatePath") or step.get("skillPath") or "")
-        if is_asset_workflow and raw_template_path.replace("\\", "/").startswith(("steps/", f"{workflow_asset_service.PROJECT_ASSET_DIR}/steps/")):
-            normalized = raw_template_path.replace("\\", "/")
-            if normalized.startswith(f"{workflow_asset_service.PROJECT_ASSET_DIR}/"):
-                normalized = normalized[len(workflow_asset_service.PROJECT_ASSET_DIR) + 1:]
+        normalized = raw_template_path.replace("\\", "/")
+        if normalized.startswith(f"{workflow_asset_service.PROJECT_ASSET_DIR}/"):
+            normalized = normalized[len(workflow_asset_service.PROJECT_ASSET_DIR) + 1 :]
+        if normalized.startswith("steps/"):
             step["templatePath"] = normalized
+            step["skillPath"] = normalized
             try:
                 path = workflow_asset_service.resolve_asset_path(normalized, project_path)
                 step["templateContent"] = path.read_text(encoding="utf-8-sig")
             except Exception:
                 step.setdefault("templateContent", "")
-            continue
-        template_path = safe_bundle_relative_path(step.get("templatePath", ""), default_prompt_path(step))
-        step["templatePath"] = template_path
-        path = bundle_path(folder_name, template_path)
-        if path.exists() and path.is_file():
-            step["templateContent"] = path.read_text(encoding="utf-8-sig")
         else:
-            step.setdefault("templateContent", "")
+            # Legacy safety net: support old prompts/foo.md references by mapping
+            # them into this workflow's canonical steps/<workflow-id>/ folder.
+            legacy_rel = default_prompt_path(step, item.get("id") or folder_name)
+            step["templatePath"] = legacy_rel
+            step["skillPath"] = legacy_rel
+            try:
+                path = workflow_asset_service.resolve_asset_path(legacy_rel, project_path)
+                step["templateContent"] = path.read_text(encoding="utf-8-sig")
+            except Exception:
+                step.setdefault("templateContent", "")
     return item
 
 
-def seed_prompts_from_root(folder_name: str, workflow: dict, overwrite: bool = False) -> None:
-    ensure_bundle_dirs(folder_name)
-    for filename in ROOT_PROMPT_FILES:
-        source = prompt_seed_source(filename, folder_name)
-        if not source:
-            continue
-        target = bundle_path(folder_name, f"prompts/{filename}")
-        if overwrite or not target.exists():
-            target.parent.mkdir(parents=True, exist_ok=True)
-            write_text(target, source.read_text(encoding="utf-8-sig"))
-    for step in workflow.get("steps", []):
-        filename = PROMPT_FILE_BY_STEP_KEY.get(step.get("key") or "")
-        if not filename:
-            continue
-        source = prompt_seed_source(filename, folder_name)
-        if not source:
-            continue
-        template_path = safe_bundle_relative_path(step.get("templatePath", ""), f"prompts/{filename}")
-        step["templatePath"] = template_path
-        target = bundle_path(folder_name, template_path)
-        if overwrite or not target.exists():
-            target.parent.mkdir(parents=True, exist_ok=True)
-            write_text(target, source.read_text(encoding="utf-8-sig"))
+def read_workflow_file(path: Path) -> dict | None:
+    if not path.exists():
+        return None
+    try:
+        return workflow_asset_service.load_workflow_asset(f"workflows/{path.name}" if path.suffix == ".workflow" else path.stem)
+    except Exception:
+        return None
 
 
-def ensure_workflow_prompt_files(folder_name: str, workflow: dict) -> dict:
-    item = deepcopy(workflow)
-    ensure_bundle_dirs(folder_name)
-    for step in item.get("steps", []):
-        template_path = safe_bundle_relative_path(step.get("templatePath", ""), default_prompt_path(step))
-        step["templatePath"] = template_path
-        target = bundle_path(folder_name, template_path)
-        if target.exists():
+def write_workflow_file(workflow: dict) -> None:
+    write_workflow_assets(workflow)
+
+
+def list_workflow_files() -> list[Path]:
+    ensure_workflow_dir()
+    return sorted(WORKFLOWS_DIR.glob("*.workflow"))
+
+
+def list_custom_workflow_files() -> list[Path]:
+    paths: list[Path] = []
+    for path in list_workflow_files():
+        try:
+            workflow = workflow_asset_service.load_workflow_asset(path.stem)
+        except Exception:
+            paths.append(path)
             continue
-        content = step.get("templateContent")
-        if isinstance(content, str) and content.strip():
-            target.parent.mkdir(parents=True, exist_ok=True)
-            write_text(target, content)
+        if workflow.get("id") == SYSTEM_WORKFLOW_ID or workflow.get("kind") == "system":
             continue
-        filename = PROMPT_FILE_BY_STEP_KEY.get(step.get("key") or "")
-        source = prompt_seed_source(filename, folder_name) if filename else None
-        if source and source.exists():
-            target.parent.mkdir(parents=True, exist_ok=True)
-            write_text(target, source.read_text(encoding="utf-8-sig"))
-    return item
+        paths.append(path)
+    return paths
+
+
+def find_workflow_path(workflow_id: str) -> Path | None:
+    target = slugify(workflow_id)
+    candidate = workflow_file(target)
+    if candidate.exists():
+        return candidate
+    for path in list_workflow_files():
+        try:
+            workflow = workflow_asset_service.load_workflow_asset(path.stem)
+        except Exception:
+            continue
+        if workflow.get("id") == workflow_id:
+            return path
+    return None
+
+
+# ---------------------------------------------------------------------------
+# Built-ins and sample
+# ---------------------------------------------------------------------------
+
+def _write_minimal_system_workflow() -> None:
+    now = runtime.utc_now()
+    workflow = {
+        "id": SYSTEM_WORKFLOW_ID,
+        "kind": "system",
+        "name": "Controlled Qwen Workflow",
+        "description": "Default controlled workflow stored in canonical data/ai-workflow assets.",
+        "active": True,
+        "protected": True,
+        "deletable": False,
+        "folderName": SYSTEM_WORKFLOW_ID,
+        "created_at": now,
+        "updated_at": now,
+        "steps": [
+            {
+                "id": "system-generate_spec",
+                "key": "generate_spec",
+                "name": "Generate Spec",
+                "type": "ai",
+                "templatePath": f"steps/{SYSTEM_WORKFLOW_ID}/01_spec.md",
+                "templateContent": "Create a concise spec for:\n\n{{requirement}}\n",
+                "outputFile": "spec.md",
+                "expectedFiles": ["spec.md"],
+                "maxRetries": 2,
+                "allowInteraction": True,
+            }
+        ],
+    }
+    write_workflow_assets(workflow)
 
 
 def system_workflow_with_folder() -> dict:
-    ensure_bundle_dirs(SYSTEM_WORKFLOW_ID)
-    target = workflow_file(SYSTEM_WORKFLOW_ID)
-    existing = read_workflow_file(target)
-    if not existing:
-        raise HTTPException(
-            status_code=500,
-            detail=f"System workflow bundle is missing: {target}",
-        )
-    existing["folderName"] = SYSTEM_WORKFLOW_ID
-    existing["kind"] = "system"
-    existing["protected"] = True
-    existing["deletable"] = False
-    existing.setdefault("active", True)
-    existing = normalize_workflow_steps(existing)
-    ensure_workflow_prompt_files(SYSTEM_WORKFLOW_ID, existing)
-    return read_prompt_files(existing, SYSTEM_WORKFLOW_ID)
+    ensure_workflow_dir()
+    try:
+        workflow = workflow_asset_service.load_workflow_asset(SYSTEM_WORKFLOW_ID)
+    except HTTPException:
+        _write_minimal_system_workflow()
+        workflow = workflow_asset_service.load_workflow_asset(SYSTEM_WORKFLOW_ID)
+    workflow["id"] = SYSTEM_WORKFLOW_ID
+    workflow["kind"] = "system"
+    workflow["protected"] = True
+    workflow["deletable"] = False
+    workflow["active"] = True
+    workflow["folderName"] = SYSTEM_WORKFLOW_ID
+    workflow.setdefault("skillRoot", ".ai-workflow")
+    workflow.setdefault("promptRoot", "steps/")
+    return read_prompt_files(normalize_workflow_steps(workflow), SYSTEM_WORKFLOW_ID)
 
 
 def stored_system_workflow_config() -> dict:
     workflow = system_workflow_with_folder()
-    workflow.pop("templateContent", None)
     for step in workflow.get("steps", []):
         step["templateContent"] = ""
     return workflow
@@ -369,7 +508,7 @@ def sample_workflow_config() -> dict:
             "id": SAMPLE_WORKFLOW_ID,
             "kind": "custom",
             "name": "Sample Custom Workflow",
-            "description": "Editable example copied from the system workflow. Use it to learn how steps, validators, review, retry, and gates are configured.",
+            "description": "Editable example copied from the system workflow. Use it to learn separated steps, contracts, validators, review, retry, and gates.",
             "active": False,
             "protected": False,
             "deletable": True,
@@ -381,7 +520,7 @@ def sample_workflow_config() -> dict:
     for step in workflow.get("steps", []):
         if str(step.get("id", "")).startswith("system-"):
             step["id"] = f"sample-{step['key']}"
-    seed_prompts_from_root(SAMPLE_WORKFLOW_FOLDER, workflow)
+        step["contractId"] = step.get("key") or step.get("contractId") or "step"
     return workflow
 
 
@@ -389,50 +528,44 @@ def ensure_sample_workflow() -> None:
     ensure_workflow_dir()
     if list_custom_workflow_files():
         return
-    item = write_prompt_files(sample_workflow_config())
-    write_workflow_file(item)
+    write_workflow_assets(sample_workflow_config())
 
+
+# ---------------------------------------------------------------------------
+# API service surface
+# ---------------------------------------------------------------------------
 
 async def list_workflows(project_path: str | None = None) -> dict:
     ensure_sample_workflow()
-    custom = []
+    custom: list[dict[str, Any]] = []
     for path in list_custom_workflow_files():
-        workflow = read_workflow_file(path)
-        if workflow:
-            normalized = _normalize_workflow(workflow, path.parent.name)
-            normalized = ensure_workflow_prompt_files(path.parent.name, normalized)
-            custom.append(read_prompt_files(normalized, path.parent.name))
-    for workflow in workflow_asset_service.list_workflow_assets(project_path):
-        if workflow.get("error"):
+        try:
+            workflow = workflow_asset_service.load_workflow_asset(path.stem, project_path=project_path)
+            workflow = read_prompt_files(normalize_workflow_steps(workflow), workflow.get("folderName") or workflow.get("id"))
             custom.append(workflow)
-            continue
-        normalized = normalize_workflow_steps(workflow)
-        custom.append(read_prompt_files(normalized, normalized.get("folderName", "")))
-    custom.sort(key=lambda item: (item.get("kind") != "asset", item.get("updated_at", item.get("name", ""))), reverse=True)
-    return {
-        "system": system_workflow_with_folder(),
-        "custom": custom,
-        "functions": AVAILABLE_WORKFLOW_FUNCTIONS,
-    }
+        except Exception as exc:
+            custom.append({"id": path.stem, "kind": "asset", "name": path.stem, "workflowPath": f"workflows/{path.name}", "error": str(exc), "steps": []})
+
+    # Project-local .ai-workflow/workflows/*.workflow can override global files.
+    if project_path:
+        global_ids = {item.get("id") for item in custom}
+        for workflow in workflow_asset_service.list_workflow_assets(project_path):
+            if workflow.get("scope") != "project" or workflow.get("id") in global_ids:
+                continue
+            custom.append(read_prompt_files(normalize_workflow_steps(workflow), workflow.get("folderName") or workflow.get("id")))
+
+    custom.sort(key=lambda item: (item.get("kind") == "asset", item.get("updated_at") or item.get("name") or ""), reverse=True)
+    return {"system": system_workflow_with_folder(), "custom": custom, "functions": AVAILABLE_WORKFLOW_FUNCTIONS}
 
 
 async def get_workflow(workflow_id: str, project_path: str | None = None) -> dict:
     if workflow_id == SYSTEM_WORKFLOW_ID:
         return system_workflow_with_folder()
-    path = find_workflow_path(workflow_id)
-    if not path:
-        try:
-            workflow = workflow_asset_service.load_workflow_asset(workflow_id, project_path)
-        except HTTPException:
-            raise HTTPException(status_code=404, detail="Workflow not found")
-        normalized = normalize_workflow_steps(workflow)
-        return read_prompt_files(normalized, normalized.get("folderName", ""))
-    workflow = read_workflow_file(path)
-    if not workflow:
+    try:
+        workflow = workflow_asset_service.load_workflow_asset(workflow_id, project_path=project_path)
+    except HTTPException:
         raise HTTPException(status_code=404, detail="Workflow not found")
-    normalized = _normalize_workflow(workflow, path.parent.name)
-    normalized = ensure_workflow_prompt_files(path.parent.name, normalized)
-    return read_prompt_files(normalized, path.parent.name)
+    return read_prompt_files(normalize_workflow_steps(workflow), workflow.get("folderName") or workflow.get("id"))
 
 
 async def upsert_workflow(workflow: dict) -> dict:
@@ -440,14 +573,10 @@ async def upsert_workflow(workflow: dict) -> dict:
         raise HTTPException(status_code=400, detail="System workflow is read-only")
     existing_path = find_workflow_path(workflow.get("id", ""))
     existing = read_workflow_file(existing_path) if existing_path else None
-    existing_folder = existing_path.parent.name if existing_path else None
-    item = _normalize_workflow(workflow, existing_folder)
-    assert_workflow_valid(item)
+    item = _normalize_workflow(workflow, workflow.get("folderName") or workflow.get("id"))
     if existing:
         item["created_at"] = existing.get("created_at", item["created_at"])
-    item = write_prompt_files(item)
-    write_workflow_file(item)
-    return read_prompt_files(item, item["folderName"])
+    return write_workflow_assets(item)
 
 
 async def delete_workflow(workflow_id: str) -> dict:
@@ -455,16 +584,18 @@ async def delete_workflow(workflow_id: str) -> dict:
         raise HTTPException(status_code=400, detail="System workflow cannot be deleted")
     path = find_workflow_path(workflow_id)
     if not path:
-        try:
-            workflow_asset_service.load_workflow_asset(workflow_id)
-        except HTTPException:
-            raise HTTPException(status_code=404, detail="Workflow not found")
-        raise HTTPException(status_code=400, detail="Filesystem workflow assets are deleted by removing the .workflow file.")
-    folder = path.parent.resolve()
-    workflows_root = WORKFLOWS_DIR.resolve()
-    if workflows_root not in folder.parents:
-        raise HTTPException(status_code=400, detail="Invalid workflow folder")
-    shutil.rmtree(folder)
+        raise HTTPException(status_code=404, detail="Workflow not found")
+    try:
+        workflow = workflow_asset_service.load_workflow_asset(workflow_id)
+    except Exception:
+        workflow = {"id": workflow_id}
+    if workflow.get("protected") or workflow.get("kind") == "system":
+        raise HTTPException(status_code=400, detail="Protected workflow cannot be deleted")
+    path.unlink(missing_ok=True)
+    # Remove only folders dedicated to this workflow id. Shared/manual assets stay.
+    for root in (CONTRACTS_DIR / slugify(workflow_id), STEPS_DIR / slugify(workflow_id)):
+        if root.exists() and root.is_dir():
+            shutil.rmtree(root)
     return {"ok": True}
 
 
@@ -473,6 +604,6 @@ async def get_functions() -> dict:
 
 
 async def lint_workflow_config(workflow: dict) -> dict:
-    item = _normalize_workflow(workflow, workflow.get("folderName"))
+    item = _normalize_workflow(workflow, workflow.get("folderName") or workflow.get("id"))
     issues = lint_workflow(item)
     return {"ok": not issues, "issues": issues}

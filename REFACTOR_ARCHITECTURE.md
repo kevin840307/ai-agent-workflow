@@ -256,8 +256,10 @@ These are removal candidates, not approved deletions yet.
 
 Do not delete:
 
-- `data/workflows/*`: these are runtime workflow bundles.
-- `data/global-md/*`: reserved global markdown source folder.
+- `data/ai-workflow/workflows/*`: canonical workflow manifests.
+- `data/ai-workflow/steps/*`: separated skill/prompt markdown.
+- `data/ai-workflow/contracts/*`: separated step metadata.
+- `data/ai-workflow/validators/*` and `data/ai-workflow/tools/*`: Python workflow assets.
 - `data/settings.json`: local settings.
 - `data/store.json`: local runtime state; consider adding a sample file instead of deleting user state.
 

@@ -80,7 +80,7 @@ let systemWorkflow = Object.freeze({
   description: "Built-in workflow loaded from backend configuration.",
   active: true,
   skillRoot: "",
-  promptRoot: "prompts/",
+  promptRoot: "steps/",
   steps: [],
 });
 

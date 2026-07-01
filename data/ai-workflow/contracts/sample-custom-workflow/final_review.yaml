@@ -1,0 +1,32 @@
+id: final_review
+key: final_review
+name: Final Review
+description: ''
+enabled: true
+type: ai
+skill: steps/sample-custom-workflow/06_final_review.md
+command: ''
+agent: qwen
+outputs:
+- final-review.md
+validator: ''
+retry: 10
+failAction: same_step
+retryFromStepKey: ''
+keepSameSession: true
+injectFailureFeedback: true
+stopAfterFailures: 3
+allowInteraction: false
+thinking: false
+approvalRequired: false
+pauseAfterStep: false
+approvalMessage: ''
+timeoutEnabled: false
+timeoutMinutes: 0.0
+reviewMode: current_session
+confidenceThreshold: 0.75
+passKeywords: PASS, APPROVED
+failKeywords: FAIL, BLOCKED
+aggregatorFunction: ''
+agentOptions: {}
+path: contracts/sample-custom-workflow/final_review.yaml

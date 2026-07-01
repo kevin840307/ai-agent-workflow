@@ -17,9 +17,14 @@ class WorkflowConfigServiceTests(unittest.TestCase):
 
     async def _run_prompt_persistence_case(self) -> None:
         workflow_id = "test-prompt-persistence"
-        folder = workflow_config_service.WORKFLOWS_DIR / workflow_id
-        if folder.exists():
-            shutil.rmtree(folder)
+        workflow_file = workflow_config_service.workflow_file(workflow_id)
+        step_dir = workflow_config_service.STEPS_DIR / workflow_id
+        contract_dir = workflow_config_service.CONTRACTS_DIR / workflow_id
+        for target in (workflow_file, step_dir, contract_dir):
+            if target.is_file():
+                target.unlink()
+            elif target.exists():
+                shutil.rmtree(target)
 
         workflow = {
             "id": workflow_id,
@@ -42,18 +47,24 @@ class WorkflowConfigServiceTests(unittest.TestCase):
 
         try:
             saved = await workflow_config_service.upsert_workflow(workflow)
-            prompt_path = folder / "prompts" / "generate_doc.md"
+            prompt_path = workflow_config_service.STEPS_DIR / workflow_id / "generate_doc.md"
+            contract_path = workflow_config_service.CONTRACTS_DIR / workflow_id / "generate_doc.yaml"
 
             self.assertTrue(prompt_path.exists())
+            self.assertTrue(contract_path.exists())
+            self.assertTrue(workflow_file.exists())
             self.assertEqual(prompt_path.read_text(encoding="utf-8"), "Hello {{requirement}}")
             self.assertEqual(saved["steps"][0]["templateContent"], "Hello {{requirement}}")
 
             loaded = await workflow_config_service.get_workflow(workflow_id)
             self.assertEqual(loaded["steps"][0]["templateContent"], "Hello {{requirement}}")
-            self.assertEqual(loaded["steps"][0]["templatePath"], "prompts/generate_doc.md")
+            self.assertEqual(loaded["steps"][0]["templatePath"], f"steps/{workflow_id}/generate_doc.md")
         finally:
-            if folder.exists():
-                shutil.rmtree(folder)
+            for target in (workflow_file, step_dir, contract_dir):
+                if target.is_file():
+                    target.unlink()
+                elif target.exists():
+                    shutil.rmtree(target)
 
     def test_system_workflow_is_protected_and_custom_delete_removes_folder(self) -> None:
         asyncio.run(self._run_delete_protection_case())
@@ -119,9 +130,14 @@ class WorkflowConfigServiceTests(unittest.TestCase):
 
     async def _run_delete_protection_case(self) -> None:
         workflow_id = "test-delete-workflow"
-        folder = workflow_config_service.WORKFLOWS_DIR / workflow_id
-        if folder.exists():
-            shutil.rmtree(folder)
+        workflow_file = workflow_config_service.workflow_file(workflow_id)
+        step_dir = workflow_config_service.STEPS_DIR / workflow_id
+        contract_dir = workflow_config_service.CONTRACTS_DIR / workflow_id
+        for target in (workflow_file, step_dir, contract_dir):
+            if target.is_file():
+                target.unlink()
+            elif target.exists():
+                shutil.rmtree(target)
 
         with self.assertRaises(HTTPException):
             await workflow_config_service.upsert_workflow({"id": workflow_config_service.SYSTEM_WORKFLOW_ID})
@@ -136,10 +152,14 @@ class WorkflowConfigServiceTests(unittest.TestCase):
             "steps": [],
         }
         await workflow_config_service.upsert_workflow(workflow)
-        self.assertTrue(folder.exists())
+        self.assertTrue(workflow_file.exists())
+        self.assertTrue(step_dir.exists())
+        self.assertTrue(contract_dir.exists())
         result = await workflow_config_service.delete_workflow(workflow_id)
         self.assertEqual(result, {"ok": True})
-        self.assertFalse(folder.exists())
+        self.assertFalse(workflow_file.exists())
+        self.assertFalse(step_dir.exists())
+        self.assertFalse(contract_dir.exists())
 
 
 if __name__ == "__main__":

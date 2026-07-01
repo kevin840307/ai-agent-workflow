@@ -63,7 +63,7 @@ function createWorkflow(overrides = {}) {
     description: overrides.description || "Custom workflow draft.",
     active: overrides.active ?? true,
     skillRoot: overrides.skillRoot || "skills/",
-    promptRoot: overrides.promptRoot || "prompts/",
+    promptRoot: overrides.promptRoot || "steps/",
     steps: Array.isArray(overrides.steps) ? overrides.steps.map(normalizeStep) : [],
   };
   if (!workflow.steps.length) {
@@ -80,7 +80,7 @@ function normalizeWorkflow(workflow = {}) {
     description: workflow.description || "Custom workflow draft.",
     active: Boolean(workflow.active),
     skillRoot: workflow.skillRoot || "skills/",
-    promptRoot: workflow.promptRoot || "prompts/",
+    promptRoot: workflow.promptRoot || "steps/",
     steps: Array.isArray(workflow.steps) ? workflow.steps.map(normalizeStep) : [],
   };
   return normalized;
@@ -120,11 +120,11 @@ function inferStepType(step) {
 function normalizeFunctionId(value = "") {
   const raw = String(value || "").trim();
   const aliases = {
-    "functions/validate_spec.py": "validate_spec",
-    "functions/validate_todo.py": "validate_todo",
-    "functions/run_tests.py": "run_pytest",
-    "functions/run_pytest.py": "run_pytest",
-    "functions/validate.py": "validate_spec",
+    "validators/validate_spec.py": "validate_spec",
+    "validators/validate_todo.py": "validate_todo",
+    "validators/run_tests.py": "run_pytest",
+    "validators/run_pytest.py": "run_pytest",
+    "validators/validate.py": "validate_spec",
   };
   return aliases[raw] || raw;
 }
@@ -134,7 +134,7 @@ function defaultTemplatePath(overrides = {}) {
   if (preset?.path) return preset.path;
   const promptSource = (overrides.sources || []).find((source) => source.type === "prompt_file");
   if (promptSource?.value) return promptSource.value;
-  return `prompts/${String(overrides.key || "step").replace(/[^a-zA-Z0-9_-]+/g, "_")}.md`;
+  return `steps/${String(overrides.key || "step").replace(/[^a-zA-Z0-9_-]+/g, "_")}.md`;
 }
 
 function defaultFilename(overrides = {}) {

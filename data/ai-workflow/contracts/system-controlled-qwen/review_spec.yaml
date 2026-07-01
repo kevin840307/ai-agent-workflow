@@ -1,0 +1,37 @@
+id: review_spec
+key: review_spec
+name: Review Spec
+description: ''
+enabled: true
+type: ai
+skill: steps/system-controlled-qwen/02_review_spec.md
+command: ''
+agent: qwen
+outputs:
+- spec-review.md
+validator: ''
+retry: 10
+failAction: selected_step
+retryFromStepKey: generate_spec
+keepSameSession: true
+injectFailureFeedback: true
+stopAfterFailures: 3
+allowInteraction: false
+thinking: false
+approvalRequired: false
+pauseAfterStep: false
+approvalMessage: ''
+timeoutEnabled: false
+timeoutMinutes: 0.0
+reviewMode: current_session
+confidenceThreshold: 0.75
+passKeywords: PASS, APPROVED
+failKeywords: FAIL, BLOCKED
+aggregatorFunction: ''
+sources:
+- type: skill_path
+  value: code-review-and-quality
+- type: skill_path
+  value: doubt-driven-development
+agentOptions: {}
+path: contracts/system-controlled-qwen/review_spec.yaml

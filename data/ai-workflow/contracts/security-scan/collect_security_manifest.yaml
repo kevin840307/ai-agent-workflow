@@ -1,0 +1,33 @@
+id: collect_security_manifest
+key: collect_security_manifest
+name: Collect Security Manifest
+description: Collect project security scope, file inventory, and bounded security-relevant
+  excerpts into output/security-context.md.
+enabled: true
+type: python
+skill: steps/security-scan/collect_security_context.md
+command: ''
+agent: ''
+outputs:
+- security-context.md
+validator: collect_security_context
+retry: 1
+failAction: same_step
+retryFromStepKey: collect_security_manifest
+keepSameSession: true
+injectFailureFeedback: true
+stopAfterFailures: 1
+allowInteraction: false
+thinking: false
+approvalRequired: false
+pauseAfterStep: false
+approvalMessage: ''
+timeoutEnabled: false
+timeoutMinutes: 0.0
+reviewMode: none
+confidenceThreshold: 0.75
+passKeywords: PASS, APPROVED
+failKeywords: FAIL, BLOCKED
+aggregatorFunction: ''
+agentOptions: {}
+path: contracts/security-scan/collect_security_manifest.yaml

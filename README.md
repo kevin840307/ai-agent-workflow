@@ -79,16 +79,18 @@ Useful OpenCode environment variables:
 
 ## Workflows
 
-Workflow bundles live under `data/workflows/<workflow-folder>/`.
+Workflow assets live under one canonical root: `data/ai-workflow/`.
 
 ```text
-workflow.json
-prompts/
-skills/
-functions/
+data/ai-workflow/
+  workflows/*.workflow        # workflow order/include manifest
+  steps/**/*.md               # skill / prompt markdown
+  contracts/**/*.yaml         # step metadata
+  validators/**/*.py          # Python validators
+  tools/**/*.py               # Python tools
 ```
 
-The built-in workflow is `data/workflows/system-controlled-qwen` and is read-only in the UI. Custom workflows use the same folder format and can edit:
+The built-in workflow is `data/ai-workflow/workflows/system-controlled-qwen.workflow` and is read-only in the UI. Custom workflows use the same separated asset format and can edit:
 
 - step type, prompt template, expected files, validator, retry target, retry count, timeout
 - interaction mode

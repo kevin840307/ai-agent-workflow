@@ -2,14 +2,13 @@
 
 ## Overview
 
-The app is split into a FastAPI backend, a static frontend, workflow bundle data, and project run workspaces.
+The app is split into a FastAPI backend, a static frontend, workflow asset data, and project run workspaces.
 
 ```text
 app/
   api/routes/               HTTP routes only
   core/                     paths, locks, metrics, API error helpers
   persistence/              JSON store and repositories
-  controllers/              compatibility facades for old route imports
   services/                 API use cases and persistence orchestration
   workflow/agents/          provider-neutral agent contracts and providers
   workflow_runtime/          workflow execution, agent calls, prompt building, retry
@@ -21,7 +20,12 @@ static/
   index.html                 runner/chat UI
   workflow-designer.html     workflow configuration UI
 data/
-  workflows/                 system and custom workflow bundles
+  ai-workflow/               canonical workflow asset root
+    workflows/*.workflow     workflow manifests and includes
+    steps/**/*.md            skill/prompt markdown
+    contracts/**/*.yaml      step metadata
+    validators/**/*.py       Python validators
+    tools/**/*.py            Python tools
   settings.json              local runtime settings
   store.json                 sessions, messages, runs
 ```
@@ -73,19 +77,20 @@ Project sessions store provider session ids in `agent_session_ids`; legacy `qwen
 Adapters should support the same baseline contract where possible: session reuse, timeout handling, command preview, health metadata, mock mode for local tests, and streamed output callbacks.
 Chat responses include lightweight trace metadata on the assistant message: agent, provider health subset, session reuse, prompt/output size, duration, and tool-call repair status.
 
-## Workflow Bundles
+## Workflow Assets
 
-Every workflow should use the same folder format:
+Every workflow uses the same canonical asset root:
 
 ```text
-data/workflows/<folder>/
-  workflow.json
-  prompts/*.md
-  skills/
-  functions/
+data/ai-workflow/
+  workflows/*.workflow
+  steps/**/*.md
+  contracts/**/*.yaml
+  validators/**/*.py
+  tools/**/*.py
 ```
 
-`workflow.json` is the source of truth for:
+`workflows/*.workflow` is the source of truth for workflow order/includes. `contracts/**/*.yaml` stores step metadata, and `steps/**/*.md` stores the editable skill/prompt text. Together they define:
 
 - step order and enabled state
 - step type

@@ -1,0 +1,41 @@
+id: consensus_security_scan
+key: consensus_security_scan
+name: Consensus Security Scan
+description: One visible generic Consensus Agent step that internally runs three isolated
+  Qwen security candidate agents, validates, scores, and retries each output.
+enabled: true
+type: python
+skill: steps/security-scan/00_security_candidate_scan.md
+command: ''
+agent: qwen
+outputs:
+- security-candidates-agent-1.md
+- security-candidates-agent-1-score.md
+- security-candidates-agent-2.md
+- security-candidates-agent-2-score.md
+- security-candidates-agent-3.md
+- security-candidates-agent-3-score.md
+validator: consensus_agent
+retry: 1
+failAction: same_step
+retryFromStepKey: consensus_security_scan
+keepSameSession: false
+injectFailureFeedback: true
+stopAfterFailures: 1
+allowInteraction: false
+thinking: false
+approvalRequired: false
+pauseAfterStep: false
+approvalMessage: ''
+timeoutEnabled: false
+timeoutMinutes: 0.0
+reviewMode: none
+confidenceThreshold: 0.75
+passKeywords: PASS, APPROVED
+failKeywords: FAIL, BLOCKED
+aggregatorFunction: ''
+sources:
+- type: skill_path
+  value: code-review-and-quality
+agentOptions: {}
+path: contracts/security-scan/consensus_security_scan.yaml

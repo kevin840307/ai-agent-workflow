@@ -119,7 +119,7 @@ function templatePathFromFileName(name = "") {
     .trim() || "";
   if (!cleaned) return "";
   const withExtension = /\.[a-z0-9]+$/i.test(cleaned) ? cleaned : `${cleaned}.md`;
-  return `prompts/${withExtension}`;
+  return `steps/${withExtension}`;
 }
 
 function loadSelectedTemplatePreset() {
@@ -360,7 +360,7 @@ function openTemplateEditor() {
             <h2 style="margin:0;">Edit Prompt Template</h2>
             <span id="designerTemplateDirtyBadge" class="badge passed">Saved</span>
           </div>
-          <p class="designer-form-hint">Backend creates a workflow folder, saves this prompt under prompts/, then writes the step artifact using Output File Name.</p>
+          <p class="designer-form-hint">Backend saves this prompt under data/ai-workflow/steps and stores step metadata under data/ai-workflow/contracts.</p>
         </div>
         <button data-designer-action="close-template-editor" aria-label="Close">x</button>
       </div>
@@ -368,7 +368,7 @@ function openTemplateEditor() {
         <label class="designer-form-row">
           <span class="designer-label">Template File Name</span>
           <input class="designer-input" value="${escapeAttr(templateFileNameFromPath(templateEditorDraft.templatePath))}" placeholder="my-step.md" data-template-draft-field="templateName" ${disabled} />
-          <span class="designer-form-hint">Saved in this workflow's prompts/ folder. Subfolders and absolute paths are not used here.</span>
+          <span class="designer-form-hint">Saved as a workflow step asset under steps/. Subfolders are managed by the backend.</span>
         </label>
         <label class="designer-form-row">
           <span class="designer-label">Load Preset</span>

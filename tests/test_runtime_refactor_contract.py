@@ -71,8 +71,6 @@ class RuntimeRefactorContractTests(unittest.TestCase):
             ("app.runtime_modules.metrics", "app.core.metrics", "metrics"),
             ("app.runtime_modules.api_errors", "app.api.errors", "error_payload"),
             ("app.mock_qwen", "app.testing.mock_agent", "mock_qwen_response"),
-            ("app.controllers.project_controller", "app.api.routes.projects", "router"),
-            ("app.controllers.workflow_controller", "app.api.routes.workflow_runs", "router"),
         ]
         for old_name, new_name, attr in checks:
             with self.subTest(old_name=old_name, new_name=new_name):

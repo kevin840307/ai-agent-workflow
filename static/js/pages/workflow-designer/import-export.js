@@ -229,7 +229,7 @@ function exportWorkflow() {
         <h2 style="margin:0;">Export Workflow JSON</h2>
         <button data-designer-action="close-export">x</button>
       </div>
-      <p class="designer-form-hint">This is the backend workflow.json payload. Runtime execution uses these values directly.</p>
+      <p class="designer-form-hint">This is the backend .workflow asset payload. Runtime execution uses these values directly.</p>
       <pre>${escapeHtml(JSON.stringify(toExportWorkflow(wf), null, 2))}</pre>
       <div class="designer-footer-actions">
         <button data-designer-action="close-export">Close</button>

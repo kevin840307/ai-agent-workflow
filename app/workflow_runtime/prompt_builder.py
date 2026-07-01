@@ -37,7 +37,13 @@ def workflow_prompt_path(name: str, run: dict[str, Any] | None = None) -> Path:
         if global_asset.exists():
             return global_asset
     if normalized.startswith("prompts/"):
+        canonical = GLOBAL_ASSET_ROOT / "steps" / workflow_folder / Path(normalized).name
+        if canonical.exists():
+            return canonical
         return WORKFLOW_BUNDLES_DIR / workflow_folder / normalized
+    canonical = GLOBAL_ASSET_ROOT / "steps" / workflow_folder / Path(normalized).name
+    if canonical.exists():
+        return canonical
     return WORKFLOW_BUNDLES_DIR / workflow_folder / "prompts" / normalized
 
 

@@ -1,0 +1,34 @@
+id: validate_security_report
+key: validate_security_report
+name: Validate Security Report
+description: Validate and score output/security-report.md structure, checklist, severity,
+  confidence, evidence, source mapping, and risk matrix format.
+enabled: true
+type: python
+skill: steps/security-scan/validate_security_report.md
+command: ''
+agent: ''
+outputs:
+- security-report.md
+- security-report-score.md
+validator: validate_security_report
+retry: 2
+failAction: selected_step
+retryFromStepKey: generate_security_report
+keepSameSession: true
+injectFailureFeedback: true
+stopAfterFailures: 2
+allowInteraction: false
+thinking: false
+approvalRequired: false
+pauseAfterStep: false
+approvalMessage: ''
+timeoutEnabled: false
+timeoutMinutes: 0.0
+reviewMode: none
+confidenceThreshold: 0.75
+passKeywords: PASS, APPROVED
+failKeywords: FAIL, BLOCKED
+aggregatorFunction: ''
+agentOptions: {}
+path: contracts/security-scan/validate_security_report.yaml

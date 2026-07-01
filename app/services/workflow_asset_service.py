@@ -361,7 +361,7 @@ def apply_contracts_to_workflow(workflow: dict[str, Any], project_path: str | No
     steps = []
     for step in item.get("steps", []):
         next_step = deepcopy(step)
-        contract_ref = next_step.get("contractId") or next_step.get("contractPath") or next_step.get("metadataPath")
+        contract_ref = next_step.get("contractPath") or next_step.get("metadataPath") or next_step.get("contractId")
         if contract_ref:
             contract = _load_contract_by_id_or_path(str(contract_ref), project_path)
             next_step = apply_contract_to_step(next_step, contract)
@@ -507,13 +507,52 @@ def _workflow_lines(path: Path) -> list[str]:
     return lines
 
 
-def _expand_workflow_refs(path: Path, project_path: str | None = None, seen: set[Path] | None = None) -> list[str]:
+def _workflow_document(path: Path) -> dict[str, Any] | None:
+    text = read_text(path)
+    if not text.strip():
+        return None
+    try:
+        data = yaml.safe_load(text)
+    except yaml.YAMLError:
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def _workflow_ref_from_structured_step(step: Any) -> str | dict[str, Any]:
+    if isinstance(step, str):
+        return step.strip()
+    if not isinstance(step, dict):
+        raise HTTPException(status_code=400, detail="Structured workflow steps must be strings or objects")
+    for key in ("contract", "metadata", "path", "step", "skill"):
+        if step.get(key):
+            return str(step[key]).strip()
+    # Inline metadata is supported for small ad-hoc .workflow files, although the
+    # recommended maintainable format is a separate contracts/*.yaml file.
+    return step
+
+
+def _expand_workflow_refs(path: Path, project_path: str | None = None, seen: set[Path] | None = None) -> list[str | dict[str, Any]]:
     seen = seen or set()
     resolved = path.resolve()
     if resolved in seen:
         raise HTTPException(status_code=400, detail=f"Workflow include cycle detected: {path.name}")
     seen.add(resolved)
-    refs: list[str] = []
+    refs: list[str | dict[str, Any]] = []
+
+    document = _workflow_document(path)
+    if document and isinstance(document.get("steps"), list):
+        includes = document.get("workflows") or document.get("includes") or []
+        if isinstance(includes, str):
+            includes = [includes]
+        for include in includes if isinstance(includes, list) else []:
+            found = _workflow_path_by_id(str(include), project_path)
+            if not found:
+                raise HTTPException(status_code=404, detail=f"Included workflow not found: {include}")
+            refs.extend(_expand_workflow_refs(found[1], project_path, seen))
+        refs.extend(_workflow_ref_from_structured_step(step) for step in document.get("steps") or [])
+        seen.remove(resolved)
+        return refs
+
     for line in _workflow_lines(path):
         if line.startswith("workflow:"):
             include = line.split(":", 1)[1].strip()
@@ -611,27 +650,34 @@ def load_workflow_asset(workflow_id_or_path: str, project_path: str | None = Non
         if not found:
             raise HTTPException(status_code=404, detail=f"Workflow asset not found: {workflow_id_or_path}")
         resolved_scope, path = found
+
+    document = _workflow_document(path) or {}
     refs = _expand_workflow_refs(path, project_path)
-    steps = [step_from_contract(_contract_for_ref(ref, project_path), index) for index, ref in enumerate(refs)]
-    rel_path = path.relative_to(_project_root(project_path) / PROJECT_ASSET_DIR).as_posix() if _project_root(project_path) and (_project_root(project_path) / PROJECT_ASSET_DIR) in path.parents else path.relative_to(GLOBAL_ASSET_ROOT).as_posix()
-    name = path.stem.replace("-", " ").replace("_", " ").title()
+    steps = [step_from_contract(ref if isinstance(ref, dict) else _contract_for_ref(ref, project_path), index) for index, ref in enumerate(refs)]
+    project_root = _project_root(project_path)
+    rel_path = path.relative_to(project_root / PROJECT_ASSET_DIR).as_posix() if project_root and (project_root / PROJECT_ASSET_DIR) in path.parents else path.relative_to(GLOBAL_ASSET_ROOT).as_posix()
+    workflow_id = str(document.get("id") or path.stem)
+    name = str(document.get("name") or path.stem.replace("-", " ").replace("_", " ").title())
+    kind = str(document.get("kind") or "asset")
+    protected = _coerce_bool(document.get("protected"), False)
     return {
-        "id": path.stem,
-        "kind": "asset",
+        "id": workflow_id,
+        "kind": kind,
         "name": name,
-        "description": f"Filesystem workflow loaded from {rel_path}. Add/edit .workflow, contracts, steps, validators, and tools without code changes.",
-        "active": False,
-        "protected": False,
-        "deletable": False,
-        "folderName": f"asset-{resolved_scope}-{path.stem}",
-        "skillRoot": ".ai-workflow",
-        "promptRoot": "steps/",
+        "description": str(document.get("description") or f"Filesystem workflow loaded from {rel_path}. Add/edit .workflow, contracts, steps, validators, and tools without code changes."),
+        "active": _coerce_bool(document.get("active"), False),
+        "protected": protected,
+        "deletable": _coerce_bool(document.get("deletable"), (not protected) if isinstance(document.get("steps"), list) else False),
+        "folderName": str(document.get("folderName") or workflow_id),
+        "skillRoot": str(document.get("skillRoot") or ".ai-workflow"),
+        "promptRoot": str(document.get("promptRoot") or "steps/"),
         "workflowPath": rel_path,
         "scope": resolved_scope,
-        "projectPath": str(_project_root(project_path) or ""),
+        "projectPath": str(project_root or ""),
+        "created_at": document.get("created_at"),
+        "updated_at": document.get("updated_at"),
         "steps": steps,
     }
-
 
 def list_workflow_assets(project_path: str | None = None) -> list[dict[str, Any]]:
     workflows: list[dict[str, Any]] = []

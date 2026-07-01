@@ -1,0 +1,37 @@
+id: final_review
+key: final_review
+name: Final Review
+description: ''
+enabled: true
+type: ai
+skill: steps/system-controlled-qwen/06_final_review.md
+command: ''
+agent: qwen
+outputs:
+- final-review.md
+validator: ''
+retry: 10
+failAction: selected_step
+retryFromStepKey: build
+keepSameSession: false
+injectFailureFeedback: true
+stopAfterFailures: 3
+allowInteraction: false
+thinking: false
+approvalRequired: false
+pauseAfterStep: false
+approvalMessage: ''
+timeoutEnabled: false
+timeoutMinutes: 0.0
+reviewMode: new_agent
+confidenceThreshold: 0.75
+passKeywords: PASS, APPROVED
+failKeywords: FAIL, BLOCKED
+aggregatorFunction: ''
+sources:
+- type: skill_path
+  value: shipping-and-launch
+- type: skill_path
+  value: code-review-and-quality
+agentOptions: {}
+path: contracts/system-controlled-qwen/final_review.yaml
