@@ -231,6 +231,7 @@ async def create_workflow_run(session_id: str, body: runtime.CreateRunRequest) -
                 "workflow_name": workflow.get("name") or workflow["id"],
                 "skill_root": workflow.get("skillRoot") or "",
                 "test_command": body.test_command,
+                "validation_script": body.validation_script,
                 "steps": steps,
                 "artifacts": [],
                 "timeline": [],

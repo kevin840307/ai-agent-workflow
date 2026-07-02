@@ -7,6 +7,7 @@ import {
 } from "../workflow-designer-constants.js?v=20260702-assets-bugfix1";
 import {
   clone,
+  copyTextToClipboard,
   el,
   escapeAttr,
   escapeHtml,
@@ -251,6 +252,7 @@ const DesignerActionHandlers = Object.freeze({
   "apply-json-editor": () => applyJsonEditor(),
   "toggle-step-actions": () => toggleStepActionMenu(),
   "clear-step-filter": () => clearStepFilter(),
+  "copy-cli-command": (action) => copyCliCommand(action.dataset.commandTarget),
   "open-step-editor": (action) => openStepEditor(action.dataset.stepId),
   "step-editor-prev": () => switchStepEditor(-1),
   "step-editor-next": () => switchStepEditor(1),
@@ -904,8 +906,8 @@ function renderWorkflowLintState() {
   const panel = el("designerLintPanel");
   if (!panel) return;
   if (isReadonly()) {
-    panel.className = "designer-lint-panel";
-    panel.innerHTML = `<strong>System workflow</strong><span>Read only configuration.</span>`;
+    panel.className = "designer-lint-panel is-hidden";
+    panel.innerHTML = "";
     return;
   }
   const issues = state.lintIssues || [];
@@ -923,7 +925,20 @@ function renderWorkflowLintState() {
     `;
     return;
   }
-  panel.innerHTML = `<strong>Ready to save</strong><span>No workflow config issues detected.</span>`;
+  panel.className = "designer-lint-panel is-hidden";
+  panel.innerHTML = "";
+}
+
+async function copyCliCommand(targetId) {
+  const target = targetId ? document.getElementById(targetId) : null;
+  const text = target?.textContent?.trim();
+  if (!text) return;
+  try {
+    await copyTextToClipboard(text);
+    toast("Command copied.");
+  } catch {
+    toast("Could not copy command.");
+  }
 }
 
 function guardedWorkflowAction(action) {

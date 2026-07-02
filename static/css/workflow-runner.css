@@ -254,6 +254,7 @@ body.run-failed .summary > div:last-child {
   gap: 8px;
   min-width: 0;
   flex: 1 1 auto;
+  flex-wrap: wrap;
 }
 
 .composer-box:focus-within {
@@ -407,6 +408,42 @@ body.chat-mode .workflow-picker {
   display: none !important;
 }
 
+.validation-script-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: min(260px, 32vw);
+  max-width: 320px;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid rgba(148, 163, 184, 0.42);
+  border-radius: 999px;
+  background: var(--panel-2);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.validation-script-field span {
+  flex: 0 0 auto;
+  color: #64748b;
+}
+
+.validation-script-field input {
+  min-width: 0;
+  width: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+body.chat-mode .validation-script-field {
+  display: none !important;
+}
+
 .workflow-picker span {
   flex: 0 0 auto;
   padding-right: 9px;
@@ -549,6 +586,11 @@ body.chat-mode .composer-box {
     max-width: 280px;
   }
 
+  .validation-script-field {
+    min-width: min(220px, 38vw);
+    max-width: 260px;
+  }
+
   .workflow-picker select {
     max-width: 170px;
   }
@@ -575,6 +617,7 @@ body.chat-mode .composer-box {
 
   .composer-run-mode,
   .workflow-picker,
+  .validation-script-field,
   .composer-left,
   .composer-right {
     width: 100%;

@@ -177,6 +177,7 @@ class PromptBuilder:
             "reasoning": read_text(output_dir / "reasoning.md"),
             "build_reasoning": read_text(output_dir / "build-reasoning.md"),
             "test_result": read_text(output_dir / "test-result.md"),
+            "external_validation_result": read_text(output_dir / "external-validation-result.md"),
             "build_result": read_text(output_dir / "build-result.md"),
             "final_review": read_text(output_dir / "final-review.md"),
             "raw_spec": read_text(output_dir / "spec.md"),
@@ -192,6 +193,7 @@ class PromptBuilder:
             "security_report_score": read_text(output_dir / "security-report-score.md"),
             "project_path": str(run.get("project_path", "")),
             "workspace_path": str(run.get("workspace", "")),
+            "validation_script": str(run.get("validation_script") or ""),
         }
 
     def _read_security_candidate_artifacts(self, output_dir: Path) -> str:

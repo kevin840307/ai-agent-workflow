@@ -1,0 +1,33 @@
+id: implementation_review
+key: implementation_review
+name: Implementation Review
+description: Check that the task plan is concrete, bounded, and testable before building.
+enabled: true
+type: review
+skill: steps/general-auto-development/02_implementation_review.md
+command: ''
+agent: qwen
+outputs:
+- implementation-review.md
+function: ''
+retry: 3
+failAction: selected_step
+retryFromStepKey: plan_tasks
+keepSameSession: true
+injectFailureFeedback: true
+stopAfterFailures: 3
+allowInteraction: false
+thinking: false
+approvalRequired: false
+pauseAfterStep: false
+approvalMessage: ''
+timeoutEnabled: false
+timeoutMinutes: 0.0
+reviewMode: current_session
+confidenceThreshold: 0.75
+passKeywords: PASS, APPROVED
+failKeywords: FAIL, BLOCKED
+aggregatorFunction: ''
+sources: []
+agentOptions: {}
+path: contracts/general-auto-development/implementation_review.yaml

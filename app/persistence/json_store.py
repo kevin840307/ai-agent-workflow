@@ -97,6 +97,7 @@ class Store:
                 "workflow_name": "",
                 "skill_root": "",
                 "test_command": None,
+                "validation_script": None,
             }.items():
                 if key not in run:
                     run[key] = default

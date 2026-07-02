@@ -59,6 +59,34 @@ class AiWorkflowAssetsUiTests(unittest.TestCase):
         self.assertNotIn('startswith(("validators/", "tools/"))', source)
         self.assertNotIn('item.get("validator")', source)
 
+    def test_runner_supports_run_specific_validation_script_field(self) -> None:
+        html = (ROOT / "static/index.html").read_text(encoding="utf-8")
+        dom = (ROOT / "static/js/core/dom.js").read_text(encoding="utf-8")
+        runs = (ROOT / "static/js/features/runs.js").read_text(encoding="utf-8")
+        css = (ROOT / "static/css/workflow-runner.css").read_text(encoding="utf-8")
+
+        self.assertIn('id="validationScript"', html)
+        self.assertIn('validationScript: "validationScript"', dom)
+        self.assertIn("validation_script: validationScript", runs)
+        self.assertIn("body.chat-mode .validation-script-field", css)
+
+    def test_workflow_designer_shows_copyable_cli_commands_without_ok_lint_copy(self) -> None:
+        html = (ROOT / "static/workflow-designer.html").read_text(encoding="utf-8")
+        controller = (ROOT / "static/js/pages/workflow-designer/controller.js").read_text(encoding="utf-8")
+        utils = (ROOT / "static/js/pages/workflow-designer/utils.js").read_text(encoding="utf-8")
+        css = (ROOT / "static/css/workflow-designer.css").read_text(encoding="utf-8")
+
+        self.assertIn("designer-cli-card", html)
+        self.assertIn('aiwf &lt;target&gt; --engine auto --user "需求"', html)
+        self.assertIn('/wf &lt;target&gt; --user "需求"', html)
+        self.assertIn('data-designer-action="copy-cli-command"', html)
+        self.assertIn('"copy-cli-command"', controller)
+        self.assertIn("copyTextToClipboard", controller)
+        self.assertIn("navigator.clipboard", utils)
+        self.assertNotIn("Ready to save", controller)
+        self.assertNotIn("No workflow config issues detected", controller)
+        self.assertIn(".designer-lint-panel.is-hidden", css)
+
 
 if __name__ == "__main__":
     unittest.main()

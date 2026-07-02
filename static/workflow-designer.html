@@ -79,6 +79,33 @@
           </article>
         </section>
 
+        <section class="designer-cli-card" aria-label="Workflow CLI commands">
+          <div class="designer-cli-head">
+            <div>
+              <span class="designer-eyebrow">Run this workflow</span>
+              <h3>CLI commands</h3>
+            </div>
+            <p>Use <code>&lt;target&gt;</code> for the project folder and replace <code>需求</code> with the user request.</p>
+          </div>
+          <div class="designer-cli-command-list">
+            <div class="designer-cli-command">
+              <span>Auto CLI</span>
+              <code id="designerAutoCliCommand">aiwf &lt;target&gt; --engine auto --user "需求"</code>
+              <button type="button" data-designer-action="copy-cli-command" data-command-target="designerAutoCliCommand">Copy</button>
+            </div>
+            <div class="designer-cli-command">
+              <span>Qwen CLI</span>
+              <code id="designerQwenCliCommand">/wf &lt;target&gt; --user "需求"</code>
+              <button type="button" data-designer-action="copy-cli-command" data-command-target="designerQwenCliCommand">Copy</button>
+            </div>
+            <div class="designer-cli-command">
+              <span>OpenCode CLI</span>
+              <code id="designerOpenCodeCliCommand">/wf &lt;target&gt; --user "需求"</code>
+              <button type="button" data-designer-action="copy-cli-command" data-command-target="designerOpenCodeCliCommand">Copy</button>
+            </div>
+          </div>
+        </section>
+
 
         <section class="designer-assets-callout" aria-label="Workflow asset library shortcut">
           <div>

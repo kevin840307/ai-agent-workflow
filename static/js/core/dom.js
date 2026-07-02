@@ -51,6 +51,8 @@ export const UI = {
     workflowPicker: "workflowPicker",
     workflowSelectedLabel: "workflowSelectedLabel",
     workflowSelect: "workflowSelect",
+    validationScript: "validationScript",
+    validationScriptField: "validationScriptField",
   },
 
   el(id) {

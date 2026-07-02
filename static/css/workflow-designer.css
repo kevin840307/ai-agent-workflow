@@ -296,6 +296,90 @@ body[data-page="workflow-designer"] {
   color: var(--muted);
 }
 
+.designer-cli-card {
+  display: grid;
+  gap: 12px;
+  margin: 0 0 14px;
+  padding: 14px;
+  border: 1px solid rgba(15, 118, 110, 0.18);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(180deg, #ffffff, #f8fbfb);
+  box-shadow: var(--shadow-sm);
+}
+
+.designer-cli-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: end;
+}
+
+.designer-cli-head h3 {
+  margin: 2px 0 0;
+  font-size: 15px;
+}
+
+.designer-cli-head p {
+  max-width: 560px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.designer-cli-command-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.designer-cli-command {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: #ffffff;
+}
+
+.designer-cli-command > span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.designer-cli-command code {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+  font-size: 12px;
+}
+
+.designer-cli-command button {
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+@media (max-width: 1240px) {
+  .designer-cli-command-list {
+    grid-template-columns: 1fr;
+  }
+
+  .designer-cli-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
 .designer-editor {
   min-width: 0;
   overflow: hidden;
@@ -3261,6 +3345,10 @@ body.projects-collapsed .designer-sidebar-section {
   border-radius: var(--radius);
   background: #f8fafc;
   font-size: 12px;
+}
+
+.designer-lint-panel.is-hidden {
+  display: none;
 }
 
 .designer-lint-panel strong {

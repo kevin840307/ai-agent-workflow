@@ -17,7 +17,11 @@ class WorkflowCoreTests(unittest.TestCase):
     def test_catalog_function_ids_are_executable_or_runtime_special_cases(self) -> None:
         function_ids = {item["id"] for item in workflow_asset_service.function_catalog()["functions"]}
         executable_or_special = set(PYTHON_FUNCTIONS) | {"consensus_agent"}
-        missing = sorted(function_ids - executable_or_special)
+        missing = sorted(
+            function_id
+            for function_id in function_ids - executable_or_special
+            if not workflow_asset_service.resolve_function_reference(function_id)
+        )
         self.assertEqual(missing, [])
 
     def test_retry_policy_uses_configured_retry_target(self) -> None:

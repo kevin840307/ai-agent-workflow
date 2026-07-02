@@ -13,6 +13,7 @@ class CreateMessageRequest(BaseModel):
 class CreateRunRequest(BaseModel):
     requirement: str | None = None
     test_command: str | None = None
+    validation_script: str | None = None
     project_path: str | None = None
     workflow_id: str | None = None
 

@@ -23,6 +23,7 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--workflow", "--workflow-id", dest="workflow_id", default=None, help="Workflow id. Defaults to the system workflow.")
     run.add_argument("--title", default="CLI Workflow", help="Session title.")
     run.add_argument("--test-command", default=None, help="Optional test command passed to the workflow.")
+    run.add_argument("--validation-script", default=None, help="Optional Python validation script path passed to the workflow.")
     run.add_argument("--requirement-file", default=None, help="Read requirement from a UTF-8 text file.")
     run.add_argument("--wait", action="store_true", help="Wait until the run reaches a terminal or waiting_input state.")
     run.add_argument("--json", action="store_true", help="Print the run as JSON.")
@@ -31,6 +32,34 @@ def build_parser() -> argparse.ArgumentParser:
     assets.add_argument("--project", "--project-path", dest="project_path", default=None, help="Optional project directory for project-local assets.")
 
     return parser
+
+
+def normalize_cli_args(argv: Sequence[str] | None) -> list[str] | None:
+    if argv is None:
+        return None
+    args = list(argv)
+    if not args or args[0] in {"run", "assets"} or "--user" not in args:
+        return args
+    target = args[0]
+    rest = args[1:]
+    normalized = ["run", "--project", target]
+    skip_next = False
+    for index, value in enumerate(rest):
+        if skip_next:
+            skip_next = False
+            continue
+        if value == "--user":
+            if index + 1 >= len(rest):
+                normalized.append("")
+            else:
+                normalized.append(rest[index + 1])
+                skip_next = True
+            continue
+        if value == "--engine":
+            skip_next = True
+            continue
+        normalized.append(value)
+    return normalized
 
 
 async def _init_runtime() -> None:
@@ -58,7 +87,7 @@ async def _wait_for_run(run_id: str) -> dict:
 
 async def run_cli(argv: Sequence[str] | None = None) -> int:
     parser = build_parser()
-    args = parser.parse_args(argv)
+    args = parser.parse_args(normalize_cli_args(argv))
     await _init_runtime()
 
     if args.command == "assets":
@@ -78,6 +107,7 @@ async def run_cli(argv: Sequence[str] | None = None) -> int:
                 project_path=args.project_path,
                 workflow_id=args.workflow_id,
                 test_command=args.test_command,
+                validation_script=args.validation_script,
             ),
         )
         if args.wait:
