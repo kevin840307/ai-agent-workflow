@@ -1,4 +1,4 @@
-import { LocalStore, StorageKeys } from "../core/storage.js?v=20260701-step-detail-polish1";
+import { LocalStore, StorageKeys } from "../core/storage.js?v=20260702-assets-bugfix1";
 
 export function createWorkflows(ctx) {
   const { api, state, ui } = ctx;
@@ -40,7 +40,6 @@ export function createWorkflows(ctx) {
     const output = step.outputFile || step.filename || "";
     if (output) return output;
     if (step.function) return `function: ${step.function}`;
-    if (step.validator) return `legacy function: ${step.validator}`;
     if (step.command) return "command";
     return step.type || "step";
   }

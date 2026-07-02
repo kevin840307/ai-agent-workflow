@@ -180,6 +180,7 @@ export function installWorkflowAssetManager(ctx) {
       step.metadataPath = path;
       step.contractId = path.split("/").pop().replace(/\.(ya?ml|json)$/i, "");
     } else if (type === "functions") {
+      step.functions = [path];
       step.function = path;
       if (step.type === "ai") step.type = "python";
     } else return toast("Workflow assets appear in the workflow list after Refresh.");

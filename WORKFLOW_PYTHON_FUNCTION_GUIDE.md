@@ -27,4 +27,4 @@ function: validate_spec
 function: functions/check_spec.py
 ```
 
-舊版 `validator:`、`validators/`、`tools/` 不再是正式架構。Runtime 只保留必要的舊資料相容邏輯，新的 UI、文件、範例與 workflow 都應使用 `function:`。
+舊版 `validator:`、`validators/`、`tools/` 已不再是正式架構；新的 UI、文件、範例與 workflow 都使用 `function:` 或 `functions:`。

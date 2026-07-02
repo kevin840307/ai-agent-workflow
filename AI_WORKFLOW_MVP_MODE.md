@@ -166,3 +166,22 @@ agent: opencode
 ```
 
 可擴充新的 provider，不需要改 workflow asset 格式。
+
+## Python function shorthand and ordered list
+
+Single function:
+
+```yaml
+function: validate_spec
+```
+
+Multiple functions, executed top to bottom:
+
+```yaml
+functions:
+  - validate_spec
+  - functions/check_spec.py
+  - run_pytest
+```
+
+Use `functions:` for new multi-function steps. The UI Basic tab edits this ordered list directly; Advanced only keeps runtime controls such as timeout, thinking, and interaction.

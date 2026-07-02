@@ -51,6 +51,7 @@ export function installWorkflowAssetTools(ctx) {
       const path = normalizeAssetPath(`functions/${file.name}`, "functions");
       try {
         await putFile(path, await file.text());
+        step.functions = [path];
         step.function = path;
         if (step.type === "ai") step.type = "python";
         refresh();
@@ -63,7 +64,8 @@ export function installWorkflowAssetTools(ctx) {
   async function editPythonAssetForSelectedStep() {
     const step = getSelectedStep();
     if (!step || isReadonly()) return;
-    const path = normalizeAssetPath(step.function || `functions/${step.key || "step"}.py`, "functions");
+    const firstFunction = (Array.isArray(step.functions) && step.functions[0]) || step.function || "";
+    const path = normalizeAssetPath(firstFunction || `functions/${step.key || "step"}.py`, "functions");
     let content = defaultPython();
     try {
       const file = await designerApi(`${WORKFLOW_ASSET_API}/file?path=${encodeURIComponent(path)}`);
@@ -72,6 +74,7 @@ export function installWorkflowAssetTools(ctx) {
     openPythonEditor(path, content, async (nextContent) => {
       try {
         await putFile(path, nextContent);
+        step.functions = [path];
         step.function = path;
         if (step.type === "ai") step.type = "python";
         refresh();
@@ -108,7 +111,12 @@ function metadataYaml(step, id, path) {
   lines.push(`retry: ${Number(step.maxRetries || 0)}`);
   const outputs = Array.isArray(step.expectedFiles) && step.expectedFiles.length ? step.expectedFiles : [step.outputFile || step.filename].filter(Boolean);
   if (outputs.length) lines.push("outputs:", ...outputs.map((file) => `  - ${cleanValue(file)}`));
-  if (step.function) lines.push(`function: ${cleanValue(step.function)}`);
+  const functions = Array.isArray(step.functions) && step.functions.length ? step.functions : [step.function].filter(Boolean);
+  if (functions.length === 1) {
+    lines.push(`function: ${cleanValue(functions[0])}`);
+  } else if (functions.length > 1) {
+    lines.push("functions:", ...functions.map((item) => `  - ${cleanValue(item)}`));
+  }
   if (step.timeoutEnabled && step.timeoutMinutes) lines.push(`timeout: ${Math.round(Number(step.timeoutMinutes) * 60)}`);
   lines.push(`allowInteraction: ${Boolean(step.allowInteraction)}`);
   lines.push(`thinking: ${Boolean(step.thinking)}`);

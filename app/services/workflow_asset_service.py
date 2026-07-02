@@ -19,6 +19,7 @@ from fastapi import HTTPException
 
 from app.core.paths import DATA_DIR, ROOT, read_text, write_text
 from app.workflow_runtime.builtin_functions.base import WorkflowFunctionContext, WorkflowFunctionError
+from app.workflow_runtime.step_utils import parse_function_refs
 
 
 GLOBAL_ASSET_ROOT = DATA_DIR / "ai-workflow"
@@ -322,20 +323,11 @@ def resolve_function_reference(function_ref: str, project_path: str | None = Non
         return None
     if raw.startswith("functions/") and raw.endswith(".py"):
         return _clean_relative_path(raw)
-    legacy = _legacy_function_path(raw)
-    if legacy:
-        return legacy
     for item in list_python_functions(project_path):
         if raw in {str(item.get("id") or ""), str(item.get("path") or "")}:
             return str(item.get("path") or "")
     return None
 
-
-def _legacy_function_path(value: str) -> str | None:
-    normalized = str(value or "").strip().replace("\\", "/")
-    if normalized.startswith(("validators/", "tools/")) and normalized.endswith(".py"):
-        return "functions/" + normalized.split("/", 1)[1]
-    return None
 
 def read_asset(relative_path: str, project_path: str | None = None, *, scope: str = "auto") -> dict[str, Any]:
     path = resolve_asset_path(relative_path, project_path, scope=scope)
@@ -464,13 +456,14 @@ def normalize_contract(contract: dict[str, Any], *, fallback_id: str = "contract
         item["function"] = item["functionPath"]
     if item.get("pythonFunction") and not item.get("function"):
         item["function"] = item["pythonFunction"]
-    if item.get("validator") and not item.get("function"):
-        # Legacy alias only. New metadata should use `function:`.
-        item["function"] = item["validator"]
     if isinstance(item.get("validation"), str) and not item.get("function"):
         item["function"] = item["validation"]
     if isinstance(item.get("validation"), dict) and not item.get("function"):
         item["function"] = item["validation"].get("function") or item["validation"].get("path") or item["validation"].get("id")
+    parsed_functions = parse_function_refs(item.get("functions") if item.get("functions") is not None else item.get("function"))
+    if parsed_functions:
+        item["functions"] = parsed_functions
+        item["function"] = parsed_functions[0]
     if item.get("approval") is None and item.get("approvalRequired") is not None:
         item["approval"] = item.get("approvalRequired")
     return item
@@ -549,8 +542,14 @@ def apply_contract_to_step(step: dict[str, Any], contract: dict[str, Any]) -> di
         if outputs:
             item["outputFile"] = str(outputs[0])
             item["filename"] = str(outputs[0])
-    if metadata.get("function") is not None:
-        item["function"] = str(metadata.get("function") or "")
+    raw_functions = metadata.get("functions") if metadata.get("functions") is not None else metadata.get("function")
+    functions = parse_function_refs(raw_functions)
+    if functions:
+        item["functions"] = functions
+        item["function"] = functions[0]
+    elif metadata.get("function") is not None:
+        item["functions"] = []
+        item["function"] = ""
     if metadata.get("timeout") is not None:
         seconds = float(metadata.get("timeout") or 0)
         item["timeoutEnabled"] = seconds > 0
@@ -749,7 +748,8 @@ def step_from_contract(contract: dict[str, Any], index: int = 0) -> dict[str, An
         "filename": output_file,
         "outputFile": output_file,
         "expectedFiles": [str(item) for item in outputs],
-        "function": str(metadata.get("function") or ""),
+        "functions": parse_function_refs(metadata.get("functions") if metadata.get("functions") is not None else metadata.get("function")),
+        "function": (parse_function_refs(metadata.get("functions") if metadata.get("functions") is not None else metadata.get("function")) or [""])[0],
         "maxRetries": int(metadata.get("retry") or metadata.get("maxRetries") or 0),
         "timeoutEnabled": bool(metadata.get("timeout")),
         "timeoutMinutes": round(float(metadata.get("timeout") or 0) / 60, 3) if metadata.get("timeout") else 0,

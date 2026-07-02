@@ -3504,3 +3504,77 @@ body[data-page="ai-workflow-assets"] {
     flex-direction: column;
   }
 }
+
+/* 2026-07-01: Larger dedicated AI workflow assets editor and unified function textarea. */
+.assets-page-manager {
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.assets-page-manager .designer-asset-grid {
+  grid-template-columns: minmax(280px, 0.45fr) minmax(560px, 1.55fr);
+  align-items: stretch;
+}
+
+.assets-page-manager .designer-asset-editor-panel {
+  grid-template-rows: auto minmax(520px, 1fr) auto auto;
+}
+
+.assets-page-manager .designer-asset-editor {
+  min-height: 520px;
+  width: 100%;
+}
+
+.designer-functions-editor {
+  min-height: 96px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+@media (max-width: 980px) {
+  .assets-page-manager .designer-asset-grid {
+    grid-template-columns: 1fr;
+  }
+  .assets-page-manager .designer-asset-editor,
+  .assets-page-manager .designer-asset-editor-panel {
+    min-height: 420px;
+  }
+}
+
+
+/* 2026-07-02: Assets page bugfix.
+   Keep Save/Rename/Delete visible by allowing the dedicated page to scroll.
+   The previous full-height hidden-overflow layout could push the footer actions
+   below the viewport when the editor was enlarged. */
+body[data-page="ai-workflow-assets"] {
+  height: auto;
+  min-height: 100vh;
+  overflow: auto;
+}
+
+body[data-page="ai-workflow-assets"] .assets-main,
+body[data-page="ai-workflow-assets"] .assets-page-manager,
+body[data-page="ai-workflow-assets"] .assets-page-manager .designer-asset-list-panel,
+body[data-page="ai-workflow-assets"] .assets-page-manager .designer-asset-editor-panel {
+  overflow: visible;
+}
+
+body[data-page="ai-workflow-assets"] .assets-page-manager .designer-asset-editor-panel {
+  grid-template-rows: auto auto auto auto;
+}
+
+body[data-page="ai-workflow-assets"] .assets-page-manager .designer-asset-editor {
+  height: min(58vh, 720px);
+  min-height: 420px;
+  resize: vertical;
+}
+
+body[data-page="ai-workflow-assets"] .assets-page-manager .designer-asset-editor-panel .designer-footer-actions {
+  position: sticky;
+  bottom: 12px;
+  z-index: 5;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: var(--shadow-sm);
+}

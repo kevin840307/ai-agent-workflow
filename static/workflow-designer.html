@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Workflow Designer</title>
-    <link rel="stylesheet" href="/static/styles.css?v=20260701-step-detail-polish1" />
+    <link rel="stylesheet" href="/static/styles.css?v=20260702-assets-bugfix1" />
   </head>
   <body data-page="workflow-designer">
     <div class="designer-shell">
@@ -45,7 +45,7 @@
           </div>
           <div class="designer-topbar-actions">
             <div class="designer-action-group" aria-label="Workflow actions">
-              <a class="designer-button-link" href="/ai-workflow-assets">Assets Library</a>
+              <a class="designer-button-link" href="/ai-workflow-assets">Assets</a>
               <button id="designerNewWorkflow" class="primary">+ New Workflow</button>
             </div>
             <span id="designerBackendStatus" class="designer-api-status" title="Loading workflow API...">API...</span>
@@ -84,9 +84,9 @@
           <div>
             <span class="designer-eyebrow">.ai-workflow Assets</span>
             <h3>Skill / metadata / Python function library is maintained in a separate page.</h3>
-            <p>Keep this designer focused on workflow structure. Open Assets Library to CRUD shared steps, contracts, functions, and .workflow files. Step settings still let you save or edit the selected step's skill and Python function directly.</p>
+            <p>Keep this designer focused on workflow structure. Use <code>/ai-workflow-assets</code> to CRUD shared steps, contracts, functions, and .workflow files. Step settings still let you save or edit the selected step's skill and Python function directly.</p>
           </div>
-          <a class="designer-button-link primary-link" href="/ai-workflow-assets">Open Assets Library</a>
+          <a class="designer-button-link primary-link" href="/ai-workflow-assets">Assets</a>
         </section>
 
         <section class="designer-editor">
@@ -215,6 +215,6 @@
       </main>
     </div>
 
-    <script type="module" src="/static/js/main.js?v=20260701-step-detail-polish1"></script>
+    <script type="module" src="/static/js/main.js?v=20260702-assets-bugfix1"></script>
   </body>
 </html>

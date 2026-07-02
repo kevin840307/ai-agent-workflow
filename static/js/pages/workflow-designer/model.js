@@ -1,5 +1,5 @@
-import { TemplatePresets } from "../workflow-designer-constants.js?v=20260701-step-detail-polish1";
-import { clone, makeId } from "./utils.js?v=20260701-step-detail-polish1";
+import { TemplatePresets } from "../workflow-designer-constants.js?v=20260702-assets-bugfix1";
+import { clone, makeId } from "./utils.js?v=20260702-assets-bugfix1";
 
 function createStep(overrides = {}) {
   const key = overrides.key || makeId("step");
@@ -25,7 +25,8 @@ function createStep(overrides = {}) {
     templateContent: defaultTemplateContent({ ...overrides, key, type }),
     filename,
     outputFile: overrides.outputFile || "",
-    function: normalizeFunctionId(overrides.function || overrides.validator || ""),
+    functions: normalizeFunctionList(overrides.functions || overrides.function || ""),
+    function: firstFunction(overrides.functions || overrides.function || ""),
     expectedFiles: clone(overrides.expectedFiles || (filename ? [filename] : [])),
     reviewMode: overrides.reviewMode || "none",
     reviewers: clone(overrides.reviewers || []),
@@ -102,7 +103,8 @@ function normalizeStep(step = {}) {
     agent: step?.agent || step?.provider || base.agent || "qwen",
     provider: step?.provider || step?.agent || base.provider || "qwen",
     templateContent: step?.templateContent || base.templateContent,
-    function: normalizeFunctionId(step?.function || step?.validator || base.function || ""),
+    functions: normalizeFunctionList(step?.functions || step?.function || base.functions || base.function || ""),
+    function: firstFunction(step?.functions || step?.function || base.functions || base.function || ""),
     contractId: step?.contractId || base.contractId || "",
     contractPath: step?.contractPath || base.contractPath || "",
     metadataPath: step?.metadataPath || base.metadataPath || "",
@@ -115,6 +117,26 @@ function inferStepType(step) {
   if (step.type === "ai" && step.reviewMode && step.reviewMode !== "none") return "review";
   if (step.type === "ai" && String(step.key || "").includes("review")) return "review";
   return step.type || "ai";
+}
+
+function normalizeFunctionList(value = "") {
+  const rawItems = Array.isArray(value)
+    ? value
+    : String(value || "").split(/[\n,]+/);
+  const seen = new Set();
+  const result = [];
+  rawItems.forEach((item) => {
+    const normalized = normalizeFunctionId(item);
+    if (normalized && !seen.has(normalized)) {
+      seen.add(normalized);
+      result.push(normalized);
+    }
+  });
+  return result;
+}
+
+function firstFunction(value = "") {
+  return normalizeFunctionList(value)[0] || "";
 }
 
 function normalizeFunctionId(value = "") {
@@ -168,6 +190,8 @@ export {
   normalizeStep,
   inferStepType,
   normalizeFunctionId,
+  normalizeFunctionList,
+  firstFunction,
   defaultTemplatePath,
   defaultFilename,
   defaultTemplateContent,

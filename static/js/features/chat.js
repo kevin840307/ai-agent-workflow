@@ -1,4 +1,4 @@
-import { LocalStore, StorageKeys } from "../core/storage.js?v=20260701-step-detail-polish1";
+import { LocalStore, StorageKeys } from "../core/storage.js?v=20260702-assets-bugfix1";
 
 export function createChat(ctx) {
   const { api, state, ui } = ctx;

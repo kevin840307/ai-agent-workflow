@@ -14,6 +14,7 @@ from app.runtime_modules import api as runtime
 from app.core.paths import write_text
 from app.services.workflow_lint_service import assert_workflow_valid, lint_workflow
 from app.services import workflow_asset_service
+from app.workflow_runtime.step_utils import parse_function_refs
 
 
 SYSTEM_WORKFLOW_ID = "system-controlled-qwen"
@@ -204,7 +205,11 @@ def normalize_step_config(step: dict) -> dict:
     item.setdefault("agentOptions", {})
     item.setdefault("expectedFiles", [item["outputFile"]] if item.get("outputFile") else [])
     item.setdefault("requireProjectChanges", item.get("key") == "build")
-    item.setdefault("function", item.get("validator") or "")
+    if not item.get("functions"):
+        item["functions"] = parse_function_refs(item.get("function"))
+    else:
+        item["functions"] = parse_function_refs(item.get("functions"))
+    item["function"] = item["functions"][0] if item["functions"] else ""
     return item
 
 
@@ -251,6 +256,7 @@ def _contract_from_step(workflow_id: str, step: dict) -> dict[str, Any]:
     outputs = item.get("expectedFiles") or ([item.get("outputFile")] if item.get("outputFile") else [])
     if isinstance(outputs, str):
         outputs = [outputs]
+    functions = parse_function_refs(item.get("functions") or item.get("function"))
     contract = {
         "id": item.get("contractId") or key,
         "key": key,
@@ -262,7 +268,6 @@ def _contract_from_step(workflow_id: str, step: dict) -> dict[str, Any]:
         "command": item.get("command") or "",
         "agent": item.get("agent") or item.get("provider") or "qwen",
         "outputs": [str(value) for value in outputs or []],
-        "function": item.get("function") or item.get("validator") or "",
         "retry": int(item.get("maxRetries") or 0),
         "failAction": item.get("failAction") or "same_step",
         "retryFromStepKey": item.get("retryFromStepKey") or "",
@@ -286,6 +291,10 @@ def _contract_from_step(workflow_id: str, step: dict) -> dict[str, Any]:
         "agentOptions": item.get("agentOptions") or {},
         "path": _contract_rel(workflow_id, key),
     }
+    if len(functions) == 1:
+        contract["function"] = functions[0]
+    elif len(functions) > 1:
+        contract["functions"] = functions
     if contract["timeoutEnabled"] and contract["timeoutMinutes"]:
         contract["timeout"] = float(contract["timeoutMinutes"]) * 60
     return workflow_asset_service.normalize_contract(contract, fallback_id=key)

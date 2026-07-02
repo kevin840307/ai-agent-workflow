@@ -36,6 +36,7 @@ from .step_utils import (
     step_prompt_name,
     step_review_mode,
     step_function_name,
+    step_function_names,
 )
 
 LogFn = Callable[[dict[str, Any], str], Awaitable[None]]
@@ -598,7 +599,7 @@ class WorkflowActions:
                 step_artifact_name(step_record, "build-result.md"),
                 agent_name=agent_name,
             ),
-            "run_test": lambda: self.functions.call_python_function(run, step_function_name(step_record) or "run_pytest", output_dir),
+            "run_test": lambda: self.functions.call_python_functions(run, step_function_names(step_record) or ["run_pytest"], output_dir),
             "consensus_security_scan": lambda: self.consensus_security_scan_step(
                 run,
                 step_prompt_name(step_record, "00_security_candidate_scan.md"),
@@ -623,10 +624,11 @@ class WorkflowActions:
         if key in registry:
             return registry[key]
 
-        function = step_function_name(step_record)
-        if step_type == "validation" and function == "validate_spec":
+        functions = step_function_names(step_record)
+        function = functions[0] if functions else ""
+        if len(functions) <= 1 and step_type == "validation" and function == "validate_spec":
             return lambda: self.validate_or_repair_spec(run, output_dir)
-        if step_type == "validation" and function == "validate_todo":
+        if len(functions) <= 1 and step_type == "validation" and function == "validate_todo":
             return lambda: self.validate_or_repair_todo(run, output_dir)
         if function == "consensus_agent":
             return lambda: self.consensus_agent_step(
@@ -635,15 +637,12 @@ class WorkflowActions:
                 step_prompt_name(step_record, f"{key}.md"),
                 agent_name=agent_name,
             )
-        if function in PYTHON_FUNCTIONS:
-            artifact_functions = {"require_status_pass", "validate_security_candidates", "validate_security_report"}
-            artifact = (step_artifact_name(step_record, "") or None) if function in artifact_functions else None
-            return lambda: self.functions.call_python_function(run, function, output_dir, artifact)
+        if functions and (step_type in {"python", "validation", "check"} or any(item in PYTHON_FUNCTIONS for item in functions)):
+            artifact = step_artifact_name(step_record, "") or None
+            return lambda: self.functions.call_python_functions(run, functions, output_dir, artifact)
         if step_type == "python":
-            function_id = function or "run_pytest"
-            artifact_functions = {"validate_security_candidates", "validate_security_report"}
-            artifact = (step_artifact_name(step_record, "") or None) if function_id in artifact_functions else None
-            return lambda: self.functions.call_python_function(run, function_id, output_dir, artifact)
+            artifact = step_artifact_name(step_record, "") or None
+            return lambda: self.functions.call_python_functions(run, functions or ["run_pytest"], output_dir, artifact)
         if function == "require_status_pass" or step_type in {"gate", "manual"}:
             artifact = step_artifact_name(step_record, step_record.get("key", "review") + ".md")
             return lambda: asyncio.to_thread(self.functions.require_status, output_dir / artifact, "PASS")

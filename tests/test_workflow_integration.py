@@ -10,6 +10,7 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 
 from app.main import app
+from app.runtime_modules import api as runtime
 from app.services import workflow_config_service
 
 
@@ -74,6 +75,12 @@ class WorkflowIntegrationTests(unittest.TestCase):
             self.assertEqual(latest.status_code, 200, latest.text)
             run = latest.json()
             if run["status"] in {"done", "failed", "cancelled", "waiting_input"}:
+                cleanup_deadline = time.time() + 2
+                while time.time() < cleanup_deadline:
+                    task = runtime.running_tasks.get(run["id"])
+                    if task is None or task.done():
+                        return run
+                    time.sleep(0.01)
                 return run
             time.sleep(0.1)
         return run

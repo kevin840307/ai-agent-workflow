@@ -77,7 +77,8 @@ def summarize_command_failure(stdout: str, stderr: str) -> str:
 
 async def run_pytest(ctx: WorkflowFunctionContext) -> None:
     command = ctx.run.get("test_command") or os.environ.get("WORKFLOW_TEST_COMMAND", "python -m pytest")
-    await ctx.log(ctx.run, f"run_test: executing `{command}` in {ctx.project_dir}")
+    timeout_sec = _test_command_timeout_seconds()
+    await ctx.log(ctx.run, f"run_test: executing `{command}` in {ctx.project_dir} (timeout {timeout_sec:.0f}s)")
 
     def execute() -> subprocess.CompletedProcess:
         return subprocess.run(
@@ -87,9 +88,28 @@ async def run_pytest(ctx: WorkflowFunctionContext) -> None:
             capture_output=True,
             text=True,
             encoding="utf-8",
+            timeout=timeout_sec,
         )
 
-    proc = await asyncio.to_thread(execute)
+    try:
+        proc = await asyncio.to_thread(execute)
+    except subprocess.TimeoutExpired as exc:
+        stdout = exc.stdout or ""
+        stderr = exc.stderr or ""
+        if isinstance(stdout, bytes):
+            stdout = stdout.decode("utf-8", errors="replace")
+        if isinstance(stderr, bytes):
+            stderr = stderr.decode("utf-8", errors="replace")
+        result = (
+            f"Command: {command}\n"
+            f"ExitCode: TIMEOUT\n"
+            f"TimeoutSec: {timeout_sec:.0f}\n\n"
+            f"STDOUT:\n{stdout}\n\nSTDERR:\n{stderr}\n"
+        )
+        ctx.write_text(Path(ctx.run["workspace"]) / "output" / "test-result.md", result)
+        await ctx.refresh_artifacts(ctx.run["id"])
+        raise WorkflowFunctionError(f"Test command timed out after {timeout_sec:.0f} seconds. Open output/test-result.md for details.") from exc
+
     result = f"Command: {command}\nExitCode: {proc.returncode}\n\nSTDOUT:\n{proc.stdout}\n\nSTDERR:\n{proc.stderr}\n"
     ctx.write_text(Path(ctx.run["workspace"]) / "output" / "test-result.md", result)
     await ctx.refresh_artifacts(ctx.run["id"])
@@ -101,3 +121,12 @@ async def run_pytest(ctx: WorkflowFunctionContext) -> None:
             "Open output/test-result.md for full stdout/stderr."
             f"{detail}"
         )
+
+
+def _test_command_timeout_seconds() -> float:
+    raw = os.environ.get("WORKFLOW_TEST_TIMEOUT_SEC", "30")
+    try:
+        value = float(raw)
+    except (TypeError, ValueError):
+        value = 30.0
+    return max(1.0, min(value, 3600.0))

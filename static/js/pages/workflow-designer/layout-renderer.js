@@ -1,4 +1,4 @@
-import { ensureActiveTabForStep as ensureStepTab, tabsForStep } from "./step-tabs.js?v=20260701-step-detail-polish1";
+import { ensureActiveTabForStep as ensureStepTab, tabsForStep } from "./step-tabs.js?v=20260702-assets-bugfix1";
 
 export function installLayoutRenderer(ctx) {
   const {
@@ -240,6 +240,7 @@ function stepSearchText(step) {
     step.templatePath,
     step.filename,
     step.function,
+    ...(step.functions || []),
     step.reviewMode,
     step.aggregatorFunction,
     ...(step.expectedFiles || []),
@@ -438,7 +439,7 @@ function renderStepList() {
     const badges = [
       step.timeoutEnabled ? `<span class="badge running">${step.timeoutMinutes || 0}m</span>` : "",
       step.pauseAfterStep ? `<span class="badge waiting_input">human</span>` : "",
-      step.function ? `<span class="badge passed">${escapeHtml(functionMeta("functions", step.function || step.function)?.label || step.function)}</span>` : "",
+      functionBadge(step),
       step.reviewMode !== "none" ? `<span class="badge passed">${escapeHtml(formatReviewMode(step.reviewMode))}</span>` : "",
     ].filter(Boolean).join("");
     const detailItems = [
@@ -476,6 +477,15 @@ function renderStepList() {
       </article>
     `;
   }).join("") + renderStepFloatingActions(wf);
+}
+
+function functionBadge(step = {}) {
+  const functions = Array.isArray(step.functions) && step.functions.length ? step.functions : [step.function].filter(Boolean);
+  if (!functions.length) return "";
+  const first = functions[0];
+  const label = functionMeta("functions", first)?.label || first;
+  const suffix = functions.length > 1 ? ` +${functions.length - 1}` : "";
+  return `<span class="badge passed">${escapeHtml(label)}${escapeHtml(suffix)}</span>`;
 }
 
 function renderCanvas() {
@@ -524,14 +534,16 @@ function ensureActiveTabForStep(step) {
 function applyStepTypeDefaults(step) {
   if (!step) return;
   if (step.type === "validation") {
-    step.function = step.function || "validate_spec";
+    step.functions = Array.isArray(step.functions) && step.functions.length ? step.functions : [step.function || "validate_spec"];
+    step.function = step.functions[0] || "validate_spec";
     step.reviewMode = "none";
     step.command = "";
     step.pauseAfterStep = false;
     step.approvalRequired = false;
   }
   if (step.type === "python") {
-    step.function = step.function || "run_pytest";
+    step.functions = Array.isArray(step.functions) && step.functions.length ? step.functions : [step.function || "run_pytest"];
+    step.function = step.functions[0] || "run_pytest";
     step.reviewMode = "none";
     step.command = "";
   }

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 from pathlib import Path
 from typing import Any, Awaitable, Callable
 
@@ -72,7 +73,8 @@ class WorkflowFunctionService:
         if function:
             try:
                 ctx = self.context(run, output_dir)
-                result = function(ctx, artifact) if artifact else function(ctx)
+                signature = inspect.signature(function)
+                result = function(ctx, artifact) if artifact and len(signature.parameters) >= 2 else function(ctx)
                 if asyncio.iscoroutine(result):
                     await result
                 return
@@ -86,3 +88,17 @@ class WorkflowFunctionService:
             await run_python_asset(run, function_path, output_dir, artifact)
         except Exception as exc:
             raise WorkflowError(str(exc)) from exc
+
+    async def call_python_functions(
+        self,
+        run: dict[str, Any],
+        function_ids: list[str],
+        output_dir: Path,
+        artifact: str | None = None,
+    ) -> None:
+        ordered = [str(item or "").strip() for item in function_ids if str(item or "").strip()]
+        if not ordered:
+            raise WorkflowError("At least one Python function is required")
+        for index, function_id in enumerate(ordered, start=1):
+            await self.log(run, f"python function {index}/{len(ordered)}: {function_id}")
+            await self.call_python_function(run, function_id, output_dir, artifact)

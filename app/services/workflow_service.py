@@ -33,7 +33,14 @@ def _same_existing_project_path(left: str | None, right: str) -> bool:
 
 
 
+def _cleanup_done_tasks() -> None:
+    for task_run_id, task in list(runtime.running_tasks.items()):
+        if task.done():
+            runtime.running_tasks.pop(task_run_id, None)
+
+
 def start_workflow_task(run_id: str, start_index: int = 0) -> None:
+    _cleanup_done_tasks()
     task = asyncio.create_task(runtime.execute_workflow(run_id, start_index=start_index))
     runtime.running_tasks[run_id] = task
     task.add_done_callback(lambda _: runtime.running_tasks.pop(run_id, None))
@@ -156,6 +163,7 @@ async def get_latest_run_for_session(session_id: str) -> dict | None:
 
 
 async def create_workflow_run(session_id: str, body: runtime.CreateRunRequest) -> dict:
+    _cleanup_done_tasks()
     async with _run_creation_lock():
         data = await store_repository.read()
         session = next((session for session in data["sessions"] if session["id"] == session_id), None)
@@ -240,6 +248,7 @@ async def create_workflow_run(session_id: str, body: runtime.CreateRunRequest) -
 
 
 async def get_run(run_id: str) -> dict:
+    _cleanup_done_tasks()
     try:
         return await runtime.get_run_record(run_id)
     except HTTPException as exc:

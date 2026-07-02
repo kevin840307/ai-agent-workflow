@@ -18,7 +18,7 @@ class StaticArchitectureContractTests(unittest.TestCase):
         expected = [
             "static/js/pages/workflow-designer/controller.js",
             "static/js/pages/workflow-designer/asset-tools.js",
-            "static/js/pages/workflow-designer/asset-manager.js",
+            "static/js/pages/ai-workflow-assets/asset-manager.js",
             "static/js/pages/ai-workflow-assets.js",
             "static/js/pages/workflow-designer/function-catalog.js",
             "static/js/pages/workflow-designer/import-export.js",
@@ -57,7 +57,7 @@ class StaticArchitectureContractTests(unittest.TestCase):
         limits = {
             "static/js/pages/workflow-designer/controller.js": 1200,
             "static/js/pages/workflow-designer/asset-tools.js": 180,
-            "static/js/pages/workflow-designer/asset-manager.js": 320,
+            "static/js/pages/ai-workflow-assets/asset-manager.js": 320,
             "static/js/pages/ai-workflow-assets.js": 80,
             "static/js/pages/workflow-designer/layout-renderer.js": 700,
             "static/js/pages/workflow-designer/step-tabs.js": 80,
@@ -90,7 +90,7 @@ class StaticArchitectureContractTests(unittest.TestCase):
                 continue
             source = path.read_text(encoding="utf-8")
             versions.update(re.findall(r"\?v=([A-Za-z0-9_-]+)", source))
-        self.assertEqual(versions, {"20260701-step-detail-polish1"})
+        self.assertEqual(versions, {"20260702-assets-bugfix1"})
 
     def test_static_structure_document_mentions_designer_modules(self):
         source = (ROOT / "static/FRONTEND_STRUCTURE.md").read_text(encoding="utf-8")

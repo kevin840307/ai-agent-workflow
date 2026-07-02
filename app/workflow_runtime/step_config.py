@@ -6,18 +6,15 @@ from typing import Any
 def step_kind_from_type(step_type: str) -> str:
     """Normalize UI/workflow step type into runtime kind.
 
-    Backward compatibility:
-    - old ``ai`` / ``review`` / ``qwen`` steps now become provider-neutral
-      ``agent`` steps.
-    - legacy validation steps and python/gate/manual steps keep their dedicated runtime semantics.
+    UI/workflow ``validation`` steps are Python function steps at runtime.
+    Old ``ai`` / ``review`` / ``qwen`` steps become provider-neutral ``agent`` steps.
     """
     return {
         "ai": "agent",
         "qwen": "agent",
         "review": "agent",
         "agent": "agent",
-        "validation": "validator",
-        "validator": "validator",
+        "validation": "python",
         "python": "python",
         "test": "python",
         "gate": "gate",

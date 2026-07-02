@@ -129,7 +129,7 @@ failKeywords: FAIL
 aggregatorFunction: keyword_confidence
 ```
 
-舊版 `validator:` 僅保留 runtime 相容邏輯；新文件、UI、範例都使用 `function:`。
+新版正式欄位只使用 `function:` / `functions:`；`validator:` 不再是支援欄位。
 
 ## UI / CLI Sharing
 
@@ -162,3 +162,22 @@ project .ai-workflow 覆蓋 global asset
 新增 Python function：放 `functions/**/*.py`，加 `FUNCTION_META` 可讓 UI 顯示較友善名稱。
 
 新增 workflow：放 `workflows/*.workflow`。
+
+## Python Function execution model
+
+Python validator and Python tool are one concept: **Python Function Asset**. Runtime accepts either:
+
+```yaml
+function: validate_spec
+```
+
+or the ordered multi-function form:
+
+```yaml
+functions:
+  - validate_spec
+  - functions/check_spec.py
+  - run_pytest
+```
+
+The workflow runtime resolves each id/path through the same global/project asset resolver and executes them sequentially. The first failure stops the step and lets retry policy decide the next action.

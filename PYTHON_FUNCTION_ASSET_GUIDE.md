@@ -5,9 +5,9 @@
 舊欄位與舊資料夾：
 
 ```text
-validator: ...      # 舊版相容，不建議再用
+validator: ...      # 已移除，不再使用
 validators/        # 已移除
- tools/            # 已移除
+tools/             # 已移除
 ```
 
 新版統一使用：
@@ -195,3 +195,29 @@ skill: steps/common/human-interaction-rule.md
 ```text
 <project>/.ai-workflow/steps/common/human-interaction-rule.md
 ```
+
+## Multiple Python functions in one step
+
+Use `functions:` when a step must run more than one Python function. They run in the exact order listed. If any function fails, the step fails and follows the step retry policy.
+
+```yaml
+id: validate_and_test
+name: Validate and Test
+type: python
+functions:
+  - validate_spec
+  - functions/custom_check.py
+  - run_pytest
+outputs:
+  - spec.md
+retry: 2
+failAction: same_step
+```
+
+`function:` is still supported as a single-function shorthand:
+
+```yaml
+function: validate_spec
+```
+
+The UI shows a single **Python Functions** field in Basic settings. Enter one function per line. Advanced no longer has a second Python Function field, so Basic and Advanced do not conflict.

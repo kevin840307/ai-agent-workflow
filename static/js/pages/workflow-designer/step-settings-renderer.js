@@ -1,4 +1,4 @@
-import { tabsForStep } from "./step-tabs.js?v=20260701-step-detail-polish1";
+import { tabsForStep } from "./step-tabs.js?v=20260702-assets-bugfix1";
 
 export function installStepSettingsRenderer(ctx) {
   const {
@@ -113,12 +113,17 @@ function renderBasicTypeConfig(step, disabled, capabilities) {
       : "";
     return `
       <label class="designer-form-row">
-        <span class="designer-label">${step.type === "python" ? "Python Function" : "Check Function"}</span>
+        <span class="designer-label">Python Functions</span>
+        <textarea class="designer-textarea designer-functions-editor" rows="4" data-step-field="functionsText" ${disabled}>${escapeHtml(functionListValue(step))}</textarea>
+        <span class="designer-form-hint">One function per line. They run from top to bottom. You may use built-in ids such as validate_spec or asset paths such as functions/check.py.</span>
+      </label>
+      <label class="designer-form-row">
+        <span class="designer-label">Add / Replace First Function</span>
         <select class="designer-select" data-step-field="function" ${disabled}>
           ${functionOptions("functions", [["", "None"], ["validate_spec", "Validate Spec"], ["validate_todo", "Validate Todo"], ["run_pytest", "Run Pytest"]], step.function)}
         </select>
       </label>
-      ${functionHelp("functions", step.function, "Choose the Python function this step should run.")}
+      ${functionHelp("functions", step.function, "The first function controls function-specific UI hints. Additional functions execute sequentially.")}
       ${promptHint}
       ${expectedFilesPreview(step)}
     `;
@@ -153,10 +158,22 @@ function renderBasicTypeConfig(step, disabled, capabilities) {
   return "";
 }
 
+function functionListValue(step = {}) {
+  const values = Array.isArray(step.functions) && step.functions.length ? step.functions : [step.function].filter(Boolean);
+  return values.join("\n");
+}
+
+function functionListPreview(step = {}) {
+  const values = Array.isArray(step.functions) && step.functions.length ? step.functions : [step.function].filter(Boolean);
+  return values.length ? values.map(escapeHtml).join(" → ") : "No function configured.";
+}
+
 function expectedFilesPreview(step) {
   const files = Array.isArray(step.expectedFiles) ? step.expectedFiles.filter(Boolean) : [];
   return `
     <div class="designer-function-help">
+      <strong>Function order</strong>
+      <span>${functionListPreview(step)}</span>
       <strong>Expected files</strong>
       <span>${files.length ? files.map(escapeHtml).join(", ") : "No expected files configured."}</span>
     </div>
@@ -237,7 +254,7 @@ function renderSources(step, disabled, readonly) {
           <button type="button" data-designer-action="save-metadata-asset" ${disabled}>Save Metadata</button>
           <button type="button" data-designer-action="edit-python-asset" ${disabled}>Edit Python</button>
           <button type="button" data-designer-action="upload-python-asset" ${disabled}>Upload Python</button>
-          <a class="designer-button-link" href="/ai-workflow-assets" target="_blank" rel="noreferrer">Assets Library</a>
+          <a class="designer-button-link" href="/ai-workflow-assets" target="_blank" rel="noreferrer">Assets</a>
         </div>
         <div class="designer-form-hint">Runtime applies contract metadata first. Skill Path points to pure prompt markdown and can also be used as Template Path.</div>
       </section>
@@ -385,19 +402,10 @@ function renderAdvanced(step, disabled, readonly) {
       ${numberRow("Timeout Minutes", "timeoutMinutes", step.timeoutMinutes, disabled, "0", "1440", "1")}
       ${switchRow("Allow Interaction", "The selected agent can pause and ask the user questions.", "allowInteraction", step.allowInteraction, disabled)}
       ${switchRow("Thinking", "Pass a thinking/reasoning flag to compatible agents such as OpenCode.", "thinking", step.thinking, disabled)}
-      <label class="designer-form-row">
-        <span class="designer-label">Python Function</span>
-        <input class="designer-input" list="designerFunctionOptions" value="${escapeAttr(step.function || "")}" placeholder="validate_spec or functions/check.py" data-step-field="function" ${disabled} />
-        <datalist id="designerFunctionOptions">
-          ${functionOptions("functions", [["", "None"], ["validate_spec", "Validate Spec"], ["validate_todo", "Validate Todo"], ["run_pytest", "Run Pytest"]], step.function)
-            .replace(/<option value="([^"]*)">([^<]*)<\/option>/g, '<option value="$1">$2</option>')}
-        </datalist>
-      </label>
-      <div class="designer-footer-actions compact">
-        <button type="button" data-designer-action="edit-python-asset" ${disabled}>Edit Python Function</button>
-        <button type="button" data-designer-action="upload-python-asset" ${disabled}>Upload Python Function</button>
+      <div class="designer-runner-note">
+        <strong>Python functions moved to Basic</strong>
+        <span>Use Basic → Python Functions for both single and multi-function steps. Advanced keeps runtime controls only.</span>
       </div>
-      ${functionHelp("functions", step.function, "Optional Python function used by check and Python steps.")}
       ${showConsensus ? renderConsensusSettings(step, disabled) : ""}
       <div class="designer-list-editor">
         <div class="designer-section-row">

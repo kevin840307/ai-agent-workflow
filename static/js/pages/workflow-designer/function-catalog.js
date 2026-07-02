@@ -1,5 +1,5 @@
-import { BuiltInPromptParams } from "../workflow-designer-constants.js?v=20260701-step-detail-polish1";
-import { escapeHtml, options } from "./utils.js?v=20260701-step-detail-polish1";
+import { BuiltInPromptParams } from "../workflow-designer-constants.js?v=20260702-assets-bugfix1";
+import { escapeHtml, options } from "./utils.js?v=20260702-assets-bugfix1";
 
 const STEP_TYPE_UI_DEFAULTS = Object.freeze({
   ai: { supportsPrompt: true, supportsAgent: true, promptDefaults: true, tabs: ["basic", "sources", "retry", "advanced"] },
@@ -75,13 +75,13 @@ function availablePromptParamsFor(catalog) {
 function stepFunctionSelection(step = {}) {
   const type = String(step?.type || "ai");
   if (type === "validation" || type === "python") {
-    return { groupName: "functions", id: step.function || step.validator || "" };
+    return { groupName: "functions", id: step.function || "" };
   }
   if (type === "review") {
     return { groupName: "reviewStrategies", id: step.reviewMode || "" };
   }
   if (type === "gate" || type === "manual") {
-    return { groupName: "functions", id: step.function || step.validator || "" };
+    return { groupName: "functions", id: step.function || "" };
   }
   return { groupName: "", id: "" };
 }
@@ -118,7 +118,7 @@ function normalizedFunctionUi(meta) {
 function isLegacyConsensusAgentStep(step) {
   return Boolean(
     step &&
-      ((step.function === "consensus_agent" || step.validator === "consensus_agent") ||
+      ((step.function === "consensus_agent") ||
         step.key === "consensus_agent" ||
         step.key === "consensus_security_scan")
   );

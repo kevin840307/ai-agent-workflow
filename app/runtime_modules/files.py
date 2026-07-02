@@ -257,7 +257,7 @@ def project_file_snapshot(project_dir: Path) -> dict[str, tuple[int, int]]:
     snapshot: dict[str, tuple[int, int]] = {}
     if not project_dir.exists():
         return snapshot
-    ignored_dirs = {".git", ".vs", ".qwen", ".qwen-workflow", "__pycache__", ".pytest_cache", ".mypy_cache", "node_modules", ".venv", "venv"}
+    ignored_dirs = {".git", ".vs", ".qwen", ".qwen-workflow", ".ai-workflow", "__pycache__", ".pytest_cache", ".mypy_cache", "node_modules", ".venv", "venv", "workspaces", "dist", "build", ".next", "coverage"}
     for path in project_dir.rglob("*"):
         if not path.is_file():
             continue

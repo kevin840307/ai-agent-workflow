@@ -44,17 +44,54 @@ def normalize_artifact_name(value: str) -> str:
     return raw.lstrip("/") or "result.md"
 
 
-def step_function_name(step_record: dict[str, Any]) -> str:
-    config = step_config(step_record)
-    value = config.get("function") if config.get("function") is not None else config.get("validator")
+def parse_function_refs(value: Any) -> list[str]:
+    """Return an ordered list of Python function ids/paths from UI or metadata values.
+
+    New metadata uses `functions: [...]` for sequential execution. `function:` is
+    retained as a single-value shorthand. Strings may be newline- or comma-
+    separated so the UI can offer a simple ordered textarea.
+    """
+    if value is None:
+        return []
     if isinstance(value, dict):
-        return str(value.get("id") or value.get("function") or "")
-    return str(value or "")
+        value = value.get("id") or value.get("function") or value.get("path") or ""
+    if isinstance(value, (list, tuple)):
+        result: list[str] = []
+        for item in value:
+            result.extend(parse_function_refs(item))
+        return _unique_ordered(result)
+    raw = str(value or "").strip()
+    if not raw:
+        return []
+    parts = [part.strip() for chunk in raw.splitlines() for part in chunk.split(",")]
+    return _unique_ordered([part for part in parts if part])
 
 
-def step_validator_name(step_record: dict[str, Any]) -> str:
-    """Legacy alias. New code should use step_function_name()."""
-    return step_function_name(step_record)
+def _unique_ordered(values: list[str]) -> list[str]:
+    result: list[str] = []
+    seen: set[str] = set()
+    for value in values:
+        text = str(value or "").strip()
+        if text and text not in seen:
+            result.append(text)
+            seen.add(text)
+    return result
+
+
+def step_function_names(step_record: dict[str, Any]) -> list[str]:
+    config = step_config(step_record)
+    values: list[str] = []
+    if config.get("functions") is not None:
+        values.extend(parse_function_refs(config.get("functions")))
+    if config.get("function") is not None:
+        values.extend(parse_function_refs(config.get("function")))
+    return _unique_ordered(values)
+
+
+def step_function_name(step_record: dict[str, Any]) -> str:
+    names = step_function_names(step_record)
+    return names[0] if names else ""
+
 
 
 def step_agent_name(step_record: dict[str, Any], default: str = "") -> str:
