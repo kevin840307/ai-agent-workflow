@@ -20,7 +20,8 @@ Required checks:
   - `.qwen/settings.json`
   - `opencode.json`
 - Treat those settings as project-local runtime context only. Do not copy them to global settings.
-- Read files anywhere when needed for understanding, but all future edits must stay inside Project path.
+- Read files anywhere when needed for understanding, including shared reference files outside Project path.
+- All generated edits must stay inside Project path. Do not write to reference folders, sibling projects, or global agent settings.
 - If `architecture.md` already exists, update it only when it is incomplete or stale.
 - If `architecture.md` does not exist, create it in the project root.
 

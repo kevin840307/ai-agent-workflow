@@ -35,6 +35,7 @@ Rules:
 - Import production code from actual existing module paths shown in Project Profile / Architecture / Build result.
 - Keep tests separate from production code.
 - Do not create or modify production files.
+- You may use read-only context from outside Project path, but generated test files must stay inside this Project path.
 
 Return one or more blocks like:
 

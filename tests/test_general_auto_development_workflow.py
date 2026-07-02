@@ -260,6 +260,182 @@ Confidence: 0.98
             else:
                 os.environ["QWEN_USE_SERVE"] = old_use_serve
 
+    def test_general_auto_development_can_complete_bubble_sort_workflow(self) -> None:
+        def qwen_response(prompt: str) -> str:
+            lower = prompt.lower()
+            if "preparing a project" in lower:
+                return """FILE: architecture.md
+CONTENT:
+# Architecture
+
+## Project Summary
+- Current purpose: empty Python utility project.
+- User request: implement bubble sort.
+
+## Runtime Agent Settings
+- Qwen project settings: missing at `.qwen/settings.json`
+- OpenCode project settings: missing at `opencode.json`
+- Rule: agent read access may use project settings, but generated edits must remain inside the selected Project path.
+
+## Detected Stack
+- Primary language: Python
+- Framework/runtime: Python
+- Test framework: pytest
+- Package/build command: python -m pytest
+
+## Current Structure
+- Source layout: project root modules
+- Test layout: tests/
+- Important config files: validation.py
+
+## Implementation Rules
+- Follow the existing language and structure.
+- Keep production code and tests separate.
+- Do not edit files outside the selected Project path.
+- Do not skip the external validation script.
+END_FILE
+"""
+            if "create a practical implementation task plan" in lower:
+                return """# Todo
+
+Status: READY
+
+## Requirement
+- Implement a Python bubble sort function.
+
+## Task Index
+| ID | Task | Acceptance Criteria |
+| --- | --- | --- |
+| TASK-001 | Implement bubble sort | AC-001 |
+
+## Tasks
+
+### TASK-001: Implement bubble sort
+- Goal: provide bubble_sort(values) in bubble_sort.py.
+- Files: bubble_sort.py and tests/test_bubble_sort.py.
+- Acceptance Criteria:
+  - AC-001: bubble_sort returns a sorted list for normal, duplicate, negative, empty, and single-item inputs.
+- Validation:
+  - Covered by generated automated tests and validation.py.
+
+## Execution SOP
+- Step 1: Build production code only.
+- Step 2: Generate tests only.
+- Step 3: Run automated tests.
+- Step 4: Run mandatory external validation.
+
+## External Validation
+- validation.py is mandatory.
+- The workflow must retry Build when validation fails.
+
+## Suggested Todo Files
+- None.
+"""
+            if "generating focused automated tests" in lower:
+                return """FILE: tests/test_bubble_sort.py
+CONTENT:
+from bubble_sort import bubble_sort
+
+
+def test_bubble_sort_orders_numbers_without_mutating_input():
+    values = [5, 1, 4, 2, 8]
+    assert bubble_sort(values) == [1, 2, 4, 5, 8]
+    assert values == [5, 1, 4, 2, 8]
+
+
+def test_bubble_sort_handles_duplicates_negatives_and_empty_inputs():
+    assert bubble_sort([3, -1, 3, 0]) == [-1, 0, 3, 3]
+    assert bubble_sort([]) == []
+    assert bubble_sort([7]) == [7]
+END_FILE
+"""
+            if "implement the approved task plan" in lower:
+                return """FILE: bubble_sort.py
+CONTENT:
+from __future__ import annotations
+
+from collections.abc import Iterable
+from typing import TypeVar
+
+T = TypeVar("T")
+
+
+def bubble_sort(values: Iterable[T]) -> list[T]:
+    result = list(values)
+    n = len(result)
+    for end in range(n - 1, 0, -1):
+        swapped = False
+        for index in range(end):
+            if result[index] > result[index + 1]:
+                result[index], result[index + 1] = result[index + 1], result[index]
+                swapped = True
+        if not swapped:
+            break
+    return result
+END_FILE
+"""
+            return "Status: PASS\n"
+
+        old_mock = os.environ.get("QWEN_MOCK")
+        old_use_serve = os.environ.get("QWEN_USE_SERVE")
+        os.environ["QWEN_MOCK"] = "1"
+        os.environ["QWEN_USE_SERVE"] = "0"
+        try:
+            with tempfile.TemporaryDirectory() as tmp, patch(
+                "app.runtime_modules.qwen.mock_qwen_response", side_effect=qwen_response
+            ):
+                project = Path(tmp) / "bubble-project"
+                project.mkdir()
+                (project / "validation.py").write_text(
+                    "from bubble_sort import bubble_sort\n"
+                    "assert bubble_sort([9, 2, 5, 2, -3]) == [-3, 2, 2, 5, 9]\n"
+                    "assert bubble_sort(('b', 'a', 'c')) == ['a', 'b', 'c']\n"
+                    "print('bubble sort validation ok')\n",
+                    encoding="utf-8",
+                )
+                with TestClient(app) as client:
+                    session_response = client.post(
+                        "/api/sessions",
+                        json={"title": "Bubble Sort E2E", "project_path": str(project)},
+                    )
+                    self.assertEqual(session_response.status_code, 200, session_response.text)
+                    session = session_response.json()
+                    run_response = client.post(
+                        f"/api/sessions/{session['id']}/workflow-runs",
+                        json={
+                            "workflow_id": "general-auto-development",
+                            "requirement": "幫我用 Python 寫一個泡沫排序法",
+                            "project_path": str(project),
+                            "test_command": "python -m pytest",
+                            "validation_script": "validation.py",
+                        },
+                    )
+                    self.assertEqual(run_response.status_code, 200, run_response.text)
+                    run = self._wait_for_terminal_run(client, run_response.json())
+
+                    self.assertEqual(run["status"], "done", run.get("error"))
+                    self.assertEqual((project / "bubble_sort.py").read_text(encoding="utf-8").count("def bubble_sort"), 1)
+                    self.assertTrue((project / "tests" / "test_bubble_sort.py").exists())
+                    self.assertFalse((project.parent / "bubble_sort.py").exists())
+                    step_keys = [step["key"] for step in run["steps"]]
+                    self.assertLess(step_keys.index("build"), step_keys.index("generate_tests"))
+                    self.assertLess(step_keys.index("generate_tests"), step_keys.index("run_test"))
+                    self.assertLess(step_keys.index("run_test"), step_keys.index("run_external_validation"))
+                    output_dir = Path(run["workspace"]) / "output"
+                    self.assertIn("ExitCode: 0", (output_dir / "test-result.md").read_text(encoding="utf-8"))
+                    self.assertIn("bubble sort validation ok", (output_dir / "external-validation-result.md").read_text(encoding="utf-8"))
+                    self.assertIn("Status: PASS", (output_dir / "final-review.md").read_text(encoding="utf-8"))
+                    client.delete(f"/api/sessions/{session['id']}")
+        finally:
+            if old_mock is None:
+                os.environ.pop("QWEN_MOCK", None)
+            else:
+                os.environ["QWEN_MOCK"] = old_mock
+            if old_use_serve is None:
+                os.environ.pop("QWEN_USE_SERVE", None)
+            else:
+                os.environ["QWEN_USE_SERVE"] = old_use_serve
+
     def test_external_validation_fails_when_project_has_no_validation_script(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             project = Path(tmp) / "project"

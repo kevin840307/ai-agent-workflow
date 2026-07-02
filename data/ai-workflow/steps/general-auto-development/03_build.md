@@ -26,6 +26,7 @@ Rules:
 - Do not output explanations outside FILE blocks.
 - Do not create or modify test files in this Build step.
 - Keep generated edits inside Project path only.
+- You may use read-only context from outside Project path, but never write outside Project path.
 - Follow the existing architecture, language, source layout, naming style, and dependency style.
 - If the project has `.qwen/settings.json` or `opencode.json`, treat them as project-local agent settings only.
 - Fix every concrete validation failure mentioned in the failure feedback.
