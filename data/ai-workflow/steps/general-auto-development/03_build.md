@@ -9,6 +9,12 @@ Architecture:
 Todo:
 {{todo}}
 
+Generated tests:
+{{test_plan}}
+
+Latest test result:
+{{test_result}}
+
 Implementation review:
 {{step_output}}
 
@@ -26,6 +32,7 @@ Rules:
 - Follow the existing architecture, language, source layout, naming style, and dependency style.
 - If the project has `.qwen/settings.json` or `opencode.json`, treat them as project-local agent settings only.
 - Fix every concrete validation failure mentioned in the failure feedback.
+- If tests already exist from Generate Tests, implement production code that satisfies those tests without editing test files.
 - Do not mark the workflow complete; the mandatory external validation step will decide pass/fail.
 
 Path rules:

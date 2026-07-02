@@ -412,16 +412,17 @@ body.chat-mode .workflow-picker {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  min-width: min(260px, 32vw);
-  max-width: 320px;
-  height: 32px;
-  padding: 0 10px;
-  border: 1px solid rgba(148, 163, 184, 0.42);
-  border-radius: 999px;
-  background: var(--panel-2);
+  min-width: 0;
+  width: 100%;
+  min-height: 38px;
+  padding: 0 12px;
+  border: 1px solid rgba(15, 118, 110, 0.28);
+  border-radius: 12px;
+  background: linear-gradient(180deg, #ffffff, #f8fbfb);
   color: var(--muted);
   font-size: 12px;
   font-weight: 800;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82);
 }
 
 .validation-script-field span {
@@ -442,6 +443,10 @@ body.chat-mode .workflow-picker {
 
 body.chat-mode .validation-script-field {
   display: none !important;
+}
+
+.workflow-step-validation {
+  margin: 0 12px 12px;
 }
 
 .workflow-picker span {
@@ -586,11 +591,6 @@ body.chat-mode .composer-box {
     max-width: 280px;
   }
 
-  .validation-script-field {
-    min-width: min(220px, 38vw);
-    max-width: 260px;
-  }
-
   .workflow-picker select {
     max-width: 170px;
   }
@@ -617,7 +617,6 @@ body.chat-mode .composer-box {
 
   .composer-run-mode,
   .workflow-picker,
-  .validation-script-field,
   .composer-left,
   .composer-right {
     width: 100%;
@@ -1898,6 +1897,16 @@ body.artifact-modal-open {
   border: 1px solid rgba(226, 232, 240, 0.92);
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.72);
+}
+
+.workflow-preview-step.requires-validation {
+  border-color: rgba(15, 118, 110, 0.24);
+  background: #f5fbfa;
+}
+
+.workflow-preview-step.requires-validation .workflow-preview-step-output {
+  background: #dff7f1;
+  color: var(--accent-dark);
 }
 
 .workflow-preview-step-no {

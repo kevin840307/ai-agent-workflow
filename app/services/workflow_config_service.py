@@ -201,6 +201,7 @@ def normalize_step_config(step: dict) -> dict:
     item.setdefault("timeoutEnabled", False)
     item.setdefault("timeoutMinutes", 0)
     item.setdefault("allowInteraction", True)
+    item.setdefault("requiresValidationScript", False)
     item.setdefault("thinking", False)
     item.setdefault("agentOptions", {})
     item.setdefault("expectedFiles", [item["outputFile"]] if item.get("outputFile") else [])
@@ -275,6 +276,7 @@ def _contract_from_step(workflow_id: str, step: dict) -> dict[str, Any]:
         "injectFailureFeedback": bool(item.get("injectFailureFeedback", True)),
         "stopAfterFailures": int(item.get("stopAfterFailures") or 3),
         "allowInteraction": bool(item.get("allowInteraction", True)),
+        "requiresValidationScript": bool(item.get("requiresValidationScript", False)),
         "thinking": bool(item.get("thinking", False)),
         "approvalRequired": bool(item.get("approvalRequired", False)),
         "pauseAfterStep": bool(item.get("pauseAfterStep", False)),

@@ -17,6 +17,7 @@ keepSameSession: true
 injectFailureFeedback: true
 stopAfterFailures: 10
 allowInteraction: false
+requiresValidationScript: true
 thinking: false
 approvalRequired: false
 pauseAfterStep: false

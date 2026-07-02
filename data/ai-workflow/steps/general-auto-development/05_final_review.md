@@ -12,6 +12,9 @@ Todo:
 Build result:
 {{build_result}}
 
+Test result:
+{{test_result}}
+
 External validation result:
 {{external_validation_result}}
 
@@ -29,6 +32,7 @@ Confidence: 0.00-1.00
 - ...
 
 ## Verification
+- Automated test result:
 - External validation script result:
 - Requirement coverage:
 - Architecture alignment:
@@ -37,4 +41,4 @@ Confidence: 0.00-1.00
 ## Remaining Risks
 - ...
 
-Status must be PASS only when the external validation result contains `Status: PASS` and the implementation clearly satisfies the current requirement.
+Status must be PASS only when the automated test result and external validation result both passed, and the implementation clearly satisfies the current requirement.

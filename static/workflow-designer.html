@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Workflow Designer</title>
-    <link rel="stylesheet" href="/static/styles.css?v=20260702-assets-bugfix1" />
+    <link rel="stylesheet" href="/static/styles.css?v=20260702-assets-bugfix3" />
   </head>
   <body data-page="workflow-designer">
     <div class="designer-shell">
@@ -79,32 +79,35 @@
           </article>
         </section>
 
-        <section class="designer-cli-card" aria-label="Workflow CLI commands">
-          <div class="designer-cli-head">
+        <details class="designer-cli-card" id="designerCliCommands">
+          <summary class="designer-cli-summary">
             <div>
               <span class="designer-eyebrow">Run this workflow</span>
               <h3>CLI commands</h3>
             </div>
+            <span id="designerCliWorkflowName">Select workflow</span>
+          </summary>
+          <div class="designer-cli-head">
             <p>Use <code>&lt;target&gt;</code> for the project folder and replace <code>需求</code> with the user request.</p>
           </div>
           <div class="designer-cli-command-list">
             <div class="designer-cli-command">
               <span>Auto CLI</span>
-              <code id="designerAutoCliCommand">aiwf &lt;target&gt; --engine auto --user "需求"</code>
+              <code id="designerAutoCliCommand">python -m app.cli.aiwf . --engine auto --user "需求"</code>
               <button type="button" data-designer-action="copy-cli-command" data-command-target="designerAutoCliCommand">Copy</button>
             </div>
             <div class="designer-cli-command">
               <span>Qwen CLI</span>
-              <code id="designerQwenCliCommand">/wf &lt;target&gt; --user "需求"</code>
+              <code id="designerQwenCliCommand">/wf --engine qwen --user "需求"</code>
               <button type="button" data-designer-action="copy-cli-command" data-command-target="designerQwenCliCommand">Copy</button>
             </div>
             <div class="designer-cli-command">
               <span>OpenCode CLI</span>
-              <code id="designerOpenCodeCliCommand">/wf &lt;target&gt; --user "需求"</code>
+              <code id="designerOpenCodeCliCommand">/wf --engine opencode --user "需求"</code>
               <button type="button" data-designer-action="copy-cli-command" data-command-target="designerOpenCodeCliCommand">Copy</button>
             </div>
           </div>
-        </section>
+        </details>
 
 
         <section class="designer-assets-callout" aria-label="Workflow asset library shortcut">
@@ -242,6 +245,6 @@
       </main>
     </div>
 
-    <script type="module" src="/static/js/main.js?v=20260702-assets-bugfix1"></script>
+    <script type="module" src="/static/js/main.js?v=20260702-assets-bugfix3"></script>
   </body>
 </html>

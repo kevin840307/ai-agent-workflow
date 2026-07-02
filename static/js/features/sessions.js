@@ -1,4 +1,4 @@
-import { LocalStore } from "../core/storage.js?v=20260702-assets-bugfix1";
+import { LocalStore } from "../core/storage.js?v=20260702-assets-bugfix3";
 
 const COLLAPSED_PROJECTS_KEY = "ui.collapsedProjectKeys";
 

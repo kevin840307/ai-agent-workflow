@@ -98,6 +98,34 @@ class AiWorkflowCliTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(body.workflow_id, "general-auto-development")
             self.assertEqual(body.validation_script, "tools/check_config.py")
 
+    async def test_cli_auto_shortcut_defaults_target_to_current_directory(self) -> None:
+        session = {"id": "session-default-target", "project_path": "."}
+        created_run = {
+            "id": "run-default-target",
+            "session_id": "session-default-target",
+            "status": "queued",
+            "project_path": ".",
+        }
+        with patch.object(aiwf, "_init_runtime", new=AsyncMock()), patch.object(aiwf, "create_project", new=AsyncMock(return_value=session)), patch.object(
+            aiwf.workflow_service,
+            "create_workflow_run",
+            new=AsyncMock(return_value=created_run),
+        ) as create_run:
+            with redirect_stdout(StringIO()):
+                code = await aiwf.run_cli([
+                    "--engine",
+                    "auto",
+                    "--user",
+                    "build a config validation tool",
+                    "--workflow",
+                    "general-auto-development",
+                ])
+
+        self.assertEqual(code, 0)
+        _, body = create_run.await_args.args
+        self.assertEqual(body.project_path, ".")
+        self.assertEqual(body.requirement, "build a config validation tool")
+
 
 if __name__ == "__main__":
     unittest.main()

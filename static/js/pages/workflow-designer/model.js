@@ -1,5 +1,5 @@
-import { TemplatePresets } from "../workflow-designer-constants.js?v=20260702-assets-bugfix1";
-import { clone, makeId } from "./utils.js?v=20260702-assets-bugfix1";
+import { TemplatePresets } from "../workflow-designer-constants.js?v=20260702-assets-bugfix3";
+import { clone, makeId } from "./utils.js?v=20260702-assets-bugfix3";
 
 function createStep(overrides = {}) {
   const key = overrides.key || makeId("step");
@@ -46,6 +46,7 @@ function createStep(overrides = {}) {
     timeoutEnabled: overrides.timeoutEnabled ?? false,
     timeoutMinutes: overrides.timeoutMinutes ?? 0,
     allowInteraction: overrides.allowInteraction ?? false,
+    requiresValidationScript: overrides.requiresValidationScript ?? false,
     thinking: overrides.thinking ?? false,
     agentOptions: clone(overrides.agentOptions || {}),
     agentCount: overrides.agentCount ?? 3,

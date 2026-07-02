@@ -420,6 +420,7 @@ def normalize_contract(contract: dict[str, Any], *, fallback_id: str = "contract
         "inject_failure_feedback": "injectFailureFeedback",
         "stop_after_failures": "stopAfterFailures",
         "allow_interaction": "allowInteraction",
+        "requires_validation_script": "requiresValidationScript",
         "approval_required": "approvalRequired",
         "pause_after_step": "pauseAfterStep",
         "approval_message": "approvalMessage",
@@ -522,7 +523,7 @@ def apply_contract_to_step(step: dict[str, Any], contract: dict[str, Any]) -> di
     for field, transform in direct_fields.items():
         _set_if_present(item, metadata, field, field, transform=transform)
 
-    for field in ["enabled", "keepSameSession", "injectFailureFeedback", "allowInteraction", "thinking"]:
+    for field in ["enabled", "keepSameSession", "injectFailureFeedback", "allowInteraction", "requiresValidationScript", "thinking"]:
         _set_if_present(item, metadata, field, field, transform=_coerce_bool)
     for field in ["stopAfterFailures"]:
         _set_if_present(item, metadata, field, field, transform=lambda value: int(value or 0))
@@ -756,6 +757,7 @@ def step_from_contract(contract: dict[str, Any], index: int = 0) -> dict[str, An
         "timeoutEnabled": bool(metadata.get("timeout")),
         "timeoutMinutes": round(float(metadata.get("timeout") or 0) / 60, 3) if metadata.get("timeout") else 0,
         "allowInteraction": _coerce_bool(metadata.get("allowInteraction", False)),
+        "requiresValidationScript": _coerce_bool(metadata.get("requiresValidationScript", False)),
         "thinking": _coerce_bool(metadata.get("thinking", False)),
         "pauseAfterStep": _coerce_bool(metadata.get("approval", False)),
         "approvalRequired": _coerce_bool(metadata.get("approval", False)),

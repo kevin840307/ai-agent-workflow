@@ -40,8 +40,12 @@ def normalize_cli_args(argv: Sequence[str] | None) -> list[str] | None:
     args = list(argv)
     if not args or args[0] in {"run", "assets"} or "--user" not in args:
         return args
-    target = args[0]
-    rest = args[1:]
+    if args[0].startswith("-"):
+        target = "."
+        rest = args
+    else:
+        target = args[0]
+        rest = args[1:]
     normalized = ["run", "--project", target]
     skip_next = False
     for index, value in enumerate(rest):

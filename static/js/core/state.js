@@ -1,4 +1,4 @@
-import { LocalStore, StorageKeys } from "./storage.js?v=20260702-assets-bugfix1";
+import { LocalStore, StorageKeys } from "./storage.js?v=20260702-assets-bugfix3";
 
 export const AppState = {
   sessions: [],
@@ -18,4 +18,5 @@ export const AppState = {
   defaultAgent: "agent",
   workflows: [],
   selectedWorkflowId: LocalStore.getString(StorageKeys.selectedWorkflowId, "system-controlled-qwen") || "system-controlled-qwen",
+  validationScript: "",
 };

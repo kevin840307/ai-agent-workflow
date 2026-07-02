@@ -1,7 +1,13 @@
 # General Auto Development Workflow Usage
 
-This workflow is designed for one-shot automated implementation from a short user requirement.
-It supports Web UI, API, and CLI usage with the same backend runtime.
+This workflow turns a short requirement into project changes with a mandatory Python validation step.
+It uses the same backend path from the Web UI, API, and CLI, so Qwen and OpenCode runs share the same workflow behavior.
+
+## Workflow Id
+
+```text
+general-auto-development
+```
 
 ## What It Does
 
@@ -13,18 +19,12 @@ It supports Web UI, API, and CLI usage with the same backend runtime.
 6. Sends validation failures back to Build for retry.
 7. Performs final review and requires `Status: PASS`.
 
-The workflow id is:
-
-```text
-general-auto-development
-```
-
 ## Web UI
 
 1. Open the runner page.
 2. Select a project.
 3. Select `General Auto Development`.
-4. Enter the requirement.
+4. Enter the user requirement.
 5. Optional: fill `Validate` with a Python validation script path.
 6. Press `Run`.
 
@@ -38,34 +38,36 @@ C:\Users\kevin\validators\check_config_diff.py
 If `Validate` is empty, the workflow searches the project root for:
 
 ```text
-驗證.py
 validation.py
 validate.py
 verify.py
 check.py
 ```
 
+The runtime also supports a project-root script named with the Chinese word for validation, but the recommended portable file names are the ASCII names above.
+
 ## CLI
 
 Auto CLI shortcut:
 
 ```powershell
-aiwf C:\my-project --engine auto --user "製作config驗證小工具" --workflow general-auto-development --validation-script tools\check_config.py
+python -m app.cli.aiwf . --engine auto --user "build a config validation tool" --workflow general-auto-development --validation-script tools\check_config.py
 ```
 
 Standard CLI form:
 
 ```powershell
-aiwf run "製作config驗證小工具" --project C:\my-project --workflow general-auto-development --validation-script tools\check_config.py
+aiwf run "build a config validation tool" --project C:\my-project --workflow general-auto-development --validation-script tools\check_config.py
 ```
 
 Qwen/OpenCode slash-command template shown in Workflow Designer:
 
 ```text
-/wf <target> --user "需求"
+/wf --engine qwen --workflow general-auto-development --user "requirement"
 ```
 
-Those slash-command forms are templates for agent-side command integrations. The backend workflow path is still the same: project path, workflow id, user requirement, and optional validation script.
+Those slash-command forms are templates for agent-side command integrations.
+The backend workflow path is still the same: project path, workflow id, user requirement, and optional validation script.
 
 ## API
 
@@ -77,7 +79,7 @@ Content-Type: application/json
 ```json
 {
   "workflow_id": "general-auto-development",
-  "requirement": "製作config CRUD小工具",
+  "requirement": "build a config CRUD tool",
   "validation_script": "tools/check_config.py"
 }
 ```

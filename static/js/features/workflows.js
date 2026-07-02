@@ -1,4 +1,4 @@
-import { LocalStore, StorageKeys } from "../core/storage.js?v=20260702-assets-bugfix1";
+import { LocalStore, StorageKeys } from "../core/storage.js?v=20260702-assets-bugfix3";
 
 export function createWorkflows(ctx) {
   const { api, state, ui } = ctx;
@@ -30,6 +30,10 @@ export function createWorkflows(ctx) {
 
   function enabledSteps(workflow) {
     return (workflow?.steps || []).filter((step) => step.enabled !== false);
+  }
+
+  function requiresValidationScript(workflow) {
+    return enabledSteps(workflow).some((step) => step.requiresValidationScript);
   }
 
   function hasLoadedRunForWorkflow(workflowId) {
@@ -163,16 +167,21 @@ export function createWorkflows(ctx) {
       const stepsHtml = compact ? "" : `
           <div class="workflow-preview-steps" aria-label="Selected workflow steps">
             ${steps.map((step, index) => `
-              <div class="workflow-preview-step">
+              <div class="workflow-preview-step${step.requiresValidationScript ? " requires-validation" : ""}">
                 <span class="workflow-preview-step-no">${index + 1}</span>
                 <span class="workflow-preview-step-main">
                   <strong>${ui.escapeHtml(step.name || step.key || `Step ${index + 1}`)}</strong>
                   <small>${ui.escapeHtml(step.key || "")}${step.type ? ` - ${ui.escapeHtml(step.type)}` : ""}</small>
                 </span>
-                <span class="workflow-preview-step-output">${ui.escapeHtml(outputLabel(step))}</span>
+                <span class="workflow-preview-step-output">${ui.escapeHtml(step.requiresValidationScript ? "Validate.py" : outputLabel(step))}</span>
               </div>
             `).join("")}
           </div>`;
+      const validationHtml = !compact && requiresValidationScript(workflow) ? `
+          <label class="validation-script-field workflow-step-validation" id="validationScriptField" title="Optional Python validation script for this run">
+            <span>Validate.py</span>
+            <input id="validationScript" type="text" value="${ui.escapeHtml(state.validationScript || "")}" placeholder="tools/check_config.py or C:\\path\\validate.py" />
+          </label>` : "";
       preview.innerHTML = `
         <div class="workflow-preview-card${compact ? " locked compact" : ""}">
           <div class="workflow-preview-head">
@@ -188,6 +197,7 @@ export function createWorkflows(ctx) {
             </div>
           </div>
           ${stepsHtml}
+          ${validationHtml}
         </div>
       `;
     },

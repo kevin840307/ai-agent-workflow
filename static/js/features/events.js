@@ -32,6 +32,11 @@ export function createEvents(ctx) {
         event.stopPropagation();
         ctx.features.workflows.select(option.dataset.workflowId);
       });
+      document.addEventListener("input", (event) => {
+        if (event.target?.id === "validationScript") {
+          ctx.state.validationScript = event.target.value || "";
+        }
+      });
       ui.on("saveRequirement", "click", () => ctx.features.requirements.save());
       ui.on("runWorkflow", "click", () => ctx.features.chat.submit());
       ui.on("modeWorkflow", "click", () => ctx.features.chat.setMode("workflow"));

@@ -1,20 +1,20 @@
-import { createAppContext } from "../core/context.js?v=20260702-assets-bugfix1";
-import { createArtifacts } from "../features/artifacts.js?v=20260702-assets-bugfix1";
-import { createChat } from "../features/chat.js?v=20260702-assets-bugfix1";
-import { createComposer } from "../features/composer.js?v=20260702-assets-bugfix1";
-import { createConfig } from "../features/config.js?v=20260702-assets-bugfix1";
-import { createConsole } from "../features/console.js?v=20260702-assets-bugfix1";
-import { createEvents } from "../features/events.js?v=20260702-assets-bugfix1";
-import { createEventStream } from "../features/event-stream.js?v=20260702-assets-bugfix1";
-import { createInteractions } from "../features/interactions.js?v=20260702-assets-bugfix1";
-import { createLayout } from "../features/layout.js?v=20260702-assets-bugfix1";
-import { createMessages } from "../features/messages.js?v=20260702-assets-bugfix1";
-import { createModal } from "../features/modal.js?v=20260702-assets-bugfix1";
-import { createRequirements } from "../features/requirements.js?v=20260702-assets-bugfix1";
-import { createRuns } from "../features/runs.js?v=20260702-assets-bugfix1";
-import { createSessions } from "../features/sessions.js?v=20260702-assets-bugfix1";
-import { createWorkflows } from "../features/workflows.js?v=20260702-assets-bugfix1";
-import { createWorkflowNotification } from "../features/workflow-notification.js?v=20260702-assets-bugfix1";
+import { createAppContext } from "../core/context.js?v=20260702-assets-bugfix3";
+import { createArtifacts } from "../features/artifacts.js?v=20260702-assets-bugfix3";
+import { createChat } from "../features/chat.js?v=20260702-assets-bugfix3";
+import { createComposer } from "../features/composer.js?v=20260702-assets-bugfix3";
+import { createConfig } from "../features/config.js?v=20260702-assets-bugfix3";
+import { createConsole } from "../features/console.js?v=20260702-assets-bugfix3";
+import { createEvents } from "../features/events.js?v=20260702-assets-bugfix3";
+import { createEventStream } from "../features/event-stream.js?v=20260702-assets-bugfix3";
+import { createInteractions } from "../features/interactions.js?v=20260702-assets-bugfix3";
+import { createLayout } from "../features/layout.js?v=20260702-assets-bugfix3";
+import { createMessages } from "../features/messages.js?v=20260702-assets-bugfix3";
+import { createModal } from "../features/modal.js?v=20260702-assets-bugfix3";
+import { createRequirements } from "../features/requirements.js?v=20260702-assets-bugfix3";
+import { createRuns } from "../features/runs.js?v=20260702-assets-bugfix3";
+import { createSessions } from "../features/sessions.js?v=20260702-assets-bugfix3";
+import { createWorkflows } from "../features/workflows.js?v=20260702-assets-bugfix3";
+import { createWorkflowNotification } from "../features/workflow-notification.js?v=20260702-assets-bugfix3";
 
 function registerWorkflowRunnerFeatures(ctx) {
   ctx.features.layout = createLayout(ctx);

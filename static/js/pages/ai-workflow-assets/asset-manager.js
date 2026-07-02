@@ -1,3 +1,5 @@
+import { renderMarkdownPreview } from "./markdown-preview.js?v=20260702-assets-bugfix3";
+
 const WORKFLOW_ASSET_API = "/api/workflow-assets";
 const TYPE_DEFAULTS = {
   steps: { path: "steps/new-skill.md", content: "FILENAME: result.md\n\nRequirement:\n{{requirement}}\n" },
@@ -17,7 +19,7 @@ export function installWorkflowAssetManager(ctx) {
   const markWorkflowDirty = ctx.markWorkflowDirty || (() => {});
   const renderSettings = ctx.renderSettings || (() => {});
   const renderWorkflowViewOnly = ctx.renderWorkflowViewOnly || (() => {});
-  const state = { assets: [], selected: null, loading: false };
+  const state = { assets: [], selected: null, loading: false, view: "edit" };
 
   function bindEvents() {
     el("designerAssetProjectPath")?.addEventListener("change", refreshAssetList);
@@ -98,6 +100,7 @@ export function installWorkflowAssetManager(ctx) {
     try {
       const file = await designerApi(`${WORKFLOW_ASSET_API}/file?path=${encodeURIComponent(state.selected.path)}&scope=${encodeURIComponent(state.selected.scope)}${projectQuery("&")}`);
       setValue("designerAssetContent", file.content || "");
+      renderEditorView();
     } catch (error) {
       toast(`Could not read asset: ${error.message}`);
     }
@@ -147,6 +150,8 @@ export function installWorkflowAssetManager(ctx) {
     state.selected = { scope: filterScope(), type, path: sample.path, name: sample.path.split("/").pop(), size: 0 };
     syncInputsFromSelected();
     setValue("designerAssetContent", sample.content);
+    state.view = "edit";
+    renderEditorView();
     renderAssetList();
   }
 
@@ -161,6 +166,7 @@ export function installWorkflowAssetManager(ctx) {
       setValue("designerAssetType", type);
       setValue("designerAssetPath", normalizeAssetPath(`${type}/${file.name}`, type));
       setValue("designerAssetContent", await file.text());
+      renderEditorView();
       await saveAsset();
     }, { once: true });
     input.click();
@@ -191,7 +197,17 @@ export function installWorkflowAssetManager(ctx) {
   }
 
   function dispatch(name) {
-    ({ refresh: refreshAssetList, new: newAsset, save: saveAsset, delete: deleteAsset, rename: renameAsset, upload: uploadAsset, apply: applySelectedToStep }[name] || (() => {}))();
+    ({
+      refresh: refreshAssetList,
+      new: newAsset,
+      save: saveAsset,
+      delete: deleteAsset,
+      rename: renameAsset,
+      upload: uploadAsset,
+      apply: applySelectedToStep,
+      "view-edit": () => setEditorView("edit"),
+      "view-preview": () => setEditorView("preview"),
+    }[name] || (() => {}))();
   }
 
   function renderAll() { syncInputsFromSelected(); renderAssetList(); }
@@ -213,11 +229,38 @@ export function installWorkflowAssetManager(ctx) {
     setValue("designerAssetScope", selected.scope || "global");
     setValue("designerAssetType", selected.type || selected.path?.split("/")[0] || "steps");
     setValue("designerAssetPath", selected.path || "");
+    renderEditorView();
   }
 
   function syncSelectedFromInputs() {
     const path = el("designerAssetPath")?.value || "";
     state.selected = { ...(state.selected || {}), scope: filterScope(), type: filterType(), path, name: path.split("/").pop() || "" };
+    renderEditorView();
+  }
+
+  function setEditorView(view) {
+    state.view = view === "preview" ? "preview" : "edit";
+    renderEditorView();
+  }
+
+  function renderEditorView() {
+    const edit = el("designerAssetContent");
+    const preview = el("designerAssetPreview");
+    const editTab = el("designerAssetEditTab");
+    const previewTab = el("designerAssetPreviewTab");
+    if (!edit || !preview) return;
+    const previewMode = state.view === "preview";
+    edit.hidden = previewMode;
+    preview.hidden = !previewMode;
+    editTab?.classList.toggle("active", !previewMode);
+    previewTab?.classList.toggle("active", previewMode);
+    previewTab?.toggleAttribute("disabled", !isMarkdownAsset());
+    if (previewMode) preview.innerHTML = renderMarkdownPreview(edit.value || "", isMarkdownAsset());
+  }
+
+  function isMarkdownAsset() {
+    const path = el("designerAssetPath")?.value || state.selected?.path || "";
+    return /\.(md|markdown|txt)$/i.test(path);
   }
 
   function filterScope() { return el("designerAssetScope")?.value || "global"; }

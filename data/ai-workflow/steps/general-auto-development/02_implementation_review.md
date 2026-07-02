@@ -23,6 +23,7 @@ Confidence: 0.00-1.00
 - The plan follows the current project architecture and detected language.
 - Tasks are small but not over-split.
 - Every task has acceptance criteria.
+- The plan includes focused automated tests before external validation.
 - The mandatory external validation step is present and cannot be skipped.
 - Edits are constrained to the selected Project path.
 

@@ -4,7 +4,7 @@ import {
   SourceTypes,
   StepTypes,
   TemplatePresets,
-} from "../workflow-designer-constants.js?v=20260702-assets-bugfix1";
+} from "../workflow-designer-constants.js?v=20260702-assets-bugfix3";
 import {
   clone,
   copyTextToClipboard,
@@ -19,7 +19,7 @@ import {
   readInputValue,
   setText,
   toast,
-} from "./utils.js?v=20260702-assets-bugfix1";
+} from "./utils.js?v=20260702-assets-bugfix3";
 import {
   createStep,
   createWorkflow,
@@ -32,7 +32,7 @@ import {
   normalizeFunctionList,
   normalizeStep,
   normalizeWorkflow,
-} from "./model.js?v=20260702-assets-bugfix1";
+} from "./model.js?v=20260702-assets-bugfix3";
 import {
   availablePromptParamsFor,
   functionHelpFor,
@@ -40,12 +40,12 @@ import {
   functionOptionsFor,
   stepUiCapabilitiesFor,
   workflowFunctionCountsFor,
-} from "./function-catalog.js?v=20260702-assets-bugfix1";
-import { installLayoutRenderer } from "./layout-renderer.js?v=20260702-assets-bugfix1";
-import { installStepSettingsRenderer } from "./step-settings-renderer.js?v=20260702-assets-bugfix1";
-import { installTemplateEditor } from "./template-editor.js?v=20260702-assets-bugfix1";
-import { installImportExportTools } from "./import-export.js?v=20260702-assets-bugfix1";
-import { installWorkflowAssetTools } from "./asset-tools.js?v=20260702-assets-bugfix1";
+} from "./function-catalog.js?v=20260702-assets-bugfix3";
+import { installLayoutRenderer } from "./layout-renderer.js?v=20260702-assets-bugfix3";
+import { installStepSettingsRenderer } from "./step-settings-renderer.js?v=20260702-assets-bugfix3";
+import { installTemplateEditor } from "./template-editor.js?v=20260702-assets-bugfix3";
+import { installImportExportTools } from "./import-export.js?v=20260702-assets-bugfix3";
+import { installWorkflowAssetTools } from "./asset-tools.js?v=20260702-assets-bugfix3";
 
 const STORAGE_KEY = "qwenWorkflow.workflowDesigner.ui.v1";
 const WORKFLOW_API = "/api/workflows";
@@ -448,7 +448,8 @@ function updateFromInput(input) {
     if (field === "skillPath" && isAiWorkflowStepPath(value)) {
       step.templatePath = value;
     }
-    if (["name", "templatePath", "filename", "outputFile", "contractId", "contractPath", "metadataPath", "skillPath", "aggregatorFunction", "agent", "provider", "maxRetries", "failAction", "retryFromStepKey", "keepSameSession", "injectFailureFeedback", "timeoutEnabled", "timeoutMinutes", "thinking", "functionsText"].includes(field)) renderWorkflowViewOnly();
+    if (["name", "templatePath", "filename", "outputFile", "contractId", "contractPath", "metadataPath", "skillPath", "aggregatorFunction", "agent", "provider", "maxRetries", "failAction", "retryFromStepKey", "keepSameSession", "injectFailureFeedback", "timeoutEnabled", "timeoutMinutes", "requiresValidationScript", "thinking", "functionsText"].includes(field)) renderWorkflowViewOnly();
+    if (field === "requiresValidationScript") renderWorkflowLabels();
     renderStepEditorHeader();
     markWorkflowDirty();
     return;

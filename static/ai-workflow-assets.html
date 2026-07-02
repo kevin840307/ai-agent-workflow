@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>AI Workflow Assets</title>
-    <link rel="stylesheet" href="/static/styles.css?v=20260702-assets-bugfix1" />
+    <link rel="stylesheet" href="/static/styles.css?v=20260702-assets-bugfix3" />
   </head>
   <body data-page="ai-workflow-assets">
     <div class="designer-shell assets-shell">
@@ -85,7 +85,14 @@
                 <span class="designer-label">Asset Path</span>
                 <input id="designerAssetPath" class="designer-input" placeholder="steps/my-skill.md / contracts/my-step.yaml / functions/check.py" />
               </label>
-              <textarea id="designerAssetContent" class="designer-textarea designer-asset-editor" spellcheck="false" placeholder="Select or create an asset..."></textarea>
+              <div class="designer-asset-editor-tabs" role="group" aria-label="Asset editor view">
+                <button id="designerAssetEditTab" type="button" class="active" data-asset-manager-action="view-edit">Edit</button>
+                <button id="designerAssetPreviewTab" type="button" data-asset-manager-action="view-preview">Preview</button>
+              </div>
+              <div class="designer-asset-editor-surface">
+                <textarea id="designerAssetContent" class="designer-textarea designer-asset-editor" spellcheck="false" placeholder="Select or create an asset..."></textarea>
+                <div id="designerAssetPreview" class="designer-asset-preview" hidden></div>
+              </div>
               <div class="designer-footer-actions compact">
                 <button type="button" data-asset-manager-action="save" class="primary">Save Asset</button>
                 <button type="button" data-asset-manager-action="rename">Rename</button>
@@ -97,6 +104,6 @@
         </section>
       </main>
     </div>
-    <script type="module" src="/static/js/main.js?v=20260702-assets-bugfix1"></script>
+    <script type="module" src="/static/js/main.js?v=20260702-assets-bugfix3"></script>
   </body>
 </html>

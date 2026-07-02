@@ -1,4 +1,4 @@
-import { ensureActiveTabForStep as ensureStepTab, tabsForStep } from "./step-tabs.js?v=20260702-assets-bugfix1";
+import { ensureActiveTabForStep as ensureStepTab, tabsForStep } from "./step-tabs.js?v=20260702-assets-bugfix3";
 
 export function installLayoutRenderer(ctx) {
   const {
@@ -107,7 +107,21 @@ function renderWorkflowLabels() {
   if (el("designerResetDraft")) el("designerResetDraft").disabled = readonly;
   if (el("designerDuplicateCustomWorkflow")) el("designerDuplicateCustomWorkflow").disabled = readonly;
   if (el("designerDeleteWorkflow")) el("designerDeleteWorkflow").disabled = readonly;
+  renderCliCommands(wf);
   renderSidebar();
+}
+
+function renderCliCommands(wf) {
+  const workflowId = wf.id || "workflow-id";
+  const validationSuffix = workflowRequiresValidationScript(wf) ? " --validation-script <validate.py>" : "";
+  setText("designerCliWorkflowName", wf.name || workflowId);
+  setText("designerAutoCliCommand", `python -m app.cli.aiwf . --engine auto --user "需求" --workflow ${workflowId}${validationSuffix}`);
+  setText("designerQwenCliCommand", `/wf --engine qwen --workflow ${workflowId} --user "需求"${validationSuffix}`);
+  setText("designerOpenCodeCliCommand", `/wf --engine opencode --workflow ${workflowId} --user "需求"${validationSuffix}`);
+}
+
+function workflowRequiresValidationScript(workflow = {}) {
+  return (workflow.steps || []).some((step) => step.enabled !== false && step.requiresValidationScript);
 }
 
 function renderStepFloatingActions(wf) {

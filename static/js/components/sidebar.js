@@ -1,1 +1,1 @@
-export { initSharedSidebar } from "../shared/sidebar.js?v=20260702-assets-bugfix1";
+export { initSharedSidebar } from "../shared/sidebar.js?v=20260702-assets-bugfix3";

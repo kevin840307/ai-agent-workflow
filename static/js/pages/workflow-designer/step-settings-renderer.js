@@ -1,4 +1,4 @@
-import { tabsForStep } from "./step-tabs.js?v=20260702-assets-bugfix1";
+import { tabsForStep } from "./step-tabs.js?v=20260702-assets-bugfix3";
 
 export function installStepSettingsRenderer(ctx) {
   const {
@@ -401,6 +401,7 @@ function renderAdvanced(step, disabled, readonly) {
       ${switchRow("Enable Timeout", "Timeout counts as failure and follows retry policy.", "timeoutEnabled", step.timeoutEnabled, disabled)}
       ${numberRow("Timeout Minutes", "timeoutMinutes", step.timeoutMinutes, disabled, "0", "1440", "1")}
       ${switchRow("Allow Interaction", "The selected agent can pause and ask the user questions.", "allowInteraction", step.allowInteraction, disabled)}
+      ${switchRow("Requires Validate.py", "Runner and CLI should ask for a run-specific Python validation script path.", "requiresValidationScript", step.requiresValidationScript, disabled)}
       ${switchRow("Thinking", "Pass a thinking/reasoning flag to compatible agents such as OpenCode.", "thinking", step.thinking, disabled)}
       <div class="designer-runner-note">
         <strong>Python functions moved to Basic</strong>
