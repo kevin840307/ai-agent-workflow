@@ -224,7 +224,7 @@ def ensure_qwen_serve(cwd: Path | str | None = None) -> dict[str, Any]:
             popen_args["shell"] = True
         qwen_serve_process = subprocess.Popen(
             command,
-            cwd=str(ROOT),
+            cwd=str(workspace),
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             stdin=subprocess.DEVNULL,

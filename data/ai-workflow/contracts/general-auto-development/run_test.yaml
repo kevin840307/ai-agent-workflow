@@ -6,24 +6,25 @@ enabled: true
 type: python
 skill: steps/general-auto-development/run_test.md
 command: ''
-agent: ''
+agent: qwen
 outputs:
 - test-result.md
-function: run_pytest
-retry: 10
+retry: 99
 failAction: selected_step
 retryFromStepKey: build
 keepSameSession: true
 injectFailureFeedback: true
 stopAfterFailures: 10
 allowInteraction: false
+requiresValidationScript: false
 thinking: false
 approvalRequired: false
 pauseAfterStep: false
 approvalMessage: ''
-timeoutEnabled: false
 timeoutMinutes: 0.0
+timeoutEnabled: false
 reviewMode: none
+reviewers: []
 confidenceThreshold: 0.75
 passKeywords: PASS, APPROVED
 failKeywords: FAIL, BLOCKED
@@ -35,3 +36,8 @@ sources:
   value: debugging-and-error-recovery
 agentOptions: {}
 path: contracts/general-auto-development/run_test.yaml
+function: run_pytest
+timeout: 0.0
+functions:
+- run_pytest
+approval: false

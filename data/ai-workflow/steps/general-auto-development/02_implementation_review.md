@@ -1,33 +1,8 @@
-Review the task plan before implementation.
+This is now a deterministic Python function step.
 
-Requirement:
-{{requirement}}
+The workflow function `validate_general_auto_plan` validates `output/todo.md` and writes `output/implementation-review.md`.
 
-Architecture:
-{{architecture}}
-
-Todo:
-{{todo}}
-
-Return only Markdown.
-
-Required format:
-
-# Implementation Review
-
-Status: PASS or FAIL
-Confidence: 0.00-1.00
-
-## Checks
-- The plan matches the user's current requirement.
-- The plan follows the current project architecture and detected language.
-- Tasks are small but not over-split.
-- Every task has acceptance criteria.
-- The plan includes focused automated tests before external validation.
-- The mandatory external validation step is present and cannot be skipped.
-- Edits are constrained to the selected Project path.
-
-## Findings
-- ...
-
-Pass only if the plan is specific enough for Build to implement without guessing.
+Expected behavior:
+- Do not call an AI agent.
+- Require `Status: READY`, `TASK-001` style task ids, acceptance criteria, automated test coverage, and mandatory external validation.
+- On failure, retry from Plan Tasks with the concrete validation error.

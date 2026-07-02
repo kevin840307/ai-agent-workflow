@@ -1,29 +1,31 @@
 id: implementation_review
 key: implementation_review
 name: Implementation Review
-description: Check that the task plan is concrete, bounded, and testable before building.
+description: Deterministically validate todo.md structure before building; no AI self-review
+  required.
 enabled: true
-type: review
+type: python
 skill: steps/general-auto-development/02_implementation_review.md
 command: ''
 agent: qwen
 outputs:
 - implementation-review.md
-function: ''
-retry: 3
+retry: 99
 failAction: selected_step
 retryFromStepKey: plan_tasks
 keepSameSession: true
 injectFailureFeedback: true
 stopAfterFailures: 3
 allowInteraction: false
+requiresValidationScript: false
 thinking: false
 approvalRequired: false
 pauseAfterStep: false
 approvalMessage: ''
-timeoutEnabled: false
 timeoutMinutes: 0.0
-reviewMode: current_session
+timeoutEnabled: false
+reviewMode: none
+reviewers: []
 confidenceThreshold: 0.75
 passKeywords: PASS, APPROVED
 failKeywords: FAIL, BLOCKED
@@ -31,3 +33,8 @@ aggregatorFunction: ''
 sources: []
 agentOptions: {}
 path: contracts/general-auto-development/implementation_review.yaml
+function: validate_general_auto_plan
+timeout: 0.0
+functions:
+- validate_general_auto_plan
+approval: false

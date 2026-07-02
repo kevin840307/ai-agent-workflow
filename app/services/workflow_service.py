@@ -16,6 +16,8 @@ from app.services import workflow_asset_service, workflow_config_service
 
 
 ACTIVE_RUN_STATUSES = {"queued", "running", "waiting_input", "cancelling"}
+CANONICAL_WORKFLOW_DIR = ".ai-workflow"
+LEGACY_WORKFLOW_DIR = ".qwen-workflow"
 _RUN_CREATION_LOCKS: dict[int, asyncio.Lock] = {}
 
 
@@ -63,19 +65,20 @@ def _candidate_run_state_paths(data: dict, *, run_id: str | None = None, session
             project_path = runtime.resolve_project_path(session.get("project_path") or str(runtime.ROOT))
         except HTTPException:
             continue
-        runs_root = Path(project_path) / ".qwen-workflow" / "runs"
-        if not runs_root.exists():
-            continue
-        if run_id:
-            candidates = [runs_root / f"session-{session.get('id')}" / f"run-{run_id}" / ".workflow" / "state.json"]
-            candidates.extend(runs_root.glob(f"session-*/run-{run_id}/.workflow/state.json"))
-        else:
-            candidates = list((runs_root / f"session-{session.get('id')}").glob("run-*/.workflow/state.json"))
-        for path in candidates:
-            key = str(path)
-            if key not in seen and path.exists():
-                seen.add(key)
-                paths.append(path)
+        for workflow_dir_name in (CANONICAL_WORKFLOW_DIR, LEGACY_WORKFLOW_DIR):
+            runs_root = Path(project_path) / workflow_dir_name / "runs"
+            if not runs_root.exists():
+                continue
+            if run_id:
+                candidates = [runs_root / f"session-{session.get('id')}" / f"run-{run_id}" / ".workflow" / "state.json"]
+                candidates.extend(runs_root.glob(f"session-*/run-{run_id}/.workflow/state.json"))
+            else:
+                candidates = list((runs_root / f"session-{session.get('id')}").glob("run-*/.workflow/state.json"))
+            for path in candidates:
+                key = str(path)
+                if key not in seen and path.exists():
+                    seen.add(key)
+                    paths.append(path)
     return paths
 
 
@@ -210,7 +213,7 @@ async def create_workflow_run(session_id: str, body: runtime.CreateRunRequest) -
 
             run_id = str(uuid.uuid4())
             project_dir = Path(project_path)
-            run_dir = project_dir / ".qwen-workflow" / "runs" / f"session-{session_id}" / f"run-{run_id}"
+            run_dir = project_dir / CANONICAL_WORKFLOW_DIR / "runs" / f"session-{session_id}" / f"run-{run_id}"
             (run_dir / "output").mkdir(parents=True, exist_ok=True)
             (run_dir / "input").mkdir(parents=True, exist_ok=True)
             (run_dir / ".workflow").mkdir(parents=True, exist_ok=True)

@@ -12,6 +12,7 @@ from app.persistence.repositories import store as store_repository
 from app.services.agent_session_service import default_agent_session_ids
 from app.services import chat_service
 from app.workflow_runtime.qwen_serve import forget_qwen_serve_session
+from app.runtime_modules.qwen import QwenCliClient
 
 
 def _session_run_workspaces(data: dict, session_id: str) -> list[Path]:
@@ -35,7 +36,7 @@ def _remove_session_workspaces(session_id: str, run_workspaces: list[Path]) -> N
         if not run_workspace.exists() or run_workspace == session_workspace:
             continue
         parts = set(run_workspace.parts)
-        if ".qwen-workflow" not in parts or "runs" not in parts:
+        if not ({".ai-workflow", ".qwen-workflow"} & parts) or "runs" not in parts:
             continue
         shutil.rmtree(run_workspace)
 
@@ -86,6 +87,8 @@ async def delete_project(session_id: str) -> dict:
     await _cancel_session_runs(run_ids)
     forget_qwen_serve_session(old_qwen_session_id)
     forget_qwen_serve_session(session_id)
+    QwenCliClient.forget_session(old_qwen_session_id)
+    QwenCliClient.forget_session(session_id)
 
     def remove(data):
         if not any(session["id"] == session_id for session in data["sessions"]):
@@ -112,6 +115,8 @@ async def reset_project(session_id: str) -> dict:
     await _cancel_session_runs(run_ids)
     forget_qwen_serve_session(old_qwen_session_id)
     forget_qwen_serve_session(session_id)
+    QwenCliClient.forget_session(old_qwen_session_id)
+    QwenCliClient.forget_session(session_id)
 
     new_agent_session_id = str(uuid.uuid4())
 

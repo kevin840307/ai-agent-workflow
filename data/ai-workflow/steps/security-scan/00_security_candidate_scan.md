@@ -30,7 +30,7 @@ Project inspection rules:
 - Do not modify, create, delete, or format project files.
 - Scan source code, configuration, dependency manifests, routing/controllers, auth logic, database access, file handling, logging, and environment/config usage.
 - Exclude generated/cache/vendor/workflow folders and binary artifacts.
-- Do not scan these directories: .git, .hg, .svn, .vs, .idea, .vscode, .qwen-workflow, node_modules, vendor, bower_components, venv, .venv, env, __pycache__, .pytest_cache, .mypy_cache, .ruff_cache, .tox, .nox, dist, build, target, bin, obj, out, .next, .nuxt, .svelte-kit, coverage, htmlcov, .gradle, .mvn, .parcel-cache, .turbo, .cache, logs, tmp, temp.
+- Do not scan these directories: .git, .hg, .svn, .vs, .idea, .vscode, .qwen-workflow, .ai-workflow, node_modules, vendor, bower_components, venv, .venv, env, __pycache__, .pytest_cache, .mypy_cache, .ruff_cache, .tox, .nox, dist, build, target, bin, obj, out, .next, .nuxt, .svelte-kit, coverage, htmlcov, .gradle, .mvn, .parcel-cache, .turbo, .cache, logs, tmp, temp.
 - Do not scan these file types: .pyc, .pyo, .pyd, .class, .jar, .war, .ear, .dll, .exe, .pdb, .so, .dylib, .o, .obj, .zip, .7z, .rar, .tar, .gz, .tgz, .png, .jpg, .jpeg, .gif, .ico, .svg, .webp, .pdf, .doc, .docx, .xls, .xlsx, .ppt, .pptx, .log, .tmp, .cache.
 
 Scan rules:

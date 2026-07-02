@@ -28,7 +28,7 @@ def unsafe_relative_path_reason(raw_path: str) -> str | None:
     parts = [part for part in decoded.split("/") if part not in {"", "."}]
     if any(part.strip() == ".." for part in parts):
         return "parent directory traversal"
-    if ".qwen-workflow" in parts:
+    if ".qwen-workflow" in parts or ".ai-workflow" in parts:
         return "reserved workflow directory"
     return None
 

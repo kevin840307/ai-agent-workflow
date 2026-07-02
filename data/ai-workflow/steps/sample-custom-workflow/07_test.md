@@ -21,7 +21,7 @@ Project Context:
 - 測試要覆蓋 Spec 中的 Acceptance Criteria，並盡量對應 Todo 的 TEST ID。
 - 測試必須是真實斷言，不要只寫 `assert True`。
 - 每個要建立的檔案都必須使用 `FILE/CONTENT/END_FILE` 區塊。
-- `FILE` 是相對於 Project Path 的路徑，不要使用絕對路徑，不要寫到 `.qwen-workflow`。
+- `FILE` 是相對於 Project Path 的路徑，不要使用絕對路徑，不要寫到 `.ai-workflow`。
 - `CONTENT` 必須是完整檔案內容。
 
 輸出格式:

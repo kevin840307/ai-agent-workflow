@@ -46,7 +46,7 @@ async def cleanup_runs(keep_per_project: int = 20) -> dict[str, Any]:
     for workspace in remove_workspaces:
         try:
             resolved = workspace.resolve()
-            if ".qwen-workflow" not in resolved.parts:
+            if ".ai-workflow" not in resolved.parts and ".qwen-workflow" not in resolved.parts:
                 continue
             if resolved.exists():
                 shutil.rmtree(resolved)

@@ -26,9 +26,9 @@ Planning rules:
 - Keep TODO content concise and actionable.
 - If multiple TODO files would help, list the recommended file names, but keep this step output in `todo.md`.
 - Do not invent a new architecture when the project already has one.
-- If the project is empty and the requirement does not specify a language, ask one concise question.
-- If the requirement is too vague to implement safely, ask one concise question.
-- Otherwise continue without asking.
+- Do not ask the user questions. If the project is empty and the requirement does not specify a language, choose Python as the safest default and record the assumption.
+- If the requirement is vague, infer the smallest useful implementation from the words provided, record the assumption, and continue.
+- This workflow is fully automated: produce todo.md every time unless the requirement is literally empty.
 
 Output only Markdown with this exact structure:
 
@@ -42,15 +42,18 @@ Status: READY
 ## Task Index
 | ID | Task | Acceptance Criteria |
 | --- | --- | --- |
-| TASK-001 | ... | AC-001 |
+| TASK-001 | ... | AC-001: ... |
 
 ## Tasks
 
 ### TASK-001: ...
 - Goal:
+- Goal:
 - Files:
 - Acceptance Criteria:
-  - AC-001:
+  - AC-001: concrete observable behavior for this task.
+- Implementation Order:
+  - Do this task after the previous TASK and before the next TASK.
 - Validation:
   - Covered by generated automated tests and the mandatory external validation step.
 

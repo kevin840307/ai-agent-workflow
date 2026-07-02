@@ -150,7 +150,7 @@ def expected_file_candidates(run: dict[str, Any], rel_path: str) -> list[Path]:
     parts = [part for part in normalized.split("/") if part not in {"", "."}]
     if not normalized or any(part.strip() == ".." for part in parts):
         raise WorkflowError(f"Unsafe expected file path outside workflow/project boundary: {rel_path}")
-    if ".qwen-workflow" in parts:
+    if ".qwen-workflow" in parts or ".ai-workflow" in parts:
         raise WorkflowError(f"Unsafe expected file path outside workflow/project boundary: {rel_path}")
     candidates: list[Path] = []
     if normalized.startswith("output/"):

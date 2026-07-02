@@ -1,44 +1,8 @@
-Perform the final workflow review.
+This is now a deterministic Python function step.
 
-Requirement:
-{{requirement}}
+The workflow function `validate_general_auto_final` reads:
+- `output/build-result.md`
+- `output/test-result.md`
+- `output/external-validation-result.md`
 
-Architecture:
-{{architecture}}
-
-Todo:
-{{todo}}
-
-Build result:
-{{build_result}}
-
-Test result:
-{{test_result}}
-
-External validation result:
-{{external_validation_result}}
-
-Failure feedback:
-{{failure_feedback}}
-
-Return only Markdown with this exact structure:
-
-# Final Review
-
-Status: PASS or FAIL
-Confidence: 0.00-1.00
-
-## Summary
-- ...
-
-## Verification
-- Automated test result:
-- External validation script result:
-- Requirement coverage:
-- Architecture alignment:
-- Files stayed inside Project path:
-
-## Remaining Risks
-- ...
-
-Status must be PASS only when the automated test result and external validation result both passed, and the implementation clearly satisfies the current requirement.
+It writes `output/final-review.md` with `Status: PASS` only when build output exists, automated tests pass, and the mandatory external validation script passes.

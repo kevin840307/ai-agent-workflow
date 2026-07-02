@@ -18,7 +18,7 @@ Existing architecture.md in Working Directory:
 - 工作目錄就是 Project Path，也是 Qwen 執行時的 cwd。
 - architecture.md 必須建立或更新在工作目錄根層：`{{project_path}}/architecture.md`。
 - 不要把 architecture.md 寫到 Workflow Workspace。
-- 不要把 architecture.md 寫到 `.qwen-workflow`。
+- 不要把 architecture.md 寫到 `.ai-workflow`。
 - 如果這是既有專案，請根據檔案清單與命名推論目前架構。
 - 如果工作目錄已經有 architecture.md，請保留仍正確的資訊，更新過期或缺漏的部分。
 - 如果目前資訊不足，請寫明 Unknowns，不要假裝知道。

@@ -39,6 +39,8 @@ class WorkflowFunctionRefactorContractTests(unittest.TestCase):
             "validate_todo",
             "require_status_pass",
             "run_pytest",
+            "validate_general_auto_plan",
+            "validate_general_auto_final",
         }
         self.assertEqual(expected_registry_names, set(PYTHON_FUNCTIONS))
 

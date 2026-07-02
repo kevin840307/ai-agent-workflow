@@ -9,21 +9,22 @@ command: ''
 agent: qwen
 outputs:
 - test-plan.md
-function: ''
-retry: 10
+retry: 99
 failAction: same_step
 retryFromStepKey: generate_tests
 keepSameSession: true
 injectFailureFeedback: true
 stopAfterFailures: 3
 allowInteraction: false
+requiresValidationScript: false
 thinking: false
 approvalRequired: false
 pauseAfterStep: false
 approvalMessage: ''
-timeoutEnabled: false
 timeoutMinutes: 0.0
+timeoutEnabled: false
 reviewMode: none
+reviewers: []
 confidenceThreshold: 0.75
 passKeywords: PASS, APPROVED
 failKeywords: FAIL, BLOCKED
@@ -33,3 +34,5 @@ sources:
   value: test-driven-development
 agentOptions: {}
 path: contracts/general-auto-development/generate_tests.yaml
+timeout: 0.0
+approval: false

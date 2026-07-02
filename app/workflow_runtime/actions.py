@@ -287,12 +287,22 @@ class WorkflowActions:
         fail_keywords = self._split_keywords(config.get("failKeywords") or "FAIL, BLOCKED")
         confidence = self._extract_confidence(text)
 
-        fail_hit = next((keyword for keyword in fail_keywords if keyword.lower() in lowered), "")
+        status_match = re.search(r"^\s*status\s*[:=]\s*([A-Za-z_-]+)", text, re.I | re.M)
+        status_value = (status_match.group(1).strip().lower() if status_match else "")
         pass_hit = next((keyword for keyword in pass_keywords if keyword.lower() in lowered), "")
-        if fail_hit:
+        fail_hit = next((keyword for keyword in fail_keywords if keyword.lower() in lowered), "")
+
+        if status_value in {"fail", "failed", "blocked", "reject", "rejected"}:
+            return {"passed": False, "confidence": confidence or 0.0, "reason": f"status is {status_value}"}
+        if status_value in {"pass", "passed", "approved", "ok", "done"}:
+            pass_hit = pass_hit or status_value
+        elif fail_hit and not pass_hit:
             return {"passed": False, "confidence": confidence or 0.0, "reason": f"matched fail keyword: {fail_hit}"}
+
         if pass_keywords and not pass_hit:
-            return {"passed": False, "confidence": confidence or 0.0, "reason": "no pass keyword matched"}
+            # Keep generic reviews strict, but make the failure clearer and less
+            # sensitive to body text that merely mentions the word FAIL.
+            return {"passed": False, "confidence": confidence or 0.0, "reason": "no explicit pass status or pass keyword matched"}
         effective_confidence = confidence if confidence is not None else (1.0 if pass_hit else 0.75)
         threshold = float(config.get("confidenceThreshold") or 0)
         if effective_confidence < threshold:
@@ -611,13 +621,22 @@ class WorkflowActions:
                 step_prompt_name(step_record, f"{key}.md"),
                 agent_name=agent_name,
             ),
-            "final_review": lambda: self.review_step(
-                run,
-                key,
-                step_prompt_name(step_record, "06_final_review.md"),
-                step_artifact_name(step_record, "final-review.md"),
-                allow_interaction=allow_interaction,
-                agent_name=agent_name,
+            "final_review": lambda: (
+                self.functions.call_python_functions(
+                    run,
+                    step_function_names(step_record),
+                    output_dir,
+                    step_artifact_name(step_record, "final-review.md"),
+                )
+                if step_function_names(step_record) and step_type in {"python", "validation", "check"}
+                else self.review_step(
+                    run,
+                    key,
+                    step_prompt_name(step_record, "06_final_review.md"),
+                    step_artifact_name(step_record, "final-review.md"),
+                    allow_interaction=allow_interaction,
+                    agent_name=agent_name,
+                )
             ),
             "final_gate": lambda: asyncio.to_thread(self.functions.require_status, output_dir / step_artifact_name(step_record, "final-review.md"), "PASS"),
         }

@@ -22,7 +22,7 @@ Rules:
 - If architecture.md already exists and is accurate, keep it concise and current.
 - Record the detected primary language, framework/runtime, test framework, module layout, entry points, naming conventions, and where production code and tests live.
 - If the workflow is adding a second or later feature, preserve the existing architecture and explain how new features should be added consistently.
-- Do not write under `.qwen-workflow`.
+- Do not write under `.ai-workflow`.
 - Only create or update `architecture.md`.
 
 Return this exact file block:

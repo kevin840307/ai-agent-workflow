@@ -1,7 +1,8 @@
 id: plan_tasks
 key: plan_tasks
 name: Plan Tasks
-description: Produce a concise implementation task plan with small tasks and explicit acceptance criteria.
+description: Produce a concise implementation task plan with small tasks and explicit
+  acceptance criteria.
 enabled: true
 type: ai
 skill: steps/general-auto-development/01_plan_tasks.md
@@ -9,21 +10,22 @@ command: ''
 agent: qwen
 outputs:
 - todo.md
-function: ''
-retry: 5
+retry: 99
 failAction: same_step
 retryFromStepKey: plan_tasks
 keepSameSession: true
 injectFailureFeedback: true
 stopAfterFailures: 3
-allowInteraction: true
+allowInteraction: false
+requiresValidationScript: false
 thinking: false
 approvalRequired: false
 pauseAfterStep: false
 approvalMessage: ''
-timeoutEnabled: false
 timeoutMinutes: 0.0
+timeoutEnabled: false
 reviewMode: none
+reviewers: []
 confidenceThreshold: 0.75
 passKeywords: PASS, APPROVED
 failKeywords: FAIL, BLOCKED
@@ -31,3 +33,5 @@ aggregatorFunction: ''
 sources: []
 agentOptions: {}
 path: contracts/general-auto-development/plan_tasks.yaml
+timeout: 0.0
+approval: false

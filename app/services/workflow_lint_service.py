@@ -128,7 +128,7 @@ def _check_expected_path(value: str, location: str, errors: list[dict[str, Any]]
     normalized = str(value or "").replace("\\", "/").strip()
     path = Path(normalized)
     parts = [part for part in normalized.split("/") if part not in {"", "."}]
-    if path.is_absolute() or not normalized or any(part == ".." for part in parts) or ".qwen-workflow" in parts:
+    if path.is_absolute() or not normalized or any(part == ".." for part in parts) or ".qwen-workflow" in parts or ".ai-workflow" in parts:
         errors.append(_issue(location, f"Unsafe expected file path: {value}"))
 
 

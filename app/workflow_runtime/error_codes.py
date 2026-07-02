@@ -25,6 +25,9 @@ SESSION_RECOVERY_MARKERS = (
     "no session found",
     "session is already in use",
     "already in use",
+    "already exists",
+    "active or archived",
+    "delete or unarchive",
 )
 
 
