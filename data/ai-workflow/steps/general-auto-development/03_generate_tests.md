@@ -1,4 +1,4 @@
-You are generating focused automated tests before implementation.
+You are generating focused automated tests after production Build.
 
 Output only FILE/CONTENT/END_FILE blocks. Do not output JSON. Do not use Markdown fences. Do not create production code in this step.
 
@@ -19,6 +19,9 @@ Requirement:
 Todo:
 {{todo}}
 
+Build result:
+{{build_result}}
+
 Failure feedback from previous retries:
 {{failure_feedback}}
 
@@ -29,10 +32,9 @@ Rules:
 - Match the existing project test framework when it is clear from Project Overview / Project Profile.
 - For Python projects, write pytest tests only under tests/.
 - Test files must be named tests/test_*.py or tests/conftest.py.
-- Import production code from actual existing module paths shown in Project Profile / Architecture.
-- If the project is empty, choose simple module names that Build can implement cleanly.
+- Import production code from actual existing module paths shown in Project Profile / Architecture / Build result.
 - Keep tests separate from production code.
-- When feasible, write tests that would fail before Build and pass after Build.
+- Do not create or modify production files.
 
 Return one or more blocks like:
 

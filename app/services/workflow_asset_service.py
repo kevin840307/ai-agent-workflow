@@ -18,6 +18,7 @@ import yaml
 from fastapi import HTTPException
 
 from app.core.paths import DATA_DIR, ROOT, read_text, write_text
+from app.security.workspace_guard import guarded_write_text, ensure_http_within_project, is_within
 from app.workflow_runtime.builtin_functions.base import WorkflowFunctionContext, WorkflowFunctionError
 from app.workflow_runtime.step_utils import parse_function_refs
 
@@ -342,6 +343,8 @@ def write_asset(relative_path: str, content: str, project_path: str | None = Non
     rel = _clean_relative_path(relative_path)
     _validate_content(rel, content)
     path = resolve_asset_path(rel, project_path, must_exist=False, scope=scope)
+    if scope == "project":
+        ensure_http_within_project(project_path, path, action="write workflow asset")
     if path.exists() and not overwrite:
         raise HTTPException(status_code=409, detail=f"Workflow asset already exists: {rel}")
     write_text(path, content)
@@ -351,6 +354,8 @@ def write_asset(relative_path: str, content: str, project_path: str | None = Non
 def delete_asset(relative_path: str, project_path: str | None = None, *, scope: str = "global") -> dict[str, Any]:
     rel = _clean_relative_path(relative_path)
     path = resolve_asset_path(rel, project_path, scope=scope)
+    if scope == "project":
+        ensure_http_within_project(project_path, path, action="delete workflow asset")
     if not path.is_file():
         raise HTTPException(status_code=404, detail=f"Workflow asset not found: {rel}")
     path.unlink()
@@ -380,6 +385,9 @@ def rename_asset(
         raise HTTPException(status_code=400, detail="Cannot move workflow assets between asset categories")
     old_file = resolve_asset_path(old_rel, project_path, scope=scope)
     new_file = resolve_asset_path(new_rel, project_path, must_exist=False, scope=scope)
+    if scope == "project":
+        ensure_http_within_project(project_path, old_file, action="rename workflow asset")
+        ensure_http_within_project(project_path, new_file, action="rename workflow asset")
     if new_file.exists() and not overwrite:
         raise HTTPException(status_code=409, detail=f"Workflow asset already exists: {new_rel}")
     content = read_text(old_file)
@@ -871,13 +879,24 @@ async def _try_run_python_asset_api(path: Path, run: dict[str, Any], output_dir:
     async def _noop_refresh(_run_id: str) -> None:
         return None
 
+    project_root = Path(run.get("project_path") or ROOT).expanduser().resolve()
+
+    workspace_root = Path(run.get("workspace") or output_dir.parent).expanduser().resolve()
+
+    def project_scoped_write(path: Path, content: str) -> None:
+        target = Path(path).expanduser().resolve()
+        if is_within(workspace_root, target):
+            write_text(target, content)
+            return
+        guarded_write_text(project_root, target, content, write_text)
+
     ctx = WorkflowFunctionContext(
         run=run,
         output_dir=output_dir,
-        project_dir=Path(run.get("project_path") or ROOT),
+        project_dir=project_root,
         root_dir=ROOT,
         read_text=read_text,
-        write_text=write_text,
+        write_text=project_scoped_write,
         log=_noop_log,
         refresh_artifacts=_noop_refresh,
     )

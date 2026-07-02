@@ -12,12 +12,11 @@ from app.core.locks import project_run_creation_lock
 from app.core.metrics import metrics
 from app.persistence.repositories import store as store_repository
 from app.services.agent_session_service import default_agent_session_ids
+from app.security.workspace_guard import PROJECT_WORKFLOW_DIR, LEGACY_WORKFLOW_DIR
 from app.services import workflow_asset_service, workflow_config_service
 
 
 ACTIVE_RUN_STATUSES = {"queued", "running", "waiting_input", "cancelling"}
-CANONICAL_WORKFLOW_DIR = ".ai-workflow"
-LEGACY_WORKFLOW_DIR = ".qwen-workflow"
 _RUN_CREATION_LOCKS: dict[int, asyncio.Lock] = {}
 
 
@@ -55,6 +54,15 @@ def latest_session_run(data: dict, session_id: str) -> dict | None:
     return sorted(runs, key=lambda run: run.get("created_at", ""), reverse=True)[0]
 
 
+def _runs_roots(project_path: str | Path) -> list[Path]:
+    project = Path(project_path)
+    roots = [project / PROJECT_WORKFLOW_DIR / "runs"]
+    legacy = project / LEGACY_WORKFLOW_DIR / "runs"
+    if legacy.exists():
+        roots.append(legacy)
+    return roots
+
+
 def _candidate_run_state_paths(data: dict, *, run_id: str | None = None, session_id: str | None = None) -> list[Path]:
     paths: list[Path] = []
     seen: set[str] = set()
@@ -65,20 +73,20 @@ def _candidate_run_state_paths(data: dict, *, run_id: str | None = None, session
             project_path = runtime.resolve_project_path(session.get("project_path") or str(runtime.ROOT))
         except HTTPException:
             continue
-        for workflow_dir_name in (CANONICAL_WORKFLOW_DIR, LEGACY_WORKFLOW_DIR):
-            runs_root = Path(project_path) / workflow_dir_name / "runs"
+        candidates: list[Path] = []
+        for runs_root in _runs_roots(project_path):
             if not runs_root.exists():
                 continue
             if run_id:
-                candidates = [runs_root / f"session-{session.get('id')}" / f"run-{run_id}" / ".workflow" / "state.json"]
+                candidates.append(runs_root / f"session-{session.get('id')}" / f"run-{run_id}" / ".workflow" / "state.json")
                 candidates.extend(runs_root.glob(f"session-*/run-{run_id}/.workflow/state.json"))
             else:
-                candidates = list((runs_root / f"session-{session.get('id')}").glob("run-*/.workflow/state.json"))
-            for path in candidates:
-                key = str(path)
-                if key not in seen and path.exists():
-                    seen.add(key)
-                    paths.append(path)
+                candidates.extend((runs_root / f"session-{session.get('id')}").glob("run-*/.workflow/state.json"))
+        for path in candidates:
+            key = str(path)
+            if key not in seen and path.exists():
+                seen.add(key)
+                paths.append(path)
     return paths
 
 
@@ -213,7 +221,7 @@ async def create_workflow_run(session_id: str, body: runtime.CreateRunRequest) -
 
             run_id = str(uuid.uuid4())
             project_dir = Path(project_path)
-            run_dir = project_dir / CANONICAL_WORKFLOW_DIR / "runs" / f"session-{session_id}" / f"run-{run_id}"
+            run_dir = project_dir / PROJECT_WORKFLOW_DIR / "runs" / f"session-{session_id}" / f"run-{run_id}"
             (run_dir / "output").mkdir(parents=True, exist_ok=True)
             (run_dir / "input").mkdir(parents=True, exist_ok=True)
             (run_dir / ".workflow").mkdir(parents=True, exist_ok=True)

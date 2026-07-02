@@ -6,6 +6,7 @@ from typing import Any
 
 from app.testing.mock_agent import mock_qwen_response
 from app.runtime_modules.errors import WorkflowError
+from app.security.workspace_guard import apply_workspace_env
 
 from ..base import AgentOutputCallback, AgentRequest, AgentResult, run_process_stream
 
@@ -67,7 +68,7 @@ class OpenCodeCliAdapter:
                 for line in output.splitlines():
                     await on_output("stdout", line)
             return AgentResult(output=output, session_id=request.session_id, raw_output=output)
-        env = os.environ.copy()
+        env = apply_workspace_env(os.environ, project_path=request.cwd, workspace_path=(request.metadata or {}).get("workspace_path"), run_id=request.run_id)
         if self.config_dir:
             env["OPENCODE_CONFIG_DIR"] = str(self.config_dir)
         try:

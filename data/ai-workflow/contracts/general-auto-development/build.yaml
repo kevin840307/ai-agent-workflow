@@ -1,8 +1,7 @@
 id: build
 key: build
 name: Build
-description: Implement only the planned production changes inside the selected project
-  path.
+description: Implement only the planned production changes inside the selected project path.
 enabled: true
 type: ai
 skill: steps/general-auto-development/03_build.md
@@ -10,22 +9,21 @@ command: ''
 agent: qwen
 outputs:
 - build-result.md
-retry: 99
+function: ''
+retry: 12
 failAction: same_step
 retryFromStepKey: build
 keepSameSession: true
 injectFailureFeedback: true
-stopAfterFailures: 3
+stopAfterFailures: 12
 allowInteraction: false
-requiresValidationScript: false
 thinking: false
 approvalRequired: false
 pauseAfterStep: false
 approvalMessage: ''
-timeoutMinutes: 0.0
 timeoutEnabled: false
+timeoutMinutes: 0.0
 reviewMode: none
-reviewers: []
 confidenceThreshold: 0.75
 passKeywords: PASS, APPROVED
 failKeywords: FAIL, BLOCKED
@@ -33,5 +31,3 @@ aggregatorFunction: ''
 sources: []
 agentOptions: {}
 path: contracts/general-auto-development/build.yaml
-timeout: 0.0
-approval: false

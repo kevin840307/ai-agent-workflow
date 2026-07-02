@@ -8,29 +8,18 @@ from typing import Callable, Iterable
 
 from app.runtime_modules.errors import ValidationError, WorkflowError
 from app.core.paths import read_text, write_text
+from app.security.workspace_guard import (
+    LEGACY_WORKFLOW_DIR,
+    PROJECT_WORKFLOW_DIR,
+    RESERVED_AGENT_WRITE_DIRS,
+    resolve_project_relative_write,
+    unsafe_relative_path_reason as guarded_unsafe_relative_path_reason,
+)
 
 
 def unsafe_relative_path_reason(raw_path: str) -> str | None:
-    """Return a reason when an agent-supplied path must not be written/read.
-
-    Path checks need to be platform-independent because tests may run on Linux
-    while users run the product on Windows.  Therefore Windows drive/UNC paths
-    are rejected explicitly instead of relying only on pathlib.Path semantics.
-    """
-    raw = str(raw_path or "").strip().strip("`")
-    if not raw:
-        return "empty path"
-    decoded = unquote(raw).replace("\\", "/")
-    path = Path(decoded)
-    win_path = PureWindowsPath(decoded)
-    if decoded.startswith("/") or path.is_absolute() or win_path.is_absolute() or win_path.drive or decoded.startswith("//"):
-        return "absolute path"
-    parts = [part for part in decoded.split("/") if part not in {"", "."}]
-    if any(part.strip() == ".." for part in parts):
-        return "parent directory traversal"
-    if ".qwen-workflow" in parts or ".ai-workflow" in parts:
-        return "reserved workflow directory"
-    return None
+    """Return a reason when an agent-supplied path must not be written/read."""
+    return guarded_unsafe_relative_path_reason(raw_path, reserved_dirs=RESERVED_AGENT_WRITE_DIRS)
 
 
 def require_sections(text: str, sections: Iterable[str], label: str) -> None:
@@ -257,7 +246,7 @@ def project_file_snapshot(project_dir: Path) -> dict[str, tuple[int, int]]:
     snapshot: dict[str, tuple[int, int]] = {}
     if not project_dir.exists():
         return snapshot
-    ignored_dirs = {".git", ".vs", ".qwen", ".qwen-workflow", ".ai-workflow", "__pycache__", ".pytest_cache", ".mypy_cache", "node_modules", ".venv", "venv", "workspaces", "dist", "build", ".next", "coverage"}
+    ignored_dirs = {".git", ".vs", ".qwen", LEGACY_WORKFLOW_DIR, PROJECT_WORKFLOW_DIR, "__pycache__", ".pytest_cache", ".mypy_cache", "node_modules", ".venv", "venv", "workspaces", "dist", "build", ".next", "coverage"}
     for path in project_dir.rglob("*"):
         if not path.is_file():
             continue
@@ -476,15 +465,9 @@ def extract_build_files(build_result: str) -> list[tuple[str, str]]:
 
 def apply_extracted_files(project_dir: Path, files: list[tuple[str, str]], *, output_label: str = "build output") -> list[Path]:
     written: list[Path] = []
-    project_root = project_dir.resolve()
+    project_root = project_dir.expanduser().resolve()
     for rel_path, content in files:
-        reason = unsafe_relative_path_reason(rel_path)
-        if reason:
-            raise WorkflowError(f"{output_label} contains unsafe file path ({reason}): {rel_path}")
-        rel = Path(unquote(str(rel_path).strip().strip("`")).replace("\\", "/"))
-        target = (project_root / rel).resolve()
-        if target != project_root and project_root not in target.parents:
-            raise WorkflowError(f"{output_label} path escapes Project Path: {rel_path}")
+        target = resolve_project_relative_write(project_root, rel_path, label=output_label)
         write_text(target, content)
         written.append(target)
     return written
@@ -545,3 +528,47 @@ def validate_build_files_are_not_tests(files: list[tuple[str, str]]) -> None:
             "build must not create or modify test files. Generate Tests owns tests/. "
             f"Invalid build file(s): {', '.join(invalid)}"
         )
+
+
+def only_test_files(files: list[tuple[str, str]]) -> list[tuple[str, str]]:
+    return [file_block for file_block in files if is_test_file_path(file_block[0])]
+
+
+def non_test_files(files: list[tuple[str, str]]) -> list[tuple[str, str]]:
+    return [file_block for file_block in files if not is_test_file_path(file_block[0])]
+
+
+def synthesize_python_smoke_tests(project_dir: Path, requirement: str = "") -> list[tuple[str, str]]:
+    snapshot = project_file_snapshot(project_dir)
+    python_files = [
+        path
+        for path in sorted(snapshot)
+        if path.endswith(".py")
+        and not is_build_test_file_path(path)
+        and not Path(path).name.startswith("__")
+        and Path(path).name != "conftest.py"
+    ]
+    if not python_files:
+        return []
+    shown = python_files[:20]
+    list_literal = "[\n" + "".join(f"    {path!r},\\n" for path in shown) + "]"
+    content = (
+        "from __future__ import annotations\n\n"
+        "import importlib.util\n"
+        "from pathlib import Path\n\n"
+        "PROJECT_ROOT = Path(__file__).resolve().parents[1]\n"
+        f"PYTHON_FILES = {list_literal}\n\n\n"
+        "def _load_module(relative_path: str):\n"
+        "    path = PROJECT_ROOT / relative_path\n"
+        "    module_name = 'ai_workflow_smoke_' + relative_path.replace('/', '_').replace('\\\\', '_').replace('.', '_')\n"
+        "    spec = importlib.util.spec_from_file_location(module_name, path)\n"
+        "    assert spec is not None and spec.loader is not None, f'Cannot load {relative_path}'\n"
+        "    module = importlib.util.module_from_spec(spec)\n"
+        "    spec.loader.exec_module(module)\n"
+        "    return module\n\n\n"
+        "def test_generated_python_modules_import_cleanly():\n"
+        "    assert PYTHON_FILES, 'Expected at least one production Python file'\n"
+        "    for relative_path in PYTHON_FILES:\n"
+        "        _load_module(relative_path)\n"
+    )
+    return [("tests/test_ai_workflow_generated_smoke.py", content)]

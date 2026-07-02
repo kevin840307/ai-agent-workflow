@@ -19,6 +19,7 @@ from app.core.paths import DEFAULT_SKILL_PATH, ROOT
 from app.runtime_modules.qwen import QwenCliClient as BaseQwenCliClient
 from app.runtime_modules.skills import discover_skill_files
 from app.runtime_modules.errors import WorkflowError
+from app.security.workspace_guard import apply_workspace_env
 
 from .settings import load_settings
 
@@ -225,6 +226,7 @@ def ensure_qwen_serve(cwd: Path | str | None = None) -> dict[str, Any]:
         qwen_serve_process = subprocess.Popen(
             command,
             cwd=str(workspace),
+            env=apply_workspace_env(os.environ, project_path=workspace, workspace_path=workspace / ".ai-workflow"),
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             stdin=subprocess.DEVNULL,
@@ -300,6 +302,7 @@ def forget_qwen_serve_session(app_session_id: str | None) -> None:
     with qwen_serve_session_locks_guard:
         for key in keys_to_remove:
             qwen_serve_session_locks.pop(key, None)
+    BaseQwenCliClient.forget_session(app_session_id)
 
 
 def _session_for(daemon: QwenServeDaemon, session_key: str) -> str:

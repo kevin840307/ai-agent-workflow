@@ -1,8 +1,7 @@
 id: prepare_project
 key: prepare_project
 name: Prepare Project
-description: Read the current project, detect language/framework/settings, and write
-  or update architecture.md in the project root.
+description: Read the current project, detect language/framework/settings, and write or update architecture.md in the project root.
 enabled: true
 type: ai
 skill: steps/general-auto-development/00_prepare_project.md
@@ -10,22 +9,21 @@ command: ''
 agent: qwen
 outputs:
 - architecture.md
-retry: 10
+function: ''
+retry: 3
 failAction: same_step
 retryFromStepKey: prepare_project
 keepSameSession: true
 injectFailureFeedback: true
-stopAfterFailures: 10
+stopAfterFailures: 3
 allowInteraction: false
-requiresValidationScript: false
 thinking: false
 approvalRequired: false
 pauseAfterStep: false
 approvalMessage: ''
-timeoutMinutes: 0.0
 timeoutEnabled: false
+timeoutMinutes: 0.0
 reviewMode: none
-reviewers: []
 confidenceThreshold: 0.75
 passKeywords: PASS, APPROVED
 failKeywords: FAIL, BLOCKED
@@ -33,5 +31,3 @@ aggregatorFunction: ''
 sources: []
 agentOptions: {}
 path: contracts/general-auto-development/prepare_project.yaml
-timeout: 0.0
-approval: false

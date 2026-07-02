@@ -24,7 +24,7 @@ Required checks:
 - If `architecture.md` already exists, update it only when it is incomplete or stale.
 - If `architecture.md` does not exist, create it in the project root.
 
-Do not ask the user questions in this workflow. If a detail is missing, make the safest reasonable assumption, record it under Implementation Rules or Unknowns, and continue.
+Do not ask the user questions. If details are missing, use reasonable assumptions and record them under Implementation Rules or Unknowns.
 
 Output only FILE/CONTENT/END_FILE blocks.
 

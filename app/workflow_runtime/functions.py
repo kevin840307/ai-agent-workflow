@@ -7,6 +7,7 @@ from typing import Any, Awaitable, Callable
 
 from app.runtime_modules.errors import ValidationError, WorkflowError
 from app.core.paths import ROOT, read_text, write_text
+from app.security.workspace_guard import guarded_write_text, is_within
 from app.services.workflow_asset_service import resolve_function_reference, run_python_asset
 from app.workflow_runtime.builtin_functions.base import WorkflowFunctionContext, WorkflowFunctionError
 from app.workflow_runtime.builtin_functions.registry import PYTHON_FUNCTIONS
@@ -21,13 +22,24 @@ class WorkflowFunctionService:
         self.refresh_artifacts = refresh_artifacts
 
     def context(self, run: dict[str, Any], output_dir: Path | None = None) -> WorkflowFunctionContext:
+        project_dir = Path(run.get("project_path") or ROOT).expanduser().resolve()
+
+        workspace_root = Path(run.get("workspace") or (output_dir or Path()).parent).expanduser().resolve()
+
+        def project_scoped_write(path: Path, content: str) -> None:
+            target = Path(path).expanduser().resolve()
+            if is_within(workspace_root, target):
+                write_text(target, content)
+                return
+            guarded_write_text(project_dir, target, content, write_text)
+
         return WorkflowFunctionContext(
             run=run,
             output_dir=output_dir or Path(run["workspace"]) / "output",
-            project_dir=Path(run.get("project_path") or ROOT),
+            project_dir=project_dir,
             root_dir=ROOT,
             read_text=read_text,
-            write_text=write_text,
+            write_text=project_scoped_write,
             log=self.log,
             refresh_artifacts=self.refresh_artifacts,
         )

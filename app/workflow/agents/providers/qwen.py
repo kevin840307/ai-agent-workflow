@@ -5,6 +5,7 @@ import shutil
 from typing import Any
 
 from app.workflow_runtime.qwen_serve import QwenCliClient, run_prompt_via_serve
+from app.security.workspace_guard import apply_workspace_env
 
 from ..base import AgentOutputCallback, AgentRequest, AgentResult
 
@@ -38,12 +39,20 @@ class QwenAdapter:
                 if on_output:
                     await on_output("stderr", f"Qwen serve failed; falling back to CLI: {exc}")
 
+        env = apply_workspace_env(
+            os.environ,
+            project_path=request.cwd,
+            workspace_path=(request.metadata or {}).get("workspace_path"),
+            run_id=request.run_id,
+        )
         output = await self.client.run_stream(
             request.prompt,
             request.cwd,
             request.session_id,
             on_output=on_output,
             run_id=request.run_id,
+            env=env,
+            workspace_path=(request.metadata or {}).get("workspace_path"),
         )
         return AgentResult(output=output, session_id=request.session_id, raw_output=output)
 

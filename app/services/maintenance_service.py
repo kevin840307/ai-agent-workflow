@@ -6,6 +6,7 @@ from typing import Any
 
 from app.persistence.repositories import store as store_repository
 from app.core.metrics import metrics
+from app.security.workspace_guard import PROJECT_WORKFLOW_DIR, LEGACY_WORKFLOW_DIR
 
 
 ACTIVE_RUN_STATUSES = {"queued", "running", "waiting_input", "cancelling"}
@@ -46,7 +47,7 @@ async def cleanup_runs(keep_per_project: int = 20) -> dict[str, Any]:
     for workspace in remove_workspaces:
         try:
             resolved = workspace.resolve()
-            if ".ai-workflow" not in resolved.parts and ".qwen-workflow" not in resolved.parts:
+            if PROJECT_WORKFLOW_DIR not in resolved.parts and LEGACY_WORKFLOW_DIR not in resolved.parts:
                 continue
             if resolved.exists():
                 shutil.rmtree(resolved)

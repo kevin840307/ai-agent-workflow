@@ -1,8 +1,8 @@
-This is now a deterministic Python function step.
+This step is executed by deterministic Python final review.
 
-The workflow function `validate_general_auto_final` reads:
-- `output/build-result.md`
-- `output/test-result.md`
-- `output/external-validation-result.md`
-
-It writes `output/final-review.md` with `Status: PASS` only when build output exists, automated tests pass, and the mandatory external validation script passes.
+Expected behavior:
+- Read `output/test-result.md`.
+- Read `output/external-validation-result.md`.
+- Write `output/final-review.md`.
+- Return `Status: PASS` only when tests and mandatory external validation passed.
+- Do not ask the user questions.

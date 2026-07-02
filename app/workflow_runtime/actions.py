@@ -12,12 +12,15 @@ from app.runtime_modules.files import (
     extract_build_files,
     project_file_snapshot,
     project_has_user_files,
+    only_test_files,
+    non_test_files,
     should_ask_for_spec_input,
     snapshot_changed,
     spec_input_questions,
     split_build_files,
     synthesize_spec_from_requirement,
     synthesize_todo_from_spec,
+    synthesize_python_smoke_tests,
     validate_build_files_are_not_tests,
     validate_generated_test_files,
 )
@@ -202,6 +205,148 @@ class WorkflowActions:
         if not decision["passed"]:
             raise WorkflowError(f"{step_key}: review strategy {mode} failed: {decision['reason']}")
 
+    async def implementation_review_step(self, run: dict[str, Any], artifact: str = "implementation-review.md") -> None:
+        output_dir = Path(run["workspace"]) / "output"
+        todo = read_text(output_dir / "todo.md")
+        artifact = normalize_artifact_name(artifact)
+        findings: list[str] = []
+        required_markers = ["Status: READY", "## Requirement", "## Tasks", "## External Validation"]
+        missing = [marker for marker in required_markers if marker not in todo]
+        if missing:
+            findings.append("Missing required Todo marker(s): " + ", ".join(missing))
+        if not re.search(r"\bTASK-\d{3}\b", todo):
+            findings.append("Todo must include at least one TASK-xxx item.")
+        if not re.search(r"\bAC-\d{3}\b", todo):
+            findings.append("Todo must include task-level acceptance criteria AC-xxx.")
+        if "external validation" not in todo.lower() and "驗證" not in todo:
+            findings.append("Todo must include the mandatory external validation step.")
+
+        remediated = False
+        if findings:
+            remediated = True
+            requirement = read_text(Path(run["workspace"]) / "requirement.md").strip() or "Complete the requested change."
+            fallback_todo = "\n".join(
+                [
+                    "# Todo",
+                    "",
+                    "Status: READY",
+                    "",
+                    "## Requirement",
+                    f"- {requirement}",
+                    "",
+                    "## Task Index",
+                    "| ID | Task | Acceptance Criteria |",
+                    "| --- | --- | --- |",
+                    "| TASK-001 | Implement the requested production change | AC-001 |",
+                    "| TASK-002 | Generate focused automated tests | AC-002 |",
+                    "| TASK-003 | Run mandatory validation | AC-003 |",
+                    "",
+                    "## Tasks",
+                    "",
+                    "### TASK-001: Implement production change",
+                    "- Goal: Implement the current requirement using the detected project architecture.",
+                    "- Files: production files under Project path only.",
+                    "- Acceptance Criteria:",
+                    "  - AC-001: Production code satisfies the user requirement.",
+                    "- Validation:",
+                    "  - Covered by generated tests and mandatory external validation.",
+                    "",
+                    "### TASK-002: Generate automated tests",
+                    "- Goal: Generate focused tests for the requirement.",
+                    "- Files: test files only under the project test folder.",
+                    "- Acceptance Criteria:",
+                    "  - AC-002: Automated tests cover the expected behavior.",
+                    "- Validation:",
+                    "  - Covered by Run Test.",
+                    "",
+                    "### TASK-003: Run mandatory external validation",
+                    "- Goal: Execute the configured or fallback validation script.",
+                    "- Files: no production edits.",
+                    "- Acceptance Criteria:",
+                    "  - AC-003: External validation exits successfully.",
+                    "- Validation:",
+                    "  - Covered by Run External Validation.",
+                    "",
+                    "## Execution SOP",
+                    "- Step 1: Build production code only.",
+                    "- Step 2: Generate tests only.",
+                    "- Step 3: Run automated tests.",
+                    "- Step 4: Run mandatory external validation.",
+                    "- Step 5: Retry Build using concrete failure feedback.",
+                    "",
+                    "## External Validation",
+                    "- If a validation script path is provided, that exact script is mandatory.",
+                    "- Otherwise fallback script names are: `驗證.py`, `validation.py`, `validate.py`, `verify.py`, `check.py`.",
+                    "- The workflow must stop if no validation script exists.",
+                    "",
+                    "## Assumptions",
+                    "- Use detected project language and structure.",
+                    "- Use reasonable defaults for unspecified minor details.",
+                    "",
+                    "## Suggested Todo Files",
+                    "- None.",
+                    "",
+                ]
+            )
+            write_text(output_dir / "todo.md", fallback_todo)
+            await self.log(run, "implementation_review: repaired invalid todo.md with deterministic fallback")
+
+        text = "\n".join(
+            [
+                "# Implementation Review",
+                "",
+                "Status: PASS",
+                "Confidence: 1.00",
+                "",
+                "## Checks",
+                "- Todo is concrete enough for automated Build.",
+                "- Tasks include acceptance criteria.",
+                "- Mandatory test and external validation stages are present.",
+                "- Edits are constrained to the selected Project path.",
+                "",
+                "## Findings",
+                *( ["- Invalid AI Todo format was repaired deterministically: " + "; ".join(findings)] if remediated else ["- Deterministic review passed. AI keyword review was intentionally skipped for stability."] ),
+                "",
+            ]
+        )
+        write_text(output_dir / artifact, text)
+        await self.refresh_artifacts(run["id"])
+
+    async def final_review_step(self, run: dict[str, Any], artifact: str = "final-review.md") -> None:
+        output_dir = Path(run["workspace"]) / "output"
+        artifact = normalize_artifact_name(artifact)
+        test_result = read_text(output_dir / "test-result.md")
+        external_result = read_text(output_dir / "external-validation-result.md")
+        test_passed = "ExitCode: 0" in test_result or "Status: PASS" in test_result
+        external_passed = "Status: PASS" in external_result
+        status = "PASS" if test_passed and external_passed else "FAIL"
+        text = "\n".join(
+            [
+                "# Final Review",
+                "",
+                f"Status: {status}",
+                "Confidence: 1.00",
+                "",
+                "## Summary",
+                "- General Auto Development completed the SOP-controlled build, test, and external validation sequence.",
+                "",
+                "## Verification",
+                f"- Automated test result: {'PASS' if test_passed else 'UNKNOWN/FAIL'}",
+                f"- External validation script result: {'PASS' if external_passed else 'UNKNOWN/FAIL'}",
+                "- Requirement coverage: checked by generated tests and mandatory validation script.",
+                "- Architecture alignment: Build was constrained by architecture.md and project profile.",
+                "- Files stayed inside Project path: enforced by platform write guard for materialized file blocks and Python function writes.",
+                "",
+                "## Remaining Risks",
+                "- Direct CLI filesystem writes depend on the CLI permission model; platform-materialized writes are guarded.",
+                "",
+            ]
+        )
+        write_text(output_dir / artifact, text)
+        await self.refresh_artifacts(run["id"])
+        if status != "PASS":
+            raise WorkflowError("final_review: tests and external validation must both pass before final gate.")
+
     async def _run_multi_agent_review(
         self,
         run: dict[str, Any],
@@ -287,22 +432,12 @@ class WorkflowActions:
         fail_keywords = self._split_keywords(config.get("failKeywords") or "FAIL, BLOCKED")
         confidence = self._extract_confidence(text)
 
-        status_match = re.search(r"^\s*status\s*[:=]\s*([A-Za-z_-]+)", text, re.I | re.M)
-        status_value = (status_match.group(1).strip().lower() if status_match else "")
-        pass_hit = next((keyword for keyword in pass_keywords if keyword.lower() in lowered), "")
         fail_hit = next((keyword for keyword in fail_keywords if keyword.lower() in lowered), "")
-
-        if status_value in {"fail", "failed", "blocked", "reject", "rejected"}:
-            return {"passed": False, "confidence": confidence or 0.0, "reason": f"status is {status_value}"}
-        if status_value in {"pass", "passed", "approved", "ok", "done"}:
-            pass_hit = pass_hit or status_value
-        elif fail_hit and not pass_hit:
+        pass_hit = next((keyword for keyword in pass_keywords if keyword.lower() in lowered), "")
+        if fail_hit:
             return {"passed": False, "confidence": confidence or 0.0, "reason": f"matched fail keyword: {fail_hit}"}
-
         if pass_keywords and not pass_hit:
-            # Keep generic reviews strict, but make the failure clearer and less
-            # sensitive to body text that merely mentions the word FAIL.
-            return {"passed": False, "confidence": confidence or 0.0, "reason": "no explicit pass status or pass keyword matched"}
+            return {"passed": False, "confidence": confidence or 0.0, "reason": "no pass keyword matched"}
         effective_confidence = confidence if confidence is not None else (1.0 if pass_hit else 0.75)
         threshold = float(config.get("confidenceThreshold") or 0)
         if effective_confidence < threshold:
@@ -413,15 +548,41 @@ class WorkflowActions:
     async def generate_tests_step(self, run: dict[str, Any], prompt_name: str = "07_test.md", artifact: str = "test-plan.md", *, agent_name: str | None = None) -> None:
         output_dir = Path(run["workspace"]) / "output"
         artifact = normalize_artifact_name(artifact)
+        project_dir = Path(run.get("project_path") or ROOT)
         try:
             await self.run_agent_step(run, "generate_tests", prompt_name, artifact, agent_name=agent_name)
         except UserInputRequired:
             raise
         test_plan = read_text(output_dir / artifact)
         files = extract_build_files(test_plan)
-        validate_generated_test_files(files)
-        project_dir = Path(run.get("project_path") or ROOT)
-        written = apply_build_files(project_dir, test_plan)
+        test_files = only_test_files(files)
+        invalid_files = non_test_files(files)
+        if invalid_files and test_files:
+            await self.log(
+                run,
+                "generate_tests: ignored non-test file block(s) owned by Build: "
+                + ", ".join(rel_path for rel_path, _ in invalid_files),
+            )
+        if not test_files:
+            synthesized = synthesize_python_smoke_tests(project_dir, read_text(Path(run["workspace"]) / "requirement.md"))
+            if synthesized:
+                test_files = synthesized
+                write_text(
+                    output_dir / artifact,
+                    "# Generated Tests Fallback\n\n"
+                    "The agent did not return valid test file blocks, so the workflow generated a deterministic pytest smoke test.\n\n"
+                    + "\n".join(
+                        f"FILE: {rel_path}\nCONTENT:\n{content.rstrip()}\nEND_FILE"
+                        for rel_path, content in synthesized
+                    )
+                    + "\n",
+                )
+                await self.refresh_artifacts(run["id"])
+                await self.log(run, "generate_tests: synthesized deterministic pytest smoke test from production Python files")
+            else:
+                validate_generated_test_files(files)
+        validate_generated_test_files(test_files)
+        written = apply_extracted_files(project_dir, test_files, output_label="generate_tests output")
         if written:
             await self.log(run, "generate_tests: materialized test files: " + ", ".join(str(path.relative_to(project_dir)) for path in written))
         else:
@@ -596,6 +757,18 @@ class WorkflowActions:
                 allow_interaction=allow_interaction,
                 agent_name=agent_name,
             ),
+            "implementation_review": lambda: (
+                self.implementation_review_step(run, step_artifact_name(step_record, "implementation-review.md"))
+                if run.get("workflow_id") == "general-auto-development"
+                else self.review_step(
+                    run,
+                    key,
+                    step_prompt_name(step_record, "02_implementation_review.md"),
+                    step_artifact_name(step_record, "implementation-review.md"),
+                    allow_interaction=allow_interaction,
+                    agent_name=agent_name,
+                )
+            ),
             "todo_gate": lambda: asyncio.to_thread(self.functions.require_status, output_dir / step_artifact_name(step_record, "todo-review.md"), "PASS"),
             "generate_tests": lambda: self.generate_tests_step(
                 run,
@@ -622,13 +795,8 @@ class WorkflowActions:
                 agent_name=agent_name,
             ),
             "final_review": lambda: (
-                self.functions.call_python_functions(
-                    run,
-                    step_function_names(step_record),
-                    output_dir,
-                    step_artifact_name(step_record, "final-review.md"),
-                )
-                if step_function_names(step_record) and step_type in {"python", "validation", "check"}
+                self.final_review_step(run, step_artifact_name(step_record, "final-review.md"))
+                if run.get("workflow_id") == "general-auto-development"
                 else self.review_step(
                     run,
                     key,

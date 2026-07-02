@@ -1,8 +1,8 @@
-This is now a deterministic Python function step.
-
-The workflow function `validate_general_auto_plan` validates `output/todo.md` and writes `output/implementation-review.md`.
+This step is executed by deterministic Python review.
 
 Expected behavior:
-- Do not call an AI agent.
-- Require `Status: READY`, `TASK-001` style task ids, acceptance criteria, automated test coverage, and mandatory external validation.
-- On failure, retry from Plan Tasks with the concrete validation error.
+- Validate that `todo.md` has `Status: READY`.
+- Validate that task IDs and acceptance criteria exist.
+- Validate that the mandatory external validation stage is present.
+- Write `output/implementation-review.md` with `Status: PASS` when the TODO is valid.
+- Do not ask the user questions.

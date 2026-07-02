@@ -372,7 +372,10 @@ class PromptAndArtifactFunctionTests(unittest.TestCase):
         self.assertIn("Build output guard", hardened)
         self.assertIn("Do not write paths under tests/", hardened)
         self.assertIn("at least one non-test production file", hardened)
-        self.assertEqual(AgentStepRunner._harden_prompt_for_step("generate_tests", "Base prompt"), "Base prompt")
+        test_hardened = AgentStepRunner._harden_prompt_for_step("generate_tests", "Base prompt")
+        self.assertIn("Workspace safety guard", test_hardened)
+        self.assertIn("Generate Tests output guard", test_hardened)
+        self.assertIn("write only tests/test_*.py", test_hardened)
 
     def test_artifact_function_rejects_empty_or_invalid_files(self) -> None:
         service = WorkflowFunctionService(log=_noop_log, refresh_artifacts=_noop_refresh)

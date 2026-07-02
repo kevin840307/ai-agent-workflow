@@ -54,8 +54,8 @@ class GeneralAutoDevelopmentWorkflowTests(unittest.TestCase):
                 "prepare_project",
                 "plan_tasks",
                 "implementation_review",
-                "generate_tests",
                 "build",
+                "generate_tests",
                 "run_test",
                 "run_external_validation",
                 "final_review",
@@ -68,6 +68,13 @@ class GeneralAutoDevelopmentWorkflowTests(unittest.TestCase):
         self.assertEqual(generate_tests["outputFile"], "test-plan.md")
         self.assertEqual(generate_tests["expectedFiles"], ["test-plan.md"])
         self.assertEqual(generate_tests["retryFromStepKey"], "generate_tests")
+
+        build = next(step for step in workflow["steps"] if step["key"] == "build")
+        self.assertEqual(build["type"], "ai")
+        self.assertGreaterEqual(build["maxRetries"], 10)
+
+        implementation_review = next(step for step in workflow["steps"] if step["key"] == "implementation_review")
+        self.assertEqual(implementation_review["type"], "python")
 
         run_test = next(step for step in workflow["steps"] if step["key"] == "run_test")
         self.assertEqual(run_test["type"], "python")
@@ -83,7 +90,7 @@ class GeneralAutoDevelopmentWorkflowTests(unittest.TestCase):
         self.assertTrue(validation["requiresValidationScript"])
         self.assertGreaterEqual(validation["maxRetries"], 10)
 
-    def test_general_auto_development_generates_tests_before_external_validation(self) -> None:
+    def test_general_auto_development_builds_then_generates_tests_before_external_validation(self) -> None:
         def qwen_response(prompt: str) -> str:
             lower = prompt.lower()
             if "preparing a project" in lower:
@@ -238,6 +245,8 @@ Confidence: 0.98
                     self.assertTrue((project / "tests" / "test_calculator.py").exists())
                     self.assertTrue((project / "calculator.py").exists())
                     step_keys = [step["key"] for step in run["steps"]]
+                    self.assertLess(step_keys.index("build"), step_keys.index("generate_tests"))
+                    self.assertLess(step_keys.index("generate_tests"), step_keys.index("run_test"))
                     self.assertLess(step_keys.index("run_test"), step_keys.index("run_external_validation"))
                     self.assertIn("external validation ok", (Path(run["workspace"]) / "output" / "external-validation-result.md").read_text(encoding="utf-8"))
                     client.delete(f"/api/sessions/{session['id']}")

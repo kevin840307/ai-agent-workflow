@@ -60,7 +60,8 @@ class AgentStepRunner:
             agent_name=agent_name,
         )
         prompt_text = self._harden_prompt_for_step(step_key, prompt_result.prompt)
-        cwd = Path(run.get("project_path") or run["workspace"])
+        cwd = Path(run.get("project_path") or run["workspace"]).expanduser().resolve()
+        workspace_path = Path(run["workspace"]).expanduser().resolve()
         base_session_id = self._session_id_for_agent(run, agent_name)
         # Qwen serve normally keeps one Qwen session per project/app session.
         # Some workflows, such as multi-agent security consensus, intentionally
@@ -81,6 +82,12 @@ class AgentStepRunner:
             prompt=prompt_text,
             cwd=cwd,
             session_id=session_id,
+            metadata={
+                "project_path": str(cwd),
+                "workspace_path": str(workspace_path),
+                "write_root": str(cwd),
+                "read_policy": "unrestricted",
+            },
         )
         display_cmd = agent.command_preview(request)
         await self.log(run, f"{step_key}: agent={agent_name}, command=`{display_cmd}`, cwd={cwd}")
@@ -117,7 +124,13 @@ class AgentStepRunner:
                 prompt=prompt_text,
                 cwd=cwd,
                 session_id=None,
-                metadata={"recovered_from_session_id": request.session_id},
+                metadata={
+                    "recovered_from_session_id": request.session_id,
+                    "project_path": str(cwd),
+                    "workspace_path": str(workspace_path),
+                    "write_root": str(cwd),
+                    "read_policy": "unrestricted",
+                },
             )
             result = await agent.run_stream(fresh_request, on_output=publish_agent_output)
         output = result.output
@@ -153,18 +166,35 @@ class AgentStepRunner:
 
     @staticmethod
     def _harden_prompt_for_step(step_key: str, prompt: str) -> str:
-        if step_key != "build":
-            return prompt
-        guard = """
+        base_guard = """
+
+Workspace safety guard:
+- Current working directory is the selected Project Path.
+- You may read files anywhere when needed for context.
+- You must only create, modify, delete, or rename files inside the selected Project Path.
+- Do not write absolute paths, parent-directory paths, `.git`, `.ai-workflow`, or `.qwen-workflow`.
+- If you output file edits, use relative FILE paths only.
+"""
+        if step_key == "build":
+            step_guard = """
 
 Build output guard:
 - You are in the Build step. Output production code FILE/CONTENT/END_FILE blocks only.
-- Do not output, copy, rewrite, summarize, or include any test file blocks from Test Plan.
+- Do not output, copy, rewrite, summarize, or include test file blocks.
 - Do not write paths under tests/ and do not write files named test_*.py.
-- If Test Plan contains FILE/CONTENT/END_FILE blocks, treat them as read-only requirements only.
 - Your final answer must include at least one non-test production file that implements the current Requirement.
 """
-        return prompt.rstrip() + guard
+            return prompt.rstrip() + base_guard + step_guard
+        if step_key == "generate_tests":
+            step_guard = """
+
+Generate Tests output guard:
+- You are in the Generate Tests step. Output test FILE/CONTENT/END_FILE blocks only.
+- For Python projects, write only tests/test_*.py or tests/conftest.py.
+- Do not output production files in this step.
+"""
+            return prompt.rstrip() + base_guard + step_guard
+        return prompt.rstrip() + base_guard
 
     def _session_id_for_agent(self, run: dict[str, Any], agent_name: str) -> str | None:
         provider_sessions = run.get("agent_session_ids") or {}

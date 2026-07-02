@@ -57,7 +57,7 @@ Mock workflow project used for deterministic end-to-end verification.
 
 ## Conventions
 - Keep production files separate from generated tests.
-- Do not write under .ai-workflow.
+- Do not write under .ai-workflow or .qwen-workflow.
 
 ## Unknowns
 - None blocking for mock mode.
@@ -126,6 +126,7 @@ END_FILE
 ## Forbidden Files
 - tests/
 - .ai-workflow/
+- .qwen-workflow/
 
 ## Implementation Plan
 - Add a small production helper function that returns the deterministic greeting expected by tests.
