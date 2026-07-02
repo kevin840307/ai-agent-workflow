@@ -436,6 +436,217 @@ END_FILE
             else:
                 os.environ["QWEN_USE_SERVE"] = old_use_serve
 
+    def test_general_auto_development_can_complete_yaml_crud_from_config(self) -> None:
+        expected_yaml = """users:
+  - id: alice
+    role: reader
+    enabled: true
+  - id: bob
+    role: admin
+    enabled: true
+  - id: carol
+    role: reader
+    enabled: true
+"""
+
+        def qwen_response(prompt: str) -> str:
+            lower = prompt.lower()
+            if "preparing a project" in lower:
+                return """FILE: architecture.md
+CONTENT:
+# Architecture
+
+## Project Summary
+- Current purpose: YAML config transformation project.
+- User request: apply CRUD operations from config/crud.yaml to config/users.yaml and write generated/users.yaml.
+
+## Runtime Agent Settings
+- Qwen project settings: missing at `.qwen/settings.json`
+- OpenCode project settings: missing at `opencode.json`
+- Rule: agent read access may use project settings, but generated edits must remain inside the selected Project path.
+
+## Detected Stack
+- Primary language: YAML + Python validation
+- Framework/runtime: Python
+- Test framework: pytest
+- Package/build command: python -m pytest
+
+## Current Structure
+- Source layout: config/users.yaml and config/crud.yaml
+- Test layout: tests/
+- Important config files: validation.py
+
+## Implementation Rules
+- Read config/users.yaml as the before state.
+- Read config/crud.yaml as the CRUD instruction source.
+- Write generated/users.yaml only.
+- Keep production code and tests separate.
+- Do not edit files outside the selected Project path.
+- Do not skip the external validation script.
+END_FILE
+"""
+            if "create a practical implementation task plan" in lower:
+                return """# Todo
+
+Status: READY
+
+## Requirement
+- Apply YAML CRUD operations from config/crud.yaml to config/users.yaml and write generated/users.yaml.
+
+## Task Index
+| ID | Task | Acceptance Criteria |
+| --- | --- | --- |
+| TASK-001 | Generate CRUD output YAML | AC-001 |
+
+## Tasks
+
+### TASK-001: Generate CRUD output YAML
+- Goal: produce generated/users.yaml from config/users.yaml plus config/crud.yaml.
+- Files: generated/users.yaml and tests/test_yaml_crud.py.
+- Acceptance Criteria:
+  - AC-001: generated/users.yaml keeps alice, updates bob, creates carol, and deletes legacy.
+- Validation:
+  - Covered by generated automated tests and validation.py.
+
+## Execution SOP
+- Step 1: Build generated/users.yaml only.
+- Step 2: Generate tests only.
+- Step 3: Run automated tests.
+- Step 4: Run mandatory external validation.
+
+## External Validation
+- validation.py is mandatory.
+- The workflow must retry Build when validation fails.
+
+## Suggested Todo Files
+- None.
+"""
+            if "generating focused automated tests" in lower:
+                return f"""FILE: tests/test_yaml_crud.py
+CONTENT:
+from pathlib import Path
+
+
+EXPECTED = {expected_yaml!r}
+
+
+def test_generated_yaml_matches_crud_config():
+    assert Path("config/users.yaml").exists()
+    assert Path("config/crud.yaml").exists()
+    actual = Path("generated/users.yaml").read_text(encoding="utf-8")
+    assert actual == EXPECTED
+    before = Path("config/users.yaml").read_text(encoding="utf-8")
+    assert "id: legacy" in before
+    assert "id: legacy" not in actual
+    assert "role: admin" in actual
+    assert "id: carol" in actual
+END_FILE
+"""
+            if "implement the approved task plan" in lower:
+                return f"""FILE: generated/users.yaml
+CONTENT:
+{expected_yaml}END_FILE
+"""
+            return "Status: PASS\n"
+
+        old_mock = os.environ.get("QWEN_MOCK")
+        old_use_serve = os.environ.get("QWEN_USE_SERVE")
+        os.environ["QWEN_MOCK"] = "1"
+        os.environ["QWEN_USE_SERVE"] = "0"
+        try:
+            with tempfile.TemporaryDirectory() as tmp, patch(
+                "app.runtime_modules.qwen.mock_qwen_response", side_effect=qwen_response
+            ):
+                project = Path(tmp) / "yaml-crud-project"
+                project.mkdir()
+                (project / "config").mkdir()
+                (project / "config" / "users.yaml").write_text(
+                    "users:\n"
+                    "  - id: alice\n"
+                    "    role: reader\n"
+                    "    enabled: true\n"
+                    "  - id: bob\n"
+                    "    role: writer\n"
+                    "    enabled: false\n"
+                    "  - id: legacy\n"
+                    "    role: reader\n"
+                    "    enabled: false\n",
+                    encoding="utf-8",
+                )
+                (project / "config" / "crud.yaml").write_text(
+                    "source: config/users.yaml\n"
+                    "output: generated/users.yaml\n"
+                    "operations:\n"
+                    "  - action: update\n"
+                    "    id: bob\n"
+                    "    set:\n"
+                    "      role: admin\n"
+                    "      enabled: true\n"
+                    "  - action: create\n"
+                    "    value:\n"
+                    "      id: carol\n"
+                    "      role: reader\n"
+                    "      enabled: true\n"
+                    "  - action: delete\n"
+                    "    id: legacy\n",
+                    encoding="utf-8",
+                )
+                (project / "validation.py").write_text(
+                    "from pathlib import Path\n\n"
+                    "before = Path('config/users.yaml').read_text(encoding='utf-8')\n"
+                    "after_path = Path('generated/users.yaml')\n"
+                    "assert after_path.exists(), 'generated/users.yaml was not created'\n"
+                    "after = after_path.read_text(encoding='utf-8')\n"
+                    f"expected = {expected_yaml!r}\n"
+                    "assert after == expected, 'generated YAML does not match expected CRUD result'\n"
+                    "assert 'id: legacy' in before and 'id: legacy' not in after\n"
+                    "assert 'id: bob' in before and 'role: writer' in before\n"
+                    "assert 'id: bob' in after and 'role: admin' in after\n"
+                    "assert 'id: carol' not in before and 'id: carol' in after\n"
+                    "print('yaml crud validation ok')\n",
+                    encoding="utf-8",
+                )
+
+                with TestClient(app) as client:
+                    session_response = client.post(
+                        "/api/sessions",
+                        json={"title": "YAML CRUD E2E", "project_path": str(project)},
+                    )
+                    self.assertEqual(session_response.status_code, 200, session_response.text)
+                    session = session_response.json()
+                    run_response = client.post(
+                        f"/api/sessions/{session['id']}/workflow-runs",
+                        json={
+                            "workflow_id": "general-auto-development",
+                            "requirement": "Apply CRUD operations from config/crud.yaml to config/users.yaml and write generated/users.yaml.",
+                            "project_path": str(project),
+                            "test_command": "python -m pytest",
+                            "validation_script": "validation.py",
+                        },
+                    )
+                    self.assertEqual(run_response.status_code, 200, run_response.text)
+                    run = self._wait_for_terminal_run(client, run_response.json())
+
+                    self.assertEqual(run["status"], "done", run.get("error"))
+                    self.assertEqual((project / "generated" / "users.yaml").read_text(encoding="utf-8"), expected_yaml)
+                    self.assertIn("role: writer", (project / "config" / "users.yaml").read_text(encoding="utf-8"))
+                    self.assertTrue((project / "tests" / "test_yaml_crud.py").exists())
+                    self.assertFalse((project.parent / "generated" / "users.yaml").exists())
+                    output_dir = Path(run["workspace"]) / "output"
+                    self.assertIn("ExitCode: 0", (output_dir / "test-result.md").read_text(encoding="utf-8"))
+                    self.assertIn("yaml crud validation ok", (output_dir / "external-validation-result.md").read_text(encoding="utf-8"))
+                    self.assertIn("Status: PASS", (output_dir / "final-review.md").read_text(encoding="utf-8"))
+                    client.delete(f"/api/sessions/{session['id']}")
+        finally:
+            if old_mock is None:
+                os.environ.pop("QWEN_MOCK", None)
+            else:
+                os.environ["QWEN_MOCK"] = old_mock
+            if old_use_serve is None:
+                os.environ.pop("QWEN_USE_SERVE", None)
+            else:
+                os.environ["QWEN_USE_SERVE"] = old_use_serve
+
     def test_external_validation_fails_when_project_has_no_validation_script(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             project = Path(tmp) / "project"

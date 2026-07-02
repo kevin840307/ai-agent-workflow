@@ -20,10 +20,14 @@ Failure feedback:
 
 Planning rules:
 - Do not ask the user questions unless the requirement has no actionable task at all.
-- Use reasonable defaults for minor missing details and record them in the plan.
+- User instructions and provided config files are the source of truth. Follow explicit user-provided steps, file paths, formats, and validation expectations before applying defaults.
+- If the user restricts allowed tools, libraries, commands, languages, or frameworks, preserve those restrictions in the plan and do not substitute alternatives.
+- Use reasonable defaults only for minor missing details and record them in the plan.
 - Split the work into small tasks, but do not over-split. Prefer 3 to 8 tasks, and never more than 12 unless the request is truly large.
 - Every task must have clear acceptance criteria.
 - Build production changes before Generate Tests so the model does not mix test blocks into Build.
+- For data/config tasks, treat requested project artifacts such as YAML/JSON/config output files as Build-owned deliverables.
+- If a config file defines CRUD operations, include source file, operation config file, and expected output path in the plan.
 - Include a focused automated test strategy after Build and before external validation.
 - Include validation coverage for the user-provided validation script.
 - Keep TODO content concise and actionable.
@@ -70,7 +74,7 @@ Status: READY
 
 ## Assumptions
 - Use the detected project language and structure.
-- Use standard implementation details when the requirement does not specify minor choices.
+- Use standard implementation details only when the requirement does not specify minor choices.
 
 ## Suggested Todo Files
 - None unless the task is large enough to benefit from split TODO files.
