@@ -233,9 +233,6 @@ Confidence: 0.98
                         json={
                             "workflow_id": "general-auto-development",
                             "requirement": "Add a Python add function.",
-                            "project_path": str(project),
-                            "test_command": "python -m pytest",
-                            "validation_script": "validation.py",
                         },
                     )
                     self.assertEqual(run_response.status_code, 200, run_response.text)
@@ -260,7 +257,7 @@ Confidence: 0.98
             else:
                 os.environ["QWEN_USE_SERVE"] = old_use_serve
 
-    def test_general_auto_development_can_complete_bubble_sort_workflow(self) -> None:
+    def test_general_auto_development_can_complete_bubble_sort_from_prompt_only(self) -> None:
         def qwen_response(prompt: str) -> str:
             lower = prompt.lower()
             if "preparing a project" in lower:
@@ -404,10 +401,7 @@ END_FILE
                         f"/api/sessions/{session['id']}/workflow-runs",
                         json={
                             "workflow_id": "general-auto-development",
-                            "requirement": "幫我用 Python 寫一個泡沫排序法",
-                            "project_path": str(project),
-                            "test_command": "python -m pytest",
-                            "validation_script": "validation.py",
+                            "requirement": "Use Python to implement a bubble sort function.",
                         },
                     )
                     self.assertEqual(run_response.status_code, 200, run_response.text)
@@ -436,7 +430,7 @@ END_FILE
             else:
                 os.environ["QWEN_USE_SERVE"] = old_use_serve
 
-    def test_general_auto_development_can_complete_yaml_crud_from_config(self) -> None:
+    def test_general_auto_development_can_complete_yaml_crud_from_prompt_only(self) -> None:
         expected_yaml = """users:
   - id: alice
     role: reader
@@ -619,9 +613,6 @@ CONTENT:
                         json={
                             "workflow_id": "general-auto-development",
                             "requirement": "Apply CRUD operations from config/crud.yaml to config/users.yaml and write generated/users.yaml.",
-                            "project_path": str(project),
-                            "test_command": "python -m pytest",
-                            "validation_script": "validation.py",
                         },
                     )
                     self.assertEqual(run_response.status_code, 200, run_response.text)
