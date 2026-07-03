@@ -30,10 +30,13 @@ Project profile:
 Failure feedback from previous retries:
 {{failure_feedback}}
 
+Fallback validation scripts configured by this workflow:
+{{fallback_validation_scripts}}
+
 Rules:
 - Do not run `git commit`, `git push`, or any command that changes repository history or remote state. The user will inspect git diff manually.
 - Output Build-owned FILE/CONTENT/END_FILE blocks only: production code, project config, data files, or other requested project artifacts.
-- Existing validation scripts such as `validation.py`, `validate.py`, `verify.py`, and `check.py` are protected acceptance tools. Do not output FILE blocks for them unless the user explicitly asked to implement or modify the validator itself.
+- Existing validation scripts configured by the workflow or provided for this run are protected acceptance tools. Do not output FILE blocks for them unless the user explicitly asked to implement or modify the validator itself.
 - Do not output explanations outside FILE blocks.
 - Do not create or modify test files in this Build step.
 - Implement the small tasks in the Task Manifest order, then assemble them into one coherent project state before returning FILE blocks.

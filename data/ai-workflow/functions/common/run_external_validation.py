@@ -14,7 +14,6 @@ FUNCTION_META = {
     "ui": {"tabs": ["basic", "retry", "advanced"]},
 }
 
-SCRIPT_NAMES = ["validation.py", "validate.py", "verify.py", "check.py"]
 ARGUMENT_ERROR_MARKERS = (
     "unrecognized arguments",
     "unknown option",
@@ -35,9 +34,10 @@ def run(context: Any, artifact: str | None = None) -> str:
     workspace = Path(context.run.get("workspace") or output_dir.parent).expanduser().resolve()
 
     configured_script = str(context.run.get("validation_script") or "").strip()
-    script = _find_validation_script(project_dir, configured_script)
+    fallback_scripts = _fallback_validation_scripts(context)
+    script = _find_validation_script(project_dir, configured_script, fallback_scripts)
     if script is None:
-        expected = configured_script or ", ".join(SCRIPT_NAMES)
+        expected = configured_script or ", ".join(fallback_scripts) or "no fallback scripts configured"
         if not configured_script and not _requires_validation_script(context):
             result = _format_result(
                 status="PASS",
@@ -93,15 +93,27 @@ def run(context: Any, artifact: str | None = None) -> str:
     return result
 
 
-def _find_validation_script(project_dir: Path, configured_script: str = "") -> Path | None:
+def _find_validation_script(project_dir: Path, configured_script: str = "", fallback_scripts: list[str] | None = None) -> Path | None:
     explicit = configured_script or os.environ.get("AI_WORKFLOW_VALIDATION_SCRIPT") or os.environ.get("VALIDATION_SCRIPT")
     if explicit:
         return _resolve_explicit_script(project_dir, explicit)
-    for name in SCRIPT_NAMES:
+    for name in fallback_scripts or []:
         candidate = (project_dir / name).resolve()
         if candidate.is_file():
             return candidate
     return None
+
+
+def _fallback_validation_scripts(context: Any) -> list[str]:
+    step_config = context.run.get("_current_step_config") if isinstance(getattr(context, "run", None), dict) else {}
+    if not isinstance(step_config, dict):
+        return []
+    value = step_config.get("fallbackValidationScripts") or step_config.get("fallback_validation_scripts") or []
+    if isinstance(value, str):
+        return [item.strip() for item in value.split(",") if item.strip()]
+    if isinstance(value, list):
+        return [str(item).strip() for item in value if str(item).strip()]
+    return []
 
 
 def _requires_validation_script(context: Any) -> bool:

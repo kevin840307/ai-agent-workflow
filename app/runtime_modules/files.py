@@ -16,9 +16,6 @@ from app.security.workspace_guard import (
     unsafe_relative_path_reason as guarded_unsafe_relative_path_reason,
 )
 
-VALIDATION_SCRIPT_NAMES = ("validation.py", "validate.py", "verify.py", "check.py")
-
-
 def unsafe_relative_path_reason(raw_path: str) -> str | None:
     """Return a reason when an agent-supplied path must not be written/read."""
     normalized = str(raw_path or "").strip().strip("`").replace("\\", "/").lower()
@@ -116,78 +113,31 @@ def render_generic_spec_from_requirement(requirement: str) -> str:
     )
 
 
-def requirement_mentions_language(requirement: str) -> bool:
-    lower = requirement.lower()
-    keywords = [
-        "python",
-        ".py",
-        "javascript",
-        "typescript",
-        "node",
-        "java",
-        "c#",
-        "c++",
-        "go",
-        "rust",
-        "php",
-        "ruby",
-        "批次",
-        "腳本",
-    ]
-    return any(keyword in lower for keyword in keywords)
-
-
-GENERAL_REQUEST_VERBS = (
-    "add", "build", "create", "implement", "write", "make", "fix",
-    "update", "optimize", "refactor", "review", "test", "scan", "generate",
-    "新增", "加入", "建立", "建置", "製作", "撰寫", "寫", "做",
-    "修改", "修正", "優化", "重構", "檢查", "測試", "掃描", "產生",
-)
-
-
 def requirement_has_actionable_signal(requirement: str) -> bool:
-    """Return whether the user supplied enough text to attempt a workflow.
+    """Return whether the user supplied enough readable text to start.
 
-    Keep only generic request verbs here. Do not add domain examples such as
-    sorting, APIs, UI pages, or security keywords; those make the General Auto
-    Development workflow look like it contains hidden hard-coded use cases.
-    Stack/language ambiguity is handled separately by should_ask_for_spec_input().
+    This intentionally avoids language, framework, domain, or action keyword
+    lists. A workflow may ask follow-up questions later through its configured
+    interaction policy, but the runtime should not hard-code what counts as a
+    valid software request.
     """
     text = requirement.strip()
     compact = re.sub(r"[\W_]+", "", text, flags=re.UNICODE)
-    if len(compact) < 4 or not re.search(r"[a-z0-9\u4e00-\u9fff]", text, re.IGNORECASE):
-        return False
-    lowered = text.lower()
-    return any(verb in lowered for verb in GENERAL_REQUEST_VERBS)
+    return len(compact) >= 4 and bool(re.search(r"[a-z0-9\u4e00-\u9fff]", text, re.IGNORECASE))
 
 
 def should_ask_for_spec_input(requirement: str, project_dir: Path, supplemental_input: str = "") -> bool:
     combined_requirement = "\n".join(part.strip() for part in [requirement, supplemental_input] if part and part.strip())
-    if not requirement_has_actionable_signal(combined_requirement):
-        return True
-    return not project_has_user_files(project_dir) and not requirement_mentions_language(combined_requirement)
+    return not requirement_has_actionable_signal(combined_requirement)
 
 
 def spec_input_questions(requirement: str, project_dir: Path, supplemental_input: str = "") -> str:
-    combined_requirement = "\n".join(part.strip() for part in [requirement, supplemental_input] if part and part.strip())
-    if not requirement_has_actionable_signal(combined_requirement):
-        return (
-            "## Requirement\n\n"
-            "I cannot identify a concrete task from the current message.\n\n"
-            "Please describe what you want to build, change, fix, test, or scan. "
-            "Include the target language or project area if this is a new or empty project.\n"
-        )
-    if not project_has_user_files(project_dir) and not requirement_mentions_language(combined_requirement):
-        return (
-            "## Target Language\n\n"
-            "This project appears empty, and the requirement does not say which language or stack to use.\n\n"
-            "Please tell me the target language or stack, for example Python, JavaScript, TypeScript, Java, Go, or another option.\n"
-        )
     return (
-        "## Missing Information\n\n"
-        "Please provide the missing blocking detail needed to produce the workflow spec.\n"
+        "## Requirement\n\n"
+        "I cannot identify a concrete task from the current message.\n\n"
+        "Please describe what you want to build, change, fix, test, scan, or generate. "
+        "Include any required language, files, inputs, outputs, or constraints when they matter.\n"
     )
-
 
 
 def classify_test_retry_target(project_dir: Path, test_result: str) -> str:
@@ -262,7 +212,7 @@ def project_profile(project_dir: Path) -> str:
     if not snapshot:
         return (
             "Project appears empty.\n"
-            "- Primary language: unknown until requirement specifies it.\n"
+            "- Dominant source extensions: none.\n"
             "- Architecture guidance: create a minimal structure for the requested language."
         )
 
@@ -275,19 +225,17 @@ def project_profile(project_dir: Path) -> str:
         if suffix:
             suffix_counts[suffix] = suffix_counts.get(suffix, 0) + 1
 
-    languages = _detect_project_languages(lower_paths, suffix_counts)
     test_frameworks = _detect_test_frameworks(project_dir, lower_paths)
     source_files = _sample_paths(normalized_paths, _is_source_path, 12)
     test_files = _sample_paths(normalized_paths, _is_test_path, 12)
     marker_files = _sample_paths(normalized_paths, _is_marker_file, 12)
     source_roots = _source_roots(source_files)
+    dominant_extensions = ", ".join(f"{suffix} ({count})" for suffix, count in sorted(suffix_counts.items(), key=lambda item: (-item[1], item[0]))[:8])
 
-    primary_language = languages[0] if languages else "unknown"
     return "\n".join(
         [
             "Detected project profile:",
-            f"- Primary language: {primary_language}",
-            f"- Languages detected: {', '.join(languages) if languages else 'unknown'}",
+            f"- Dominant source extensions: {dominant_extensions or 'none detected'}",
             f"- Test framework: {', '.join(test_frameworks) if test_frameworks else 'unknown'}",
             f"- Marker/config files: {', '.join(marker_files) if marker_files else 'none detected'}",
             f"- Source roots by usage: {', '.join(source_roots) if source_roots else 'none detected'}",
@@ -371,37 +319,6 @@ def infer_test_commands(project_dir: Path, snapshot: dict[str, tuple[int, int]] 
     if "cargo.toml" in lower_paths:
         commands.append("cargo test")
     return _unique(commands)
-
-def _detect_project_languages(lower_paths: list[str], suffix_counts: dict[str, int]) -> list[str]:
-    scores = {
-        "Python": suffix_counts.get(".py", 0) * 3,
-        "TypeScript": (suffix_counts.get(".ts", 0) + suffix_counts.get(".tsx", 0)) * 3,
-        "JavaScript": (suffix_counts.get(".js", 0) + suffix_counts.get(".jsx", 0) + suffix_counts.get(".mjs", 0)) * 3,
-        "Java": suffix_counts.get(".java", 0) * 3,
-        "C#": suffix_counts.get(".cs", 0) * 3,
-        "Go": suffix_counts.get(".go", 0) * 3,
-        "Rust": suffix_counts.get(".rs", 0) * 3,
-        "PHP": suffix_counts.get(".php", 0) * 3,
-        "Ruby": suffix_counts.get(".rb", 0) * 3,
-    }
-    marker_boosts = {
-        "Python": ["pyproject.toml", "requirements.txt", "pytest.ini", "setup.py", "tox.ini"],
-        "TypeScript": ["tsconfig.json"],
-        "JavaScript": ["package.json", "vite.config.js", "webpack.config.js"],
-        "Java": ["pom.xml", "build.gradle", "src/main/java"],
-        "C#": [".csproj", ".sln"],
-        "Go": ["go.mod"],
-        "Rust": ["cargo.toml"],
-        "PHP": ["composer.json"],
-        "Ruby": ["gemfile"],
-    }
-    for language, markers in marker_boosts.items():
-        for marker in markers:
-            if any(marker in path for path in lower_paths):
-                scores[language] += 5
-    ranked = sorted(((score, language) for language, score in scores.items() if score > 0), reverse=True)
-    return [language for _, language in ranked]
-
 
 def _detect_test_frameworks(project_dir: Path, lower_paths: list[str]) -> list[str]:
     frameworks: list[str] = []
@@ -620,7 +537,11 @@ def validate_build_files_are_not_tests(files: list[tuple[str, str]]) -> None:
         )
 
 
-def existing_validation_scripts(project_dir: Path, validation_script: str | None = None) -> set[Path]:
+def existing_validation_scripts(
+    project_dir: Path,
+    validation_script: str | None = None,
+    fallback_scripts: Iterable[str] | None = None,
+) -> set[Path]:
     """Return validation scripts that already exist before Build starts.
 
     Existing validation scripts are user-provided acceptance tools. Build may
@@ -633,7 +554,7 @@ def existing_validation_scripts(project_dir: Path, validation_script: str | None
         path = candidate if candidate.is_absolute() else project_root / candidate
         if path.is_file():
             scripts.add(path.resolve())
-    for name in VALIDATION_SCRIPT_NAMES:
+    for name in fallback_scripts or []:
         path = project_root / name
         if path.is_file():
             scripts.add(path.resolve())
@@ -645,8 +566,9 @@ def validate_build_files_do_not_overwrite_validation_scripts(
     files: list[tuple[str, str]],
     *,
     validation_script: str | None = None,
+    fallback_scripts: Iterable[str] | None = None,
 ) -> None:
-    protected_scripts = existing_validation_scripts(project_dir, validation_script)
+    protected_scripts = existing_validation_scripts(project_dir, validation_script, fallback_scripts)
     if not protected_scripts:
         return
     project_root = project_dir.expanduser().resolve()
@@ -671,7 +593,12 @@ def non_test_files(files: list[tuple[str, str]]) -> list[tuple[str, str]]:
     return [file_block for file_block in files if not is_test_file_path(file_block[0])]
 
 
-def build_generic_python_import_smoke_test(project_dir: Path, requirement: str = "") -> list[tuple[str, str]]:
+def build_generic_python_import_smoke_test(
+    project_dir: Path,
+    requirement: str = "",
+    *,
+    excluded_paths: Iterable[Path] | None = None,
+) -> list[tuple[str, str]]:
     """Create a generic import-only smoke test for Python modules.
 
     This does not assert domain behavior; it is only a safety net when an
@@ -680,6 +607,13 @@ def build_generic_python_import_smoke_test(project_dir: Path, requirement: str =
     external validation.
     """
     snapshot = project_file_snapshot(project_dir)
+    project_root = project_dir.expanduser().resolve()
+    excluded: set[str] = set()
+    for path in excluded_paths or []:
+        try:
+            excluded.add(path.expanduser().resolve().relative_to(project_root).as_posix())
+        except ValueError:
+            continue
     python_files = [
         path
         for path in sorted(snapshot)
@@ -687,7 +621,7 @@ def build_generic_python_import_smoke_test(project_dir: Path, requirement: str =
         and not is_build_test_file_path(path)
         and not Path(path).name.startswith("__")
         and Path(path).name != "conftest.py"
-        and Path(path).name not in set(VALIDATION_SCRIPT_NAMES)
+        and path.replace("\\", "/") not in excluded
     ]
     if not python_files:
         return []
@@ -716,9 +650,13 @@ def build_generic_python_import_smoke_test(project_dir: Path, requirement: str =
     return [("tests/test_ai_workflow_generated_smoke.py", content)]
 
 
-def build_validation_script_pytest_wrapper(project_dir: Path, validation_script: str | None = None) -> list[tuple[str, str]]:
+def build_validation_script_pytest_wrapper(
+    project_dir: Path,
+    validation_script: str | None = None,
+    fallback_scripts: Iterable[str] | None = None,
+) -> list[tuple[str, str]]:
     """Wrap the user-provided validation script as a pytest test."""
-    script = _find_validation_script_for_tests(project_dir, validation_script)
+    script = _find_validation_script_for_tests(project_dir, validation_script, fallback_scripts)
     if script is None:
         return []
     rel_script = script.relative_to(project_dir).as_posix()
@@ -742,7 +680,11 @@ def build_validation_script_pytest_wrapper(project_dir: Path, validation_script:
     return [("tests/test_ai_workflow_validation.py", content)]
 
 
-def _find_validation_script_for_tests(project_dir: Path, validation_script: str | None = None) -> Path | None:
+def _find_validation_script_for_tests(
+    project_dir: Path,
+    validation_script: str | None = None,
+    fallback_scripts: Iterable[str] | None = None,
+) -> Path | None:
     if validation_script:
         candidate = Path(validation_script).expanduser()
         path = candidate if candidate.is_absolute() else project_dir / candidate
@@ -752,7 +694,7 @@ def _find_validation_script_for_tests(project_dir: Path, validation_script: str 
         except ValueError:
             return None
         return path if path.is_file() and path.suffix.lower() == ".py" else None
-    for name in VALIDATION_SCRIPT_NAMES:
+    for name in fallback_scripts or []:
         candidate = project_dir / name
         if candidate.is_file():
             return candidate.resolve()

@@ -15,6 +15,9 @@ Project profile:
 Validation script for this run:
 {{validation_script}}
 
+Fallback validation scripts configured by this workflow:
+{{fallback_validation_scripts}}
+
 Guidance:
 {{guidance}}
 
@@ -32,7 +35,7 @@ Planning rules:
 - Define explicit stop conditions: the workflow is done only when Build produced project changes, automated tests pass, external validation passes or is intentionally skipped, and final review is PASS.
 - Build production changes before Generate Tests so the model does not mix test blocks into Build.
 - For any requested generated artifact, include the source inputs, output path, expected format, and verification method in the plan.
-- Treat validation scripts such as `validation.py`, `validate.py`, `verify.py`, and `check.py` as protected acceptance tools when they already exist or are provided for this run.
+- Treat configured validation scripts as protected acceptance tools when they already exist or are provided for this run.
 - Do not list a validation script under task Files or ask Build to modify it unless the user explicitly asks to create or change that validator itself.
 - Include a focused automated test strategy after Build and before external validation.
 - Include validation coverage for the user-provided validation script when one is provided.
@@ -91,7 +94,7 @@ Status: READY
 
 ## External Validation
 - If a validation script path is provided above, that exact script is mandatory for this run.
-- If no validation script path is provided, fallback script names are: `validation.py`, `validate.py`, `verify.py`, `check.py`
+- If no validation script path is provided, use only the fallback validation script names configured by this workflow.
 - Existing validation scripts are read-only to Build and must be run after automated tests.
 - If no validation script is configured or found, external validation is skipped with a PASS result.
 - The workflow must run automated tests before this external validation step.

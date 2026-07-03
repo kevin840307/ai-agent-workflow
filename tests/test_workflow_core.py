@@ -53,7 +53,7 @@ class WorkflowCoreTests(unittest.TestCase):
             (project / "config" / "users.yaml").write_text("users: []\n", encoding="utf-8")
             actions = WorkflowActions(agent_runner=FakeAgentRunner(), functions=None, log=log, refresh_artifacts=refresh)
 
-            asyncio.run(actions.prepare_project_step({"id": "run-1", "workspace": str(workspace), "project_path": str(project)}))
+            asyncio.run(actions.prepare_project_step({"id": "run-1", "workspace": str(workspace), "project_path": str(project), "steps": [{"key": "run_external_validation", "config": {"fallbackValidationScripts": ["validation.py"]}}]}))
 
             self.assertIn("Primary language: YAML", (project / "architecture.md").read_text(encoding="utf-8"))
 
@@ -120,7 +120,7 @@ class WorkflowCoreTests(unittest.TestCase):
             (project / "validation.py").write_text("raise SystemExit(1)\n", encoding="utf-8")
 
             with self.assertRaisesRegex(WorkflowError, "validation scripts"):
-                validate_build_files_do_not_overwrite_validation_scripts(project, files)
+                validate_build_files_do_not_overwrite_validation_scripts(project, files, fallback_scripts=["validation.py"])
 
     def test_build_can_create_non_validation_artifacts_when_validator_exists(self) -> None:
         files = extract_build_files("FILE: generated/users.yaml\nCONTENT:\nusers: []\nEND_FILE\n")
@@ -128,7 +128,7 @@ class WorkflowCoreTests(unittest.TestCase):
             project = Path(tmp)
             (project / "validation.py").write_text("print('ok')\n", encoding="utf-8")
 
-            validate_build_files_do_not_overwrite_validation_scripts(project, files)
+            validate_build_files_do_not_overwrite_validation_scripts(project, files, fallback_scripts=["validation.py"])
             written = apply_extracted_files(project, files)
 
             self.assertEqual([path.relative_to(project).as_posix() for path in written], ["generated/users.yaml"])
@@ -157,7 +157,7 @@ class WorkflowCoreTests(unittest.TestCase):
             actions = WorkflowActions(agent_runner=FakeAgentRunner(), functions=None, log=log, refresh_artifacts=refresh)
 
             with self.assertRaisesRegex(WorkflowError, "production FILE/CONTENT/END_FILE"):
-                asyncio.run(actions.build_step({"id": "run-1", "workspace": str(workspace), "project_path": str(project)}))
+                asyncio.run(actions.build_step({"id": "run-1", "workspace": str(workspace), "project_path": str(project), "steps": [{"key": "run_external_validation", "config": {"fallbackValidationScripts": ["validation.py"]}}]}))
 
 
     def test_generate_tests_retry_removes_stale_workflow_generated_tests(self) -> None:
@@ -349,7 +349,7 @@ class WorkflowCoreTests(unittest.TestCase):
 
             asyncio.run(
                 actions.implementation_review_step(
-                    {"id": "run-1", "workspace": str(workspace), "project_path": str(project)}
+                    {"id": "run-1", "workspace": str(workspace), "project_path": str(project), "steps": [{"key": "run_external_validation", "config": {"fallbackValidationScripts": ["validation.py"]}}]}
                 )
             )
 

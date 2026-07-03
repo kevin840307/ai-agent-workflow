@@ -227,6 +227,7 @@ class PromptBuilder:
             "project_path": str(run.get("project_path", "")),
             "workspace_path": str(run.get("workspace", "")),
             "validation_script": str(run.get("validation_script") or ""),
+            "fallback_validation_scripts": self._fallback_validation_scripts(run),
         }
 
     def _render_template(self, template: str, values: dict[str, str]) -> str:
@@ -252,6 +253,21 @@ class PromptBuilder:
             if text.strip():
                 blocks.append(f"### output/{path.name}\n\n{text.strip()}")
         return "\n\n".join(blocks)
+
+    def _fallback_validation_scripts(self, run: dict[str, Any]) -> str:
+        for step in run.get("steps") or []:
+            if step.get("key") != "run_external_validation":
+                continue
+            config = step.get("config") if isinstance(step.get("config"), dict) else {}
+            value = config.get("fallbackValidationScripts") or config.get("fallback_validation_scripts") or []
+            if isinstance(value, str):
+                items = [item.strip() for item in value.split(",") if item.strip()]
+            elif isinstance(value, list):
+                items = [str(item).strip() for item in value if str(item).strip()]
+            else:
+                items = []
+            return "\n".join(f"- `{item}`" for item in items) if items else "- None configured."
+        return "- None configured."
 
     def _artifact_dependency_context(
         self,

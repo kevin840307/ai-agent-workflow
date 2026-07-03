@@ -80,7 +80,8 @@ class LargeProjectFixtureTests(unittest.TestCase):
             self.assertGreaterEqual(len(snapshot), 250)
             self.assertIn("more files", overview)
             self.assertLess(len(overview), 12000)
-            self.assertIn("Primary language: Python", profile)
+            self.assertIn("Dominant source extensions:", profile)
+            self.assertIn(".py", profile)
             self.assertIn("pytest", profile)
             self.assertIn("src/legacy", profile)
 
@@ -111,7 +112,8 @@ class LargeProjectFixtureTests(unittest.TestCase):
             }
 
             result = PromptBuilder().build(run, "generate_spec", "01_spec.md", allow_interaction=False)
-            self.assertIn("Primary language: Python", result.prompt)
+            self.assertIn("Dominant source extensions:", result.prompt)
+            self.assertIn(".py", result.prompt)
             self.assertLess(len(result.prompt), 160000)
             self.assertTrue((run_dir / "prompts" / "generate_spec.md").exists())
 

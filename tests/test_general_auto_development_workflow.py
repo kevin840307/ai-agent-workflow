@@ -699,7 +699,7 @@ CONTENT:
             )
 
             service = WorkflowFunctionService(log=_noop_log, refresh_artifacts=_noop_refresh)
-            run = {"id": "run-2", "workspace": str(workspace), "project_path": str(project)}
+            run = {"id": "run-2", "workspace": str(workspace), "project_path": str(project), "_current_step_config": {"fallbackValidationScripts": ["validation.py"]}}
             asyncio.run(service.call_python_function(run, "run_external_validation", output, "external-validation-result.md"))
 
             result = (output / "external-validation-result.md").read_text(encoding="utf-8")

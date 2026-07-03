@@ -18,6 +18,11 @@ injectFailureFeedback: true
 stopAfterFailures: 3
 allowInteraction: false
 requiresValidationScript: false
+fallbackValidationScripts:
+- validation.py
+- validate.py
+- verify.py
+- check.py
 thinking: false
 approvalRequired: false
 pauseAfterStep: false

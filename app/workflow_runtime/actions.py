@@ -255,9 +255,26 @@ class WorkflowActions:
         return "build"
 
     @staticmethod
+    def _fallback_validation_scripts(run: dict[str, Any]) -> list[str]:
+        for step in run.get("steps") or []:
+            if step.get("key") != "run_external_validation":
+                continue
+            config = step_config(step)
+            value = config.get("fallbackValidationScripts") or config.get("fallback_validation_scripts") or []
+            if isinstance(value, str):
+                return [item.strip() for item in value.split(",") if item.strip()]
+            if isinstance(value, list):
+                return [str(item).strip() for item in value if str(item).strip()]
+        return []
+
+    @staticmethod
     def _todo_owned_validation_targets(run: dict[str, Any], todo: str) -> list[str]:
         project_dir = Path(run.get("project_path") or ".").expanduser().resolve()
-        protected = existing_validation_scripts(project_dir, run.get("validation_script"))
+        protected = existing_validation_scripts(
+            project_dir,
+            run.get("validation_script"),
+            WorkflowActions._fallback_validation_scripts(run),
+        )
         if not protected:
             return []
         task_context = todo.split("## External Validation", 1)[0]
@@ -443,7 +460,7 @@ class WorkflowActions:
                     "",
                     "## External Validation",
                     "- If a validation script path is provided, that exact script is mandatory.",
-                    "- Otherwise fallback script names are: `validation.py`, `validate.py`, `verify.py`, `check.py`.",
+                    "- Otherwise use only the fallback validation script names configured by this workflow.",
                     "- If no validation script is configured or found, external validation is skipped with a PASS result.",
                     "",
                     "## Assumptions",
@@ -801,9 +818,15 @@ class WorkflowActions:
                 + ", ".join(rel_path for rel_path, _ in invalid_files),
             )
         if not test_files:
-            fallback_tests = build_validation_script_pytest_wrapper(project_dir, run.get("validation_script"))
+            fallback_scripts = self._fallback_validation_scripts(run)
+            protected_validation = existing_validation_scripts(project_dir, run.get("validation_script"), fallback_scripts)
+            fallback_tests = build_validation_script_pytest_wrapper(project_dir, run.get("validation_script"), fallback_scripts)
             if not fallback_tests:
-                fallback_tests = build_generic_python_import_smoke_test(project_dir, read_text(Path(run["workspace"]) / "requirement.md"))
+                fallback_tests = build_generic_python_import_smoke_test(
+                    project_dir,
+                    read_text(Path(run["workspace"]) / "requirement.md"),
+                    excluded_paths=protected_validation,
+                )
             if fallback_tests:
                 test_files = fallback_tests
                 write_text(
@@ -823,7 +846,11 @@ class WorkflowActions:
         try:
             validate_generated_test_files(test_files)
         except WorkflowError as exc:
-            fallback_tests = build_validation_script_pytest_wrapper(project_dir, run.get("validation_script"))
+            fallback_tests = build_validation_script_pytest_wrapper(
+                project_dir,
+                run.get("validation_script"),
+                self._fallback_validation_scripts(run),
+            )
             if not fallback_tests:
                 raise
             test_files = fallback_tests
@@ -907,6 +934,7 @@ class WorkflowActions:
                     project_dir,
                     production_files,
                     validation_script=run.get("validation_script"),
+                    fallback_scripts=self._fallback_validation_scripts(run),
                 )
                 written = apply_extracted_files(project_dir, production_files, output_label=f"build task {task_id} output")
                 if written:
@@ -961,6 +989,7 @@ class WorkflowActions:
             project_dir,
             production_files,
             validation_script=run.get("validation_script"),
+            fallback_scripts=self._fallback_validation_scripts(run),
         )
         written = apply_extracted_files(project_dir, production_files, output_label="build output")
         if written:

@@ -11,7 +11,6 @@ from app.runtime_modules.files import (
     extract_build_files,
     project_profile,
     requirement_has_actionable_signal,
-    requirement_mentions_language,
     should_ask_for_spec_input,
     spec_input_questions,
     build_generic_python_import_smoke_test,
@@ -87,11 +86,7 @@ END_FILE
         with self.assertRaisesRegex(WorkflowError, "placeholder example"):
             validate_generated_test_files([("tests/test_example.py", "from example import example\n")])
 
-    def test_requirement_language_and_project_profile_detection(self) -> None:
-        self.assertTrue(requirement_mentions_language("請用 Python 寫泡沫排序"))
-        self.assertTrue(requirement_mentions_language("請寫一個批次腳本"))
-        self.assertFalse(requirement_mentions_language("請寫一個排序工具"))
-
+    def test_project_profile_detection(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             project = Path(tmp)
             (project / "pyproject.toml").write_text("[tool.pytest.ini_options]\n", encoding="utf-8")
@@ -101,7 +96,8 @@ END_FILE
             (project / "tests" / "test_sorter.py").write_text("def test_sort(): pass\n", encoding="utf-8")
 
             profile = project_profile(project)
-            self.assertIn("Primary language: Python", profile)
+            self.assertIn("Dominant source extensions:", profile)
+            self.assertIn(".py", profile)
             self.assertIn("pytest", profile)
             self.assertIn("src/sorter.py", profile)
 
@@ -119,8 +115,7 @@ END_FILE
 
             self.assertTrue(requirement_has_actionable_signal("Add quick sort"))
             self.assertFalse(should_ask_for_spec_input("Add quick sort", existing_project))
-            self.assertTrue(should_ask_for_spec_input("Add quick sort", empty_project))
-            self.assertIn("Target Language", spec_input_questions("Add quick sort", empty_project))
+            self.assertFalse(should_ask_for_spec_input("Add quick sort", empty_project))
 
             self.assertFalse(should_ask_for_spec_input("asdf qwer zxcv", existing_project, "Add quick sort in Python."))
             self.assertFalse(should_ask_for_spec_input("Add quick sort", empty_project, "Use Python."))
@@ -132,7 +127,7 @@ END_FILE
             nested.mkdir()
             (nested / "bubble_sort.py").write_text("def bubble_sort(values):\n    return sorted(values)\n", encoding="utf-8")
 
-            files = build_generic_python_import_smoke_test(project)
+            files = build_generic_python_import_smoke_test(project, excluded_paths=[nested / "validation.py"])
             self.assertEqual([path for path, _content in files], ["tests/test_ai_workflow_generated_smoke.py"])
             compile(files[0][1], files[0][0], "exec")
             self.assertIn("'algorithms/bubble_sort.py'", files[0][1])
@@ -144,7 +139,7 @@ END_FILE
             project = Path(tmp)
             (project / "validation.py").write_text("print('ok')\n", encoding="utf-8")
 
-            files = build_validation_script_pytest_wrapper(project, "validation.py")
+            files = build_validation_script_pytest_wrapper(project, "validation.py", [])
             self.assertEqual([path for path, _content in files], ["tests/test_ai_workflow_validation.py"])
             compile(files[0][1], files[0][0], "exec")
             self.assertIn("validation.py", files[0][1])
