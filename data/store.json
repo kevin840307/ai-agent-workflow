@@ -1,16 +1,16 @@
 {
   "sessions": [
     {
-      "id": "aae8a9bd-e46c-4593-b5bf-438961b4203f",
-      "qwen_session_id": "aae8a9bd-e46c-4593-b5bf-438961b4203f",
+      "id": "9e70d5ea-393a-4f93-bb32-e359f108487c",
+      "qwen_session_id": "9e70d5ea-393a-4f93-bb32-e359f108487c",
       "agent_session_ids": {
-        "qwen": "aae8a9bd-e46c-4593-b5bf-438961b4203f",
-        "opencode": "aae8a9bd-e46c-4593-b5bf-438961b4203f"
+        "qwen": "9e70d5ea-393a-4f93-bb32-e359f108487c",
+        "opencode": "9e70d5ea-393a-4f93-bb32-e359f108487c"
       },
-      "title": "Bubble Sort E2E",
-      "project_path": "C:\\Users\\kevin\\AppData\\Local\\Temp\\tmp2yj_h0un\\bubble-project",
-      "created_at": "2026-07-03T12:50:22.543597+00:00",
-      "updated_at": "2026-07-03T12:50:22.543597+00:00"
+      "title": "YAML CRUD E2E",
+      "project_path": "C:\\Users\\kevin\\AppData\\Local\\Temp\\tmppre_p8a9\\yaml-crud-project",
+      "created_at": "2026-07-03T12:50:29.755885+00:00",
+      "updated_at": "2026-07-03T12:50:29.755885+00:00"
     },
     {
       "id": "56eca212-9092-4615-8cf9-4c79c6cf7506",
@@ -999,17 +999,17 @@
   ],
   "runs": [
     {
-      "id": "19a30cba-d757-41ab-ab12-4fc415ef6671",
-      "session_id": "aae8a9bd-e46c-4593-b5bf-438961b4203f",
-      "qwen_session_id": "aae8a9bd-e46c-4593-b5bf-438961b4203f",
+      "id": "6faf89b4-3e87-4704-ac03-9178c241c5b5",
+      "session_id": "9e70d5ea-393a-4f93-bb32-e359f108487c",
+      "qwen_session_id": "9e70d5ea-393a-4f93-bb32-e359f108487c",
       "agent_session_ids": {
-        "qwen": "aae8a9bd-e46c-4593-b5bf-438961b4203f",
-        "opencode": "aae8a9bd-e46c-4593-b5bf-438961b4203f"
+        "qwen": "9e70d5ea-393a-4f93-bb32-e359f108487c",
+        "opencode": "9e70d5ea-393a-4f93-bb32-e359f108487c"
       },
       "status": "running",
       "error": null,
-      "workspace": "C:\\Users\\kevin\\AppData\\Local\\Temp\\tmp2yj_h0un\\bubble-project\\.ai-workflow\\runs\\session-aae8a9bd-e46c-4593-b5bf-438961b4203f\\run-19a30cba-d757-41ab-ab12-4fc415ef6671",
-      "project_path": "C:\\Users\\kevin\\AppData\\Local\\Temp\\tmp2yj_h0un\\bubble-project",
+      "workspace": "C:\\Users\\kevin\\AppData\\Local\\Temp\\tmppre_p8a9\\yaml-crud-project\\.ai-workflow\\runs\\session-9e70d5ea-393a-4f93-bb32-e359f108487c\\run-6faf89b4-3e87-4704-ac03-9178c241c5b5",
+      "project_path": "C:\\Users\\kevin\\AppData\\Local\\Temp\\tmppre_p8a9\\yaml-crud-project",
       "workflow_id": "general-auto-development",
       "workflow_folder": "general-auto-development",
       "workflow_name": "General Auto Development",
@@ -1023,9 +1023,9 @@
           "kind": "agent",
           "type": "ai",
           "agent": "qwen",
-          "status": "passed",
-          "started_at": "2026-07-03T12:50:22.882445+00:00",
-          "ended_at": "2026-07-03T12:50:23.759533+00:00",
+          "status": "running",
+          "started_at": "2026-07-03T12:50:30.298833+00:00",
+          "ended_at": null,
           "error": null,
           "error_code": null,
           "retry_count": 0,
@@ -1084,25 +1084,16 @@
           "pause_after_step": false,
           "events": [
             {
-              "time": "2026-07-03T12:50:22.942013+00:00",
-              "ts": "2026-07-03T12:50:22.942013+00:00",
+              "time": "2026-07-03T12:50:30.378909+00:00",
+              "ts": "2026-07-03T12:50:30.378909+00:00",
               "step_key": "prepare_project",
               "stepKey": "prepare_project",
               "kind": "started",
               "type": "started",
               "message": "prepare_project: started"
-            },
-            {
-              "time": "2026-07-03T12:50:23.805291+00:00",
-              "ts": "2026-07-03T12:50:23.805291+00:00",
-              "step_key": "prepare_project",
-              "stepKey": "prepare_project",
-              "kind": "passed",
-              "type": "passed",
-              "message": "prepare_project: passed"
             }
           ],
-          "last_event": "prepare_project: passed"
+          "last_event": "prepare_project: started"
         },
         {
           "key": "plan_tasks",
@@ -1110,9 +1101,9 @@
           "kind": "agent",
           "type": "ai",
           "agent": "qwen",
-          "status": "passed",
-          "started_at": "2026-07-03T12:50:23.859534+00:00",
-          "ended_at": "2026-07-03T12:50:24.803346+00:00",
+          "status": "pending",
+          "started_at": null,
+          "ended_at": null,
           "error": null,
           "error_code": null,
           "retry_count": 0,
@@ -1169,27 +1160,7 @@
           "allow_interaction": false,
           "thinking": false,
           "pause_after_step": false,
-          "events": [
-            {
-              "time": "2026-07-03T12:50:23.929840+00:00",
-              "ts": "2026-07-03T12:50:23.929840+00:00",
-              "step_key": "plan_tasks",
-              "stepKey": "plan_tasks",
-              "kind": "started",
-              "type": "started",
-              "message": "plan_tasks: started"
-            },
-            {
-              "time": "2026-07-03T12:50:24.867794+00:00",
-              "ts": "2026-07-03T12:50:24.867794+00:00",
-              "step_key": "plan_tasks",
-              "stepKey": "plan_tasks",
-              "kind": "passed",
-              "type": "passed",
-              "message": "plan_tasks: passed"
-            }
-          ],
-          "last_event": "plan_tasks: passed"
+          "events": []
         },
         {
           "key": "implementation_review",
@@ -1197,9 +1168,9 @@
           "kind": "python",
           "type": "python",
           "agent": "qwen",
-          "status": "passed",
-          "started_at": "2026-07-03T12:50:24.948845+00:00",
-          "ended_at": "2026-07-03T12:50:25.169538+00:00",
+          "status": "pending",
+          "started_at": null,
+          "ended_at": null,
           "error": null,
           "error_code": null,
           "retry_count": 0,
@@ -1256,27 +1227,7 @@
           "allow_interaction": false,
           "thinking": false,
           "pause_after_step": false,
-          "events": [
-            {
-              "time": "2026-07-03T12:50:25.025987+00:00",
-              "ts": "2026-07-03T12:50:25.025987+00:00",
-              "step_key": "implementation_review",
-              "stepKey": "implementation_review",
-              "kind": "started",
-              "type": "started",
-              "message": "implementation_review: started"
-            },
-            {
-              "time": "2026-07-03T12:50:25.240817+00:00",
-              "ts": "2026-07-03T12:50:25.240817+00:00",
-              "step_key": "implementation_review",
-              "stepKey": "implementation_review",
-              "kind": "passed",
-              "type": "passed",
-              "message": "implementation_review: passed"
-            }
-          ],
-          "last_event": "implementation_review: passed"
+          "events": []
         },
         {
           "key": "build",
@@ -1284,9 +1235,9 @@
           "kind": "agent",
           "type": "ai",
           "agent": "qwen",
-          "status": "passed",
-          "started_at": "2026-07-03T12:50:25.317964+00:00",
-          "ended_at": "2026-07-03T12:50:26.145533+00:00",
+          "status": "pending",
+          "started_at": null,
+          "ended_at": null,
           "error": null,
           "error_code": null,
           "retry_count": 0,
@@ -1343,27 +1294,7 @@
           "allow_interaction": false,
           "thinking": false,
           "pause_after_step": false,
-          "events": [
-            {
-              "time": "2026-07-03T12:50:25.399010+00:00",
-              "ts": "2026-07-03T12:50:25.399010+00:00",
-              "step_key": "build",
-              "stepKey": "build",
-              "kind": "started",
-              "type": "started",
-              "message": "build: started"
-            },
-            {
-              "time": "2026-07-03T12:50:26.212911+00:00",
-              "ts": "2026-07-03T12:50:26.212911+00:00",
-              "step_key": "build",
-              "stepKey": "build",
-              "kind": "passed",
-              "type": "passed",
-              "message": "build: passed"
-            }
-          ],
-          "last_event": "build: passed"
+          "events": []
         },
         {
           "key": "generate_tests",
@@ -1371,9 +1302,9 @@
           "kind": "agent",
           "type": "ai",
           "agent": "qwen",
-          "status": "passed",
-          "started_at": "2026-07-03T12:50:26.289078+00:00",
-          "ended_at": "2026-07-03T12:50:26.976535+00:00",
+          "status": "pending",
+          "started_at": null,
+          "ended_at": null,
           "error": null,
           "error_code": null,
           "retry_count": 0,
@@ -1435,27 +1366,7 @@
           "allow_interaction": false,
           "thinking": false,
           "pause_after_step": false,
-          "events": [
-            {
-              "time": "2026-07-03T12:50:26.364269+00:00",
-              "ts": "2026-07-03T12:50:26.364269+00:00",
-              "step_key": "generate_tests",
-              "stepKey": "generate_tests",
-              "kind": "started",
-              "type": "started",
-              "message": "generate_tests: started"
-            },
-            {
-              "time": "2026-07-03T12:50:27.041960+00:00",
-              "ts": "2026-07-03T12:50:27.041960+00:00",
-              "step_key": "generate_tests",
-              "stepKey": "generate_tests",
-              "kind": "passed",
-              "type": "passed",
-              "message": "generate_tests: passed"
-            }
-          ],
-          "last_event": "generate_tests: passed"
+          "events": []
         },
         {
           "key": "run_test",
@@ -1463,9 +1374,9 @@
           "kind": "python",
           "type": "python",
           "agent": "qwen",
-          "status": "passed",
-          "started_at": "2026-07-03T12:50:27.118127+00:00",
-          "ended_at": "2026-07-03T12:50:27.811442+00:00",
+          "status": "pending",
+          "started_at": null,
+          "ended_at": null,
           "error": null,
           "error_code": null,
           "retry_count": 0,
@@ -1533,27 +1444,7 @@
           "allow_interaction": false,
           "thinking": false,
           "pause_after_step": false,
-          "events": [
-            {
-              "time": "2026-07-03T12:50:27.197224+00:00",
-              "ts": "2026-07-03T12:50:27.197224+00:00",
-              "step_key": "run_test",
-              "stepKey": "run_test",
-              "kind": "started",
-              "type": "started",
-              "message": "run_test: started"
-            },
-            {
-              "time": "2026-07-03T12:50:27.876868+00:00",
-              "ts": "2026-07-03T12:50:27.876868+00:00",
-              "step_key": "run_test",
-              "stepKey": "run_test",
-              "kind": "passed",
-              "type": "passed",
-              "message": "run_test: passed"
-            }
-          ],
-          "last_event": "run_test: passed"
+          "events": []
         },
         {
           "key": "run_external_validation",
@@ -1561,9 +1452,9 @@
           "kind": "python",
           "type": "python",
           "agent": "qwen",
-          "status": "passed",
-          "started_at": "2026-07-03T12:50:27.951081+00:00",
-          "ended_at": "2026-07-03T12:50:28.192280+00:00",
+          "status": "pending",
+          "started_at": null,
+          "ended_at": null,
           "error": null,
           "error_code": null,
           "retry_count": 0,
@@ -1622,27 +1513,7 @@
           "allow_interaction": false,
           "thinking": false,
           "pause_after_step": false,
-          "events": [
-            {
-              "time": "2026-07-03T12:50:28.026272+00:00",
-              "ts": "2026-07-03T12:50:28.026272+00:00",
-              "step_key": "run_external_validation",
-              "stepKey": "run_external_validation",
-              "kind": "started",
-              "type": "started",
-              "message": "run_external_validation: started"
-            },
-            {
-              "time": "2026-07-03T12:50:28.258395+00:00",
-              "ts": "2026-07-03T12:50:28.258395+00:00",
-              "step_key": "run_external_validation",
-              "stepKey": "run_external_validation",
-              "kind": "passed",
-              "type": "passed",
-              "message": "run_external_validation: passed"
-            }
-          ],
-          "last_event": "run_external_validation: passed"
+          "events": []
         },
         {
           "key": "final_review",
@@ -1650,9 +1521,9 @@
           "kind": "python",
           "type": "python",
           "agent": "qwen",
-          "status": "passed",
-          "started_at": "2026-07-03T12:50:28.333124+00:00",
-          "ended_at": "2026-07-03T12:50:28.575296+00:00",
+          "status": "pending",
+          "started_at": null,
+          "ended_at": null,
           "error": null,
           "error_code": null,
           "retry_count": 0,
@@ -1709,18 +1580,7 @@
           "allow_interaction": false,
           "thinking": false,
           "pause_after_step": false,
-          "events": [
-            {
-              "time": "2026-07-03T12:50:28.418082+00:00",
-              "ts": "2026-07-03T12:50:28.418082+00:00",
-              "step_key": "final_review",
-              "stepKey": "final_review",
-              "kind": "started",
-              "type": "started",
-              "message": "final_review: started"
-            }
-          ],
-          "last_event": "final_review: started"
+          "events": []
         },
         {
           "key": "final_gate",
@@ -1794,265 +1654,55 @@
       ],
       "artifacts": [
         {
-          "id": "19a30cba-d757-41ab-ab12-4fc415ef6671:requirement.md",
+          "id": "6faf89b4-3e87-4704-ac03-9178c241c5b5:requirement.md",
           "name": "requirement.md",
           "path": "requirement.md",
-          "size": 47,
-          "updated_at": "2026-07-03T12:50:28.505966+00:00"
+          "size": 96,
+          "updated_at": "2026-07-03T12:50:30.500567+00:00"
         },
         {
-          "id": "19a30cba-d757-41ab-ab12-4fc415ef6671:prompts|skill-context.md",
+          "id": "6faf89b4-3e87-4704-ac03-9178c241c5b5:prompts|skill-context.md",
           "name": "skill-context.md",
           "path": "prompts/skill-context.md",
-          "size": 729,
-          "updated_at": "2026-07-03T12:50:28.505966+00:00"
+          "size": 440,
+          "updated_at": "2026-07-03T12:50:30.501543+00:00"
         },
         {
-          "id": "19a30cba-d757-41ab-ab12-4fc415ef6671:.workflow|run-log.md",
+          "id": "6faf89b4-3e87-4704-ac03-9178c241c5b5:.workflow|run-log.md",
           "name": "run-log.md",
           "path": ".workflow/run-log.md",
-          "size": 7352,
-          "updated_at": "2026-07-03T12:50:28.505966+00:00"
+          "size": 1116,
+          "updated_at": "2026-07-03T12:50:30.501543+00:00"
         },
         {
-          "id": "19a30cba-d757-41ab-ab12-4fc415ef6671:.workflow|state.json",
+          "id": "6faf89b4-3e87-4704-ac03-9178c241c5b5:.workflow|state.json",
           "name": "state.json",
           "path": ".workflow/state.json",
-          "size": 33983,
-          "updated_at": "2026-07-03T12:50:28.506943+00:00"
+          "size": 33989,
+          "updated_at": "2026-07-03T12:50:30.501543+00:00"
         },
         {
-          "id": "19a30cba-d757-41ab-ab12-4fc415ef6671:prompts|prepare_project.md",
+          "id": "6faf89b4-3e87-4704-ac03-9178c241c5b5:prompts|prepare_project.md",
           "name": "prepare_project.md",
           "path": "prompts/prepare_project.md",
-          "size": 3324,
-          "updated_at": "2026-07-03T12:50:28.506943+00:00"
-        },
-        {
-          "id": "19a30cba-d757-41ab-ab12-4fc415ef6671:output|architecture.md",
-          "name": "architecture.md",
-          "path": "output/architecture.md",
-          "size": 901,
-          "updated_at": "2026-07-03T12:50:28.506943+00:00"
-        },
-        {
-          "id": "19a30cba-d757-41ab-ab12-4fc415ef6671:prompts|plan_tasks.md",
-          "name": "plan_tasks.md",
-          "path": "prompts/plan_tasks.md",
-          "size": 5648,
-          "updated_at": "2026-07-03T12:50:28.506943+00:00"
-        },
-        {
-          "id": "19a30cba-d757-41ab-ab12-4fc415ef6671:output|todo.md",
-          "name": "todo.md",
-          "path": "output/todo.md",
-          "size": 868,
-          "updated_at": "2026-07-03T12:50:28.506943+00:00"
-        },
-        {
-          "id": "19a30cba-d757-41ab-ab12-4fc415ef6671:output|implementation-review.md",
-          "name": "implementation-review.md",
-          "path": "output/implementation-review.md",
-          "size": 368,
-          "updated_at": "2026-07-03T12:50:28.506943+00:00"
-        },
-        {
-          "id": "19a30cba-d757-41ab-ab12-4fc415ef6671:prompts|build.md",
-          "name": "build.md",
-          "path": "prompts/build.md",
-          "size": 5412,
-          "updated_at": "2026-07-03T12:50:28.506943+00:00"
-        },
-        {
-          "id": "19a30cba-d757-41ab-ab12-4fc415ef6671:output|build-result.md",
-          "name": "build-result.md",
-          "path": "output/build-result.md",
-          "size": 573,
-          "updated_at": "2026-07-03T12:50:28.507919+00:00"
-        },
-        {
-          "id": "19a30cba-d757-41ab-ab12-4fc415ef6671:prompts|generate_tests.md",
-          "name": "generate_tests.md",
-          "path": "prompts/generate_tests.md",
-          "size": 5646,
-          "updated_at": "2026-07-03T12:50:28.507919+00:00"
-        },
-        {
-          "id": "19a30cba-d757-41ab-ab12-4fc415ef6671:output|test-plan.md",
-          "name": "test-plan.md",
-          "path": "output/test-plan.md",
-          "size": 462,
-          "updated_at": "2026-07-03T12:50:28.507919+00:00"
-        },
-        {
-          "id": "19a30cba-d757-41ab-ab12-4fc415ef6671:output|test-result.md",
-          "name": "test-result.md",
-          "path": "output/test-result.md",
-          "size": 470,
-          "updated_at": "2026-07-03T12:50:28.507919+00:00"
-        },
-        {
-          "id": "19a30cba-d757-41ab-ab12-4fc415ef6671:output|external-validation-result.md",
-          "name": "external-validation-result.md",
-          "path": "output/external-validation-result.md",
-          "size": 779,
-          "updated_at": "2026-07-03T12:50:28.507919+00:00"
-        },
-        {
-          "id": "19a30cba-d757-41ab-ab12-4fc415ef6671:output|final-review.md",
-          "name": "final-review.md",
-          "path": "output/final-review.md",
-          "size": 677,
-          "updated_at": "2026-07-03T12:50:28.507919+00:00"
-        },
-        {
-          "id": "19a30cba-d757-41ab-ab12-4fc415ef6671:output|run_external_validation-result.md",
-          "name": "run_external_validation-result.md",
-          "path": "output/run_external_validation-result.md",
-          "size": 762,
-          "updated_at": "2026-07-03T12:50:28.508895+00:00"
+          "size": 3415,
+          "updated_at": "2026-07-03T12:50:30.501543+00:00"
         }
       ],
       "timeline": [
         {
-          "time": "2026-07-03T12:50:22.942013+00:00",
-          "ts": "2026-07-03T12:50:22.942013+00:00",
+          "time": "2026-07-03T12:50:30.378909+00:00",
+          "ts": "2026-07-03T12:50:30.378909+00:00",
           "step_key": "prepare_project",
           "stepKey": "prepare_project",
           "kind": "started",
           "type": "started",
           "message": "prepare_project: started"
-        },
-        {
-          "time": "2026-07-03T12:50:23.805291+00:00",
-          "ts": "2026-07-03T12:50:23.805291+00:00",
-          "step_key": "prepare_project",
-          "stepKey": "prepare_project",
-          "kind": "passed",
-          "type": "passed",
-          "message": "prepare_project: passed"
-        },
-        {
-          "time": "2026-07-03T12:50:23.929840+00:00",
-          "ts": "2026-07-03T12:50:23.929840+00:00",
-          "step_key": "plan_tasks",
-          "stepKey": "plan_tasks",
-          "kind": "started",
-          "type": "started",
-          "message": "plan_tasks: started"
-        },
-        {
-          "time": "2026-07-03T12:50:24.867794+00:00",
-          "ts": "2026-07-03T12:50:24.867794+00:00",
-          "step_key": "plan_tasks",
-          "stepKey": "plan_tasks",
-          "kind": "passed",
-          "type": "passed",
-          "message": "plan_tasks: passed"
-        },
-        {
-          "time": "2026-07-03T12:50:25.025987+00:00",
-          "ts": "2026-07-03T12:50:25.025987+00:00",
-          "step_key": "implementation_review",
-          "stepKey": "implementation_review",
-          "kind": "started",
-          "type": "started",
-          "message": "implementation_review: started"
-        },
-        {
-          "time": "2026-07-03T12:50:25.240817+00:00",
-          "ts": "2026-07-03T12:50:25.240817+00:00",
-          "step_key": "implementation_review",
-          "stepKey": "implementation_review",
-          "kind": "passed",
-          "type": "passed",
-          "message": "implementation_review: passed"
-        },
-        {
-          "time": "2026-07-03T12:50:25.399010+00:00",
-          "ts": "2026-07-03T12:50:25.399010+00:00",
-          "step_key": "build",
-          "stepKey": "build",
-          "kind": "started",
-          "type": "started",
-          "message": "build: started"
-        },
-        {
-          "time": "2026-07-03T12:50:26.212911+00:00",
-          "ts": "2026-07-03T12:50:26.212911+00:00",
-          "step_key": "build",
-          "stepKey": "build",
-          "kind": "passed",
-          "type": "passed",
-          "message": "build: passed"
-        },
-        {
-          "time": "2026-07-03T12:50:26.364269+00:00",
-          "ts": "2026-07-03T12:50:26.364269+00:00",
-          "step_key": "generate_tests",
-          "stepKey": "generate_tests",
-          "kind": "started",
-          "type": "started",
-          "message": "generate_tests: started"
-        },
-        {
-          "time": "2026-07-03T12:50:27.041960+00:00",
-          "ts": "2026-07-03T12:50:27.041960+00:00",
-          "step_key": "generate_tests",
-          "stepKey": "generate_tests",
-          "kind": "passed",
-          "type": "passed",
-          "message": "generate_tests: passed"
-        },
-        {
-          "time": "2026-07-03T12:50:27.197224+00:00",
-          "ts": "2026-07-03T12:50:27.197224+00:00",
-          "step_key": "run_test",
-          "stepKey": "run_test",
-          "kind": "started",
-          "type": "started",
-          "message": "run_test: started"
-        },
-        {
-          "time": "2026-07-03T12:50:27.876868+00:00",
-          "ts": "2026-07-03T12:50:27.876868+00:00",
-          "step_key": "run_test",
-          "stepKey": "run_test",
-          "kind": "passed",
-          "type": "passed",
-          "message": "run_test: passed"
-        },
-        {
-          "time": "2026-07-03T12:50:28.026272+00:00",
-          "ts": "2026-07-03T12:50:28.026272+00:00",
-          "step_key": "run_external_validation",
-          "stepKey": "run_external_validation",
-          "kind": "started",
-          "type": "started",
-          "message": "run_external_validation: started"
-        },
-        {
-          "time": "2026-07-03T12:50:28.258395+00:00",
-          "ts": "2026-07-03T12:50:28.258395+00:00",
-          "step_key": "run_external_validation",
-          "stepKey": "run_external_validation",
-          "kind": "passed",
-          "type": "passed",
-          "message": "run_external_validation: passed"
-        },
-        {
-          "time": "2026-07-03T12:50:28.418082+00:00",
-          "ts": "2026-07-03T12:50:28.418082+00:00",
-          "step_key": "final_review",
-          "stepKey": "final_review",
-          "kind": "started",
-          "type": "started",
-          "message": "final_review: started"
         }
       ],
-      "created_at": "2026-07-03T12:50:22.686167+00:00",
-      "updated_at": "2026-07-03T12:50:28.575296+00:00",
-      "started_at": "2026-07-03T12:50:22.829712+00:00",
+      "created_at": "2026-07-03T12:50:30.001003+00:00",
+      "updated_at": "2026-07-03T12:50:30.502520+00:00",
+      "started_at": "2026-07-03T12:50:30.221692+00:00",
       "ended_at": null
     },
     {
