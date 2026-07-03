@@ -52,6 +52,9 @@ def unsafe_relative_path_reason(raw_path: str, *, reserved_dirs: set[str] | None
     if decoded.startswith("/") or path.is_absolute() or win_path.is_absolute() or win_path.drive or decoded.startswith("//"):
         return "absolute path"
     parts = [part for part in decoded.split("/") if part not in {"", "."}]
+    normalized = "/".join(parts).lower()
+    if normalized in {"relative/path.ext", "relative_path.ext"} or normalized.startswith(("relative/path/", "relative_path/")):
+        return "placeholder relative/path output is not a real project file"
     if any(part.strip() == ".." for part in parts):
         return "parent directory traversal"
     reserved = reserved_dirs if reserved_dirs is not None else RESERVED_AGENT_WRITE_DIRS

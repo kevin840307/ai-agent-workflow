@@ -1,10 +1,11 @@
-import { LocalStore, StorageKeys } from "./storage.js?v=20260703-wf-wstep1";
+import { LocalStore, StorageKeys } from "./storage.js?v=20260703-agent-stream1";
 
 export const AppState = {
   sessions: [],
   activeSessionId: null,
   activeRunId: null,
   eventSource: null,
+  chatEventSource: null,
   questionArtifactId: null,
   interactionLoadToken: 0,
   waitingForInput: false,

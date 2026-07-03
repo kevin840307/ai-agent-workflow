@@ -60,7 +60,10 @@ class QwenAdapter:
         use_serve = self.use_serve_by_default()
         if use_serve and not self.client.mock:
             return "POST qwen serve /session/<session>/prompt"
-        return " ".join([*self.client.command(request.session_id, include_prompt_flag=False, cwd=request.cwd), "<prompt via stdin>"])
+        return " ".join([
+            *self.client.command(request.session_id, include_prompt_flag=False, cwd=request.cwd, stream_json=True),
+            "<prompt via stdin>",
+        ])
 
     def health(self) -> dict[str, Any]:
         return {

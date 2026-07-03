@@ -201,7 +201,7 @@ def _read_requirement(args: argparse.Namespace) -> str:
 async def _wait_for_run(run_id: str) -> dict:
     while True:
         run = await workflow_service.get_run(run_id)
-        if run.get("status") in {"passed", "failed", "cancelled", "waiting_input"}:
+        if run.get("status") in {"done", "passed", "failed", "cancelled", "waiting_input"}:
             return run
         await asyncio.sleep(0.25)
 

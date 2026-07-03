@@ -92,6 +92,22 @@ export function createMessages(ctx) {
       list.scrollTop = list.scrollHeight;
     },
 
+    updateTemporary(content, options = {}) {
+      const list = ui.byKey("messages");
+      let node = list.querySelector("[data-temporary='true']");
+      if (!node) {
+        messagesFeature.addLocal("", "assistant", { temporary: true });
+        node = list.querySelector("[data-temporary='true']");
+      }
+      if (!node) return;
+      if (options.append) {
+        node.textContent = `${node.textContent || ""}${content}`;
+      } else {
+        node.textContent = content;
+      }
+      list.scrollTop = list.scrollHeight;
+    },
+
     removeTemporary() {
       ui.byKey("messages").querySelectorAll("[data-temporary='true']").forEach((node) => node.remove());
     },

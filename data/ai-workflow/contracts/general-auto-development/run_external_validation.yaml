@@ -1,8 +1,8 @@
 id: run_external_validation
 key: run_external_validation
 name: Run External Validation
-description: Run the project validation script. This step is mandatory and retries
-  build with the validation failure message.
+description: Run the project validation script when configured or present. If no
+  validation script is required or found, record a skipped PASS result.
 enabled: true
 type: python
 skill: steps/general-auto-development/04_run_external_validation.md
@@ -17,7 +17,7 @@ keepSameSession: true
 injectFailureFeedback: true
 stopAfterFailures: 3
 allowInteraction: false
-requiresValidationScript: true
+requiresValidationScript: false
 thinking: false
 approvalRequired: false
 pauseAfterStep: false

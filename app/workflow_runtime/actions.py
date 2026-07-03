@@ -21,10 +21,13 @@ from app.runtime_modules.files import (
     synthesize_spec_from_requirement,
     synthesize_todo_from_spec,
     synthesize_python_smoke_tests,
+    synthesize_validation_script_tests,
+    validate_build_files_do_not_overwrite_validation_scripts,
     validate_build_files_are_not_tests,
     validate_generated_test_files,
 )
 from app.core.paths import ROOT, read_text, write_text
+from app.security.workspace_guard import resolve_project_relative_write
 from app.workflow_runtime.builtin_functions.registry import PYTHON_FUNCTIONS
 from app.workflow_runtime.builtin_functions.base import WorkflowFunctionError
 
@@ -219,7 +222,7 @@ class WorkflowActions:
         if not re.search(r"\bAC-\d{3}\b", todo):
             findings.append("Todo must include task-level acceptance criteria AC-xxx.")
         if "external validation" not in todo.lower() and "驗證" not in todo:
-            findings.append("Todo must include the mandatory external validation step.")
+            findings.append("Todo must include the external validation step, which may skip when no script is configured or found.")
 
         remediated = False
         if findings:
@@ -239,7 +242,7 @@ class WorkflowActions:
                     "| --- | --- | --- |",
                     "| TASK-001 | Implement the requested production change | AC-001 |",
                     "| TASK-002 | Generate focused automated tests | AC-002 |",
-                    "| TASK-003 | Run mandatory validation | AC-003 |",
+                    "| TASK-003 | Run external validation when available | AC-003 |",
                     "",
                     "## Tasks",
                     "",
@@ -249,7 +252,7 @@ class WorkflowActions:
                     "- Acceptance Criteria:",
                     "  - AC-001: Production code satisfies the user requirement.",
                     "- Validation:",
-                    "  - Covered by generated tests and mandatory external validation.",
+                    "  - Covered by generated tests and external validation when configured or present.",
                     "",
                     "### TASK-002: Generate automated tests",
                     "- Goal: Generate focused tests for the requirement.",
@@ -259,8 +262,8 @@ class WorkflowActions:
                     "- Validation:",
                     "  - Covered by Run Test.",
                     "",
-                    "### TASK-003: Run mandatory external validation",
-                    "- Goal: Execute the configured or fallback validation script.",
+                    "### TASK-003: Run external validation when available",
+                    "- Goal: Execute the configured or fallback validation script when present.",
                     "- Files: no production edits.",
                     "- Acceptance Criteria:",
                     "  - AC-003: External validation exits successfully.",
@@ -271,13 +274,13 @@ class WorkflowActions:
                     "- Step 1: Build production code only.",
                     "- Step 2: Generate tests only.",
                     "- Step 3: Run automated tests.",
-                    "- Step 4: Run mandatory external validation.",
+                    "- Step 4: Run external validation when configured or present.",
                     "- Step 5: Retry Build using concrete failure feedback.",
                     "",
                     "## External Validation",
                     "- If a validation script path is provided, that exact script is mandatory.",
                     "- Otherwise fallback script names are: `驗證.py`, `validation.py`, `validate.py`, `verify.py`, `check.py`.",
-                    "- The workflow must stop if no validation script exists.",
+                    "- If no validation script is configured or found, external validation is skipped with a PASS result.",
                     "",
                     "## Assumptions",
                     "- Use detected project language and structure.",
@@ -549,6 +552,7 @@ class WorkflowActions:
         output_dir = Path(run["workspace"]) / "output"
         artifact = normalize_artifact_name(artifact)
         project_dir = Path(run.get("project_path") or ROOT)
+        previous_test_files = only_test_files(extract_build_files(read_text(output_dir / artifact)))
         try:
             await self.run_agent_step(run, "generate_tests", prompt_name, artifact, agent_name=agent_name)
         except UserInputRequired:
@@ -564,7 +568,9 @@ class WorkflowActions:
                 + ", ".join(rel_path for rel_path, _ in invalid_files),
             )
         if not test_files:
-            synthesized = synthesize_python_smoke_tests(project_dir, read_text(Path(run["workspace"]) / "requirement.md"))
+            synthesized = synthesize_validation_script_tests(project_dir, run.get("validation_script"))
+            if not synthesized:
+                synthesized = synthesize_python_smoke_tests(project_dir, read_text(Path(run["workspace"]) / "requirement.md"))
             if synthesized:
                 test_files = synthesized
                 write_text(
@@ -581,13 +587,46 @@ class WorkflowActions:
                 await self.log(run, "generate_tests: synthesized deterministic pytest smoke test from production Python files")
             else:
                 validate_generated_test_files(files)
-        validate_generated_test_files(test_files)
+        try:
+            validate_generated_test_files(test_files)
+        except WorkflowError as exc:
+            synthesized = synthesize_validation_script_tests(project_dir, run.get("validation_script"))
+            if not synthesized:
+                raise
+            test_files = synthesized
+            write_text(
+                output_dir / artifact,
+                "# Generated Tests Fallback\n\n"
+                f"The agent returned invalid generated tests ({exc}), so the workflow generated a deterministic validation-script pytest.\n\n"
+                + "\n".join(
+                    f"FILE: {rel_path}\nCONTENT:\n{content.rstrip()}\nEND_FILE"
+                    for rel_path, content in synthesized
+                )
+                + "\n",
+            )
+            await self.refresh_artifacts(run["id"])
+            await self.log(run, "generate_tests: synthesized validation-script pytest after invalid agent tests")
+        self._remove_stale_generated_tests(project_dir, previous_test_files, test_files)
         written = apply_extracted_files(project_dir, test_files, output_label="generate_tests output")
         if written:
             await self.log(run, "generate_tests: materialized test files: " + ", ".join(str(path.relative_to(project_dir)) for path in written))
         else:
             await self.log(run, f"generate_tests: no FILE/CONTENT/END_FILE test files found in output/{artifact}")
             raise WorkflowError("generate_tests did not create any test files. Agent test output must include FILE/CONTENT/END_FILE blocks.")
+
+    @staticmethod
+    def _remove_stale_generated_tests(project_dir: Path, previous_files: list[tuple[str, str]], next_files: list[tuple[str, str]]) -> None:
+        next_paths = {rel_path.replace("\\", "/") for rel_path, _ in next_files}
+        for rel_path, _ in previous_files:
+            normalized = rel_path.replace("\\", "/")
+            if normalized in next_paths:
+                continue
+            try:
+                target = resolve_project_relative_write(project_dir, normalized, label="remove stale generate_tests output")
+            except WorkflowError:
+                continue
+            if target.is_file():
+                target.unlink()
 
     async def build_step(self, run: dict[str, Any], prompt_name: str = "05_build.md", artifact: str = "build-result.md", *, agent_name: str | None = None) -> None:
         project_dir = Path(run.get("project_path") or ROOT)
@@ -611,6 +650,11 @@ class WorkflowActions:
                     f"Invalid build file(s): {ignored}"
                 )
         validate_build_files_are_not_tests(production_files)
+        validate_build_files_do_not_overwrite_validation_scripts(
+            project_dir,
+            production_files,
+            validation_script=run.get("validation_script"),
+        )
         written = apply_extracted_files(project_dir, production_files, output_label="build output")
         if written:
             await self.log(run, "build: materialized files: " + ", ".join(str(path.relative_to(project_dir)) for path in written))
@@ -782,7 +826,11 @@ class WorkflowActions:
                 step_artifact_name(step_record, "build-result.md"),
                 agent_name=agent_name,
             ),
-            "run_test": lambda: self.functions.call_python_functions(run, step_function_names(step_record) or ["run_pytest"], output_dir),
+            "run_test": lambda: self.functions.call_python_functions(
+                self._run_with_step_context(run, step_record),
+                step_function_names(step_record) or ["run_pytest"],
+                output_dir,
+            ),
             "consensus_security_scan": lambda: self.consensus_security_scan_step(
                 run,
                 step_prompt_name(step_record, "00_security_candidate_scan.md"),
@@ -826,10 +874,10 @@ class WorkflowActions:
             )
         if functions and (step_type in {"python", "validation", "check"} or any(item in PYTHON_FUNCTIONS for item in functions)):
             artifact = step_artifact_name(step_record, "") or None
-            return lambda: self.functions.call_python_functions(run, functions, output_dir, artifact)
+            return lambda: self.functions.call_python_functions(self._run_with_step_context(run, step_record), functions, output_dir, artifact)
         if step_type == "python":
             artifact = step_artifact_name(step_record, "") or None
-            return lambda: self.functions.call_python_functions(run, functions or ["run_pytest"], output_dir, artifact)
+            return lambda: self.functions.call_python_functions(self._run_with_step_context(run, step_record), functions or ["run_pytest"], output_dir, artifact)
         if function == "require_status_pass" or step_type in {"gate", "manual"}:
             artifact = step_artifact_name(step_record, step_record.get("key", "review") + ".md")
             return lambda: asyncio.to_thread(self.functions.require_status, output_dir / artifact, "PASS")
@@ -851,3 +899,10 @@ class WorkflowActions:
             agent_name=agent_name,
             fresh_session=not bool_config(config, "keepSameSession", True),
         )
+
+    @staticmethod
+    def _run_with_step_context(run: dict[str, Any], step_record: dict[str, Any]) -> dict[str, Any]:
+        scoped = dict(run)
+        scoped["_current_step"] = step_record
+        scoped["_current_step_config"] = step_record.get("config") or {}
+        return scoped

@@ -35,6 +35,7 @@ Rules:
 - For Python projects, write pytest tests only under tests/.
 - Test files must be named tests/test_*.py or tests/conftest.py.
 - Import production code from actual existing module paths shown in Project Profile / Architecture / Build result.
+- For Python sort/order functions, accept either common API style: returning the sorted sequence or sorting the provided mutable list in place and returning None.
 - For YAML/JSON/config CRUD tasks, tests should verify the generated output file exists and matches the requested CRUD operations without modifying production or data files.
 - Keep tests separate from production code.
 - Do not create or modify production files.

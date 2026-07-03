@@ -10,7 +10,7 @@ from typing import Any
 FUNCTION_META = {
     "id": "run_external_validation",
     "label": "Run External Validation.py",
-    "description": "Run a mandatory project validation script such as 驗證.py and write output/external-validation-result.md.",
+    "description": "Run an optional or required project validation script such as 驗證.py and write output/external-validation-result.md.",
     "ui": {"tabs": ["basic", "retry", "advanced"]},
 }
 
@@ -38,6 +38,18 @@ def run(context: Any, artifact: str | None = None) -> str:
     script = _find_validation_script(project_dir, configured_script)
     if script is None:
         expected = configured_script or ", ".join(SCRIPT_NAMES)
+        if not configured_script and not _requires_validation_script(context):
+            result = _format_result(
+                status="PASS",
+                script="",
+                cwd=project_dir,
+                command="",
+                return_code=0,
+                stdout="No validation script was configured or found; external validation skipped by workflow setting.",
+                stderr="",
+            )
+            _write(output_dir / artifact_name, result)
+            return result
         result = _format_result(
             status="FAIL",
             script="",
@@ -90,6 +102,15 @@ def _find_validation_script(project_dir: Path, configured_script: str = "") -> P
         if candidate.is_file():
             return candidate
     return None
+
+
+def _requires_validation_script(context: Any) -> bool:
+    if not isinstance(getattr(context, "run", None), dict):
+        return False
+    step_config = context.run.get("_current_step_config") or {}
+    if not isinstance(step_config, dict):
+        return False
+    return bool(step_config.get("requiresValidationScript") or step_config.get("requires_validation_script"))
 
 
 def _resolve_explicit_script(project_dir: Path, value: str) -> Path | None:

@@ -120,6 +120,20 @@ async def chat(session_id: str, body: runtime.CreateMessageRequest) -> dict:
             prompt = _chat_prompt(history, body.content, reuse_session=reuse_session)
             agent_session_id = get_agent_session_id(session, agent.name, session_id)
             repaired_tool_call = False
+            chat_stream_id = f"chat-{session_id}"
+
+            async def publish_chat_output(stream: str, text: str) -> None:
+                if not text:
+                    return
+                await runtime.bus.publish(
+                    chat_stream_id,
+                    {"type": "agent_output", "agent": agent.name, "step": "chat", "stream": stream, "text": text},
+                )
+
+            await runtime.bus.publish(
+                chat_stream_id,
+                {"type": "agent_status", "agent": agent.name, "step": "chat", "message": f"{agent.name} is running..."},
+            )
             result = await agent.run_stream(
                 AgentRequest(
                     run_id=f"chat-{session_id}",
@@ -127,7 +141,8 @@ async def chat(session_id: str, body: runtime.CreateMessageRequest) -> dict:
                     prompt=prompt,
                     cwd=project_path,
                     session_id=agent_session_id,
-                )
+                ),
+                on_output=publish_chat_output,
             )
             if result.session_id != agent_session_id:
                 await update_agent_session_id(session_id, agent.name, result.session_id)
@@ -141,7 +156,8 @@ async def chat(session_id: str, body: runtime.CreateMessageRequest) -> dict:
                         prompt=_chat_repair_prompt(body.content),
                         cwd=project_path,
                         session_id=result.session_id,
-                    )
+                    ),
+                    on_output=publish_chat_output,
                 )
                 if repair_result.session_id != result.session_id:
                     await update_agent_session_id(session_id, agent.name, repair_result.session_id)
@@ -175,5 +191,9 @@ async def chat(session_id: str, body: runtime.CreateMessageRequest) -> dict:
                 "duration_ms": int((time.perf_counter() - chat_started) * 1000),
                 "repaired_tool_call": repaired_tool_call,
             },
+        )
+        await runtime.bus.publish(
+            f"chat-{session_id}",
+            {"type": "done", "agent": agent.name, "step": "chat", "message": "Chat completed."},
         )
         return {"user": user_msg, "assistant": completed or assistant_msg}

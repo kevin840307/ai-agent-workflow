@@ -11,6 +11,7 @@ from typing import Any
 from app.testing.mock_agent import mock_qwen_response
 from app.runtime_modules.errors import WorkflowError
 from app.security.workspace_guard import apply_workspace_env
+from app.workflow_runtime.agent_stream_events import AgentJsonStreamParser
 
 
 _CREATED_SESSION_KEYS: set[str] = set()
@@ -72,6 +73,7 @@ class QwenCliClient:
         *,
         cwd: Path | None = None,
         session_mode: str | None = None,
+        stream_json: bool = False,
     ) -> list[str]:
         cmd = [self.bin]
         if self.bare:
@@ -84,6 +86,8 @@ class QwenCliClient:
                 cmd.extend(["--session-id", qwen_session_id, "--chat-recording"])
         if self.auth_type:
             cmd.extend(["--auth-type", self.auth_type])
+        if stream_json:
+            cmd.extend(["--output-format", "stream-json", "--include-partial-messages"])
         if include_prompt_flag:
             cmd.append("-p")
         return cmd
@@ -160,15 +164,9 @@ class QwenCliClient:
 
         process_env = apply_workspace_env(env or os.environ, project_path=cwd, workspace_path=workspace_path or (cwd / ".ai-workflow"), run_id=run_id)
         mode = self._session_mode(cwd, qwen_session_id)
-        proc = await self._execute_stream(prompt, cwd, qwen_session_id, mode, timeout_sec, process_env)
+        proc = await self._execute_stream(prompt, cwd, qwen_session_id, mode, timeout_sec, process_env, on_output=on_output)
         stdout = (proc.stdout or "").strip()
         stderr = (proc.stderr or "").strip()
-
-        if on_output:
-            for line in stdout.splitlines():
-                await on_output("stdout", line)
-            for line in stderr.splitlines():
-                await on_output("stderr", line)
 
         if proc.returncode != 0:
             recovered = self._recoverable_retry_args(stderr or stdout, mode, qwen_session_id)
@@ -176,14 +174,9 @@ class QwenCliClient:
                 retry_id, retry_mode = recovered
                 if on_output:
                     await on_output("stderr", f"Qwen session recovered; retrying with {'no session' if retry_id is None else retry_mode} mode.")
-                retry_proc = await self._execute_stream(prompt, cwd, retry_id, retry_mode, timeout_sec, process_env)
+                retry_proc = await self._execute_stream(prompt, cwd, retry_id, retry_mode, timeout_sec, process_env, on_output=on_output)
                 stdout = (retry_proc.stdout or "").strip()
                 stderr = (retry_proc.stderr or "").strip()
-                if on_output:
-                    for line in stdout.splitlines():
-                        await on_output("stdout", line)
-                    for line in stderr.splitlines():
-                        await on_output("stderr", line)
                 if retry_proc.returncode != 0:
                     raise WorkflowError(stderr or stdout or f"Qwen CLI failed with exit code {retry_proc.returncode}.")
                 if retry_id:
@@ -205,10 +198,94 @@ class QwenCliClient:
         session_mode: str | None,
         timeout_sec: int | None,
         env: dict[str, str],
+        on_output=None,
     ) -> subprocess.CompletedProcess[str]:
+        try:
+            return await self._execute_stream_async(prompt, cwd, qwen_session_id, session_mode, timeout_sec, env, on_output)
+        except NotImplementedError:
+            return await self._execute_stream_threaded(prompt, cwd, qwen_session_id, session_mode, timeout_sec, env, on_output)
+
+    async def _execute_stream_async(
+        self,
+        prompt: str,
+        cwd: Path,
+        qwen_session_id: str | None,
+        session_mode: str | None,
+        timeout_sec: int | None,
+        env: dict[str, str],
+        on_output=None,
+    ) -> subprocess.CompletedProcess[str]:
+        command = self.command(qwen_session_id, include_prompt_flag=False, cwd=cwd, session_mode=session_mode, stream_json=True)
+        parser = AgentJsonStreamParser()
+        stdout_chunks: list[str] = []
+        stderr_chunks: list[str] = []
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                *command,
+                cwd=str(cwd),
+                env=env,
+                stdin=asyncio.subprocess.PIPE,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+        except FileNotFoundError as exc:
+            raise WorkflowError(f"Qwen CLI not found: {self.bin}. Set QWEN_MOCK=1 for demo mode.") from exc
+
+        assert proc.stdin is not None
+        proc.stdin.write(prompt.encode("utf-8", errors="replace"))
+        await proc.stdin.drain()
+        proc.stdin.close()
+
+        async def drain_stdout() -> None:
+            while True:
+                assert proc.stdout is not None
+                data = await proc.stdout.readline()
+                if not data:
+                    break
+                line = data.decode(errors="replace")
+                stdout_chunks.append(line)
+                if on_output:
+                    for stream, text in parser.feed_line(line):
+                        await on_output(stream, text)
+
+        async def drain_stderr() -> None:
+            while True:
+                assert proc.stderr is not None
+                data = await proc.stderr.readline()
+                if not data:
+                    break
+                text = data.decode(errors="replace")
+                stderr_chunks.append(text)
+                if on_output:
+                    await on_output("stderr", text)
+
+        try:
+            await asyncio.wait_for(asyncio.gather(drain_stdout(), drain_stderr(), proc.wait()), timeout=timeout_sec or self.timeout_sec)
+        except asyncio.TimeoutError as exc:
+            proc.terminate()
+            try:
+                await asyncio.wait_for(proc.wait(), timeout=5)
+            except asyncio.TimeoutError:
+                proc.kill()
+                await proc.wait()
+            raise WorkflowError(f"Qwen CLI timed out after {timeout_sec or self.timeout_sec} seconds.") from exc
+        return subprocess.CompletedProcess(command, proc.returncode or 0, parser.final_text("".join(stdout_chunks)), "".join(stderr_chunks))
+
+    async def _execute_stream_threaded(
+        self,
+        prompt: str,
+        cwd: Path,
+        qwen_session_id: str | None,
+        session_mode: str | None,
+        timeout_sec: int | None,
+        env: dict[str, str],
+        on_output=None,
+    ) -> subprocess.CompletedProcess[str]:
+        command = self.command(qwen_session_id, include_prompt_flag=False, cwd=cwd, session_mode=session_mode, stream_json=True)
+
         def execute() -> subprocess.CompletedProcess[str]:
             return subprocess.run(
-                self.command(qwen_session_id, include_prompt_flag=False, cwd=cwd, session_mode=session_mode),
+                command,
                 input=prompt,
                 cwd=str(cwd),
                 env=env,
@@ -220,9 +297,20 @@ class QwenCliClient:
             )
 
         try:
-            return await asyncio.to_thread(execute)
+            proc = await asyncio.to_thread(execute)
         except subprocess.TimeoutExpired as exc:
             raise WorkflowError(f"Qwen CLI timed out after {exc.timeout} seconds.") from exc
+        parser = AgentJsonStreamParser()
+        if on_output:
+            for line in (proc.stdout or "").splitlines():
+                for stream, text in parser.feed_line(line):
+                    await on_output(stream, text)
+            for line in (proc.stderr or "").splitlines():
+                await on_output("stderr", line)
+        else:
+            for line in (proc.stdout or "").splitlines():
+                parser.feed_line(line)
+        return subprocess.CompletedProcess(proc.args, proc.returncode, parser.final_text(proc.stdout or ""), proc.stderr)
 
     @staticmethod
     def _recoverable_retry_args(stderr: str, mode: str | None, qwen_session_id: str | None) -> tuple[str | None, str | None] | None:

@@ -1,4 +1,4 @@
-import { LocalStore, StorageKeys } from "../core/storage.js?v=20260703-wf-wstep1";
+import { LocalStore, StorageKeys } from "../core/storage.js?v=20260703-agent-stream1";
 
 export function createWorkflows(ctx) {
   const { api, state, ui } = ctx;

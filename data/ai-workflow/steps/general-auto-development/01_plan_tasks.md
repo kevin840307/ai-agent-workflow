@@ -28,8 +28,10 @@ Planning rules:
 - Build production changes before Generate Tests so the model does not mix test blocks into Build.
 - For data/config tasks, treat requested project artifacts such as YAML/JSON/config output files as Build-owned deliverables.
 - If a config file defines CRUD operations, include source file, operation config file, and expected output path in the plan.
+- Treat validation scripts such as `驗證.py`, `validation.py`, `validate.py`, `verify.py`, and `check.py` as protected acceptance tools when they already exist or are provided for this run.
+- Do not list a validation script under task Files or ask Build to modify it unless the user explicitly asks to create or change that validator itself.
 - Include a focused automated test strategy after Build and before external validation.
-- Include validation coverage for the user-provided validation script.
+- Include validation coverage for the user-provided validation script when one is provided.
 - Keep TODO content concise and actionable.
 - If multiple TODO files would help, list the recommended file names, but keep this step output in `todo.md`.
 - Do not invent a new architecture when the project already has one.
@@ -56,19 +58,20 @@ Status: READY
 - Acceptance Criteria:
   - AC-001:
 - Validation:
-  - Covered by Build, Generate Tests, Run Test, and the mandatory external validation step.
+  - Covered by Build, Generate Tests, Run Test, and external validation when configured or present.
 
 ## Execution SOP
 - Step 1: Build production code only.
 - Step 2: Generate tests only under the project test folder.
 - Step 3: Run automated tests.
-- Step 4: Run mandatory external validation script.
+- Step 4: Run external validation when a script is configured or present.
 - Step 5: Retry Build with concrete failure feedback when tests or validation fail.
 
 ## External Validation
 - If a validation script path is provided above, that exact script is mandatory for this run.
 - If no validation script path is provided, fallback script names are: `驗證.py`, `validation.py`, `validate.py`, `verify.py`, `check.py`
-- The workflow must stop if no validation script exists.
+- Existing validation scripts are read-only to Build and must be run after automated tests.
+- If no validation script is configured or found, external validation is skipped with a PASS result.
 - The workflow must run automated tests before this external validation step.
 - The workflow must retry Build when tests or validation fail.
 

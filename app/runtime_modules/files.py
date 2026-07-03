@@ -16,9 +16,14 @@ from app.security.workspace_guard import (
     unsafe_relative_path_reason as guarded_unsafe_relative_path_reason,
 )
 
+VALIDATION_SCRIPT_NAMES = ("驗證.py", "validation.py", "validate.py", "verify.py", "check.py")
+
 
 def unsafe_relative_path_reason(raw_path: str) -> str | None:
     """Return a reason when an agent-supplied path must not be written/read."""
+    normalized = str(raw_path or "").strip().strip("`").replace("\\", "/").lower()
+    if normalized in {"relative/path.ext", "relative_path.ext"} or normalized.startswith(("relative/path/", "relative_path/")):
+        return "placeholder relative/path output is not a real project file"
     return guarded_unsafe_relative_path_reason(raw_path, reserved_dirs=RESERVED_AGENT_WRITE_DIRS)
 
 
@@ -227,6 +232,13 @@ def classify_test_retry_target(project_dir: Path, test_result: str) -> str:
         ]
     )
     if test_collection_or_import_problem:
+        return "generate_tests"
+    in_place_sort_assumption = (
+        "assert none ==" in lower
+        and ("sort" in lower or "sorted" in lower)
+        and ("test_" in lower or "tests/" in lower or "tests\\" in lower)
+    )
+    if in_place_sort_assumption:
         return "generate_tests"
     return "build"
 
@@ -454,13 +466,29 @@ def snapshot_changed(before: dict[str, tuple[int, int]], after: dict[str, tuple[
 
 def extract_build_files(build_result: str) -> list[tuple[str, str]]:
     files: list[tuple[str, str]] = []
-    pattern = re.compile(r"^FILE:\s*(?P<path>.+?)\s*\r?\nCONTENT:\r?\n(?P<content>.*?)(?=^END_FILE\s*$)", re.DOTALL | re.MULTILINE)
+    pattern = re.compile(
+        r"^FILE:\s*(?P<path>.+?)\s*\r?\nCONTENT:\r?\n(?P<content>.*?)(?=^FILE:\s*|^END_FILE\s*$|\Z)",
+        re.DOTALL | re.MULTILINE,
+    )
     for match in pattern.finditer(build_result):
         rel_path = match.group("path").strip().strip("`").replace("\\", "/")
         content = match.group("content")
+        content = re.sub(r"\r?\nEND_FILE\s*$", "", content)
         content = re.sub(r"\r?\n$", "", content)
+        content = strip_wrapping_code_fence(rel_path, content)
         files.append((rel_path, content + "\n"))
     return files
+
+
+def strip_wrapping_code_fence(rel_path: str, content: str) -> str:
+    suffix = Path(rel_path).suffix.lower()
+    if suffix in {".md", ".markdown", ".txt", ".rst"}:
+        return content
+    stripped = content.strip()
+    match = re.fullmatch(r"```[\w.+-]*\s*\r?\n(?P<body>.*)\r?\n```", stripped, re.DOTALL)
+    if not match:
+        return content
+    return match.group("body")
 
 
 def apply_extracted_files(project_dir: Path, files: list[tuple[str, str]], *, output_label: str = "build output") -> list[Path]:
@@ -502,6 +530,24 @@ def validate_generated_test_files(files: list[tuple[str, str]]) -> None:
             "generate_tests can only write pytest files under tests/ "
             f"(tests/test_*.py or tests/conftest.py). Invalid file(s): {', '.join(invalid)}"
         )
+    syntax_errors: list[str] = []
+    for rel_path, content in files:
+        if Path(rel_path).suffix.lower() != ".py":
+            continue
+        try:
+            compile(content, rel_path, "exec")
+        except SyntaxError as exc:
+            syntax_errors.append(f"{rel_path}: {exc.msg} at line {exc.lineno}")
+    if syntax_errors:
+        raise WorkflowError("generate_tests produced invalid Python syntax. " + "; ".join(syntax_errors))
+    placeholder_tests = [
+        rel_path
+        for rel_path, content in files
+        if Path(rel_path).name == "test_example.py"
+        or re.search(r"^\s*(from\s+example\s+import|import\s+example\b)", content, re.MULTILINE)
+    ]
+    if placeholder_tests:
+        raise WorkflowError("generate_tests produced placeholder example tests instead of project-specific tests: " + ", ".join(placeholder_tests))
 
 
 def is_build_test_file_path(rel_path: str) -> bool:
@@ -530,6 +576,49 @@ def validate_build_files_are_not_tests(files: list[tuple[str, str]]) -> None:
         )
 
 
+def existing_validation_scripts(project_dir: Path, validation_script: str | None = None) -> set[Path]:
+    """Return validation scripts that already exist before Build starts.
+
+    Existing validation scripts are user-provided acceptance tools. Build may
+    read them, but must not rewrite them to make validation pass.
+    """
+    project_root = project_dir.expanduser().resolve()
+    scripts: set[Path] = set()
+    if validation_script:
+        candidate = Path(validation_script).expanduser()
+        path = candidate if candidate.is_absolute() else project_root / candidate
+        if path.is_file():
+            scripts.add(path.resolve())
+    for name in VALIDATION_SCRIPT_NAMES:
+        path = project_root / name
+        if path.is_file():
+            scripts.add(path.resolve())
+    return scripts
+
+
+def validate_build_files_do_not_overwrite_validation_scripts(
+    project_dir: Path,
+    files: list[tuple[str, str]],
+    *,
+    validation_script: str | None = None,
+) -> None:
+    protected_scripts = existing_validation_scripts(project_dir, validation_script)
+    if not protected_scripts:
+        return
+    project_root = project_dir.expanduser().resolve()
+    invalid: list[str] = []
+    for rel_path, _content in files:
+        target = resolve_project_relative_write(project_root, rel_path, label="build output")
+        if target.resolve() in protected_scripts:
+            invalid.append(rel_path)
+    if invalid:
+        raise WorkflowError(
+            "build must not create or modify existing validation scripts. "
+            "Validation scripts are user-provided acceptance tools, not Build-owned artifacts. "
+            f"Invalid build file(s): {', '.join(invalid)}"
+        )
+
+
 def only_test_files(files: list[tuple[str, str]]) -> list[tuple[str, str]]:
     return [file_block for file_block in files if is_test_file_path(file_block[0])]
 
@@ -547,13 +636,15 @@ def synthesize_python_smoke_tests(project_dir: Path, requirement: str = "") -> l
         and not is_build_test_file_path(path)
         and not Path(path).name.startswith("__")
         and Path(path).name != "conftest.py"
+        and Path(path).name not in {"validation.py", "validate.py", "verify.py", "check.py", "驗證.py"}
     ]
     if not python_files:
         return []
-    shown = python_files[:20]
-    list_literal = "[\n" + "".join(f"    {path!r},\\n" for path in shown) + "]"
+    shown = [path.replace("\\", "/") for path in python_files[:20]]
+    list_literal = "[\n" + "".join(f"    {path!r},\n" for path in shown) + "]"
     content = (
         "from __future__ import annotations\n\n"
+        "import inspect\n"
         "import importlib.util\n"
         "from pathlib import Path\n\n"
         "PROJECT_ROOT = Path(__file__).resolve().parents[1]\n"
@@ -570,5 +661,67 @@ def synthesize_python_smoke_tests(project_dir: Path, requirement: str = "") -> l
         "    assert PYTHON_FILES, 'Expected at least one production Python file'\n"
         "    for relative_path in PYTHON_FILES:\n"
         "        _load_module(relative_path)\n"
+        "\n\n"
+        "def test_generated_sort_functions_handle_representative_lists():\n"
+        "    checked = 0\n"
+        "    samples = [[], [1], [3, 1, 2], [4, -1, 4, 0]]\n"
+        "    for relative_path in PYTHON_FILES:\n"
+        "        module = _load_module(relative_path)\n"
+        "        for name, value in vars(module).items():\n"
+        "            if name.startswith('_') or not inspect.isfunction(value):\n"
+        "                continue\n"
+        "            lowered = name.lower()\n"
+        "            if 'sort' not in lowered and 'order' not in lowered:\n"
+        "                continue\n"
+        "            for sample in samples:\n"
+        "                candidate = list(sample)\n"
+        "                original = list(candidate)\n"
+        "                result = value(candidate)\n"
+        "                assert (result if result is not None else candidate) == sorted(original)\n"
+        "            checked += 1\n"
+        "    if checked == 0:\n"
+        "        return\n"
     )
     return [("tests/test_ai_workflow_generated_smoke.py", content)]
+
+
+def synthesize_validation_script_tests(project_dir: Path, validation_script: str | None = None) -> list[tuple[str, str]]:
+    script = _find_validation_script_for_tests(project_dir, validation_script)
+    if script is None:
+        return []
+    rel_script = script.relative_to(project_dir).as_posix()
+    content = (
+        "from __future__ import annotations\n\n"
+        "import subprocess\n"
+        "import sys\n"
+        "from pathlib import Path\n\n"
+        "PROJECT_ROOT = Path(__file__).resolve().parents[1]\n"
+        f"VALIDATION_SCRIPT = PROJECT_ROOT / {rel_script!r}\n\n\n"
+        "def test_validation_script_passes():\n"
+        "    proc = subprocess.run(\n"
+        "        [sys.executable, str(VALIDATION_SCRIPT)],\n"
+        "        cwd=PROJECT_ROOT,\n"
+        "        text=True,\n"
+        "        capture_output=True,\n"
+        "        timeout=120,\n"
+        "    )\n"
+        "    assert proc.returncode == 0, proc.stdout + proc.stderr\n"
+    )
+    return [("tests/test_ai_workflow_validation.py", content)]
+
+
+def _find_validation_script_for_tests(project_dir: Path, validation_script: str | None = None) -> Path | None:
+    if validation_script:
+        candidate = Path(validation_script).expanduser()
+        path = candidate if candidate.is_absolute() else project_dir / candidate
+        path = path.resolve()
+        try:
+            path.relative_to(project_dir.resolve())
+        except ValueError:
+            return None
+        return path if path.is_file() and path.suffix.lower() == ".py" else None
+    for name in VALIDATION_SCRIPT_NAMES:
+        candidate = project_dir / name
+        if candidate.is_file():
+            return candidate.resolve()
+    return None

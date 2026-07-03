@@ -43,7 +43,7 @@ class GeneralAutoDevelopmentWorkflowTests(unittest.TestCase):
             time.sleep(0.05)
         self.fail(f"workflow run did not reach a terminal state within {timeout_sec}s: {run}")
 
-    def test_workflow_loads_with_mandatory_external_validation_retrying_build(self) -> None:
+    def test_workflow_loads_with_optional_external_validation_retrying_build_when_needed(self) -> None:
         workflow = workflow_asset_service.load_workflow_asset("general-auto-development")
 
         keys = [step["key"] for step in workflow["steps"]]
@@ -87,7 +87,7 @@ class GeneralAutoDevelopmentWorkflowTests(unittest.TestCase):
         self.assertEqual(validation["function"], "run_external_validation")
         self.assertEqual(validation["retryFromStepKey"], "build")
         self.assertEqual(validation["failAction"], "selected_step")
-        self.assertTrue(validation["requiresValidationScript"])
+        self.assertFalse(validation["requiresValidationScript"])
         self.assertGreaterEqual(validation["maxRetries"], 10)
 
     def test_general_auto_development_builds_then_generates_tests_before_external_validation(self) -> None:
@@ -638,7 +638,7 @@ CONTENT:
             else:
                 os.environ["QWEN_USE_SERVE"] = old_use_serve
 
-    def test_external_validation_fails_when_project_has_no_validation_script(self) -> None:
+    def test_external_validation_skips_when_project_has_no_validation_script_and_not_required(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             project = Path(tmp) / "project"
             workspace = Path(tmp) / "workspace"
@@ -648,6 +648,28 @@ CONTENT:
 
             service = WorkflowFunctionService(log=_noop_log, refresh_artifacts=_noop_refresh)
             run = {"id": "run-1", "workspace": str(workspace), "project_path": str(project)}
+
+            asyncio.run(service.call_python_function(run, "run_external_validation", output, "external-validation-result.md"))
+
+            result = (output / "external-validation-result.md").read_text(encoding="utf-8")
+            self.assertIn("Status: PASS", result)
+            self.assertIn("external validation skipped", result)
+
+    def test_external_validation_fails_when_step_requires_validation_script(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp) / "project"
+            workspace = Path(tmp) / "workspace"
+            output = workspace / "output"
+            project.mkdir()
+            output.mkdir(parents=True)
+
+            service = WorkflowFunctionService(log=_noop_log, refresh_artifacts=_noop_refresh)
+            run = {
+                "id": "run-required",
+                "workspace": str(workspace),
+                "project_path": str(project),
+                "_current_step_config": {"requiresValidationScript": True},
+            }
 
             with self.assertRaises(WorkflowError):
                 asyncio.run(service.call_python_function(run, "run_external_validation", output, "external-validation-result.md"))

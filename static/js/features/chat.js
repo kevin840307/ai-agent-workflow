@@ -1,9 +1,42 @@
-import { LocalStore, StorageKeys } from "../core/storage.js?v=20260703-wf-wstep1";
+import { LocalStore, StorageKeys } from "../core/storage.js?v=20260703-agent-stream1";
 
 export function createChat(ctx) {
   const { api, state, ui } = ctx;
 
   const chat = {
+    closeStream() {
+      if (state.chatEventSource) {
+        state.chatEventSource.close();
+        state.chatEventSource = null;
+      }
+    },
+
+    openStream(sessionId) {
+      chat.closeStream();
+      let hasOutput = false;
+      state.chatEventSource = new EventSource(`/api/sessions/${encodeURIComponent(sessionId)}/chat-events`);
+      state.chatEventSource.onmessage = (message) => {
+        const event = JSON.parse(message.data);
+        const agent = event.agent || state.defaultAgent || "Agent";
+        if (event.type === "agent_status") {
+          ctx.features.messages.updateTemporary(`[${agent}] ${event.message || "thinking..."}`);
+          return;
+        }
+        if (event.type === "agent_output") {
+          const text = event.stream === "thinking"
+            ? `\n[thinking] ${event.text}`
+            : event.text;
+          ctx.features.messages.updateTemporary(hasOutput ? text : `${agent}:\n${text}`, { append: hasOutput });
+          hasOutput = true;
+          return;
+        }
+        if (["done", "failed", "cancelled"].includes(event.type)) {
+          chat.closeStream();
+        }
+      };
+      state.chatEventSource.onerror = () => chat.closeStream();
+    },
+
     setMode(mode) {
       state.runMode = mode === "chat" ? "chat" : "workflow";
       LocalStore.setString(StorageKeys.runMode, state.runMode);
@@ -42,6 +75,7 @@ export function createChat(ctx) {
       ctx.features.composer.autoResize();
       ctx.features.messages.addLocal(content, "user");
       ctx.features.messages.addLocal(`${state.defaultAgent || "Agent"} is thinking...`, "assistant", { temporary: true });
+      chat.openStream(state.activeSessionId);
 
       try {
         await api.request(`/api/sessions/${state.activeSessionId}/chat`, {
@@ -54,6 +88,7 @@ export function createChat(ctx) {
         ctx.features.messages.removeTemporary();
         ctx.features.messages.addLocal(`Chat failed: ${err.message}`, "assistant");
       } finally {
+        chat.closeStream();
         state.chatBusy = false;
         ctx.features.composer.updatePrimaryAction();
       }

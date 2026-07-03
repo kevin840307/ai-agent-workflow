@@ -133,7 +133,7 @@ def validate_general_auto_plan(ctx: WorkflowFunctionContext, artifact: str = "im
 
     This replaces fragile AI self-review for the default fully-automated path.
     It accepts the project's task plan only when it is concrete enough for Build
-    and explicitly includes tests plus mandatory external validation.
+    and explicitly includes tests plus the external validation stage.
     """
     todo = ctx.read_text(ctx.output_dir / "todo.md")
     if not todo.strip():
@@ -163,7 +163,7 @@ def validate_general_auto_plan(ctx: WorkflowFunctionContext, artifact: str = "im
     if "test" not in lowered and "pytest" not in lowered and "測試" not in todo:
         raise WorkflowFunctionError("todo.md must include an automated test strategy before external validation.")
     if "validation" not in lowered and "驗證.py" not in todo:
-        raise WorkflowFunctionError("todo.md must include the mandatory external validation step.")
+        raise WorkflowFunctionError("todo.md must include the external validation step.")
 
     lines = [
         "# Implementation Review",
@@ -173,7 +173,7 @@ def validate_general_auto_plan(ctx: WorkflowFunctionContext, artifact: str = "im
         "",
         "## Checks",
         f"- Task count is bounded: {len(task_ids)} task(s).",
-        "- Plan contains TASK ids, acceptance criteria, automated test coverage, and mandatory external validation.",
+        "- Plan contains TASK ids, acceptance criteria, automated test coverage, and external validation handling.",
         "- No user question is required for this deterministic gate.",
         "",
         "## Findings",
@@ -187,7 +187,7 @@ def validate_general_auto_final(ctx: WorkflowFunctionContext, artifact: str = "f
     """Deterministic final gate for General Auto Development.
 
     Final pass is based on concrete artifacts: Build output, automated test
-    result, and mandatory external validation result. This avoids AI review text
+    result, and external validation result. This avoids AI review text
     format drift such as missing PASS keywords.
     """
     build_result = ctx.read_text(ctx.output_dir / "build-result.md")

@@ -1,4 +1,4 @@
-import { renderMarkdownPreview } from "./markdown-preview.js?v=20260703-wf-wstep1";
+import { renderMarkdownPreview } from "./markdown-preview.js?v=20260703-agent-stream1";
 
 const WORKFLOW_ASSET_API = "/api/workflow-assets";
 const TYPE_DEFAULTS = {

@@ -380,16 +380,16 @@ class PromptBuilder:
     def _wrap_with_agent_profile(self, prompt: str, selected_skills: str, agent_name: str) -> str:
         if agent_name == "qwen":
             skill_header = (
-                "Loaded these Qwen skill files as background methodology only. "
-                "Do not call tools. Output JSON only when asking the user with ask_user_question.\n\n"
-                f"Selected skills:\n{selected_skills}\n\n"
+                "Reference instruction files have been loaded as background methodology only. "
+                "Do not call tools, do not call functions, and do not output JSON unless the task explicitly asks for JSON.\n\n"
+                f"Reference files:\n{selected_skills}\n\n"
             )
         else:
             skill_header = (
-                f"Loaded these skill files for the {agent_name} agent as background methodology only. "
+                f"Reference instruction files have been loaded for the {agent_name} agent as background methodology only. "
                 "Do not call external tools unless the workflow step explicitly requires it. "
-                "Output JSON only when asking the user with ask_user_question.\n\n"
-                f"Selected skills:\n{selected_skills}\n\n"
+                "Do not output JSON unless the task explicitly asks for JSON.\n\n"
+                f"Reference files:\n{selected_skills}\n\n"
             )
         return (
             f"{skill_header}"

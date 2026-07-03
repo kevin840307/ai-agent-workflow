@@ -14,11 +14,14 @@ from app.runtime_modules.files import (
     requirement_mentions_language,
     should_ask_for_spec_input,
     spec_input_questions,
+    synthesize_python_smoke_tests,
+    synthesize_validation_script_tests,
     validate_build_files_are_not_tests,
     validate_generated_test_files,
 )
 from app.runtime_modules.qwen import QwenCliClient
 from app.workflow_runtime.agents import AgentRequest, OpenCodeCliAdapter, QwenAdapter, run_process_stream
+from app.workflow_runtime.agent_stream_events import AgentJsonStreamParser
 from app.workflow_runtime.qwen_serve import qwen_serve_disabled
 
 
@@ -42,6 +45,47 @@ END_FILE
             validate_generated_test_files([("app/test_main.py", "def test_x(): pass\n")])
         with self.assertRaises(WorkflowError):
             validate_build_files_are_not_tests([("tests/test_main.py", "def test_x(): pass\n")])
+
+    def test_extract_build_files_strips_wrapping_code_fences_for_code_files(self) -> None:
+        text = """FILE: tests/test_sort.py
+CONTENT:
+```python
+def test_sort():
+    assert True
+```
+END_FILE
+FILE: docs/example.md
+CONTENT:
+```python
+print("keep markdown fences")
+```
+END_FILE
+"""
+        files = dict(extract_build_files(text))
+        self.assertEqual(files["tests/test_sort.py"], "def test_sort():\n    assert True\n")
+        self.assertIn("```python", files["docs/example.md"])
+
+    def test_extract_build_files_splits_when_agent_omits_end_file_between_blocks(self) -> None:
+        text = """```content
+FILE: a.py
+CONTENT:
+print("a")
+FILE: b.py
+CONTENT:
+print("b")
+END_FILE
+```
+"""
+        files = extract_build_files(text)
+        self.assertEqual(files, [("a.py", "print(\"a\")\n"), ("b.py", "print(\"b\")\n")])
+
+    def test_validate_generated_test_files_rejects_python_syntax_errors(self) -> None:
+        with self.assertRaisesRegex(WorkflowError, "invalid Python syntax"):
+            validate_generated_test_files([("tests/test_bad.py", "def test_bad(:\n    pass\n")])
+
+    def test_validate_generated_test_files_rejects_placeholder_example_tests(self) -> None:
+        with self.assertRaisesRegex(WorkflowError, "placeholder example"):
+            validate_generated_test_files([("tests/test_example.py", "from example import example\n")])
 
     def test_requirement_language_and_project_profile_detection(self) -> None:
         self.assertTrue(requirement_mentions_language("請用 Python 寫泡沫排序"))
@@ -79,6 +123,30 @@ END_FILE
 
             self.assertFalse(should_ask_for_spec_input("asdf qwer zxcv", existing_project, "Add quick sort in Python."))
             self.assertFalse(should_ask_for_spec_input("Add quick sort", empty_project, "Use Python."))
+
+    def test_synthesized_smoke_tests_are_valid_with_windows_style_paths(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp)
+            nested = project / "algorithms"
+            nested.mkdir()
+            (nested / "bubble_sort.py").write_text("def bubble_sort(values):\n    return sorted(values)\n", encoding="utf-8")
+
+            files = synthesize_python_smoke_tests(project)
+            self.assertEqual([path for path, _content in files], ["tests/test_ai_workflow_generated_smoke.py"])
+            compile(files[0][1], files[0][0], "exec")
+            self.assertIn("'algorithms/bubble_sort.py'", files[0][1])
+            self.assertIn("test_generated_sort_functions_handle_representative_lists", files[0][1])
+            self.assertIn("sorted(original)", files[0][1])
+
+    def test_synthesized_validation_script_tests_run_project_validation(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp)
+            (project / "validation.py").write_text("print('ok')\n", encoding="utf-8")
+
+            files = synthesize_validation_script_tests(project, "validation.py")
+            self.assertEqual([path for path, _content in files], ["tests/test_ai_workflow_validation.py"])
+            compile(files[0][1], files[0][0], "exec")
+            self.assertIn("validation.py", files[0][1])
 
     def test_qwen_mock_client_and_command_options(self) -> None:
         old_mock = os.environ.get("QWEN_MOCK")
@@ -118,6 +186,8 @@ END_FILE
 
             adapter = QwenAdapter()
             self.assertIn("<prompt via stdin>", adapter.command_preview(request))
+            self.assertIn("--output-format stream-json", adapter.command_preview(request))
+            self.assertIn("--include-partial-messages", adapter.command_preview(request))
             self.assertEqual(adapter.health()["type"], "qwen_cli")
 
             os.environ["QWEN_USE_SERVE"] = "1"
@@ -153,7 +223,7 @@ END_FILE
             prompt="hello",
             cwd=Path.cwd(),
         )
-        self.assertEqual(adapter.command_preview(request), f"{adapter.bin} run <prompt>")
+        self.assertEqual(adapter.command_preview(request), f"{adapter.bin} run --format json <prompt>")
         self.assertEqual(adapter.health()["model"], "test/model")
         self.assertEqual(adapter.health()["agent"], "build")
         self.assertEqual(adapter.health()["timeout_sec"], 1200)
@@ -164,11 +234,34 @@ END_FILE
             cwd=Path.cwd(),
             session_id="session-1",
         )
-        self.assertEqual(adapter.command_preview(session_request), f"{adapter.bin} run --session <session> <prompt>")
+        self.assertEqual(adapter.command_preview(session_request), f"{adapter.bin} run --session <session> --format json <prompt>")
         no_reuse = OpenCodeCliAdapter({"bin": "opencode", "mode": "run", "reuseSession": False})
-        self.assertEqual(no_reuse.command_preview(session_request), f"{no_reuse.bin} run <prompt>")
+        self.assertEqual(no_reuse.command_preview(session_request), f"{no_reuse.bin} run --format json <prompt>")
         if os.name == "nt":
             self.assertTrue(adapter.bin.endswith("opencode.cmd") or adapter.bin.endswith("opencode.exe") or adapter.bin == "opencode.cmd")
+
+    def test_agent_json_stream_parser_normalizes_partial_thinking_and_final_text(self) -> None:
+        parser = AgentJsonStreamParser()
+
+        self.assertEqual(parser.feed_line('{"type":"message_partial","content":"hel"}'), [("display", "hel")])
+        self.assertEqual(parser.feed_line('{"type":"message_partial","content":"hello"}'), [("display", "lo")])
+        self.assertEqual(parser.feed_line('{"type":"thinking","text":"checking"}'), [("thinking", "checking")])
+        self.assertEqual(parser.feed_line('{"type":"message","content":[{"type":"text","text":" done"}]}'), [("display", " done")])
+        self.assertEqual(parser.final_text(), "done")
+
+        qwen = AgentJsonStreamParser()
+        self.assertEqual(
+            qwen.feed_line('{"type":"stream_event","event":{"type":"content_block_delta","delta":{"type":"text_delta","text":"OK"}}}'),
+            [("display", "OK")],
+        )
+        self.assertEqual(qwen.feed_line('{"type":"result","result":"OK"}'), [])
+        self.assertEqual(qwen.final_text(), "OK")
+
+        opencode = AgentJsonStreamParser()
+        self.assertEqual(
+            opencode.feed_line('{"type":"text","part":{"type":"text","text":"OK"}}'),
+            [("display", "OK")],
+        )
 
     def test_opencode_mock_uses_agent_contract_without_cli(self) -> None:
         old_mock = os.environ.get("OPENCODE_MOCK")

@@ -1,4 +1,4 @@
-import { ensureActiveTabForStep as ensureStepTab, tabsForStep } from "./step-tabs.js?v=20260703-wf-wstep1";
+import { ensureActiveTabForStep as ensureStepTab, tabsForStep } from "./step-tabs.js?v=20260703-agent-stream1";
 
 export function installLayoutRenderer(ctx) {
   const {

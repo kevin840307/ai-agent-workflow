@@ -9,6 +9,7 @@ from app.runtime_modules.errors import WorkflowError
 from app.security.workspace_guard import apply_workspace_env
 
 from ..base import AgentOutputCallback, AgentRequest, AgentResult, run_process_stream
+from app.workflow_runtime.agent_stream_events import AgentJsonStreamParser
 
 
 class OpenCodeCliAdapter:
@@ -55,6 +56,8 @@ class OpenCodeCliAdapter:
             option_args.extend(["--agent", str(self.agent)])
         if self.thinking:
             option_args.append("--thinking")
+        if self.mode == "run":
+            option_args.extend(["--format", "json"])
         if self.skip_permissions:
             option_args.append("--dangerously-skip-permissions")
         if self.mode == "prompt_flag":
@@ -91,13 +94,29 @@ class OpenCodeCliAdapter:
         on_output: AgentOutputCallback | None,
         session_id: str | None,
     ) -> tuple[str, str]:
-        return await run_process_stream(
+        parser = AgentJsonStreamParser()
+
+        async def parse_output(stream: str, text: str) -> None:
+            if stream == "stdout":
+                for line in text.splitlines() or [text]:
+                    for parsed_stream, parsed_text in parser.feed_line(line):
+                        if on_output:
+                            await on_output(parsed_stream, parsed_text)
+                return
+            if on_output:
+                await on_output(stream, text)
+
+        raw_stdout, stderr = await run_process_stream(
             self._command(request.prompt, session_id),
             request.cwd,
             env=env,
-            on_output=on_output,
+            on_output=parse_output,
             timeout_sec=self.timeout_sec,
         )
+        if not parser.final_text() and raw_stdout:
+            for line in raw_stdout.splitlines():
+                parser.feed_line(line)
+        return parser.final_text(raw_stdout), stderr
 
     @staticmethod
     def _is_recoverable_session_error(exc: WorkflowError) -> bool:
@@ -118,7 +137,7 @@ class OpenCodeCliAdapter:
             session = " --session <session>" if self.reuse_session and request.session_id else ""
             return f"{self.bin} --prompt <prompt>{session}"
         session = " --session <session>" if self.reuse_session and request.session_id else ""
-        return f"{self.bin} run{session} <prompt>"
+        return f"{self.bin} run{session} --format json <prompt>"
 
     def health(self) -> dict[str, Any]:
         return {
