@@ -9,6 +9,7 @@ command: ''
 agent: qwen
 outputs:
 - implementation-review.md
+- task-manifest.md
 function: 
 retry: 0
 failAction: selected_step

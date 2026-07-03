@@ -13,13 +13,70 @@ general-auto-development
 
 1. Reads the selected project and writes or updates `architecture.md`.
 2. Plans small tasks with acceptance criteria in `todo.md`.
-3. Reviews the task plan before building.
-4. Builds production files inside the selected Project Path.
+3. Reviews the task plan and generates `output/task-manifest.md` before building.
+4. Builds production files inside the selected Project Path using the task order and assembly plan.
 5. Generates focused tests under `tests/`.
 6. Runs automated tests.
 7. Runs the configured Python validation script, or a project-root fallback script when present.
-8. Sends test or validation failures back to Build for retry.
-9. Performs final review and requires `Status: PASS`.
+8. Writes structured recovery analysis when a gate fails.
+9. Retries the owner step until the acceptance/stop conditions pass or max retries are reached.
+10. Performs final review and requires `Status: PASS`.
+
+## Development Loop Contract
+
+The workflow behaves like a small controlled AI development loop:
+
+```text
+Requirement
+→ Prepare Project
+→ Plan Tasks + Acceptance Criteria
+→ Generate Task Manifest
+→ Build production files by task order
+→ Generate focused tests
+→ Run tests
+→ Run external validation
+→ Final Review / Final Gate
+```
+
+When a step fails, the runtime writes `input/failure-feedback.md` with:
+
+- failed step
+- retry target
+- retry count and stop condition
+- recovery analysis
+- exact error message
+
+The next retry prompt receives only the feedback for that target step, so Build fixes implementation failures, while Generate Tests fixes broken generated tests.
+
+## Acceptance and Stop Conditions
+
+A run is complete only when all of these are true:
+
+- `output/task-manifest.md` exists and records the small-task order.
+- Build created or modified at least one production/project artifact under Project Path.
+- Generated tests exist.
+- Automated tests pass.
+- External validation passes when configured or present, or records a skipped PASS when not present.
+- Final Review writes `Status: PASS`.
+- Final Gate accepts `final-review.md`.
+
+Retries stop when the retry target reaches its configured max retry count. The workflow does not silently generate production files as a fallback when Build fails to output files.
+
+## Hard-Code Policy
+
+General Auto Development must not contain domain-specific production fallbacks.
+
+Allowed generic runtime helpers:
+
+- minimal spec/todo skeleton repair when the agent returns malformed planning artifacts
+- generic Python import smoke test when a Python project has production modules but the agent emits no valid tests
+- pytest wrapper for a user-provided validation script
+
+Not allowed:
+
+- hard-coded production implementation for sorting, CRUD, config transforms, APIs, UI pages, security scans, or any other specific user requirement
+- hidden domain marker lists that infer behavior from keywords
+- Build fallback code that materializes requested product files without the agent producing them
 
 ## Web UI
 
@@ -271,4 +328,139 @@ my-project\.qwen\settings.json
 my-project\opencode.json
 ```
 
-Generated file edits are still constrained to the selected Project Path.
+Generated file edits are still constrained to the selected Project Path. Paths outside Project Path are read-only context.
+
+Runtime isolation rules:
+
+- Agent cwd is the selected Project Path.
+- Materialized `FILE/CONTENT/END_FILE` writes are resolved through the platform write guard.
+- Python function writes are guarded: workspace output files are allowed, project writes must stay under Project Path.
+- Runtime environment variables expose `AI_WORKFLOW_WRITE_ROOT=<project-path>` and `AI_WORKFLOW_WRITE_POLICY=project_only` for agent/provider integrations.
+- Absolute paths, `..`, `.git`, `.ai-workflow`, and `.qwen-workflow` are rejected for materialized file blocks.
+
+## Stability Controls Added For Development Use
+
+The workflow is intentionally controlled by Python gates rather than by AI self-declaration.
+
+
+### Codex / Claude Code Style Control Layer
+
+This workflow intentionally avoids automatic `git commit` / `git push`. The user reviews normal git diff manually.
+
+The closer-to-coding-agent path is now:
+
+```text
+Project Index
+→ Todo / task-manifest.md
+→ Build per-task loop
+→ Generate Tests per-task loop
+→ Run Test
+→ External Python Validation
+→ verifier-report.json / diff-context.md
+→ Diff Reviewer Agent
+→ Final Gate
+```
+
+Key rules:
+
+- Build runs build-owned `TASK-xxx` items in order and writes per-task artifacts under `output/tasks/<TASK-ID>/build-result.md`.
+- Generate Tests uses the same build task order and writes `output/tasks/<TASK-ID>/test-plan.md`.
+- Final Review writes `output/verifier-report.json`; this is the machine-readable source of truth for PASS / FAIL evidence.
+- Diff Review is an AI reviewer that may report risks or missing tests, but it cannot decide final PASS.
+- Repair feedback includes an error class such as `NO_FILE_OUTPUT`, `TEST_FAILED`, `VALIDATION_FAILED`, or `PATH_VIOLATION`. Repeated errors are allowed until max retry, but after repeated same classes the model is told to switch strategy.
+
+### Deterministic Project Index
+
+Before planning or building, the runner writes:
+
+```text
+output/project-index.md
+```
+
+This file is generated by Python and includes:
+
+- selected Project Path
+- detected language / test framework / source and test files
+- suggested test commands
+- workspace isolation rules
+- visible project files
+
+Agent prompts read this index so later steps do not need to guess the project shape every time.
+
+
+### Deterministic Task Manifest
+
+`plan_tasks` still uses the agent to understand the requirement, but `implementation_review` now converts the approved `todo.md` into:
+
+```text
+output/task-manifest.md
+```
+
+The manifest gives later steps a stable small-task order and assembly strategy:
+
+```text
+small task → assembled feature → final completed request
+```
+
+This keeps the workflow simple while making task splitting more useful for smaller models. Build still runs as one visible step, but it receives the task order, dependencies, and assembly expectations. Generate Tests receives the same manifest and must cover both task-level acceptance criteria and assembled behavior.
+
+### Run Profiles
+
+The run profile is a small runner-level control, not a new workflow step.
+
+```text
+fast    fewer retries for quick iteration
+normal  default workflow behavior
+deep    compatible-agent thinking flag + higher retry budgets
+```
+
+CLI example:
+
+```bash
+python -m app.cli.aiwf run "add config checker" --project . --workflow general-auto-development --profile deep
+```
+
+API request field:
+
+```json
+{
+  "workflow_id": "general-auto-development",
+  "requirement": "add config checker",
+  "runProfile": "deep"
+}
+```
+
+`deep` is useful when the agent supports a thinking/reasoning flag, such as OpenCode. Providers that do not support the flag simply ignore it; validation still depends on Python gates.
+
+### Deterministic Final Verification
+
+The final review is generated from concrete artifacts:
+
+- `output/task-manifest.md`
+- `output/build-result.md`
+- `output/test-result.md`
+- `output/external-validation-result.md`
+
+Final PASS requires:
+
+- Python generated a ready task manifest from `todo.md`.
+- Build produced production `FILE/CONTENT/END_FILE` blocks.
+- Automated tests passed.
+- External validation passed or recorded an intentional skipped PASS.
+- Final Gate sees `Status: PASS`.
+
+### Repeated Failure Retry Policy
+
+Repeated errors are still allowed to retry until the configured max retry count. This is intentional because small/local models may produce the same bad shape a few times and then recover after more structured failure feedback.
+
+Typical behavior:
+
+```text
+run_test FAIL
+→ classify owner as build or generate_tests
+→ write structured failure feedback
+→ retry owner step
+→ if the same failure appears again, log it as repeated but continue until max retries
+```
+
+Hard safety failures such as unsafe write paths are still blocked by the workspace guard.

@@ -19,6 +19,7 @@ class CreateRunRequest(BaseModel):
     skill: str | None = None
     config: str | None = None
     agent: str | None = None
+    run_profile: str | None = Field(default=None, alias="runProfile")
 
 
 class CreateSessionRequest(BaseModel):

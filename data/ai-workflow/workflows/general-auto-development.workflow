@@ -18,4 +18,5 @@ steps:
 - contract: contracts/general-auto-development/run_test.yaml
 - contract: contracts/general-auto-development/run_external_validation.yaml
 - contract: contracts/general-auto-development/final_review.yaml
+- contract: contracts/general-auto-development/diff_review.yaml
 - contract: contracts/general-auto-development/final_gate.yaml

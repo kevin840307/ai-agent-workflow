@@ -14,6 +14,7 @@ from app.persistence.repositories import store as store_repository
 from app.services.agent_session_service import default_agent_session_ids
 from app.security.workspace_guard import PROJECT_WORKFLOW_DIR, LEGACY_WORKFLOW_DIR
 from app.services import workflow_asset_service, workflow_config_service
+from app.workflow_runtime.run_profiles import apply_run_profile, normalize_run_profile
 
 
 ACTIVE_RUN_STATUSES = {"queued", "running", "waiting_input", "cancelling"}
@@ -223,7 +224,8 @@ async def create_workflow_run(session_id: str, body: runtime.CreateRunRequest) -
             if not requirement:
                 raise HTTPException(status_code=400, detail="Requirement is required")
 
-            steps = runtime.initial_steps(workflow.get("steps", []))
+            run_profile = normalize_run_profile(body.run_profile)
+            steps = apply_run_profile(runtime.initial_steps(workflow.get("steps", [])), run_profile)
             if not steps:
                 raise HTTPException(status_code=400, detail="Workflow has no enabled steps.")
 
@@ -252,6 +254,7 @@ async def create_workflow_run(session_id: str, body: runtime.CreateRunRequest) -
                 "agent": (body.agent.strip() if body.agent else None),
                 "test_command": body.test_command,
                 "validation_script": body.validation_script,
+                "run_profile": run_profile,
                 "steps": steps,
                 "artifacts": [],
                 "timeline": [],

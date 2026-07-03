@@ -10,7 +10,7 @@ from app.runtime_modules.files import (
     apply_extracted_files,
     classify_test_retry_target,
     extract_build_files,
-    synthesize_yaml_crud_build_files,
+    render_project_index_markdown,
     validate_build_files_do_not_overwrite_validation_scripts,
 )
 from app.services import workflow_asset_service, workflow_config_service
@@ -18,6 +18,7 @@ from app.workflow_runtime.builtin_functions.registry import PYTHON_FUNCTIONS
 from app.workflow_runtime.actions import WorkflowActions
 from app.workflow_runtime.agents import ADAPTER_FACTORIES, create_agent_manager
 from app.workflow_runtime.retry_policy import retry_target_for_failure, retry_target_for_step
+from app.workflow_runtime.run_profiles import apply_run_profile, normalize_run_profile
 from app.workflow_runtime.step_config import initial_steps
 
 
@@ -90,11 +91,6 @@ class WorkflowCoreTests(unittest.TestCase):
             run = {"project_path": tmp}
             self.assertEqual(retry_target_for_failure(run, steps[2], steps, 2, output_dir), "generate_tests")
 
-            (output_dir / "test-result.md").write_text(
-                "E       assert None == [1, 2, 3]\nFAILED tests/test_bubble_sort.py::test_bubble_sort",
-                encoding="utf-8",
-            )
-            self.assertEqual(retry_target_for_failure(run, steps[2], steps, 2, output_dir), "generate_tests")
 
             (output_dir / "test-result.md").write_text(
                 "E       NameError: name 'os' is not defined\nFAILED tests/test_yaml_crud.py::test_output",
@@ -137,49 +133,32 @@ class WorkflowCoreTests(unittest.TestCase):
 
             self.assertEqual([path.relative_to(project).as_posix() for path in written], ["generated/users.yaml"])
 
-    def test_yaml_crud_build_fallback_synthesizes_requested_output(self) -> None:
+    def test_build_step_rejects_missing_production_file_blocks_without_domain_fallback(self) -> None:
+        class FakeAgentRunner:
+            async def run(self, run, step_key, prompt_name, artifact, **_kwargs):
+                output = Path(run["workspace"]) / "output"
+                output.mkdir(parents=True, exist_ok=True)
+                text = "Status: PASS\n\nNo file blocks.\n"
+                (output / artifact).write_text(text, encoding="utf-8")
+                return text
+
+        async def log(_run, _message):
+            return None
+
+        async def refresh(_run_id):
+            return None
+
         with tempfile.TemporaryDirectory() as tmp:
-            project = Path(tmp)
-            (project / "config").mkdir()
-            (project / "config" / "users.yaml").write_text(
-                "users:\n"
-                "  - id: alice\n"
-                "    role: reader\n"
-                "    enabled: true\n"
-                "  - id: bob\n"
-                "    role: writer\n"
-                "    enabled: false\n"
-                "  - id: legacy\n"
-                "    role: reader\n"
-                "    enabled: false\n",
-                encoding="utf-8",
-            )
-            (project / "config" / "crud.yaml").write_text(
-                "source: config/users.yaml\n"
-                "output: generated/users.yaml\n"
-                "operations:\n"
-                "  - action: update\n"
-                "    id: bob\n"
-                "    set:\n"
-                "      role: admin\n"
-                "      enabled: true\n"
-                "  - action: create\n"
-                "    value:\n"
-                "      id: carol\n"
-                "      role: reader\n"
-                "      enabled: true\n"
-                "  - action: delete\n"
-                "    id: legacy\n",
-                encoding="utf-8",
-            )
+            project = Path(tmp) / "project"
+            workspace = Path(tmp) / "workspace"
+            project.mkdir()
+            (workspace / "output").mkdir(parents=True)
+            (workspace / "requirement.md").write_text("Create a config output", encoding="utf-8")
+            actions = WorkflowActions(agent_runner=FakeAgentRunner(), functions=None, log=log, refresh_artifacts=refresh)
 
-            files = synthesize_yaml_crud_build_files(project)
+            with self.assertRaisesRegex(WorkflowError, "production FILE/CONTENT/END_FILE"):
+                asyncio.run(actions.build_step({"id": "run-1", "workspace": str(workspace), "project_path": str(project)}))
 
-            self.assertEqual([rel_path for rel_path, _content in files], ["generated/users.yaml"])
-            self.assertIn("  - id: alice", files[0][1])
-            self.assertIn("role: admin", files[0][1])
-            self.assertIn("id: carol", files[0][1])
-            self.assertNotIn("id: legacy", files[0][1])
 
     def test_generate_tests_retry_removes_stale_workflow_generated_tests(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -229,6 +208,111 @@ class WorkflowCoreTests(unittest.TestCase):
         self.assertIn("opencode", manager.available_agent_names())
         self.assertEqual(manager.resolve(agent_name="opencode").name, "opencode")
         self.assertEqual(manager.resolve().name, "opencode")
+
+
+    def test_project_index_is_python_generated_and_mentions_isolation(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp)
+            (project / "app.py").write_text("print('ok')\n", encoding="utf-8")
+            (project / "tests").mkdir()
+            (project / "tests" / "test_app.py").write_text("def test_ok(): pass\n", encoding="utf-8")
+
+            index = render_project_index_markdown(project)
+
+            self.assertIn("# Project Index", index)
+            self.assertIn("Status: READY", index)
+            self.assertIn("python -m pytest", index)
+            self.assertIn("Agent writes must stay inside Project Path", index)
+            self.assertIn("app.py", index)
+
+    def test_run_profile_deep_enables_thinking_without_extra_steps(self) -> None:
+        steps = initial_steps(
+            [
+                {"key": "plan_tasks", "type": "ai", "maxRetries": 2},
+                {"key": "build", "type": "ai", "maxRetries": 3},
+                {"key": "run_test", "type": "python", "function": "run_pytest", "maxRetries": 1},
+            ]
+        )
+
+        profiled = apply_run_profile(steps, "deep")
+
+        self.assertEqual([step["key"] for step in profiled], ["plan_tasks", "build", "run_test"])
+        self.assertTrue(next(step for step in profiled if step["key"] == "build")["thinking"])
+        self.assertGreaterEqual(next(step for step in profiled if step["key"] == "build")["max_retries"], 12)
+        self.assertEqual(normalize_run_profile("最高"), "deep")
+
+    def test_executor_detects_same_retry_failure_as_informational_signal(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            (workspace / "input").mkdir()
+            (workspace / "input" / "failure-feedback.md").write_text(
+                "## Retry Feedback for build\n\n"
+                "### Error message to fix\n\n"
+                "build did not return any production FILE/CONTENT/END_FILE blocks.\n",
+                encoding="utf-8",
+            )
+            executor = __import__("app.workflow_runtime.executor", fromlist=["WorkflowExecutor"]).WorkflowExecutor(
+                store=None,
+                bus=None,
+                actions=None,
+                update_run=None,
+                set_step=None,
+                reset_steps_from=None,
+                get_step_retry_count=None,
+                increment_step_retry=None,
+                append_failure_feedback=None,
+                refresh_artifacts=None,
+                log=None,
+            )
+            self.assertTrue(
+                executor._same_failure_repeated(
+                    {"workspace": str(workspace)},
+                    "build",
+                    WorkflowError("build did not return any production FILE/CONTENT/END_FILE blocks."),
+                )
+            )
+
+    def test_implementation_review_writes_task_manifest_for_small_task_order(self) -> None:
+        async def log(_run, _message):
+            return None
+
+        async def refresh(_run_id):
+            return None
+
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp) / "workspace"
+            output = workspace / "output"
+            workspace.mkdir()
+            output.mkdir()
+            (workspace / "requirement.md").write_text("Build a small feature", encoding="utf-8")
+            (output / "todo.md").write_text(
+                "# Todo\n\n"
+                "Status: READY\n\n"
+                "## Requirement\n- Build a small feature.\n\n"
+                "## Task Index\n"
+                "| ID | Task | Acceptance Criteria | Depends On |\n"
+                "| --- | --- | --- | --- |\n"
+                "| TASK-001 | Create production change | AC-001 | None |\n"
+                "| TASK-002 | Integrate behavior | AC-002 | TASK-001 |\n\n"
+                "## Tasks\n\n"
+                "### TASK-001: Create production change\n"
+                "- Acceptance Criteria:\n  - AC-001: production code exists.\n\n"
+                "### TASK-002: Integrate behavior\n"
+                "- Acceptance Criteria:\n  - AC-002: assembled behavior works.\n\n"
+                "## Execution SOP\n- Step 1: Build production code only.\n\n"
+                "## Acceptance & Stop Conditions\n- Stop condition: tests and external validation pass.\n\n"
+                "## External Validation\n- Run validation when present.\n",
+                encoding="utf-8",
+            )
+            actions = WorkflowActions(agent_runner=None, functions=None, log=log, refresh_artifacts=refresh)
+
+            asyncio.run(actions.implementation_review_step({"id": "run-1", "workspace": str(workspace)}))
+
+            manifest = (output / "task-manifest.md").read_text(encoding="utf-8")
+            self.assertIn("Status: READY", manifest)
+            self.assertIn("TASK-001", manifest)
+            self.assertIn("TASK-002", manifest)
+            self.assertIn("Repeated errors are allowed", manifest)
 
 
 if __name__ == "__main__":

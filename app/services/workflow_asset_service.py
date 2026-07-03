@@ -237,6 +237,7 @@ PROMPT_PARAMS = [
     {"id": "validation_script", "label": "Validation Script", "description": "Optional run-specific Python validation script path.", "sample": "tools/check_config.py"},
     {"id": "project_overview", "label": "Project Overview", "description": "Auto-generated overview of project files and folders.", "sample": "Project files:\n- app/main.py"},
     {"id": "project_profile", "label": "Project Profile", "description": "Detected language, test framework, source files, and test files from the selected project path.", "sample": "Primary language: Python\nTest framework: pytest"},
+    {"id": "project_index", "label": "Project Index", "description": "Deterministic Python-generated project index with profile, likely test commands, isolation rules, and visible files.", "sample": "# Project Index\nStatus: READY\n\n## Deterministic Profile\nPrimary language: Python"},
     {"id": "architecture", "label": "Architecture", "description": "Content of architecture.md from the selected project path.", "sample": "# Architecture\nFastAPI backend with static frontend."},
     {"id": "spec", "label": "Spec", "description": "Content of output/spec.md.", "sample": "## Goal\nBuild the requested workflow feature."},
     {"id": "spec_review", "label": "Spec Review", "description": "Content of output/spec-review.md.", "sample": "Status: PASS"},

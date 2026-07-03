@@ -22,6 +22,8 @@ VALUE_OPTIONS = {
     "--skill",
     "--config",
     "--agent",
+    "--profile",
+    "--run-profile",
     "--project",
     "--project-path",
     "--requirement-file",
@@ -39,6 +41,7 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--skill", default=None, help="Optional workflow skill markdown path or agent slash command.")
     run.add_argument("--config", default=None, help="Optional workflow contract/config yaml/json path.")
     run.add_argument("--agent", default=None, help="Optional run-level agent override, for example qwen or opencode.")
+    run.add_argument("--profile", "--run-profile", dest="run_profile", choices=["fast", "normal", "deep"], default=None, help="Run profile: fast, normal, or deep. Deep enables compatible-agent thinking and keeps higher retry budgets.")
     run.add_argument("--title", default="CLI Workflow", help="Session title.")
     run.add_argument("--test-command", default=None, help="Optional test command passed to the workflow.")
     run.add_argument("--validation-script", default=None, help="Optional Python validation script path passed to the workflow.")
@@ -74,7 +77,7 @@ def normalize_cli_args(argv: Sequence[str] | None) -> list[str] | None:
 def _normalize_user_shortcut(args: list[str]) -> list[str]:
     user_value, rest = _extract_option_with_value(args, "--user")
     target = "."
-    if rest and not rest[0].startswith("-") and not _looks_like_skill_or_config(rest[0]):
+    if rest and not rest[0].startswith("-") and _looks_like_project_target(rest[0]):
         target = rest[0]
         rest = rest[1:]
     normalized = ["run", "--project", target]
@@ -171,6 +174,15 @@ def _strip_option_with_value(args: list[str], option: str) -> list[str]:
     return result
 
 
+def _looks_like_project_target(value: str) -> bool:
+    normalized = str(value or "").strip()
+    if not normalized:
+        return False
+    if Path(normalized).expanduser().exists():
+        return True
+    return not _looks_like_skill_or_config(normalized)
+
+
 def _looks_like_skill_or_config(value: str) -> bool:
     return _looks_like_config(value) or _looks_like_skill(value)
 
@@ -234,6 +246,7 @@ async def run_cli(argv: Sequence[str] | None = None) -> int:
                 agent=args.agent,
                 test_command=args.test_command,
                 validation_script=args.validation_script,
+                run_profile=args.run_profile,
             ),
         )
         if args.wait:

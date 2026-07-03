@@ -175,6 +175,7 @@ Workspace safety guard:
 - You may read files anywhere when needed for context.
 - You must only create, modify, delete, or rename files inside the selected Project Path.
 - Do not write absolute paths, parent-directory paths, `.git`, `.ai-workflow`, or `.qwen-workflow`.
+- Do not run `git commit`, `git push`, or any command that changes repository history or remote state.
 - If you output file edits, use relative FILE paths only.
 """
         if step_key == "build":

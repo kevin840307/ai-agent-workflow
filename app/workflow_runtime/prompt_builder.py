@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from app.runtime_modules.errors import WorkflowError
-from app.runtime_modules.files import failure_feedback_for_step, project_overview, project_profile
+from app.runtime_modules.files import failure_feedback_for_step, project_overview, project_profile, render_project_index_markdown
 from app.core.paths import DEFAULT_SKILL_PATH, ROOT, SYSTEM_WORKFLOW_ID, WORKFLOW_BUNDLES_DIR, read_text, write_text
 from app.runtime_modules.skills import load_skill_context
 from app.services.workflow_asset_service import GLOBAL_ASSET_ROOT, PROJECT_ASSET_DIR
@@ -88,6 +88,9 @@ class PromptBuilder:
         failure_feedback = failure_feedback_for_step(read_text(input_dir / "failure-feedback.md"), step_key)
         architecture = read_text(project_dir / "architecture.md")
         profile = project_profile(project_dir)
+        project_index_path = output_dir / "project-index.md"
+        if not project_index_path.exists():
+            write_text(project_index_path, render_project_index_markdown(project_dir))
 
         skill_root = step_config.get("skillRoot") or run.get("skill_root") or str(DEFAULT_SKILL_PATH)
         skill_context, skill_files = load_skill_context(self._configured_skill_paths(step_config, str(skill_root), project_dir, run))
@@ -169,14 +172,36 @@ class PromptBuilder:
         if step_config:
             step_output_artifact = str(step_config.get("outputFile") or step_config.get("filename") or "").strip()
         step_output = read_text(output_dir / step_output_artifact) if step_output_artifact else ""
+        current_task = run.get("_current_task") or {}
+        if not isinstance(current_task, dict):
+            current_task = {}
+        current_task_block = ""
+        if current_task:
+            current_task_block = "\n".join(
+                [
+                    f"Task ID: {current_task.get('id', '')}",
+                    f"Task Title: {current_task.get('title', '')}",
+                    f"Task Index: {current_task.get('index', '')}/{current_task.get('total', '')}",
+                    f"Task Owner Step: {current_task.get('owner', '')}",
+                    f"Task Phase: {current_task.get('phase', '')}",
+                ]
+            ).strip()
         return {
             "requirement": requirement,
             "architecture": architecture,
             "project_profile": profile,
+            "project_index": read_text(output_dir / "project-index.md"),
             "project_overview": project_overview(project_dir),
             "spec": read_text(output_dir / "spec.md"),
             "spec_review": read_text(output_dir / "spec-review.md"),
             "todo": read_text(output_dir / "todo.md"),
+            "task_manifest": read_text(output_dir / "task-manifest.md"),
+            "current_task": current_task_block,
+            "current_task_id": str(current_task.get("id") or ""),
+            "current_task_title": str(current_task.get("title") or ""),
+            "current_task_owner": str(current_task.get("owner") or ""),
+            "current_task_index": str(current_task.get("index") or ""),
+            "current_task_total": str(current_task.get("total") or ""),
             "todo_review": read_text(output_dir / "todo-review.md"),
             "test_plan": read_text(output_dir / "test-plan.md"),
             "reasoning": read_text(output_dir / "reasoning.md"),
@@ -184,6 +209,9 @@ class PromptBuilder:
             "test_result": read_text(output_dir / "test-result.md"),
             "external_validation_result": read_text(output_dir / "external-validation-result.md"),
             "build_result": read_text(output_dir / "build-result.md"),
+            "verifier_report": read_text(output_dir / "verifier-report.json"),
+            "diff_context": read_text(output_dir / "diff-context.md"),
+            "diff_review": read_text(output_dir / "diff-review.md"),
             "final_review": read_text(output_dir / "final-review.md"),
             "raw_spec": read_text(output_dir / "spec.md"),
             "answers": answers,

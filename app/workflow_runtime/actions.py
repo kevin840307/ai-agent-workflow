@@ -14,17 +14,17 @@ from app.runtime_modules.files import (
     project_has_user_files,
     project_overview,
     project_profile,
+    render_project_index_markdown,
     only_test_files,
     non_test_files,
     should_ask_for_spec_input,
     snapshot_changed,
     spec_input_questions,
     split_build_files,
-    synthesize_spec_from_requirement,
-    synthesize_todo_from_spec,
-    synthesize_python_smoke_tests,
-    synthesize_validation_script_tests,
-    synthesize_yaml_crud_build_files,
+    render_generic_spec_from_requirement,
+    render_generic_todo_from_spec,
+    build_generic_python_import_smoke_test,
+    build_validation_script_pytest_wrapper,
     validate_build_files_do_not_overwrite_validation_scripts,
     validate_build_files_are_not_tests,
     validate_generated_test_files,
@@ -138,13 +138,13 @@ class WorkflowActions:
             if should_ask_for_spec_input(requirement, project_dir, answers):
                 raise
             await self.log(run, f"generate_spec: agent asked unnecessarily, writing deterministic fallback: {exc}")
-            write_text(output_dir / normalize_artifact_name(artifact), synthesize_spec_from_requirement(requirement))
+            write_text(output_dir / normalize_artifact_name(artifact), render_generic_spec_from_requirement(requirement))
             await self.refresh_artifacts(run["id"])
             self.functions.validate_spec(output_dir)
         except (WorkflowError, ValidationError) as exc:
             await self.log(run, f"generate_spec: agent output was not valid, writing deterministic fallback: {exc}")
             requirement = read_text(Path(run["workspace"]) / "requirement.md")
-            write_text(output_dir / normalize_artifact_name(artifact), synthesize_spec_from_requirement(requirement))
+            write_text(output_dir / normalize_artifact_name(artifact), render_generic_spec_from_requirement(requirement))
             await self.refresh_artifacts(run["id"])
             self.functions.validate_spec(output_dir)
 
@@ -165,7 +165,7 @@ class WorkflowActions:
             raise
         except (WorkflowError, ValidationError) as exc:
             await self.log(run, f"generate_todo: agent output was not valid, writing deterministic fallback: {exc}")
-            write_text(output_dir / normalize_artifact_name(artifact), synthesize_todo_from_spec(output_dir))
+            write_text(output_dir / normalize_artifact_name(artifact), render_generic_todo_from_spec(output_dir))
             await self.refresh_artifacts(run["id"])
             self.functions.validate_todo(output_dir)
 
@@ -211,12 +211,145 @@ class WorkflowActions:
         if not decision["passed"]:
             raise WorkflowError(f"{step_key}: review strategy {mode} failed: {decision['reason']}")
 
+    @staticmethod
+    def _ordered_task_ids(todo: str) -> list[str]:
+        seen: set[str] = set()
+        ordered: list[str] = []
+        for match in re.finditer(r"\bTASK-\d{3}\b", todo or ""):
+            task_id = match.group(0)
+            if task_id not in seen:
+                seen.add(task_id)
+                ordered.append(task_id)
+        return ordered
+
+    @staticmethod
+    def _task_title(todo: str, task_id: str) -> str:
+        heading = re.search(rf"^###\s+{re.escape(task_id)}\s*:?\s*(.+?)\s*$", todo or "", flags=re.MULTILINE)
+        if heading:
+            return heading.group(1).strip() or task_id
+        table_row = re.search(rf"^\|\s*{re.escape(task_id)}\s*\|\s*([^|]+?)\s*\|", todo or "", flags=re.MULTILINE)
+        if table_row:
+            return table_row.group(1).strip() or task_id
+        return task_id
+
+    def _task_section(self, todo: str, task_id: str) -> str:
+        match = re.search(
+            rf"^###\s+{re.escape(task_id)}\b.*?(?=^###\s+TASK-\d{{3}}\b|^##\s+|\Z)",
+            todo or "",
+            flags=re.MULTILINE | re.DOTALL,
+        )
+        return match.group(0).strip() if match else ""
+
+    def _task_owner(self, todo: str, task_id: str) -> str:
+        title = self._task_title(todo, task_id)
+        section = self._task_section(todo, task_id)
+        text = f"{title}\n{section}".lower()
+        has_change_verb = re.search(r"\b(implement|create|modify|update|write|add|generate|produce|build)\b", text)
+        if re.search(r"\b(generate|create|write|add)\s+(focused\s+)?(automated\s+)?tests?\b", text) or "test files only" in text:
+            return "generate_tests"
+        if "external validation" in text and not re.search(r"\b(implement|create|modify|update|write|add)\b", text):
+            return "run_external_validation"
+        if re.search(r"\b(review|analyze|analyse|inspect|scan|understand|plan)\b", text) and not has_change_verb:
+            return "planning"
+        return "build"
+
+    def _render_task_manifest(self, todo: str) -> str:
+        task_ids = self._ordered_task_ids(todo)
+        build_task_ids = [task_id for task_id in task_ids if self._task_owner(todo, task_id) == "build"]
+        lines = [
+            "# Task Manifest",
+            "",
+            "Status: READY" if task_ids else "Status: EMPTY",
+            "",
+            "## Purpose",
+            "- Deterministic summary generated from `todo.md` so Build, Generate Tests, Retry, and Final Review share the same small-task order.",
+            "- This does not let AI self-approve completion; Python gates still decide pass/fail from artifacts, tests, and external validation.",
+            "- Build and Generate Tests may run as a per-task loop using this manifest; final completion still depends on verifier evidence.",
+            "",
+            "## Small Task Order",
+        ]
+        if task_ids:
+            for index, task_id in enumerate(task_ids, start=1):
+                owner = self._task_owner(todo, task_id)
+                lines.append(f"{index}. {task_id} [owner={owner}]: {self._task_title(todo, task_id)}")
+        else:
+            lines.append("- No TASK-xxx items found.")
+        lines.extend([
+            "",
+            "## Build Task Order",
+        ])
+        if build_task_ids:
+            for index, task_id in enumerate(build_task_ids, start=1):
+                lines.append(f"{index}. {task_id}: {self._task_title(todo, task_id)}")
+        else:
+            lines.append("- No build-owned TASK items found; Build will use the full requirement as one task.")
+        lines.extend([
+            "",
+            "## Assembly Strategy",
+            "- Implement small build-owned tasks in the listed order.",
+            "- After each build-owned task, materialize only that task's production FILE blocks under Project Path.",
+            "- After all small tasks are implemented, aggregate task outputs into `output/build-result.md` and run generated tests against the assembled project state.",
+            "- Generate Tests should create focused tests for task-level acceptance criteria and the assembled behavior.",
+            "- Run Test and External Validation are the source of truth for completion.",
+            "",
+            "## Retry Strategy",
+            "- On failure, retry the owner step with concrete failure feedback.",
+            "- Repeated errors are allowed to continue until max retries because small/local models may recover on later attempts.",
+            "- When the same error repeats multiple times, the retry prompt should switch strategy instead of repeating the same output.",
+            "- Workspace/path violations remain hard failures because they protect isolation.",
+            "",
+        ])
+        return "\n".join(lines)
+
+    @staticmethod
+    def _task_entries_from_manifest(manifest: str, *, owner: str | None = None) -> list[dict[str, Any]]:
+        entries: list[dict[str, Any]] = []
+        pattern = re.compile(r"^\s*\d+\.\s+(TASK-\d{3})(?:\s+\[owner=([^\]]+)\])?:\s*(.+?)\s*$", re.MULTILINE)
+        for match in pattern.finditer(manifest or ""):
+            task_owner = (match.group(2) or "build").strip()
+            if owner and task_owner != owner:
+                continue
+            entries.append({"id": match.group(1), "owner": task_owner, "title": match.group(3).strip()})
+        return entries
+
+    def _task_run(self, run: dict[str, Any], task: dict[str, Any], *, index: int, total: int, phase: str) -> dict[str, Any]:
+        scoped = dict(run)
+        scoped["_current_task"] = {
+            "id": task.get("id", "TASK-001"),
+            "title": task.get("title", "Full requested change"),
+            "owner": task.get("owner", "build"),
+            "index": index,
+            "total": total,
+            "phase": phase,
+        }
+        return scoped
+
+    @staticmethod
+    def _task_output_artifact(task_id: str, filename: str) -> str:
+        safe_task_id = re.sub(r"[^A-Za-z0-9_.-]", "-", task_id or "TASK-001")
+        return f"tasks/{safe_task_id}/{filename}"
+
+    @staticmethod
+    def _render_aggregated_task_outputs(title: str, task_artifacts: list[tuple[str, str, str]]) -> str:
+        lines = [f"# {title}", "", "Status: READY", "", "## Per-Task Outputs"]
+        for task_id, task_title, content in task_artifacts:
+            lines.extend(["", f"### {task_id}: {task_title}", "", content.strip(), ""])
+        return "\n".join(lines).rstrip() + "\n"
+
     async def implementation_review_step(self, run: dict[str, Any], artifact: str = "implementation-review.md") -> None:
         output_dir = Path(run["workspace"]) / "output"
         todo = read_text(output_dir / "todo.md")
         artifact = normalize_artifact_name(artifact)
         findings: list[str] = []
-        required_markers = ["Status: READY", "## Requirement", "## Tasks", "## External Validation"]
+        required_markers = [
+            "Status: READY",
+            "## Requirement",
+            "## Task Index",
+            "## Tasks",
+            "## Execution SOP",
+            "## Acceptance & Stop Conditions",
+            "## External Validation",
+        ]
         missing = [marker for marker in required_markers if marker not in todo]
         if missing:
             findings.append("Missing required Todo marker(s): " + ", ".join(missing))
@@ -226,6 +359,8 @@ class WorkflowActions:
             findings.append("Todo must include task-level acceptance criteria AC-xxx.")
         if "external validation" not in todo.lower() and "驗證" not in todo:
             findings.append("Todo must include the external validation step, which may skip when no script is configured or found.")
+        if "stop condition" not in todo.lower() and "stop conditions" not in todo.lower():
+            findings.append("Todo must include explicit acceptance and stop conditions for completion/retry control.")
 
         remediated = False
         if findings:
@@ -241,11 +376,14 @@ class WorkflowActions:
                     f"- {requirement}",
                     "",
                     "## Task Index",
-                    "| ID | Task | Acceptance Criteria |",
-                    "| --- | --- | --- |",
-                    "| TASK-001 | Implement the requested production change | AC-001 |",
-                    "| TASK-002 | Generate focused automated tests | AC-002 |",
-                    "| TASK-003 | Run external validation when available | AC-003 |",
+                    "| ID | Task | Acceptance Criteria | Depends On |",
+                    "| --- | --- | --- | --- |",
+                    "| TASK-001 | Implement the requested production change | AC-001 | None |",
+                    "",
+                    "## Task Assembly Plan",
+                    "- Build order: TASK-001 first; if the AI plan was invalid, keep the fallback intentionally small.",
+                    "- Integration point: project production files under the selected Project path.",
+                    "- Assembled behavior that proves the larger request is complete: generated tests and optional external validation pass after TASK-001 is materialized.",
                     "",
                     "## Tasks",
                     "",
@@ -253,32 +391,28 @@ class WorkflowActions:
                     "- Goal: Implement the current requirement using the detected project architecture.",
                     "- Files: production files under Project path only.",
                     "- Acceptance Criteria:",
-                    "  - AC-001: Production code satisfies the user requirement.",
+                    "  - AC-001: Production code or requested project artifact satisfies the user requirement.",
+                    "- Depends On:",
+                    "  - None",
+                    "- Assembly:",
+                    "  - This task is the production change; Generate Tests, Run Test, and External Validation verify it afterward.",
                     "- Validation:",
                     "  - Covered by generated tests and external validation when configured or present.",
                     "",
-                    "### TASK-002: Generate automated tests",
-                    "- Goal: Generate focused tests for the requirement.",
-                    "- Files: test files only under the project test folder.",
-                    "- Acceptance Criteria:",
-                    "  - AC-002: Automated tests cover the expected behavior.",
-                    "- Validation:",
-                    "  - Covered by Run Test.",
-                    "",
-                    "### TASK-003: Run external validation when available",
-                    "- Goal: Execute the configured or fallback validation script when present.",
-                    "- Files: no production edits.",
-                    "- Acceptance Criteria:",
-                    "  - AC-003: External validation exits successfully.",
-                    "- Validation:",
-                    "  - Covered by Run External Validation.",
-                    "",
                     "## Execution SOP",
-                    "- Step 1: Build production code only.",
-                    "- Step 2: Generate tests only.",
+                    "- Step 1: Build production code only, one small task at a time.",
+                    "- Step 2: Generate tests only under the project test folder, using the task manifest as coverage input.",
                     "- Step 3: Run automated tests.",
                     "- Step 4: Run external validation when configured or present.",
-                    "- Step 5: Retry Build using concrete failure feedback.",
+                    "- Step 5: Retry the failed owner step using concrete recovery analysis and error classification.",
+                    "",
+                    "## Acceptance & Stop Conditions",
+                    "- Build must create or modify at least one production/project artifact under Project path.",
+                    "- Small tasks must be implemented in order and assembled into one coherent project state.",
+                    "- Generated tests must exist and automated tests must pass.",
+                    "- External validation must pass when configured or present; otherwise it must record a skipped PASS.",
+                    "- Final Review, verifier-report.json, Diff Review, and Final Gate must complete.",
+                    "- Stop retrying when the configured max retry count is reached.",
                     "",
                     "## External Validation",
                     "- If a validation script path is provided, that exact script is mandatory.",
@@ -295,7 +429,11 @@ class WorkflowActions:
                 ]
             )
             write_text(output_dir / "todo.md", fallback_todo)
+            todo = fallback_todo
             await self.log(run, "implementation_review: repaired invalid todo.md with deterministic fallback")
+
+        task_manifest = self._render_task_manifest(todo)
+        write_text(output_dir / "task-manifest.md", task_manifest)
 
         text = "\n".join(
             [
@@ -307,6 +445,8 @@ class WorkflowActions:
                 "## Checks",
                 "- Todo is concrete enough for automated Build.",
                 "- Tasks include acceptance criteria.",
+                "- task-manifest.md was generated from todo.md to stabilize small-task order and assembly.",
+                "- Acceptance and stop conditions are present.",
                 "- Mandatory test and external validation stages are present.",
                 "- Edits are constrained to the selected Project path.",
                 "",
@@ -321,37 +461,16 @@ class WorkflowActions:
     async def final_review_step(self, run: dict[str, Any], artifact: str = "final-review.md") -> None:
         output_dir = Path(run["workspace"]) / "output"
         artifact = normalize_artifact_name(artifact)
-        test_result = read_text(output_dir / "test-result.md")
-        external_result = read_text(output_dir / "external-validation-result.md")
-        test_passed = "ExitCode: 0" in test_result or "Status: PASS" in test_result
-        external_passed = "Status: PASS" in external_result
-        status = "PASS" if test_passed and external_passed else "FAIL"
-        text = "\n".join(
-            [
-                "# Final Review",
-                "",
-                f"Status: {status}",
-                "Confidence: 1.00",
-                "",
-                "## Summary",
-                "- General Auto Development completed the SOP-controlled build, test, and external validation sequence.",
-                "",
-                "## Verification",
-                f"- Automated test result: {'PASS' if test_passed else 'UNKNOWN/FAIL'}",
-                f"- External validation script result: {'PASS' if external_passed else 'UNKNOWN/FAIL'}",
-                "- Requirement coverage: checked by generated tests and mandatory validation script.",
-                "- Architecture alignment: Build was constrained by architecture.md and project profile.",
-                "- Files stayed inside Project path: enforced by platform write guard for materialized file blocks and Python function writes.",
-                "",
-                "## Remaining Risks",
-                "- Direct CLI filesystem writes depend on the CLI permission model; platform-materialized writes are guarded.",
-                "",
-            ]
-        )
-        write_text(output_dir / artifact, text)
+        try:
+            await self.functions.call_python_function(
+                self._run_with_step_context(run, {"key": "final_review"}),
+                "validate_general_auto_final",
+                output_dir,
+                artifact,
+            )
+        except WorkflowError:
+            raise
         await self.refresh_artifacts(run["id"])
-        if status != "PASS":
-            raise WorkflowError("final_review: tests and external validation must both pass before final gate.")
 
     async def _run_multi_agent_review(
         self,
@@ -516,6 +635,9 @@ class WorkflowActions:
         project_dir = Path(run.get("project_path") or ROOT)
         architecture_path = project_dir / "architecture.md"
         artifact = normalize_artifact_name(artifact)
+        output_dir = Path(run["workspace"]) / "output"
+        write_text(output_dir / "project-index.md", render_project_index_markdown(project_dir))
+        await self.refresh_artifacts(run["id"])
         if not project_has_user_files(project_dir) and not architecture_path.exists():
             await self.log(run, f"prepare_project: working directory appears empty, skipping architecture discovery for {project_dir}")
             write_text(Path(run["workspace"]) / "output" / artifact, "Status: SKIPPED\n\nProject appears empty.\n")
@@ -526,11 +648,11 @@ class WorkflowActions:
         try:
             await self.run_agent_step(run, "prepare_project", prompt_name, artifact, agent_name=agent_name)
         except WorkflowError as exc:
-            fallback = self._synthesize_architecture_markdown(run, project_dir)
+            fallback = self.render_project_architecture_markdown(run, project_dir)
             write_text(architecture_path, fallback)
             write_text(Path(run["workspace"]) / "output" / artifact, fallback)
             await self.refresh_artifacts(run["id"])
-            await self.log(run, f"prepare_project: synthesized architecture.md after agent failure: {exc}")
+            await self.log(run, f"prepare_project: rendered architecture.md after agent failure: {exc}")
             return
         result = read_text(Path(run["workspace"]) / "output" / artifact)
         for rel_path, _ in extract_build_files(result):
@@ -544,11 +666,11 @@ class WorkflowActions:
                 write_text(architecture_path, result)
                 await self.log(run, "prepare_project: wrote architecture.md from direct Markdown output")
             else:
-                fallback = self._synthesize_architecture_markdown(run, project_dir)
+                fallback = self.render_project_architecture_markdown(run, project_dir)
                 write_text(architecture_path, fallback)
                 write_text(Path(run["workspace"]) / "output" / artifact, fallback)
                 await self.refresh_artifacts(run["id"])
-                await self.log(run, "prepare_project: synthesized architecture.md from project profile after unusable agent output")
+                await self.log(run, "prepare_project: rendered architecture.md from project profile after unusable agent output")
         after = read_text(architecture_path)
         if after != before:
             await self.log(run, "prepare_project: architecture.md updated")
@@ -556,7 +678,7 @@ class WorkflowActions:
             await self.log(run, "prepare_project: architecture.md already up to date")
 
     @staticmethod
-    def _synthesize_architecture_markdown(run: dict[str, Any], project_dir: Path) -> str:
+    def render_project_architecture_markdown(run: dict[str, Any], project_dir: Path) -> str:
         requirement = read_text(Path(run["workspace"]) / "requirement.md").strip()
         profile = project_profile(project_dir)
         overview = project_overview(project_dir, limit=60)
@@ -594,6 +716,49 @@ class WorkflowActions:
         artifact = normalize_artifact_name(artifact)
         project_dir = Path(run.get("project_path") or ROOT)
         previous_test_files = only_test_files(extract_build_files(read_text(output_dir / artifact)))
+        if run.get("workflow_id") == "general-auto-development":
+            manifest = read_text(output_dir / "task-manifest.md")
+            tasks = self._task_entries_from_manifest(manifest, owner="build") or self._task_entries_from_manifest(manifest)
+            if not tasks:
+                tasks = [{"id": "TASK-001", "owner": "build", "title": "Full requested behavior"}]
+            task_artifacts: list[tuple[str, str, str]] = []
+            total = len(tasks)
+            for index, task in enumerate(tasks, start=1):
+                task_id = str(task.get("id") or f"TASK-{index:03d}")
+                task_title = str(task.get("title") or task_id)
+                task_artifact = self._task_output_artifact(task_id, "test-plan.md")
+                scoped_run = self._task_run(run, task, index=index, total=total, phase="generate_tests")
+                await self.log(run, f"generate_tests: task loop {index}/{total} {task_id} - {task_title}")
+                await self.run_agent_step(scoped_run, "generate_tests", prompt_name, task_artifact, agent_name=agent_name)
+                task_text = read_text(output_dir / task_artifact)
+                files = extract_build_files(task_text)
+                test_files = only_test_files(files)
+                invalid_files = non_test_files(files)
+                if invalid_files and test_files:
+                    await self.log(
+                        run,
+                        f"generate_tests/{task_id}: ignored non-test file block(s) owned by Build: "
+                        + ", ".join(rel_path for rel_path, _ in invalid_files),
+                    )
+                if not test_files:
+                    raise WorkflowError(
+                        f"generate_tests task {task_id} did not create test FILE/CONTENT/END_FILE blocks. "
+                        "Generate Tests must cover this task or return a valid test file."
+                    )
+                validate_generated_test_files(test_files)
+                task_artifacts.append((task_id, task_title, task_text))
+            aggregate = self._render_aggregated_task_outputs("Generated Tests Result", task_artifacts)
+            write_text(output_dir / artifact, aggregate)
+            test_files = only_test_files(extract_build_files(aggregate))
+            self._remove_stale_generated_tests(project_dir, previous_test_files, test_files)
+            written = apply_extracted_files(project_dir, test_files, output_label="generate_tests per-task output")
+            if written:
+                await self.log(run, "generate_tests: materialized per-task test files: " + ", ".join(str(path.relative_to(project_dir)) for path in written))
+            else:
+                raise WorkflowError("generate_tests per-task loop did not materialize any test files.")
+            await self.refresh_artifacts(run["id"])
+            return
+
         try:
             await self.run_agent_step(run, "generate_tests", prompt_name, artifact, agent_name=agent_name)
         except UserInputRequired:
@@ -609,44 +774,44 @@ class WorkflowActions:
                 + ", ".join(rel_path for rel_path, _ in invalid_files),
             )
         if not test_files:
-            synthesized = synthesize_validation_script_tests(project_dir, run.get("validation_script"))
-            if not synthesized:
-                synthesized = synthesize_python_smoke_tests(project_dir, read_text(Path(run["workspace"]) / "requirement.md"))
-            if synthesized:
-                test_files = synthesized
+            fallback_tests = build_validation_script_pytest_wrapper(project_dir, run.get("validation_script"))
+            if not fallback_tests:
+                fallback_tests = build_generic_python_import_smoke_test(project_dir, read_text(Path(run["workspace"]) / "requirement.md"))
+            if fallback_tests:
+                test_files = fallback_tests
                 write_text(
                     output_dir / artifact,
                     "# Generated Tests Fallback\n\n"
-                    "The agent did not return valid test file blocks, so the workflow generated a deterministic pytest smoke test.\n\n"
+                    "The agent did not return valid test file blocks, so the workflow created a generic pytest smoke test.\n\n"
                     + "\n".join(
                         f"FILE: {rel_path}\nCONTENT:\n{content.rstrip()}\nEND_FILE"
-                        for rel_path, content in synthesized
+                        for rel_path, content in fallback_tests
                     )
                     + "\n",
                 )
                 await self.refresh_artifacts(run["id"])
-                await self.log(run, "generate_tests: synthesized deterministic pytest smoke test from production Python files")
+                await self.log(run, "generate_tests: created generic pytest smoke test from production Python files")
             else:
                 validate_generated_test_files(files)
         try:
             validate_generated_test_files(test_files)
         except WorkflowError as exc:
-            synthesized = synthesize_validation_script_tests(project_dir, run.get("validation_script"))
-            if not synthesized:
+            fallback_tests = build_validation_script_pytest_wrapper(project_dir, run.get("validation_script"))
+            if not fallback_tests:
                 raise
-            test_files = synthesized
+            test_files = fallback_tests
             write_text(
                 output_dir / artifact,
                 "# Generated Tests Fallback\n\n"
-                f"The agent returned invalid generated tests ({exc}), so the workflow generated a deterministic validation-script pytest.\n\n"
+                f"The agent returned invalid generated tests ({exc}), so the workflow created a validation-script pytest.\n\n"
                 + "\n".join(
                     f"FILE: {rel_path}\nCONTENT:\n{content.rstrip()}\nEND_FILE"
-                    for rel_path, content in synthesized
+                    for rel_path, content in fallback_tests
                 )
                 + "\n",
             )
             await self.refresh_artifacts(run["id"])
-            await self.log(run, "generate_tests: synthesized validation-script pytest after invalid agent tests")
+            await self.log(run, "generate_tests: created validation-script pytest after invalid agent tests")
         self._remove_stale_generated_tests(project_dir, previous_test_files, test_files)
         written = apply_extracted_files(project_dir, test_files, output_label="generate_tests output")
         if written:
@@ -674,24 +839,87 @@ class WorkflowActions:
         output_dir = Path(run["workspace"]) / "output"
         artifact = normalize_artifact_name(artifact)
         before = project_file_snapshot(project_dir)
-        requirement = read_text(Path(run["workspace"]) / "requirement.md")
+
+        if run.get("workflow_id") == "general-auto-development":
+            manifest = read_text(output_dir / "task-manifest.md")
+            tasks = self._task_entries_from_manifest(manifest, owner="build")
+            if not tasks:
+                tasks = [{"id": "TASK-001", "owner": "build", "title": "Full requested production change"}]
+            task_artifacts: list[tuple[str, str, str]] = []
+            total = len(tasks)
+            for index, task in enumerate(tasks, start=1):
+                task_id = str(task.get("id") or f"TASK-{index:03d}")
+                task_title = str(task.get("title") or task_id)
+                task_artifact = self._task_output_artifact(task_id, "build-result.md")
+                scoped_run = self._task_run(run, task, index=index, total=total, phase="build")
+                task_before = project_file_snapshot(project_dir)
+                await self.log(run, f"build: task loop {index}/{total} {task_id} - {task_title}")
+                try:
+                    await self.run_agent_step(scoped_run, "build", prompt_name, task_artifact, agent_name=agent_name)
+                except UserInputRequired:
+                    raise
+                task_result = read_text(output_dir / task_artifact)
+                build_files = extract_build_files(task_result)
+                production_files, ignored_test_files = split_build_files(build_files)
+                if not production_files:
+                    if ignored_test_files:
+                        ignored = ", ".join(rel_path for rel_path, _ in ignored_test_files)
+                        raise WorkflowError(
+                            f"build task {task_id} output only contained test file blocks. Build must output production files only. "
+                            f"Invalid build file(s): {ignored}"
+                        )
+                    raise WorkflowError(
+                        f"build task {task_id} did not return any production FILE/CONTENT/END_FILE blocks. "
+                        "Build must materialize this small task inside the selected Project Path."
+                    )
+                if ignored_test_files:
+                    ignored = ", ".join(rel_path for rel_path, _ in ignored_test_files)
+                    await self.log(run, f"build/{task_id}: ignored test file block(s) owned by generate_tests: {ignored}")
+                validate_build_files_are_not_tests(production_files)
+                validate_build_files_do_not_overwrite_validation_scripts(
+                    project_dir,
+                    production_files,
+                    validation_script=run.get("validation_script"),
+                )
+                written = apply_extracted_files(project_dir, production_files, output_label=f"build task {task_id} output")
+                if written:
+                    await self.log(run, f"build/{task_id}: materialized files: " + ", ".join(str(path.relative_to(project_dir)) for path in written))
+                task_after = project_file_snapshot(project_dir)
+                if not snapshot_changed(task_before, task_after):
+                    raise WorkflowError(
+                        f"build task {task_id} did not create or modify production files under Project Path: {project_dir}."
+                    )
+                task_artifacts.append((task_id, task_title, task_result))
+            aggregate = self._render_aggregated_task_outputs("Build Result", task_artifacts)
+            write_text(output_dir / artifact, aggregate)
+            await self.refresh_artifacts(run["id"])
+            after = project_file_snapshot(project_dir)
+            if not snapshot_changed(before, after):
+                raise WorkflowError(
+                    f"build did not create or modify production files under Project Path: {project_dir}. "
+                    "Agent build output must include non-test FILE/CONTENT/END_FILE blocks."
+                )
+            return
+
         try:
             await self.run_agent_step(run, "build", prompt_name, artifact, agent_name=agent_name)
         except UserInputRequired:
             raise
-        except WorkflowError as exc:
-            synthesized = self._synthesize_build_fallback_files(project_dir, requirement)
-            if not synthesized:
-                raise
-            await self._write_build_fallback(run, artifact, synthesized, f"agent failed: {exc}")
         build_result = read_text(output_dir / artifact)
         build_files = extract_build_files(build_result)
         production_files, ignored_test_files = split_build_files(build_files)
         if not production_files:
-            synthesized = self._synthesize_build_fallback_files(project_dir, requirement)
-            if synthesized:
-                production_files = synthesized
-                await self._write_build_fallback(run, artifact, synthesized, "agent did not return valid production FILE blocks")
+            if ignored_test_files:
+                ignored = ", ".join(rel_path for rel_path, _ in ignored_test_files)
+                raise WorkflowError(
+                    "build output only contained test file blocks. Build must output production files only. "
+                    f"Invalid build file(s): {ignored}"
+                )
+            raise WorkflowError(
+                "build did not return any production FILE/CONTENT/END_FILE blocks. "
+                "Build must materialize the requested production changes inside the selected Project Path; "
+                "the workflow will retry Build with this concrete failure feedback."
+            )
         if ignored_test_files:
             ignored = ", ".join(rel_path for rel_path, _ in ignored_test_files)
             if production_files:
@@ -716,23 +944,6 @@ class WorkflowActions:
                 f"build did not create or modify production files under Project Path: {project_dir}. "
                 "Agent build output must include non-test FILE/CONTENT/END_FILE blocks."
             )
-
-    def _synthesize_build_fallback_files(self, project_dir: Path, requirement: str) -> list[tuple[str, str]]:
-        return synthesize_yaml_crud_build_files(project_dir)
-
-    async def _write_build_fallback(self, run: dict[str, Any], artifact: str, files: list[tuple[str, str]], reason: str) -> None:
-        write_text(
-            Path(run["workspace"]) / "output" / artifact,
-            "# Build Fallback\n\n"
-            f"The workflow generated deterministic production files because {reason}.\n\n"
-            + "\n".join(
-                f"FILE: {rel_path}\nCONTENT:\n{content.rstrip()}\nEND_FILE"
-                for rel_path, content in files
-            )
-            + "\n",
-        )
-        await self.refresh_artifacts(run["id"])
-        await self.log(run, "build: synthesized deterministic production files: " + ", ".join(rel_path for rel_path, _ in files))
 
     async def consensus_agent_step(
         self,

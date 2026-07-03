@@ -6,6 +6,9 @@ Requirement:
 Project path:
 {{project_path}}
 
+Deterministic project index:
+{{project_index}}
+
 Detected project profile:
 {{project_profile}}
 
@@ -21,7 +24,8 @@ Required checks:
   - `opencode.json`
 - Treat those settings as project-local runtime context only. Do not copy them to global settings.
 - Read files anywhere when needed for understanding, including shared reference files outside Project path.
-- All generated edits must stay inside Project path. Do not write to reference folders, sibling projects, or global agent settings.
+- All generated edits must stay inside Project path. Do not write to reference folders, sibling projects, global agent settings, or user home config.
+- Treat paths outside Project path as read-only context.
 - If `architecture.md` already exists, update it only when it is incomplete or stale.
 - If `architecture.md` does not exist, create it in the project root.
 

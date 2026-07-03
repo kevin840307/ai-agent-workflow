@@ -19,6 +19,94 @@ def artifact_record(run_id: str, run_dir: Path, rel_path: str) -> dict[str, Any]
     }
 
 
+
+
+def classify_repair_error(source_key: str, target_key: str, error: str) -> str:
+    text = (error or "").lower()
+    if "outside project path" in text or "unsafe" in text or "parent-directory" in text or "absolute path" in text:
+        return "PATH_VIOLATION"
+    if "timed out" in text or "timeout" in text:
+        return "TIMEOUT"
+    if "did not return any production file/content/end_file" in text or "no file blocks" in text or "file/content/end_file" in text and "did not" in text:
+        return "NO_FILE_OUTPUT"
+    if "did not create any test files" in text or "did not create test" in text or "generate_tests can only write" in text:
+        return "NO_TEST_GENERATED"
+    if "did not create or modify" in text or "project changes" in text:
+        return "NO_PRODUCTION_CHANGE"
+    if "syntaxerror" in text or "invalid python syntax" in text or "parse" in text and source_key == "generate_tests":
+        return "SYNTAX_ERROR"
+    if source_key == "run_test" or "test command failed" in text or "failed" in text and "pytest" in text:
+        return "TEST_FAILED"
+    if source_key == "run_external_validation" or "validation" in text and "failed" in text:
+        return "VALIDATION_FAILED"
+    if "tool-call json" in text or "artifact content" in text or "returned empty" in text:
+        return "AGENT_OUTPUT_FORMAT"
+    return "UNKNOWN"
+
+
+def repair_strategy_for_class(error_class: str) -> str:
+    return {
+        "PATH_VIOLATION": "Rewrite only relative FILE paths inside Project Path; do not retry unsafe path tricks.",
+        "TIMEOUT": "Reduce scope, simplify implementation, and avoid long-running commands.",
+        "NO_FILE_OUTPUT": "Return concrete FILE/CONTENT/END_FILE blocks for the owner step.",
+        "NO_TEST_GENERATED": "Return focused test FILE blocks only under tests/.",
+        "NO_PRODUCTION_CHANGE": "Modify or create the intended production/project artifact instead of restating the plan.",
+        "SYNTAX_ERROR": "Fix the exact syntax/import error and keep the patch minimal.",
+        "TEST_FAILED": "Use failing assertions/stdout/stderr to repair production code first; change tests only when they are clearly invalid.",
+        "VALIDATION_FAILED": "Treat the validation script as the acceptance oracle and repair production outputs until it exits 0.",
+        "AGENT_OUTPUT_FORMAT": "Output artifact text only; do not return tool-call JSON or empty output.",
+    }.get(error_class, "Use the concrete failure text, previous artifacts, and verifier evidence to choose a different repair strategy.")
+
+def retry_recovery_notes(source_key: str, target_key: str, error: str) -> list[str]:
+    """Return workflow-level recovery notes for the next retry prompt.
+
+    Keep this step-oriented rather than domain-oriented. It must never infer or
+    generate application behavior; it only tells the next agent pass where to
+    look and what acceptance gate failed.
+    """
+    text = (error or "").lower()
+    error_class = classify_repair_error(source_key, target_key, error)
+    notes: list[str] = [
+        f"Error class: {error_class}.",
+        "Repair strategy: " + repair_strategy_for_class(error_class),
+    ]
+    if source_key == "run_test" and target_key == "generate_tests":
+        notes.extend([
+            "The failure appears to be in generated tests, test imports, or test syntax.",
+            "Regenerate tests from the current Requirement, Architecture, Todo, and Build result; do not change production files in Generate Tests.",
+        ])
+    elif source_key == "run_test":
+        notes.extend([
+            "Automated tests failed after Build, so the implementation likely does not satisfy the generated acceptance checks.",
+            "Fix production code first; change tests only if the failure feedback proves the tests are invalid.",
+        ])
+    elif source_key == "run_external_validation":
+        notes.extend([
+            "The user/project validation script is the acceptance gate and failed after tests.",
+            "Read the validation output, then fix production files so the script passes. Do not edit existing validation scripts unless the user explicitly requested it.",
+        ])
+    elif source_key == "final_review":
+        notes.extend([
+            "The final completion gate failed because required verification evidence was missing or not PASS.",
+            "Re-check test-result.md and external-validation-result.md, then repair the earlier step that produced the failing evidence.",
+        ])
+    elif source_key == "build":
+        notes.extend([
+            "Build did not produce acceptable production changes or file blocks.",
+            "Return production FILE/CONTENT/END_FILE blocks only, with relative paths inside the selected Project Path.",
+        ])
+    else:
+        notes.append("Retry the target step using the concrete error message and previously approved artifacts as the source of truth.")
+
+    if "outside project path" in text or "unsafe file path" in text or "parent directory" in text:
+        notes.append("Workspace isolation was enforced: writes must stay inside the selected Project Path; external paths are read-only context.")
+    if "validation scripts" in text:
+        notes.append("Existing validation scripts are protected acceptance tools and must not be overwritten by Build.")
+    if "test file blocks" in text:
+        notes.append("Build owns production files only; Generate Tests owns tests/ files only.")
+    return notes
+
+
 class RunState:
     def __init__(self, store, bus) -> None:
         self.store = store
@@ -185,27 +273,35 @@ class RunState:
         input_dir = Path(run["workspace"]) / "input"
         feedback_path = input_dir / "failure-feedback.md"
         previous = read_text(feedback_path)
+        error = str(exc).strip()
+        notes = retry_recovery_notes(source_key, target_key, error)
         entry = (
             f"## Retry Feedback for {target_key}\n\n"
             f"Submitted at: {utc_now()}\n\n"
             f"- Failed step: {source_key}\n"
             f"- Retry target: {target_key}\n"
-            f"- Retry attempt: {retry_count}/{max_retries}\n\n"
-            "Error message to fix:\n\n"
-            f"{str(exc).strip()}\n\n"
+            f"- Retry attempt: {retry_count}/{max_retries}\n"
+            f"- Error class: {classify_repair_error(source_key, target_key, error)}\n"
+            f"- Stop condition: retry continues through repeated errors until {target_key} reaches {max_retries}/{max_retries} attempts or all downstream gates pass.\n"
+            f"- Strategy shift: if this same class repeats 3+ times, try a different implementation approach rather than reusing the same output.\n\n"
+            "### Recovery analysis\n"
+            + "".join(f"- {note}\n" for note in notes)
+            + "\n### Error message to fix\n\n"
+            f"{error}\n\n"
         )
         write_text(feedback_path, previous + ("\n" if previous.strip() else "") + entry)
         await self.record_step_event(
             run["id"],
             target_key,
             "retry",
-            f"Retry {retry_count}/{max_retries} from {source_key}: {str(exc).strip()}",
+            f"Retry {retry_count}/{max_retries} from {source_key}: {error}",
             {
                 "source_step": source_key,
                 "target_step": target_key,
                 "retry_count": retry_count,
                 "max_retries": max_retries,
-                "error": str(exc).strip(),
+                "error": error,
+                "error_class": classify_repair_error(source_key, target_key, error),
             },
         )
         await self.refresh_artifacts(run["id"])

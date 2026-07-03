@@ -6,6 +6,9 @@ Requirement:
 Architecture:
 {{architecture}}
 
+Project index:
+{{project_index}}
+
 Project profile:
 {{project_profile}}
 
@@ -24,10 +27,11 @@ Planning rules:
 - If the user restricts allowed tools, libraries, commands, languages, or frameworks, preserve those restrictions in the plan and do not substitute alternatives.
 - Use reasonable defaults only for minor missing details and record them in the plan.
 - Split the work into small tasks, but do not over-split. Prefer 3 to 8 tasks, and never more than 12 unless the request is truly large.
-- Every task must have clear acceptance criteria.
+- Think in layers: small task -> assembled feature -> final completed request.
+- Every task must have clear acceptance criteria and an integration/assembly expectation.
+- Define explicit stop conditions: the workflow is done only when Build produced project changes, automated tests pass, external validation passes or is intentionally skipped, and final review is PASS.
 - Build production changes before Generate Tests so the model does not mix test blocks into Build.
-- For data/config tasks, treat requested project artifacts such as YAML/JSON/config output files as Build-owned deliverables.
-- If a config file defines CRUD operations, include source file, operation config file, and expected output path in the plan.
+- For any requested generated artifact, include the source inputs, output path, expected format, and verification method in the plan.
 - Treat validation scripts such as `validation.py`, `validate.py`, `verify.py`, and `check.py` as protected acceptance tools when they already exist or are provided for this run.
 - Do not list a validation script under task Files or ask Build to modify it unless the user explicitly asks to create or change that validator itself.
 - Include a focused automated test strategy after Build and before external validation.
@@ -46,9 +50,14 @@ Status: READY
 - ...
 
 ## Task Index
-| ID | Task | Acceptance Criteria |
-| --- | --- | --- |
-| TASK-001 | ... | AC-001 |
+| ID | Task | Acceptance Criteria | Depends On |
+| --- | --- | --- | --- |
+| TASK-001 | ... | AC-001 | None |
+
+## Task Assembly Plan
+- Build order:
+- Integration point:
+- Assembled behavior that proves the larger request is complete:
 
 ## Tasks
 
@@ -57,6 +66,10 @@ Status: READY
 - Files:
 - Acceptance Criteria:
   - AC-001:
+- Depends On:
+  - None
+- Assembly:
+  - How this task connects to later tasks or the final requested behavior.
 - Validation:
   - Covered by Build, Generate Tests, Run Test, and external validation when configured or present.
 
@@ -65,7 +78,16 @@ Status: READY
 - Step 2: Generate tests only under the project test folder.
 - Step 3: Run automated tests.
 - Step 4: Run external validation when a script is configured or present.
-- Step 5: Retry Build with concrete failure feedback when tests or validation fail.
+- Step 5: Retry the failed owner step with concrete recovery analysis until the stop conditions are met or max retries are reached.
+
+## Acceptance & Stop Conditions
+- Build must create or modify at least one production/project artifact under Project path.
+- Small tasks must be implemented in order and assembled into one coherent project state.
+- Generate Tests must create focused tests for the acceptance criteria and assembled behavior.
+- Run Test must pass.
+- External validation must pass when configured or present; otherwise it must record a skipped PASS.
+- Final Review and Final Gate must both pass.
+- Stop retrying when the configured max retry count is reached.
 
 ## External Validation
 - If a validation script path is provided above, that exact script is mandatory for this run.

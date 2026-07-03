@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 from pathlib import Path
 from typing import Any, Awaitable, Callable
 
 from app.runtime_modules.errors import UserInputRequired, WorkflowCancelled, WorkflowError
-from app.core.paths import utc_now, write_text
+from app.core.paths import read_text, utc_now, write_text
 from app.core.metrics import metrics, now
 from app.runtime_modules.files import project_file_snapshot, snapshot_changed
 
@@ -102,6 +103,11 @@ class WorkflowExecutor:
                         await self.set_step(run_id, key, "failed", message, error_code=classify_exception(message))
                         await self.log(run, f"{key}: max retries reached for {retry_key}: {exc}")
                         raise WorkflowError(message) from exc
+                    if self._same_failure_repeated(run, retry_key, exc):
+                        await self.log(
+                            run,
+                            f"{key}: same failure observed again for {retry_key}; continuing retry because small/local models may recover on a later attempt: {exc}",
+                        )
                     retry_count = await self.increment_step_retry(run_id, retry_key)
                     target_index = key_to_index[retry_key]
                     await self.append_failure_feedback(run, key, retry_key, exc, retry_count, max_retries)
@@ -194,6 +200,34 @@ class WorkflowExecutor:
             raise WorkflowError(
                 f"{step_record.get('key')}: project changes were required, but no files changed under Project Path: {project_dir}"
             )
+
+    def _same_failure_repeated(self, run: dict[str, Any], target_key: str, exc: BaseException) -> bool:
+        feedback = read_text(Path(run["workspace"]) / "input" / "failure-feedback.md")
+        if not feedback.strip():
+            return False
+        target_blocks = re.findall(
+            rf"^## Retry Feedback for {re.escape(target_key)}\s*$.*?(?=^## Retry Feedback for |\Z)",
+            feedback,
+            flags=re.MULTILINE | re.DOTALL,
+        )
+        if not target_blocks:
+            return False
+        current = self._failure_fingerprint(str(exc))
+        return any(current and current == self._failure_fingerprint(self._feedback_error_text(block)) for block in target_blocks)
+
+    @staticmethod
+    def _feedback_error_text(block: str) -> str:
+        marker = "### Error message to fix"
+        if marker not in block:
+            return block
+        return block.split(marker, 1)[1].strip()
+
+    @staticmethod
+    def _failure_fingerprint(text: str) -> str:
+        normalized = re.sub(r"\s+", " ", (text or "").strip().lower())
+        normalized = re.sub(r"0x[0-9a-f]+", "0xADDR", normalized)
+        normalized = re.sub(r"\b\d{4}-\d{2}-\d{2}t[^ ]+", "TIMESTAMP", normalized)
+        return normalized[:800]
 
     async def _mark_done(self, run_id: str, run: dict[str, Any], run_dir: Path) -> None:
         def finish(r: dict[str, Any]) -> None:

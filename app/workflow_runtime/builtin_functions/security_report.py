@@ -7,7 +7,7 @@ from app.workflow_runtime.builtin_functions.core import require_sections
 from app.workflow_runtime.builtin_functions.security_common import *
 
 
-def _synthesize_security_report_from_findings(security_findings_text: str, project_dir: Path) -> str:
+def _render_security_report_from_findings(security_findings_text: str, project_dir: Path) -> str:
     normalized_findings = _security_normalized_finding_blocks(security_findings_text)
     finding_items: list[dict[str, str]] = []
     for sec_id, block in normalized_findings:
@@ -158,10 +158,10 @@ def validate_security_report(ctx: WorkflowFunctionContext, artifact: str = "secu
     report_is_stale_no_finding = bool(normalized_preview) and "No confirmed vulnerabilities found" in text
     report_missing_source_findings = bool(normalized_preview) and any(sec_id not in text for sec_id, _block in normalized_preview)
     if "Status: DONE" not in text or report_is_stale_no_finding or report_missing_source_findings:
-        synthesized = _synthesize_security_report_from_findings(security_findings_text, ctx.project_dir)
-        if synthesized:
-            ctx.write_text(path, synthesized)
-            text = synthesized
+        rendered = _render_security_report_from_findings(security_findings_text, ctx.project_dir)
+        if rendered:
+            ctx.write_text(path, rendered)
+            text = rendered
     if "Status: DONE" not in text:
         raise WorkflowFunctionError(f"{artifact} must contain 'Status: DONE'.")
 
@@ -441,7 +441,7 @@ def generate_security_report(ctx: WorkflowFunctionContext) -> None:
     security_findings_text = ctx.read_text(ctx.output_dir / "security-findings.md")
     if not security_findings_text.strip():
         raise WorkflowFunctionError("security-findings.md is missing or empty.")
-    report = _synthesize_security_report_from_findings(security_findings_text, ctx.project_dir)
+    report = _render_security_report_from_findings(security_findings_text, ctx.project_dir)
     if not report.strip():
         raise WorkflowFunctionError("Could not generate security-report.md from security-findings.md.")
     ctx.write_text(ctx.output_dir / "security-report.md", report)
@@ -469,7 +469,7 @@ def finalize_security_report(ctx: WorkflowFunctionContext) -> None:
 
 
 __all__ = [
-    "_synthesize_security_report_from_findings",
+    "_render_security_report_from_findings",
     "validate_security_report",
     "generate_security_report",
     "finalize_security_report",

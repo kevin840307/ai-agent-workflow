@@ -1,0 +1,35 @@
+id: diff_review
+key: diff_review
+name: Diff Review
+description: Review changed files and verifier evidence for risks. This reviewer can warn, but cannot decide PASS.
+enabled: true
+type: ai
+skill: steps/general-auto-development/05_diff_review.md
+command: ''
+agent: qwen
+outputs:
+- diff-review.md
+function: ''
+retry: 2
+failAction: same_step
+retryFromStepKey: diff_review
+keepSameSession: false
+injectFailureFeedback: true
+stopAfterFailures: 2
+allowInteraction: false
+thinking: true
+approvalRequired: false
+pauseAfterStep: false
+approvalMessage: ''
+timeoutEnabled: false
+timeoutMinutes: 0.0
+reviewMode: none
+confidenceThreshold: 0.75
+passKeywords: ''
+failKeywords: ''
+aggregatorFunction: ''
+sources:
+- type: skill_path
+  value: code-review
+agentOptions: {}
+path: contracts/general-auto-development/diff_review.yaml

@@ -34,6 +34,9 @@ class RunStateTests(unittest.TestCase):
     def test_record_step_event_updates_run_and_step_timeline(self) -> None:
         asyncio.run(self._run_record_step_event_case())
 
+    def test_append_failure_feedback_includes_recovery_analysis_and_stop_condition(self) -> None:
+        asyncio.run(self._run_append_failure_feedback_case())
+
     async def _run_refresh_case(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             workspace = Path(tmp) / "run"
@@ -94,6 +97,35 @@ class RunStateTests(unittest.TestCase):
         self.assertEqual(run["timeline"][0]["kind"], "manual_retry")
         self.assertEqual(run["steps"][0]["events"][0]["kind"], "manual_retry")
         self.assertTrue(bus.events)
+
+    async def _run_append_failure_feedback_case(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp) / "run"
+            (workspace / "input").mkdir(parents=True)
+            run = {
+                "id": "run-1",
+                "workspace": str(workspace),
+                "steps": [{"key": "build", "retry_count": 1, "events": []}],
+                "timeline": [],
+            }
+            bus = FakeBus()
+            state = RunState(FakeStore({"runs": [run]}), bus)
+
+            await state.append_failure_feedback(
+                run,
+                "run_external_validation",
+                "build",
+                RuntimeError("validation failed"),
+                1,
+                12,
+            )
+
+            feedback = (workspace / "input" / "failure-feedback.md").read_text(encoding="utf-8")
+            self.assertIn("### Recovery analysis", feedback)
+            self.assertIn("Stop condition", feedback)
+            self.assertIn("validation script is the acceptance gate", feedback)
+            self.assertEqual(run["steps"][0]["events"][0]["kind"], "retry")
+
 
 
 if __name__ == "__main__":

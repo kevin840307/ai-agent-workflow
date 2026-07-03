@@ -14,8 +14,8 @@ from app.runtime_modules.files import (
     requirement_mentions_language,
     should_ask_for_spec_input,
     spec_input_questions,
-    synthesize_python_smoke_tests,
-    synthesize_validation_script_tests,
+    build_generic_python_import_smoke_test,
+    build_validation_script_pytest_wrapper,
     validate_build_files_are_not_tests,
     validate_generated_test_files,
 )
@@ -124,26 +124,26 @@ END_FILE
             self.assertFalse(should_ask_for_spec_input("asdf qwer zxcv", existing_project, "Add quick sort in Python."))
             self.assertFalse(should_ask_for_spec_input("Add quick sort", empty_project, "Use Python."))
 
-    def test_synthesized_smoke_tests_are_valid_with_windows_style_paths(self) -> None:
+    def test_generic_smoke_tests_are_valid_with_windows_style_paths(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             project = Path(tmp)
             nested = project / "algorithms"
             nested.mkdir()
             (nested / "bubble_sort.py").write_text("def bubble_sort(values):\n    return sorted(values)\n", encoding="utf-8")
 
-            files = synthesize_python_smoke_tests(project)
+            files = build_generic_python_import_smoke_test(project)
             self.assertEqual([path for path, _content in files], ["tests/test_ai_workflow_generated_smoke.py"])
             compile(files[0][1], files[0][0], "exec")
             self.assertIn("'algorithms/bubble_sort.py'", files[0][1])
             self.assertIn("test_generated_python_modules_import_cleanly", files[0][1])
             self.assertNotIn("sorted(original)", files[0][1])
 
-    def test_synthesized_validation_script_tests_run_project_validation(self) -> None:
+    def test_validation_script_pytest_wrapper_runs_project_validation(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             project = Path(tmp)
             (project / "validation.py").write_text("print('ok')\n", encoding="utf-8")
 
-            files = synthesize_validation_script_tests(project, "validation.py")
+            files = build_validation_script_pytest_wrapper(project, "validation.py")
             self.assertEqual([path for path, _content in files], ["tests/test_ai_workflow_validation.py"])
             compile(files[0][1], files[0][0], "exec")
             self.assertIn("validation.py", files[0][1])

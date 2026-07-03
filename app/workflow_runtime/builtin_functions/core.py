@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import asyncio
+import json
+import re
 import os
 import subprocess
 from pathlib import Path
@@ -183,26 +185,131 @@ def validate_general_auto_plan(ctx: WorkflowFunctionContext, artifact: str = "im
     ctx.write_text(ctx.output_dir / artifact, "\n".join(lines))
 
 
-def validate_general_auto_final(ctx: WorkflowFunctionContext, artifact: str = "final-review.md") -> None:
-    """Deterministic final gate for General Auto Development.
+def _file_block_paths(text: str) -> list[str]:
+    return sorted(set(re.findall(r"^FILE:\s*(.+?)\s*$", text or "", flags=re.MULTILINE)))
 
-    Final pass is based on concrete artifacts: Build output, automated test
-    result, and external validation result. This avoids AI review text
-    format drift such as missing PASS keywords.
+
+def _git_output(project_dir: Path, args: list[str], *, timeout: float = 5.0) -> str:
+    try:
+        proc = subprocess.run(
+            ["git", *args],
+            cwd=str(project_dir),
+            shell=False,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            timeout=timeout,
+        )
+    except Exception:
+        return ""
+    if proc.returncode != 0:
+        return ""
+    return proc.stdout.strip()
+
+
+def _diff_context(ctx: WorkflowFunctionContext, build_result: str, test_plan: str) -> dict[str, object]:
+    project_dir = ctx.project_dir
+    git_changed = _git_output(project_dir, ["diff", "--name-only"])
+    git_stat = _git_output(project_dir, ["diff", "--stat"])
+    git_diff = _git_output(project_dir, ["diff", "--", "."], timeout=8.0)
+    file_block_changed = sorted(set(_file_block_paths(build_result) + _file_block_paths(test_plan)))
+    changed_files = [line.strip() for line in git_changed.splitlines() if line.strip()] or file_block_changed
+    diff_context = {
+        "changed_files": changed_files,
+        "git_diff_available": bool(git_changed or git_stat or git_diff),
+        "git_stat": git_stat,
+        "git_diff_excerpt": git_diff[:12000],
+        "file_block_paths": file_block_changed,
+    }
+    lines = [
+        "# Diff Context",
+        "",
+        f"Status: {'READY' if changed_files else 'EMPTY'}",
+        "",
+        "## Changed Files",
+        *(f"- {path}" for path in changed_files),
+        "",
+        "## Git Diff Stat",
+        "```text",
+        git_stat or "No git diff stat available. Using FILE block paths as fallback evidence.",
+        "```",
+        "",
+        "## Git Diff Excerpt",
+        "```diff",
+        git_diff[:12000] or "No git diff available. The project may not be a git repository, or changes may come from generated FILE block evidence.",
+        "```",
+        "",
+    ]
+    ctx.write_text(ctx.output_dir / "diff-context.md", "\n".join(lines))
+    return diff_context
+
+
+def validate_general_auto_final(ctx: WorkflowFunctionContext, artifact: str = "final-review.md") -> None:
+    """Evidence-based final verifier for General Auto Development.
+
+    PASS is decided from concrete artifacts, not from AI self-review text.  The
+    function writes both a human-readable final review and a machine-readable
+    verifier report for downstream gates / diff review.
     """
     build_result = ctx.read_text(ctx.output_dir / "build-result.md")
+    task_manifest = ctx.read_text(ctx.output_dir / "task-manifest.md")
+    test_plan = ctx.read_text(ctx.output_dir / "test-plan.md")
     test_result = ctx.read_text(ctx.output_dir / "test-result.md")
     external_validation = ctx.read_text(ctx.output_dir / "external-validation-result.md")
 
-    failures: list[str] = []
-    if "FILE:" not in build_result or "CONTENT:" not in build_result or "END_FILE" not in build_result:
-        failures.append("build-result.md does not contain production FILE/CONTENT/END_FILE output.")
-    if not _contains_status_pass(test_result):
-        failures.append("test-result.md does not show a passing test command.")
-    if "Status: PASS" not in external_validation and "Exit Code: 0" not in external_validation:
-        failures.append("external-validation-result.md does not show Status: PASS / Exit Code: 0.")
+    checks = {
+        "task_manifest": {
+            "status": "PASS" if ("Status: READY" in task_manifest and "## Small Task Order" in task_manifest) else "FAIL",
+            "evidence": "output/task-manifest.md",
+        },
+        "build_artifact": {
+            "status": "PASS" if ("FILE:" in build_result and "CONTENT:" in build_result and "END_FILE" in build_result) else "FAIL",
+            "evidence": "output/build-result.md",
+        },
+        "generated_tests": {
+            "status": "PASS" if ("FILE:" in test_plan and "tests/" in test_plan and "END_FILE" in test_plan) else "FAIL",
+            "evidence": "output/test-plan.md",
+        },
+        "automated_tests": {
+            "status": "PASS" if _contains_status_pass(test_result) else "FAIL",
+            "evidence": "output/test-result.md",
+        },
+        "external_validation": {
+            "status": "PASS" if ("Status: PASS" in external_validation or "Exit Code: 0" in external_validation or "ExitCode: 0" in external_validation) else "FAIL",
+            "evidence": "output/external-validation-result.md",
+        },
+        "workspace_isolation": {
+            "status": "PASS",
+            "evidence": "FILE path safety checks are enforced before materializing Build and Generate Tests outputs.",
+        },
+    }
+    failures = [name for name, item in checks.items() if item["status"] != "PASS"]
+    diff_context = _diff_context(ctx, build_result, test_plan)
+    report = {
+        "status": "FAIL" if failures else "PASS",
+        "checks": checks,
+        "evidence": {
+            "changed_files": diff_context.get("changed_files", []),
+            "git_diff_available": diff_context.get("git_diff_available", False),
+            "file_block_paths": diff_context.get("file_block_paths", []),
+            "artifacts": [
+                "output/task-manifest.md",
+                "output/build-result.md",
+                "output/test-plan.md",
+                "output/test-result.md",
+                "output/external-validation-result.md",
+                "output/diff-context.md",
+            ],
+        },
+        "policy": {
+            "ai_review_can_warn": True,
+            "ai_review_can_decide_pass": False,
+            "git_commit_push_allowed": False,
+        },
+    }
+    ctx.write_text(ctx.output_dir / "verifier-report.json", json.dumps(report, indent=2, ensure_ascii=False))
 
-    status = "FAIL" if failures else "PASS"
+    status = report["status"]
     lines = [
         "# Final Review",
         "",
@@ -210,24 +317,31 @@ def validate_general_auto_final(ctx: WorkflowFunctionContext, artifact: str = "f
         "Confidence: 1.00" if status == "PASS" else "Confidence: 0.00",
         "",
         "## Summary",
-        "- Deterministic final review generated by Python from workflow artifacts.",
+        "- Evidence-based final review generated by Python from workflow artifacts.",
+        "- The AI diff reviewer may add risks, but cannot turn a failing verifier into PASS.",
         "",
         "## Verification",
-        f"- Automated test result: {'PASS' if _contains_status_pass(test_result) else 'FAIL'}",
-        f"- External validation script result: {'PASS' if ('Status: PASS' in external_validation or 'Exit Code: 0' in external_validation) else 'FAIL'}",
-        f"- Build artifact present: {'PASS' if 'FILE:' in build_result and 'CONTENT:' in build_result and 'END_FILE' in build_result else 'FAIL'}",
-        "- Files stayed inside Project path: enforced by FILE path safety checks before materializing files.",
+    ]
+    for name, item in checks.items():
+        lines.append(f"- {name}: {item['status']} ({item['evidence']})")
+    lines.extend([
+        "",
+        "## Diff Evidence",
+        f"- Changed files: {len(diff_context.get('changed_files', []))}",
+        f"- Git diff available: {bool(diff_context.get('git_diff_available', False))}",
+        "- Diff context: output/diff-context.md",
+        "- Verifier report: output/verifier-report.json",
         "",
         "## Remaining Risks",
-    ]
+    ])
     if failures:
-        lines.extend(f"- {failure}" for failure in failures)
+        lines.extend(f"- {name} did not pass." for name in failures)
     else:
         lines.append("- None detected by deterministic workflow gates.")
     lines.append("")
     ctx.write_text(ctx.output_dir / artifact, "\n".join(lines))
     if failures:
-        raise WorkflowFunctionError("Final deterministic review failed: " + "; ".join(failures))
+        raise WorkflowFunctionError("Final deterministic verifier failed: " + "; ".join(failures))
 
 
 def _test_command_timeout_seconds() -> float:

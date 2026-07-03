@@ -9,6 +9,8 @@ command: ''
 agent: qwen
 outputs:
 - final-review.md
+- verifier-report.json
+- diff-context.md
 function: ''
 retry: 0
 failAction: selected_step

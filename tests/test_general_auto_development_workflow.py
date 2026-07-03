@@ -59,6 +59,7 @@ class GeneralAutoDevelopmentWorkflowTests(unittest.TestCase):
                 "run_test",
                 "run_external_validation",
                 "final_review",
+                "diff_review",
                 "final_gate",
             ],
         )
@@ -89,6 +90,11 @@ class GeneralAutoDevelopmentWorkflowTests(unittest.TestCase):
         self.assertEqual(validation["failAction"], "selected_step")
         self.assertFalse(validation["requiresValidationScript"])
         self.assertGreaterEqual(validation["maxRetries"], 10)
+
+        diff_review = next(step for step in workflow["steps"] if step["key"] == "diff_review")
+        self.assertEqual(diff_review["type"], "ai")
+        self.assertEqual(diff_review["outputFile"], "diff-review.md")
+        self.assertEqual(diff_review["retryFromStepKey"], "diff_review")
 
     def test_general_auto_development_builds_then_generates_tests_before_external_validation(self) -> None:
         def qwen_response(prompt: str) -> str:
