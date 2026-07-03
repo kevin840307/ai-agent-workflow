@@ -131,8 +131,8 @@ def requirement_mentions_language(requirement: str) -> bool:
         "rust",
         "php",
         "ruby",
-        "程式",
-        "語言",
+        "批次",
+        "腳本",
     ]
     return any(keyword in lower for keyword in keywords)
 
@@ -140,8 +140,8 @@ def requirement_mentions_language(requirement: str) -> bool:
 GENERAL_REQUEST_VERBS = (
     "add", "build", "create", "implement", "write", "make", "fix",
     "update", "optimize", "refactor", "review", "test", "scan", "generate",
-    "新增", "加入", "建立", "建置", "製作", "寫", "實作", "修", "修正",
-    "優化", "重構", "檢查", "掃描", "產生", "幫我", "做",
+    "新增", "加入", "建立", "建置", "製作", "撰寫", "寫", "做",
+    "修改", "修正", "優化", "重構", "檢查", "測試", "掃描", "產生",
 )
 
 

@@ -314,6 +314,52 @@ class WorkflowCoreTests(unittest.TestCase):
             self.assertIn("TASK-002", manifest)
             self.assertIn("Repeated errors are allowed", manifest)
 
+    def test_implementation_review_repairs_todo_that_targets_validation_script(self) -> None:
+        async def log(_run, _message):
+            return None
+
+        async def refresh(_run_id):
+            return None
+
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp) / "project"
+            workspace = project / ".ai-workflow" / "runs" / "session-1" / "run-1"
+            output = workspace / "output"
+            output.mkdir(parents=True)
+            (project / "validation.py").write_text("print('external validation ok')\n", encoding="utf-8")
+            (workspace / "requirement.md").write_text("請用 Python 寫泡沫排序", encoding="utf-8")
+            (output / "todo.md").write_text(
+                "# Todo\n\n"
+                "Status: READY\n\n"
+                "## Requirement\n- Implement the requested Python behavior.\n\n"
+                "## Task Index\n"
+                "| ID | Task | Acceptance Criteria | Depends On |\n"
+                "| --- | --- | --- | --- |\n"
+                "| TASK-001 | Modify validation.py | AC-001 | None |\n\n"
+                "## Tasks\n\n"
+                "### TASK-001: Modify validation.py\n"
+                "- Files: validation.py\n"
+                "- Acceptance Criteria:\n  - AC-001: validation.py includes the implementation.\n\n"
+                "## Execution SOP\n- Step 1: Build production code only.\n\n"
+                "## Acceptance & Stop Conditions\n- Stop condition: tests and external validation pass.\n\n"
+                "## External Validation\n- Run validation.py after tests.\n",
+                encoding="utf-8",
+            )
+            actions = WorkflowActions(agent_runner=None, functions=None, log=log, refresh_artifacts=refresh)
+
+            asyncio.run(
+                actions.implementation_review_step(
+                    {"id": "run-1", "workspace": str(workspace), "project_path": str(project)}
+                )
+            )
+
+            repaired = (output / "todo.md").read_text(encoding="utf-8")
+            task_context = repaired.split("## External Validation", 1)[0]
+            self.assertNotIn("validation.py", task_context)
+            self.assertIn("Implement production change", repaired)
+            review = (output / "implementation-review.md").read_text(encoding="utf-8")
+            self.assertIn("validation scripts", review)
+
 
 if __name__ == "__main__":
     unittest.main()

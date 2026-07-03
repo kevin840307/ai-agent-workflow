@@ -25,6 +25,7 @@ from app.runtime_modules.files import (
     render_generic_todo_from_spec,
     build_generic_python_import_smoke_test,
     build_validation_script_pytest_wrapper,
+    existing_validation_scripts,
     validate_build_files_do_not_overwrite_validation_scripts,
     validate_build_files_are_not_tests,
     validate_generated_test_files,
@@ -253,6 +254,25 @@ class WorkflowActions:
             return "planning"
         return "build"
 
+    @staticmethod
+    def _todo_owned_validation_targets(run: dict[str, Any], todo: str) -> list[str]:
+        project_dir = Path(run.get("project_path") or ".").expanduser().resolve()
+        protected = existing_validation_scripts(project_dir, run.get("validation_script"))
+        if not protected:
+            return []
+        task_context = todo.split("## External Validation", 1)[0]
+        found: list[str] = []
+        for script in sorted(protected):
+            try:
+                display = script.relative_to(project_dir).as_posix()
+            except ValueError:
+                display = str(script)
+            escaped_display = re.escape(display).replace("/", r"[\\/]")
+            escaped_name = re.escape(script.name)
+            if re.search(rf"(?im)(^|\s|`)(?:{escaped_display}|{escaped_name})(`|\s|$)", task_context):
+                found.append(display)
+        return found
+
     def _render_task_manifest(self, todo: str) -> str:
         task_ids = self._ordered_task_ids(todo)
         build_task_ids = [task_id for task_id in task_ids if self._task_owner(todo, task_id) == "build"]
@@ -357,10 +377,17 @@ class WorkflowActions:
             findings.append("Todo must include at least one TASK-xxx item.")
         if not re.search(r"\bAC-\d{3}\b", todo):
             findings.append("Todo must include task-level acceptance criteria AC-xxx.")
-        if "external validation" not in todo.lower() and "驗證" not in todo:
+        if "external validation" not in todo.lower():
             findings.append("Todo must include the external validation step, which may skip when no script is configured or found.")
         if "stop condition" not in todo.lower() and "stop conditions" not in todo.lower():
             findings.append("Todo must include explicit acceptance and stop conditions for completion/retry control.")
+        protected_validation_targets = self._todo_owned_validation_targets(run, todo)
+        if protected_validation_targets:
+            findings.append(
+                "Todo must not list existing validation scripts as Build-owned task files: "
+                + ", ".join(protected_validation_targets)
+                + ". Validation scripts are external acceptance tools."
+            )
 
         remediated = False
         if findings:

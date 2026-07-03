@@ -89,7 +89,8 @@ END_FILE
 
     def test_requirement_language_and_project_profile_detection(self) -> None:
         self.assertTrue(requirement_mentions_language("請用 Python 寫泡沫排序"))
-        self.assertFalse(requirement_mentions_language("幫我做排序功能"))
+        self.assertTrue(requirement_mentions_language("請寫一個批次腳本"))
+        self.assertFalse(requirement_mentions_language("請寫一個排序工具"))
 
         with tempfile.TemporaryDirectory() as tmp:
             project = Path(tmp)
