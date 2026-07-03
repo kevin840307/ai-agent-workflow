@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import shutil
+from pathlib import Path
 from typing import Any
 
 from app.testing.mock_agent import mock_qwen_response
@@ -35,6 +36,7 @@ class OpenCodeCliAdapter:
         self.thinking = bool(config.get("thinking", False))
         self.skip_permissions = bool(config.get("dangerouslySkipPermissions", config.get("dangerously_skip_permissions", False)))
         self.extra_args = list(config.get("extraArgs") or config.get("extra_args") or [])
+        self.prompt_file_threshold = int(config.get("promptFileThreshold") or config.get("prompt_file_threshold") or 3500)
 
     def _default_bin(self) -> str:
         if os.name == "nt":
@@ -47,7 +49,7 @@ class OpenCodeCliAdapter:
             return self._default_bin()
         return value or self._default_bin()
 
-    def _command(self, prompt: str, session_id: str | None = None) -> list[str]:
+    def _command(self, prompt: str, session_id: str | None = None, *, prompt_file: str | None = None) -> list[str]:
         session_args = ["--session", session_id] if self.reuse_session and session_id else []
         option_args: list[str] = []
         if self.model:
@@ -60,9 +62,17 @@ class OpenCodeCliAdapter:
             option_args.extend(["--format", "json"])
         if self.skip_permissions:
             option_args.append("--dangerously-skip-permissions")
+        message = prompt
+        file_args: list[str] = []
+        if prompt_file and len(prompt) >= self.prompt_file_threshold and Path(prompt_file).is_file():
+            file_args = ["--file", prompt_file]
+            message = (
+                "Follow the attached prompt file exactly. "
+                "Produce only the requested artifact content and obey its output format."
+            )
         if self.mode == "prompt_flag":
-            return [self.bin, "--prompt", prompt, *session_args, *option_args, *self.extra_args]
-        return [self.bin, "run", *session_args, *option_args, prompt, *self.extra_args]
+            return [self.bin, "--prompt", message, *session_args, *option_args, *file_args, *self.extra_args]
+        return [self.bin, "run", *session_args, *option_args, message, *file_args, *self.extra_args]
 
     async def run_stream(self, request: AgentRequest, on_output: AgentOutputCallback | None = None) -> AgentResult:
         if self.mock:
@@ -107,7 +117,7 @@ class OpenCodeCliAdapter:
                 await on_output(stream, text)
 
         raw_stdout, stderr = await run_process_stream(
-            self._command(request.prompt, session_id),
+            self._command(request.prompt, session_id, prompt_file=(request.metadata or {}).get("prompt_file")),
             request.cwd,
             env=env,
             on_output=parse_output,
@@ -135,9 +145,15 @@ class OpenCodeCliAdapter:
     def command_preview(self, request: AgentRequest) -> str:
         if self.mode == "prompt_flag":
             session = " --session <session>" if self.reuse_session and request.session_id else ""
-            return f"{self.bin} --prompt <prompt>{session}"
+            file_hint = " --file <prompt-file>" if self._uses_prompt_file(request) else ""
+            return f"{self.bin} --prompt <prompt>{session}{file_hint}"
         session = " --session <session>" if self.reuse_session and request.session_id else ""
-        return f"{self.bin} run{session} --format json <prompt>"
+        file_hint = " --file <prompt-file>" if self._uses_prompt_file(request) else ""
+        return f"{self.bin} run{session} --format json{file_hint} <prompt>"
+
+    def _uses_prompt_file(self, request: AgentRequest) -> bool:
+        prompt_file = (request.metadata or {}).get("prompt_file")
+        return bool(prompt_file and len(request.prompt) >= self.prompt_file_threshold and Path(prompt_file).is_file())
 
     def health(self) -> dict[str, Any]:
         return {
@@ -154,5 +170,6 @@ class OpenCodeCliAdapter:
             "agent": self.agent,
             "thinking": self.thinking,
             "dangerously_skip_permissions": self.skip_permissions,
+            "prompt_file_threshold": self.prompt_file_threshold,
             "session_flag": "--session",
         }

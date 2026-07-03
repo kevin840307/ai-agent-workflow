@@ -85,6 +85,7 @@ class AgentStepRunner:
             metadata={
                 "project_path": str(cwd),
                 "workspace_path": str(workspace_path),
+                "prompt_file": str(workspace_path / prompt_result.relative_prompt_path),
                 "write_root": str(cwd),
                 "read_policy": "unrestricted",
             },
@@ -128,6 +129,7 @@ class AgentStepRunner:
                     "recovered_from_session_id": request.session_id,
                     "project_path": str(cwd),
                     "workspace_path": str(workspace_path),
+                    "prompt_file": str(workspace_path / prompt_result.relative_prompt_path),
                     "write_root": str(cwd),
                     "read_policy": "unrestricted",
                 },

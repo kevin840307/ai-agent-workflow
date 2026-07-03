@@ -12,6 +12,8 @@ from app.runtime_modules.files import (
     extract_build_files,
     project_file_snapshot,
     project_has_user_files,
+    project_overview,
+    project_profile,
     only_test_files,
     non_test_files,
     should_ask_for_spec_input,
@@ -22,6 +24,7 @@ from app.runtime_modules.files import (
     synthesize_todo_from_spec,
     synthesize_python_smoke_tests,
     synthesize_validation_script_tests,
+    synthesize_yaml_crud_build_files,
     validate_build_files_do_not_overwrite_validation_scripts,
     validate_build_files_are_not_tests,
     validate_generated_test_files,
@@ -279,7 +282,7 @@ class WorkflowActions:
                     "",
                     "## External Validation",
                     "- If a validation script path is provided, that exact script is mandatory.",
-                    "- Otherwise fallback script names are: `驗證.py`, `validation.py`, `validate.py`, `verify.py`, `check.py`.",
+                    "- Otherwise fallback script names are: `validation.py`, `validate.py`, `verify.py`, `check.py`.",
                     "- If no validation script is configured or found, external validation is skipped with a PASS result.",
                     "",
                     "## Assumptions",
@@ -520,7 +523,15 @@ class WorkflowActions:
             return
 
         before = read_text(architecture_path)
-        await self.run_agent_step(run, "prepare_project", prompt_name, artifact, agent_name=agent_name)
+        try:
+            await self.run_agent_step(run, "prepare_project", prompt_name, artifact, agent_name=agent_name)
+        except WorkflowError as exc:
+            fallback = self._synthesize_architecture_markdown(run, project_dir)
+            write_text(architecture_path, fallback)
+            write_text(Path(run["workspace"]) / "output" / artifact, fallback)
+            await self.refresh_artifacts(run["id"])
+            await self.log(run, f"prepare_project: synthesized architecture.md after agent failure: {exc}")
+            return
         result = read_text(Path(run["workspace"]) / "output" / artifact)
         for rel_path, _ in extract_build_files(result):
             if rel_path.strip().replace("\\", "/") != "architecture.md":
@@ -528,19 +539,49 @@ class WorkflowActions:
         written = apply_build_files(project_dir, result)
         architecture_written = [path for path in written if path.resolve() == architecture_path.resolve()]
         if not architecture_written:
-            if "Status: DONE" in result and result.strip() and "FILE:" not in result:
+            direct_markdown = result.lstrip().startswith("# Architecture") and "## Detected Stack" in result
+            if result.strip() and "FILE:" not in result and ("Status: DONE" in result or direct_markdown):
                 write_text(architecture_path, result)
                 await self.log(run, "prepare_project: wrote architecture.md from direct Markdown output")
             else:
-                raise WorkflowError(
-                    "prepare_project did not create or update architecture.md in the working directory. "
-                    "Agent output must include FILE: architecture.md."
-                )
+                fallback = self._synthesize_architecture_markdown(run, project_dir)
+                write_text(architecture_path, fallback)
+                write_text(Path(run["workspace"]) / "output" / artifact, fallback)
+                await self.refresh_artifacts(run["id"])
+                await self.log(run, "prepare_project: synthesized architecture.md from project profile after unusable agent output")
         after = read_text(architecture_path)
         if after != before:
             await self.log(run, "prepare_project: architecture.md updated")
         else:
             await self.log(run, "prepare_project: architecture.md already up to date")
+
+    @staticmethod
+    def _synthesize_architecture_markdown(run: dict[str, Any], project_dir: Path) -> str:
+        requirement = read_text(Path(run["workspace"]) / "requirement.md").strip()
+        profile = project_profile(project_dir)
+        overview = project_overview(project_dir, limit=60)
+        qwen_settings = "present" if (project_dir / ".qwen" / "settings.json").is_file() else "missing"
+        opencode_settings = "present" if (project_dir / "opencode.json").is_file() else "missing"
+        return (
+            "# Architecture\n\n"
+            "## Project Summary\n"
+            "- Current purpose: Existing project inferred from current files.\n"
+            f"- User request: {requirement or 'Complete the requested workflow task.'}\n\n"
+            "## Runtime Agent Settings\n"
+            f"- Qwen project settings: {qwen_settings} at `.qwen/settings.json`\n"
+            f"- OpenCode project settings: {opencode_settings} at `opencode.json`\n"
+            "- Rule: agent read access may use project settings, but generated edits must remain inside the selected Project path.\n\n"
+            "## Detected Stack\n"
+            f"{profile}\n\n"
+            "## Current Structure\n"
+            f"{overview}\n\n"
+            "## Implementation Rules\n"
+            "- Follow the existing language and structure.\n"
+            "- Keep changes small and easy to review.\n"
+            "- Keep production code and tests separate.\n"
+            "- Do not edit files outside the selected Project path.\n"
+            "- Do not skip the external validation script.\n"
+        )
 
     async def run_tests(self, run: dict[str, Any]) -> None:
         try:
@@ -633,13 +674,24 @@ class WorkflowActions:
         output_dir = Path(run["workspace"]) / "output"
         artifact = normalize_artifact_name(artifact)
         before = project_file_snapshot(project_dir)
+        requirement = read_text(Path(run["workspace"]) / "requirement.md")
         try:
             await self.run_agent_step(run, "build", prompt_name, artifact, agent_name=agent_name)
         except UserInputRequired:
             raise
+        except WorkflowError as exc:
+            synthesized = self._synthesize_build_fallback_files(project_dir, requirement)
+            if not synthesized:
+                raise
+            await self._write_build_fallback(run, artifact, synthesized, f"agent failed: {exc}")
         build_result = read_text(output_dir / artifact)
         build_files = extract_build_files(build_result)
         production_files, ignored_test_files = split_build_files(build_files)
+        if not production_files:
+            synthesized = self._synthesize_build_fallback_files(project_dir, requirement)
+            if synthesized:
+                production_files = synthesized
+                await self._write_build_fallback(run, artifact, synthesized, "agent did not return valid production FILE blocks")
         if ignored_test_files:
             ignored = ", ".join(rel_path for rel_path, _ in ignored_test_files)
             if production_files:
@@ -664,6 +716,23 @@ class WorkflowActions:
                 f"build did not create or modify production files under Project Path: {project_dir}. "
                 "Agent build output must include non-test FILE/CONTENT/END_FILE blocks."
             )
+
+    def _synthesize_build_fallback_files(self, project_dir: Path, requirement: str) -> list[tuple[str, str]]:
+        return synthesize_yaml_crud_build_files(project_dir)
+
+    async def _write_build_fallback(self, run: dict[str, Any], artifact: str, files: list[tuple[str, str]], reason: str) -> None:
+        write_text(
+            Path(run["workspace"]) / "output" / artifact,
+            "# Build Fallback\n\n"
+            f"The workflow generated deterministic production files because {reason}.\n\n"
+            + "\n".join(
+                f"FILE: {rel_path}\nCONTENT:\n{content.rstrip()}\nEND_FILE"
+                for rel_path, content in files
+            )
+            + "\n",
+        )
+        await self.refresh_artifacts(run["id"])
+        await self.log(run, "build: synthesized deterministic production files: " + ", ".join(rel_path for rel_path, _ in files))
 
     async def consensus_agent_step(
         self,
@@ -759,7 +828,8 @@ class WorkflowActions:
         config = step_config(step_record)
         step_type = step_record.get("type") or config.get("type") or "ai"
         allow_interaction = bool(step_record.get("allow_interaction"))
-        agent_name = step_agent_name(step_record) or None
+        run_agent = str(run.get("agent") or "").strip()
+        agent_name = run_agent or step_agent_name(step_record) or None
 
         registry: dict[str, Callable[[], Awaitable[None]]] = {
             "prepare_project": lambda: self.prepare_project_step(

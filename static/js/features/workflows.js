@@ -173,13 +173,13 @@ export function createWorkflows(ctx) {
                   <strong>${ui.escapeHtml(step.name || step.key || `Step ${index + 1}`)}</strong>
                   <small>${ui.escapeHtml(step.key || "")}${step.type ? ` - ${ui.escapeHtml(step.type)}` : ""}</small>
                 </span>
-                <span class="workflow-preview-step-output">${ui.escapeHtml(step.requiresValidationScript ? "Validate.py" : outputLabel(step))}</span>
+                <span class="workflow-preview-step-output">${ui.escapeHtml(step.requiresValidationScript ? "Validation Script" : outputLabel(step))}</span>
               </div>
             `).join("")}
           </div>`;
       const validationHtml = !compact && requiresValidationScript(workflow) ? `
           <label class="validation-script-field workflow-step-validation" id="validationScriptField" title="Optional Python validation script for this run">
-            <span>Validate.py</span>
+            <span>Validation Script</span>
             <input id="validationScript" type="text" value="${ui.escapeHtml(state.validationScript || "")}" placeholder="tools/check_config.py or C:\\path\\validate.py" />
           </label>` : "";
       preview.innerHTML = `

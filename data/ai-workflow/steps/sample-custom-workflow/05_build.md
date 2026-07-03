@@ -34,14 +34,12 @@ Rules:
 - Do not switch languages unless the Requirement or Spec explicitly asks for a language migration.
 - Create or modify production files only.
 - Do not write files under tests/.
-- If the project is empty and the requirement asks for Python, create a simple Python module with a clear function name.
-- For a bubble sort requirement, provide a reusable `bubble_sort` function.
+- If the project is empty and the requirement asks for Python, create a simple Python module with a clear function name derived from the requirement.
 - Keep code small and readable.
 
 Return one or more blocks like:
 
-FILE: bubble_sort.py
+FILE: relative/path.ext
 CONTENT:
-def bubble_sort(items):
-    ...
+...
 END_FILE

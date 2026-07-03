@@ -18,6 +18,7 @@ class CreateRunRequest(BaseModel):
     workflow_id: str | None = None
     skill: str | None = None
     config: str | None = None
+    agent: str | None = None
 
 
 class CreateSessionRequest(BaseModel):

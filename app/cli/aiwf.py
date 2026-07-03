@@ -21,6 +21,7 @@ VALUE_OPTIONS = {
     "--title",
     "--skill",
     "--config",
+    "--agent",
     "--project",
     "--project-path",
     "--requirement-file",
@@ -37,6 +38,7 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--workflow", "--workflow-id", dest="workflow_id", default=None, help="Workflow id. Defaults to the system workflow.")
     run.add_argument("--skill", default=None, help="Optional workflow skill markdown path or agent slash command.")
     run.add_argument("--config", default=None, help="Optional workflow contract/config yaml/json path.")
+    run.add_argument("--agent", default=None, help="Optional run-level agent override, for example qwen or opencode.")
     run.add_argument("--title", default="CLI Workflow", help="Session title.")
     run.add_argument("--test-command", default=None, help="Optional test command passed to the workflow.")
     run.add_argument("--validation-script", default=None, help="Optional Python validation script path passed to the workflow.")
@@ -229,6 +231,7 @@ async def run_cli(argv: Sequence[str] | None = None) -> int:
                 workflow_id=args.workflow_id,
                 skill=args.skill,
                 config=args.config,
+                agent=args.agent,
                 test_command=args.test_command,
                 validation_script=args.validation_script,
             ),

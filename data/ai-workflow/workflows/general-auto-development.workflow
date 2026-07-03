@@ -1,6 +1,6 @@
 id: general-auto-development
 name: General Auto Development
-description: Read the selected project, plan a small task breakdown, build production changes first, generate focused tests, run tests, and require the project validation.py script before final review.
+description: Read the selected project, plan a small task breakdown, build production changes first, generate focused tests, run tests, and run project-provided Python validation before final review.
 kind: custom
 active: false
 protected: false

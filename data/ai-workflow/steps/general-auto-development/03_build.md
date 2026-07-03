@@ -23,7 +23,7 @@ Failure feedback from previous retries:
 
 Rules:
 - Output Build-owned FILE/CONTENT/END_FILE blocks only: production code, project config, data files, or other requested project artifacts.
-- Existing validation scripts such as `驗證.py`, `validation.py`, `validate.py`, `verify.py`, and `check.py` are protected acceptance tools. Do not output FILE blocks for them unless the user explicitly asked to implement or modify the validator itself.
+- Existing validation scripts such as `validation.py`, `validate.py`, `verify.py`, and `check.py` are protected acceptance tools. Do not output FILE blocks for them unless the user explicitly asked to implement or modify the validator itself.
 - Do not output explanations outside FILE blocks.
 - Do not create or modify test files in this Build step.
 - Keep generated edits inside Project path only.

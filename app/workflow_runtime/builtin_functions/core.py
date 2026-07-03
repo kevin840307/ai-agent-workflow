@@ -162,7 +162,7 @@ def validate_general_auto_plan(ctx: WorkflowFunctionContext, artifact: str = "im
     lowered = todo.lower()
     if "test" not in lowered and "pytest" not in lowered and "測試" not in todo:
         raise WorkflowFunctionError("todo.md must include an automated test strategy before external validation.")
-    if "validation" not in lowered and "驗證.py" not in todo:
+    if "validation" not in lowered:
         raise WorkflowFunctionError("todo.md must include the external validation step.")
 
     lines = [

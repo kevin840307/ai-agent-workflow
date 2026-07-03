@@ -9,12 +9,12 @@ from typing import Any
 
 FUNCTION_META = {
     "id": "run_external_validation",
-    "label": "Run External Validation.py",
-    "description": "Run an optional or required project validation script such as 驗證.py and write output/external-validation-result.md.",
+    "label": "Run External Validation",
+    "description": "Run an optional or required project-provided Python validation script and write output/external-validation-result.md.",
     "ui": {"tabs": ["basic", "retry", "advanced"]},
 }
 
-SCRIPT_NAMES = ["驗證.py", "validation.py", "validate.py", "verify.py", "check.py"]
+SCRIPT_NAMES = ["validation.py", "validate.py", "verify.py", "check.py"]
 ARGUMENT_ERROR_MARKERS = (
     "unrecognized arguments",
     "unknown option",

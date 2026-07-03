@@ -35,6 +35,8 @@ class AiWorkflowCliTests(unittest.IsolatedAsyncioTestCase):
                         str(project),
                         "--workflow",
                         "custom-workflow",
+                        "--agent",
+                        "opencode",
                         "--validation-script",
                         "tools/check_config.py",
                         "--title",
@@ -49,6 +51,7 @@ class AiWorkflowCliTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(body.requirement, "build a sorter")
             self.assertEqual(body.project_path, str(project))
             self.assertEqual(body.workflow_id, "custom-workflow")
+            self.assertEqual(body.agent, "opencode")
             self.assertEqual(body.validation_script, "tools/check_config.py")
 
     async def test_cli_assets_uses_shared_asset_resolver(self) -> None:

@@ -135,8 +135,8 @@ END_FILE
             self.assertEqual([path for path, _content in files], ["tests/test_ai_workflow_generated_smoke.py"])
             compile(files[0][1], files[0][0], "exec")
             self.assertIn("'algorithms/bubble_sort.py'", files[0][1])
-            self.assertIn("test_generated_sort_functions_handle_representative_lists", files[0][1])
-            self.assertIn("sorted(original)", files[0][1])
+            self.assertIn("test_generated_python_modules_import_cleanly", files[0][1])
+            self.assertNotIn("sorted(original)", files[0][1])
 
     def test_synthesized_validation_script_tests_run_project_validation(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

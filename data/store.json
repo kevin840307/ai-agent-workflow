@@ -1,16 +1,76 @@
 {
   "sessions": [
     {
-      "id": "9e70d5ea-393a-4f93-bb32-e359f108487c",
-      "qwen_session_id": "9e70d5ea-393a-4f93-bb32-e359f108487c",
+      "id": "9bc83841-6749-4d07-b19d-afa8bf6cc943",
+      "qwen_session_id": "9bc83841-6749-4d07-b19d-afa8bf6cc943",
       "agent_session_ids": {
-        "qwen": "9e70d5ea-393a-4f93-bb32-e359f108487c",
-        "opencode": "9e70d5ea-393a-4f93-bb32-e359f108487c"
+        "qwen": "9bc83841-6749-4d07-b19d-afa8bf6cc943",
+        "opencode": "9bc83841-6749-4d07-b19d-afa8bf6cc943"
       },
-      "title": "YAML CRUD E2E",
-      "project_path": "C:\\Users\\kevin\\AppData\\Local\\Temp\\tmppre_p8a9\\yaml-crud-project",
-      "created_at": "2026-07-03T12:50:29.755885+00:00",
-      "updated_at": "2026-07-03T12:50:29.755885+00:00"
+      "title": "Diff Gate",
+      "project_path": "C:\\Users\\kevin\\AppData\\Local\\Temp\\tmp7wwimbpa",
+      "created_at": "2026-07-03T13:14:14.844177+00:00",
+      "updated_at": "2026-07-03T13:14:14.844177+00:00"
+    },
+    {
+      "id": "95379333-c20a-4b33-b465-24490a9dd795",
+      "qwen_session_id": "95379333-c20a-4b33-b465-24490a9dd795",
+      "agent_session_ids": {
+        "qwen": "95379333-c20a-4b33-b465-24490a9dd795",
+        "opencode": null
+      },
+      "title": "Chat Agent",
+      "project_path": "C:\\Users\\kevin\\AppData\\Local\\Temp\\tmpg5iql3p2",
+      "created_at": "2026-07-03T13:13:29.544675+00:00",
+      "updated_at": "2026-07-03T13:13:29.865798+00:00"
+    },
+    {
+      "id": "f2f180a8-5c4b-440d-bc0c-0a9337e9ec3b",
+      "qwen_session_id": "f2f180a8-5c4b-440d-bc0c-0a9337e9ec3b",
+      "agent_session_ids": {
+        "qwen": "f2f180a8-5c4b-440d-bc0c-0a9337e9ec3b",
+        "opencode": null
+      },
+      "title": "Chat Repair",
+      "project_path": "C:\\Users\\kevin\\AppData\\Local\\Temp\\tmp3iry2no2",
+      "created_at": "2026-07-03T13:13:29.026307+00:00",
+      "updated_at": "2026-07-03T13:13:29.304456+00:00"
+    },
+    {
+      "id": "75da0166-bcd1-4e0b-8c9b-72657eeb4826",
+      "qwen_session_id": "75da0166-bcd1-4e0b-8c9b-72657eeb4826",
+      "agent_session_ids": {
+        "qwen": "75da0166-bcd1-4e0b-8c9b-72657eeb4826",
+        "opencode": null
+      },
+      "title": "Chat Boundary",
+      "project_path": "C:\\Users\\kevin\\AppData\\Local\\Temp\\tmp613o4f_w",
+      "created_at": "2026-07-03T13:13:28.450170+00:00",
+      "updated_at": "2026-07-03T13:13:28.764603+00:00"
+    },
+    {
+      "id": "7a3232bc-2f24-42e2-bd8a-87025927b80f",
+      "qwen_session_id": "7a3232bc-2f24-42e2-bd8a-87025927b80f",
+      "agent_session_ids": {
+        "qwen": "7a3232bc-2f24-42e2-bd8a-87025927b80f",
+        "opencode": null
+      },
+      "title": "Idempotent Chat",
+      "project_path": "C:\\Users\\kevin\\AppData\\Local\\Temp\\tmpeed4ll07",
+      "created_at": "2026-07-03T13:13:27.960946+00:00",
+      "updated_at": "2026-07-03T13:13:28.203115+00:00"
+    },
+    {
+      "id": "aae8a9bd-e46c-4593-b5bf-438961b4203f",
+      "qwen_session_id": "aae8a9bd-e46c-4593-b5bf-438961b4203f",
+      "agent_session_ids": {
+        "qwen": "aae8a9bd-e46c-4593-b5bf-438961b4203f",
+        "opencode": "aae8a9bd-e46c-4593-b5bf-438961b4203f"
+      },
+      "title": "Bubble Sort E2E",
+      "project_path": "C:\\Users\\kevin\\AppData\\Local\\Temp\\tmp2yj_h0un\\bubble-project",
+      "created_at": "2026-07-03T12:50:22.543597+00:00",
+      "updated_at": "2026-07-03T12:50:22.543597+00:00"
     },
     {
       "id": "56eca212-9092-4615-8cf9-4c79c6cf7506",
@@ -995,21 +1055,334 @@
         "duration_ms": 41,
         "repaired_tool_call": false
       }
+    },
+    {
+      "id": "25ccc834-124d-47d1-8892-8494733c6a9b",
+      "session_id": "7a3232bc-2f24-42e2-bd8a-87025927b80f",
+      "role": "user",
+      "content": "hello once",
+      "created_at": "2026-07-03T13:13:28.017582+00:00",
+      "kind": "chat",
+      "client_request_id": "req-1",
+      "status": "completed"
+    },
+    {
+      "id": "eaa9f74e-cf1b-4862-9a6f-bc85583bbbc9",
+      "session_id": "7a3232bc-2f24-42e2-bd8a-87025927b80f",
+      "role": "assistant",
+      "content": "idempotent answer",
+      "created_at": "2026-07-03T13:13:28.055667+00:00",
+      "kind": "chat",
+      "client_request_id": "req-1",
+      "status": "completed",
+      "updated_at": "2026-07-03T13:13:28.203115+00:00",
+      "trace": {
+        "agent": "opencode",
+        "provider_health": {
+          "type": null,
+          "mock": null,
+          "reuse_session": true,
+          "timeout_sec": null,
+          "exists": null
+        },
+        "session_reused": true,
+        "agent_session_id": null,
+        "prompt_chars": 10,
+        "output_chars": 17,
+        "duration_ms": 88,
+        "repaired_tool_call": false
+      }
+    },
+    {
+      "id": "d45a2aac-42c5-4709-9241-8f1bd5bb5c84",
+      "session_id": "75da0166-bcd1-4e0b-8c9b-72657eeb4826",
+      "role": "user",
+      "kind": "requirement",
+      "content": "workflow-only requirement",
+      "created_at": "2026-07-03T13:13:28.488254+00:00",
+      "status": "completed"
+    },
+    {
+      "id": "53a50ca3-5da9-4f74-b490-7318c2a373d8",
+      "session_id": "75da0166-bcd1-4e0b-8c9b-72657eeb4826",
+      "role": "user",
+      "content": "chat follow up",
+      "created_at": "2026-07-03T13:13:28.575164+00:00",
+      "kind": "chat",
+      "status": "completed"
+    },
+    {
+      "id": "32e71030-dd20-42de-9ba4-3fce04fb5e61",
+      "session_id": "75da0166-bcd1-4e0b-8c9b-72657eeb4826",
+      "role": "assistant",
+      "content": "chat answer",
+      "created_at": "2026-07-03T13:13:28.622036+00:00",
+      "kind": "chat",
+      "status": "completed",
+      "updated_at": "2026-07-03T13:13:28.764603+00:00",
+      "trace": {
+        "agent": "opencode",
+        "provider_health": {
+          "type": null,
+          "mock": null,
+          "reuse_session": false,
+          "timeout_sec": null,
+          "exists": null
+        },
+        "session_reused": true,
+        "agent_session_id": null,
+        "prompt_chars": 31,
+        "output_chars": 11,
+        "duration_ms": 85,
+        "repaired_tool_call": false
+      }
+    },
+    {
+      "id": "1f97163a-e3c3-4695-809b-ced3c99c1fca",
+      "session_id": "f2f180a8-5c4b-440d-bc0c-0a9337e9ec3b",
+      "role": "user",
+      "content": "are you opencode CLI?",
+      "created_at": "2026-07-03T13:13:29.095862+00:00",
+      "kind": "chat",
+      "status": "completed"
+    },
+    {
+      "id": "dcbda4c7-60f1-404d-9420-7a22170fd1a5",
+      "session_id": "f2f180a8-5c4b-440d-bc0c-0a9337e9ec3b",
+      "role": "assistant",
+      "content": "I am an agent running through OpenCode CLI.",
+      "created_at": "2026-07-03T13:13:29.136501+00:00",
+      "kind": "chat",
+      "status": "completed",
+      "updated_at": "2026-07-03T13:13:29.304456+00:00",
+      "trace": {
+        "agent": "opencode",
+        "provider_health": {
+          "type": null,
+          "mock": null,
+          "reuse_session": true,
+          "timeout_sec": null,
+          "exists": null
+        },
+        "session_reused": true,
+        "agent_session_id": null,
+        "prompt_chars": 21,
+        "output_chars": 43,
+        "duration_ms": 88,
+        "repaired_tool_call": true
+      }
+    },
+    {
+      "id": "a7fd5ee1-ea92-44f6-b607-932b63177c51",
+      "session_id": "95379333-c20a-4b33-b465-24490a9dd795",
+      "role": "user",
+      "content": "hello",
+      "created_at": "2026-07-03T13:13:29.604242+00:00",
+      "kind": "chat",
+      "status": "completed"
+    },
+    {
+      "id": "92910afd-4fe3-48f6-961e-bbe449a0de3c",
+      "session_id": "95379333-c20a-4b33-b465-24490a9dd795",
+      "role": "assistant",
+      "content": "opencode answer",
+      "created_at": "2026-07-03T13:13:29.645256+00:00",
+      "kind": "chat",
+      "status": "completed",
+      "updated_at": "2026-07-03T13:13:29.865798+00:00",
+      "trace": {
+        "agent": "opencode",
+        "provider_health": {
+          "type": null,
+          "mock": null,
+          "reuse_session": true,
+          "timeout_sec": null,
+          "exists": null
+        },
+        "session_reused": true,
+        "agent_session_id": null,
+        "prompt_chars": 5,
+        "output_chars": 15,
+        "duration_ms": 157,
+        "repaired_tool_call": false
+      }
     }
   ],
   "runs": [
     {
-      "id": "6faf89b4-3e87-4704-ac03-9178c241c5b5",
-      "session_id": "9e70d5ea-393a-4f93-bb32-e359f108487c",
-      "qwen_session_id": "9e70d5ea-393a-4f93-bb32-e359f108487c",
+      "id": "c9cb0824-eb46-44f1-92c7-b3fbf9b05c10",
+      "session_id": "9bc83841-6749-4d07-b19d-afa8bf6cc943",
+      "qwen_session_id": "9bc83841-6749-4d07-b19d-afa8bf6cc943",
       "agent_session_ids": {
-        "qwen": "9e70d5ea-393a-4f93-bb32-e359f108487c",
-        "opencode": "9e70d5ea-393a-4f93-bb32-e359f108487c"
+        "qwen": "9bc83841-6749-4d07-b19d-afa8bf6cc943",
+        "opencode": "9bc83841-6749-4d07-b19d-afa8bf6cc943"
       },
-      "status": "running",
-      "error": null,
-      "workspace": "C:\\Users\\kevin\\AppData\\Local\\Temp\\tmppre_p8a9\\yaml-crud-project\\.ai-workflow\\runs\\session-9e70d5ea-393a-4f93-bb32-e359f108487c\\run-6faf89b4-3e87-4704-ac03-9178c241c5b5",
-      "project_path": "C:\\Users\\kevin\\AppData\\Local\\Temp\\tmppre_p8a9\\yaml-crud-project",
+      "status": "failed",
+      "error": "WorkflowError: Retry stopped: raw_artifact already reached max retries (0/0). Last failure from raw_artifact: raw_artifact: project changes were required, but no files changed under Project Path: C:\\Users\\kevin\\AppData\\Local\\Temp\\tmp7wwimbpa",
+      "workspace": "C:\\Users\\kevin\\AppData\\Local\\Temp\\tmp7wwimbpa\\.ai-workflow\\runs\\session-9bc83841-6749-4d07-b19d-afa8bf6cc943\\run-c9cb0824-eb46-44f1-92c7-b3fbf9b05c10",
+      "project_path": "C:\\Users\\kevin\\AppData\\Local\\Temp\\tmp7wwimbpa",
+      "workflow_id": "project-diff-gate-workflow",
+      "workflow_folder": "system-controlled-qwen",
+      "workflow_name": "project-diff-gate-workflow",
+      "skill_root": "",
+      "agent": null,
+      "test_command": null,
+      "validation_script": null,
+      "steps": [
+        {
+          "key": "raw_artifact",
+          "title": "Raw Artifact",
+          "kind": "agent",
+          "type": "ai",
+          "agent": "",
+          "status": "failed",
+          "started_at": "2026-07-03T13:14:15.103690+00:00",
+          "ended_at": "2026-07-03T13:14:15.500481+00:00",
+          "error": "Retry stopped: raw_artifact already reached max retries (0/0). Last failure from raw_artifact: raw_artifact: project changes were required, but no files changed under Project Path: C:\\Users\\kevin\\AppData\\Local\\Temp\\tmp7wwimbpa",
+          "error_code": "PROJECT_DIFF_MISSING",
+          "retry_count": 0,
+          "config": {
+            "id": "test-raw_artifact",
+            "key": "raw_artifact",
+            "name": "Raw Artifact",
+            "type": "ai",
+            "enabled": true,
+            "templatePath": "prompts/01_spec.md",
+            "filename": "raw.md",
+            "outputFile": "raw.md",
+            "maxRetries": 0,
+            "failAction": "same_step",
+            "retryFromStepKey": "",
+            "allowInteraction": false,
+            "expectedFiles": [
+              "raw.md"
+            ],
+            "function": "",
+            "reviewMode": "none",
+            "timeoutEnabled": false,
+            "timeoutMinutes": 0,
+            "injectFailureFeedback": true,
+            "contextArtifacts": [],
+            "requireProjectChanges": true
+          },
+          "max_retries": 0,
+          "retry_from_step_key": "",
+          "fail_action": "same_step",
+          "allow_interaction": false,
+          "thinking": false,
+          "pause_after_step": false,
+          "events": [
+            {
+              "time": "2026-07-03T13:14:15.161018+00:00",
+              "ts": "2026-07-03T13:14:15.161018+00:00",
+              "step_key": "raw_artifact",
+              "stepKey": "raw_artifact",
+              "kind": "started",
+              "type": "started",
+              "message": "raw_artifact: started"
+            },
+            {
+              "time": "2026-07-03T13:14:15.449390+00:00",
+              "ts": "2026-07-03T13:14:15.449390+00:00",
+              "step_key": "raw_artifact",
+              "stepKey": "raw_artifact",
+              "kind": "failed",
+              "type": "failed",
+              "message": "raw_artifact: project changes were required, but no files changed under Project Path: C:\\Users\\kevin\\AppData\\Local\\Temp\\tmp7wwimbpa"
+            }
+          ],
+          "last_event": "raw_artifact: project changes were required, but no files changed under Project Path: C:\\Users\\kevin\\AppData\\Local\\Temp\\tmp7wwimbpa"
+        }
+      ],
+      "artifacts": [
+        {
+          "id": "c9cb0824-eb46-44f1-92c7-b3fbf9b05c10:requirement.md",
+          "name": "requirement.md",
+          "path": "requirement.md",
+          "size": 36,
+          "updated_at": "2026-07-03T13:14:15.631004+00:00"
+        },
+        {
+          "id": "c9cb0824-eb46-44f1-92c7-b3fbf9b05c10:.workflow|run-log.md",
+          "name": "run-log.md",
+          "path": ".workflow/run-log.md",
+          "size": 1939,
+          "updated_at": "2026-07-03T13:14:15.631004+00:00"
+        },
+        {
+          "id": "c9cb0824-eb46-44f1-92c7-b3fbf9b05c10:.workflow|run-summary.md",
+          "name": "run-summary.md",
+          "path": ".workflow/run-summary.md",
+          "size": 1292,
+          "updated_at": "2026-07-03T13:14:15.631004+00:00"
+        },
+        {
+          "id": "c9cb0824-eb46-44f1-92c7-b3fbf9b05c10:.workflow|run-trace.json",
+          "name": "run-trace.json",
+          "path": ".workflow/run-trace.json",
+          "size": 3833,
+          "updated_at": "2026-07-03T13:14:15.631004+00:00"
+        },
+        {
+          "id": "c9cb0824-eb46-44f1-92c7-b3fbf9b05c10:.workflow|state.json",
+          "name": "state.json",
+          "path": ".workflow/state.json",
+          "size": 5516,
+          "updated_at": "2026-07-03T13:14:15.631004+00:00"
+        },
+        {
+          "id": "c9cb0824-eb46-44f1-92c7-b3fbf9b05c10:prompts|raw_artifact.md",
+          "name": "raw_artifact.md",
+          "path": "prompts/raw_artifact.md",
+          "size": 2874,
+          "updated_at": "2026-07-03T13:14:15.631004+00:00"
+        },
+        {
+          "id": "c9cb0824-eb46-44f1-92c7-b3fbf9b05c10:output|raw.md",
+          "name": "raw.md",
+          "path": "output/raw.md",
+          "size": 40,
+          "updated_at": "2026-07-03T13:14:15.631983+00:00"
+        }
+      ],
+      "timeline": [
+        {
+          "time": "2026-07-03T13:14:15.161018+00:00",
+          "ts": "2026-07-03T13:14:15.161018+00:00",
+          "step_key": "raw_artifact",
+          "stepKey": "raw_artifact",
+          "kind": "started",
+          "type": "started",
+          "message": "raw_artifact: started"
+        },
+        {
+          "time": "2026-07-03T13:14:15.449390+00:00",
+          "ts": "2026-07-03T13:14:15.449390+00:00",
+          "step_key": "raw_artifact",
+          "stepKey": "raw_artifact",
+          "kind": "failed",
+          "type": "failed",
+          "message": "raw_artifact: project changes were required, but no files changed under Project Path: C:\\Users\\kevin\\AppData\\Local\\Temp\\tmp7wwimbpa"
+        }
+      ],
+      "created_at": "2026-07-03T13:14:14.916687+00:00",
+      "updated_at": "2026-07-03T13:14:15.631983+00:00",
+      "started_at": "2026-07-03T13:14:15.054179+00:00",
+      "ended_at": "2026-07-03T13:14:15.564602+00:00",
+      "error_code": "PROJECT_DIFF_MISSING"
+    },
+    {
+      "id": "19a30cba-d757-41ab-ab12-4fc415ef6671",
+      "session_id": "aae8a9bd-e46c-4593-b5bf-438961b4203f",
+      "qwen_session_id": "aae8a9bd-e46c-4593-b5bf-438961b4203f",
+      "agent_session_ids": {
+        "qwen": "aae8a9bd-e46c-4593-b5bf-438961b4203f",
+        "opencode": "aae8a9bd-e46c-4593-b5bf-438961b4203f"
+      },
+      "status": "failed",
+      "error": "Workflow server restarted before this run completed.",
+      "workspace": "C:\\Users\\kevin\\AppData\\Local\\Temp\\tmp2yj_h0un\\bubble-project\\.ai-workflow\\runs\\session-aae8a9bd-e46c-4593-b5bf-438961b4203f\\run-19a30cba-d757-41ab-ab12-4fc415ef6671",
+      "project_path": "C:\\Users\\kevin\\AppData\\Local\\Temp\\tmp2yj_h0un\\bubble-project",
       "workflow_id": "general-auto-development",
       "workflow_folder": "general-auto-development",
       "workflow_name": "General Auto Development",
@@ -1023,9 +1396,9 @@
           "kind": "agent",
           "type": "ai",
           "agent": "qwen",
-          "status": "running",
-          "started_at": "2026-07-03T12:50:30.298833+00:00",
-          "ended_at": null,
+          "status": "passed",
+          "started_at": "2026-07-03T12:50:22.882445+00:00",
+          "ended_at": "2026-07-03T12:50:23.759533+00:00",
           "error": null,
           "error_code": null,
           "retry_count": 0,
@@ -1084,16 +1457,25 @@
           "pause_after_step": false,
           "events": [
             {
-              "time": "2026-07-03T12:50:30.378909+00:00",
-              "ts": "2026-07-03T12:50:30.378909+00:00",
+              "time": "2026-07-03T12:50:22.942013+00:00",
+              "ts": "2026-07-03T12:50:22.942013+00:00",
               "step_key": "prepare_project",
               "stepKey": "prepare_project",
               "kind": "started",
               "type": "started",
               "message": "prepare_project: started"
+            },
+            {
+              "time": "2026-07-03T12:50:23.805291+00:00",
+              "ts": "2026-07-03T12:50:23.805291+00:00",
+              "step_key": "prepare_project",
+              "stepKey": "prepare_project",
+              "kind": "passed",
+              "type": "passed",
+              "message": "prepare_project: passed"
             }
           ],
-          "last_event": "prepare_project: started"
+          "last_event": "prepare_project: passed"
         },
         {
           "key": "plan_tasks",
@@ -1101,9 +1483,9 @@
           "kind": "agent",
           "type": "ai",
           "agent": "qwen",
-          "status": "pending",
-          "started_at": null,
-          "ended_at": null,
+          "status": "passed",
+          "started_at": "2026-07-03T12:50:23.859534+00:00",
+          "ended_at": "2026-07-03T12:50:24.803346+00:00",
           "error": null,
           "error_code": null,
           "retry_count": 0,
@@ -1149,7 +1531,7 @@
             "keepSameSession": true,
             "injectFailureFeedback": true,
             "stopAfterFailures": 3,
-            "templateContent": "Create a practical implementation task plan.\n\nRequirement:\n{{requirement}}\n\nArchitecture:\n{{architecture}}\n\nProject profile:\n{{project_profile}}\n\nValidation script for this run:\n{{validation_script}}\n\nGuidance:\n{{guidance}}\n\nFailure feedback:\n{{failure_feedback}}\n\nPlanning rules:\n- Do not ask the user questions unless the requirement has no actionable task at all.\n- User instructions and provided config files are the source of truth. Follow explicit user-provided steps, file paths, formats, and validation expectations before applying defaults.\n- If the user restricts allowed tools, libraries, commands, languages, or frameworks, preserve those restrictions in the plan and do not substitute alternatives.\n- Use reasonable defaults only for minor missing details and record them in the plan.\n- Split the work into small tasks, but do not over-split. Prefer 3 to 8 tasks, and never more than 12 unless the request is truly large.\n- Every task must have clear acceptance criteria.\n- Build production changes before Generate Tests so the model does not mix test blocks into Build.\n- For data/config tasks, treat requested project artifacts such as YAML/JSON/config output files as Build-owned deliverables.\n- If a config file defines CRUD operations, include source file, operation config file, and expected output path in the plan.\n- Treat validation scripts such as `驗證.py`, `validation.py`, `validate.py`, `verify.py`, and `check.py` as protected acceptance tools when they already exist or are provided for this run.\n- Do not list a validation script under task Files or ask Build to modify it unless the user explicitly asks to create or change that validator itself.\n- Include a focused automated test strategy after Build and before external validation.\n- Include validation coverage for the user-provided validation script when one is provided.\n- Keep TODO content concise and actionable.\n- If multiple TODO files would help, list the recommended file names, but keep this step output in `todo.md`.\n- Do not invent a new architecture when the project already has one.\n\nOutput only Markdown with this exact structure:\n\n# Todo\n\nStatus: READY\n\n## Requirement\n- ...\n\n## Task Index\n| ID | Task | Acceptance Criteria |\n| --- | --- | --- |\n| TASK-001 | ... | AC-001 |\n\n## Tasks\n\n### TASK-001: ...\n- Goal:\n- Files:\n- Acceptance Criteria:\n  - AC-001:\n- Validation:\n  - Covered by Build, Generate Tests, Run Test, and external validation when configured or present.\n\n## Execution SOP\n- Step 1: Build production code only.\n- Step 2: Generate tests only under the project test folder.\n- Step 3: Run automated tests.\n- Step 4: Run external validation when a script is configured or present.\n- Step 5: Retry Build with concrete failure feedback when tests or validation fail.\n\n## External Validation\n- If a validation script path is provided above, that exact script is mandatory for this run.\n- If no validation script path is provided, fallback script names are: `驗證.py`, `validation.py`, `validate.py`, `verify.py`, `check.py`\n- Existing validation scripts are read-only to Build and must be run after automated tests.\n- If no validation script is configured or found, external validation is skipped with a PASS result.\n- The workflow must run automated tests before this external validation step.\n- The workflow must retry Build when tests or validation fail.\n\n## Assumptions\n- Use the detected project language and structure.\n- Use standard implementation details only when the requirement does not specify minor choices.\n\n## Suggested Todo Files\n- None unless the task is large enough to benefit from split TODO files.\n",
+            "templateContent": "Create a practical implementation task plan.\n\nRequirement:\n{{requirement}}\n\nArchitecture:\n{{architecture}}\n\nProject profile:\n{{project_profile}}\n\nValidation script for this run:\n{{validation_script}}\n\nGuidance:\n{{guidance}}\n\nFailure feedback:\n{{failure_feedback}}\n\nPlanning rules:\n- Do not ask the user questions unless the requirement has no actionable task at all.\n- User instructions and provided config files are the source of truth. Follow explicit user-provided steps, file paths, formats, and validation expectations before applying defaults.\n- If the user restricts allowed tools, libraries, commands, languages, or frameworks, preserve those restrictions in the plan and do not substitute alternatives.\n- Use reasonable defaults only for minor missing details and record them in the plan.\n- Split the work into small tasks, but do not over-split. Prefer 3 to 8 tasks, and never more than 12 unless the request is truly large.\n- Every task must have clear acceptance criteria.\n- Build production changes before Generate Tests so the model does not mix test blocks into Build.\n- For data/config tasks, treat requested project artifacts such as YAML/JSON/config output files as Build-owned deliverables.\n- If a config file defines CRUD operations, include source file, operation config file, and expected output path in the plan.\n- Treat validation scripts such as `validation.py`, `validate.py`, `verify.py`, and `check.py` as protected acceptance tools when they already exist or are provided for this run.\n- Do not list a validation script under task Files or ask Build to modify it unless the user explicitly asks to create or change that validator itself.\n- Include a focused automated test strategy after Build and before external validation.\n- Include validation coverage for the user-provided validation script when one is provided.\n- Keep TODO content concise and actionable.\n- If multiple TODO files would help, list the recommended file names, but keep this step output in `todo.md`.\n- Do not invent a new architecture when the project already has one.\n\nOutput only Markdown with this exact structure:\n\n# Todo\n\nStatus: READY\n\n## Requirement\n- ...\n\n## Task Index\n| ID | Task | Acceptance Criteria |\n| --- | --- | --- |\n| TASK-001 | ... | AC-001 |\n\n## Tasks\n\n### TASK-001: ...\n- Goal:\n- Files:\n- Acceptance Criteria:\n  - AC-001:\n- Validation:\n  - Covered by Build, Generate Tests, Run Test, and external validation when configured or present.\n\n## Execution SOP\n- Step 1: Build production code only.\n- Step 2: Generate tests only under the project test folder.\n- Step 3: Run automated tests.\n- Step 4: Run external validation when a script is configured or present.\n- Step 5: Retry Build with concrete failure feedback when tests or validation fail.\n\n## External Validation\n- If a validation script path is provided above, that exact script is mandatory for this run.\n- If no validation script path is provided, fallback script names are: `validation.py`, `validate.py`, `verify.py`, `check.py`\n- Existing validation scripts are read-only to Build and must be run after automated tests.\n- If no validation script is configured or found, external validation is skipped with a PASS result.\n- The workflow must run automated tests before this external validation step.\n- The workflow must retry Build when tests or validation fail.\n\n## Assumptions\n- Use the detected project language and structure.\n- Use standard implementation details only when the requirement does not specify minor choices.\n\n## Suggested Todo Files\n- None unless the task is large enough to benefit from split TODO files.\n",
             "approvalMessage": "",
             "agentOptions": {},
             "requireProjectChanges": false
@@ -1160,7 +1542,27 @@
           "allow_interaction": false,
           "thinking": false,
           "pause_after_step": false,
-          "events": []
+          "events": [
+            {
+              "time": "2026-07-03T12:50:23.929840+00:00",
+              "ts": "2026-07-03T12:50:23.929840+00:00",
+              "step_key": "plan_tasks",
+              "stepKey": "plan_tasks",
+              "kind": "started",
+              "type": "started",
+              "message": "plan_tasks: started"
+            },
+            {
+              "time": "2026-07-03T12:50:24.867794+00:00",
+              "ts": "2026-07-03T12:50:24.867794+00:00",
+              "step_key": "plan_tasks",
+              "stepKey": "plan_tasks",
+              "kind": "passed",
+              "type": "passed",
+              "message": "plan_tasks: passed"
+            }
+          ],
+          "last_event": "plan_tasks: passed"
         },
         {
           "key": "implementation_review",
@@ -1168,9 +1570,9 @@
           "kind": "python",
           "type": "python",
           "agent": "qwen",
-          "status": "pending",
-          "started_at": null,
-          "ended_at": null,
+          "status": "passed",
+          "started_at": "2026-07-03T12:50:24.948845+00:00",
+          "ended_at": "2026-07-03T12:50:25.169538+00:00",
           "error": null,
           "error_code": null,
           "retry_count": 0,
@@ -1227,7 +1629,27 @@
           "allow_interaction": false,
           "thinking": false,
           "pause_after_step": false,
-          "events": []
+          "events": [
+            {
+              "time": "2026-07-03T12:50:25.025987+00:00",
+              "ts": "2026-07-03T12:50:25.025987+00:00",
+              "step_key": "implementation_review",
+              "stepKey": "implementation_review",
+              "kind": "started",
+              "type": "started",
+              "message": "implementation_review: started"
+            },
+            {
+              "time": "2026-07-03T12:50:25.240817+00:00",
+              "ts": "2026-07-03T12:50:25.240817+00:00",
+              "step_key": "implementation_review",
+              "stepKey": "implementation_review",
+              "kind": "passed",
+              "type": "passed",
+              "message": "implementation_review: passed"
+            }
+          ],
+          "last_event": "implementation_review: passed"
         },
         {
           "key": "build",
@@ -1235,9 +1657,9 @@
           "kind": "agent",
           "type": "ai",
           "agent": "qwen",
-          "status": "pending",
-          "started_at": null,
-          "ended_at": null,
+          "status": "passed",
+          "started_at": "2026-07-03T12:50:25.317964+00:00",
+          "ended_at": "2026-07-03T12:50:26.145533+00:00",
           "error": null,
           "error_code": null,
           "retry_count": 0,
@@ -1283,7 +1705,7 @@
             "keepSameSession": true,
             "injectFailureFeedback": true,
             "stopAfterFailures": 12,
-            "templateContent": "Implement the approved task plan.\n\nRequirement:\n{{requirement}}\n\nArchitecture:\n{{architecture}}\n\nTodo:\n{{todo}}\n\nLatest test result:\n{{test_result}}\n\nImplementation review:\n{{step_output}}\n\nProject profile:\n{{project_profile}}\n\nFailure feedback from previous retries:\n{{failure_feedback}}\n\nRules:\n- Output Build-owned FILE/CONTENT/END_FILE blocks only: production code, project config, data files, or other requested project artifacts.\n- Existing validation scripts such as `驗證.py`, `validation.py`, `validate.py`, `verify.py`, and `check.py` are protected acceptance tools. Do not output FILE blocks for them unless the user explicitly asked to implement or modify the validator itself.\n- Do not output explanations outside FILE blocks.\n- Do not create or modify test files in this Build step.\n- Keep generated edits inside Project path only.\n- You may use read-only context from outside Project path, but never write outside Project path.\n- User instructions and provided config files are the source of truth. Follow explicit user-provided steps, file paths, data formats, and output locations before applying defaults.\n- If the user restricts allowed tools, libraries, commands, languages, or frameworks, obey that restriction exactly. Do not introduce a different tool or dependency for convenience.\n- Follow the existing architecture, language, source layout, naming style, and dependency style.\n- For YAML/JSON/config CRUD tasks, inspect the source file and operation config, then write the requested output file exactly at the requested relative path.\n- If the requirement asks to produce a YAML/JSON/config output file and does not explicitly ask for a reusable tool or script, do not create helper Python/JavaScript/etc. files. Write the requested data/config output artifact only.\n- If the project has `.qwen/settings.json` or `opencode.json`, treat them as project-local agent settings only.\n- Fix every concrete validation failure mentioned in the failure feedback.\n- Do not wait for generated tests; implement the production code now based on Requirement, Architecture, Todo, and feedback.\n- Do not mark the workflow complete; automated tests and external validation handling will decide pass/fail.\n\nPath rules:\n- FILE paths must be relative to Project path.\n- Do not use absolute paths.\n- Do not use `..`.\n- Do not write into `.ai-workflow`.\n- Do not write into `.qwen-workflow`.\n- Do not write into `tests/`.\n- Do not write files named `test_*.py`.\n\nOutput format:\n\nFILE: relative/path.ext\nCONTENT:\n...\nEND_FILE\n",
+            "templateContent": "Implement the approved task plan.\n\nRequirement:\n{{requirement}}\n\nArchitecture:\n{{architecture}}\n\nTodo:\n{{todo}}\n\nLatest test result:\n{{test_result}}\n\nImplementation review:\n{{step_output}}\n\nProject profile:\n{{project_profile}}\n\nFailure feedback from previous retries:\n{{failure_feedback}}\n\nRules:\n- Output Build-owned FILE/CONTENT/END_FILE blocks only: production code, project config, data files, or other requested project artifacts.\n- Existing validation scripts such as `validation.py`, `validate.py`, `verify.py`, and `check.py` are protected acceptance tools. Do not output FILE blocks for them unless the user explicitly asked to implement or modify the validator itself.\n- Do not output explanations outside FILE blocks.\n- Do not create or modify test files in this Build step.\n- Keep generated edits inside Project path only.\n- You may use read-only context from outside Project path, but never write outside Project path.\n- User instructions and provided config files are the source of truth. Follow explicit user-provided steps, file paths, data formats, and output locations before applying defaults.\n- If the user restricts allowed tools, libraries, commands, languages, or frameworks, obey that restriction exactly. Do not introduce a different tool or dependency for convenience.\n- Follow the existing architecture, language, source layout, naming style, and dependency style.\n- For YAML/JSON/config CRUD tasks, inspect the source file and operation config, then write the requested output file exactly at the requested relative path.\n- If the requirement asks to produce a YAML/JSON/config output file and does not explicitly ask for a reusable tool or script, do not create helper Python/JavaScript/etc. files. Write the requested data/config output artifact only.\n- If the project has `.qwen/settings.json` or `opencode.json`, treat them as project-local agent settings only.\n- Fix every concrete validation failure mentioned in the failure feedback.\n- Do not wait for generated tests; implement the production code now based on Requirement, Architecture, Todo, and feedback.\n- Do not mark the workflow complete; automated tests and external validation handling will decide pass/fail.\n\nPath rules:\n- FILE paths must be relative to Project path.\n- Do not use absolute paths.\n- Do not use `..`.\n- Do not write into `.ai-workflow`.\n- Do not write into `.qwen-workflow`.\n- Do not write into `tests/`.\n- Do not write files named `test_*.py`.\n\nOutput format:\n\nFILE: relative/path.ext\nCONTENT:\n...\nEND_FILE\n",
             "approvalMessage": "",
             "agentOptions": {},
             "requireProjectChanges": true
@@ -1294,7 +1716,27 @@
           "allow_interaction": false,
           "thinking": false,
           "pause_after_step": false,
-          "events": []
+          "events": [
+            {
+              "time": "2026-07-03T12:50:25.399010+00:00",
+              "ts": "2026-07-03T12:50:25.399010+00:00",
+              "step_key": "build",
+              "stepKey": "build",
+              "kind": "started",
+              "type": "started",
+              "message": "build: started"
+            },
+            {
+              "time": "2026-07-03T12:50:26.212911+00:00",
+              "ts": "2026-07-03T12:50:26.212911+00:00",
+              "step_key": "build",
+              "stepKey": "build",
+              "kind": "passed",
+              "type": "passed",
+              "message": "build: passed"
+            }
+          ],
+          "last_event": "build: passed"
         },
         {
           "key": "generate_tests",
@@ -1302,9 +1744,9 @@
           "kind": "agent",
           "type": "ai",
           "agent": "qwen",
-          "status": "pending",
-          "started_at": null,
-          "ended_at": null,
+          "status": "passed",
+          "started_at": "2026-07-03T12:50:26.289078+00:00",
+          "ended_at": "2026-07-03T12:50:26.976535+00:00",
           "error": null,
           "error_code": null,
           "retry_count": 0,
@@ -1366,7 +1808,27 @@
           "allow_interaction": false,
           "thinking": false,
           "pause_after_step": false,
-          "events": []
+          "events": [
+            {
+              "time": "2026-07-03T12:50:26.364269+00:00",
+              "ts": "2026-07-03T12:50:26.364269+00:00",
+              "step_key": "generate_tests",
+              "stepKey": "generate_tests",
+              "kind": "started",
+              "type": "started",
+              "message": "generate_tests: started"
+            },
+            {
+              "time": "2026-07-03T12:50:27.041960+00:00",
+              "ts": "2026-07-03T12:50:27.041960+00:00",
+              "step_key": "generate_tests",
+              "stepKey": "generate_tests",
+              "kind": "passed",
+              "type": "passed",
+              "message": "generate_tests: passed"
+            }
+          ],
+          "last_event": "generate_tests: passed"
         },
         {
           "key": "run_test",
@@ -1374,9 +1836,9 @@
           "kind": "python",
           "type": "python",
           "agent": "qwen",
-          "status": "pending",
-          "started_at": null,
-          "ended_at": null,
+          "status": "passed",
+          "started_at": "2026-07-03T12:50:27.118127+00:00",
+          "ended_at": "2026-07-03T12:50:27.811442+00:00",
           "error": null,
           "error_code": null,
           "retry_count": 0,
@@ -1444,7 +1906,27 @@
           "allow_interaction": false,
           "thinking": false,
           "pause_after_step": false,
-          "events": []
+          "events": [
+            {
+              "time": "2026-07-03T12:50:27.197224+00:00",
+              "ts": "2026-07-03T12:50:27.197224+00:00",
+              "step_key": "run_test",
+              "stepKey": "run_test",
+              "kind": "started",
+              "type": "started",
+              "message": "run_test: started"
+            },
+            {
+              "time": "2026-07-03T12:50:27.876868+00:00",
+              "ts": "2026-07-03T12:50:27.876868+00:00",
+              "step_key": "run_test",
+              "stepKey": "run_test",
+              "kind": "passed",
+              "type": "passed",
+              "message": "run_test: passed"
+            }
+          ],
+          "last_event": "run_test: passed"
         },
         {
           "key": "run_external_validation",
@@ -1452,9 +1934,9 @@
           "kind": "python",
           "type": "python",
           "agent": "qwen",
-          "status": "pending",
-          "started_at": null,
-          "ended_at": null,
+          "status": "passed",
+          "started_at": "2026-07-03T12:50:27.951081+00:00",
+          "ended_at": "2026-07-03T12:50:28.192280+00:00",
           "error": null,
           "error_code": null,
           "retry_count": 0,
@@ -1502,7 +1984,7 @@
             "keepSameSession": true,
             "injectFailureFeedback": true,
             "stopAfterFailures": 3,
-            "templateContent": "This is a Python function step.\n\nIt runs the project validation script for this run when one is configured or present.\n\nRun-specific validation script:\n{{validation_script}}\n\nIf the run-specific validation script is empty, fallback script names are used in priority order:\n- `驗證.py`\n- `validation.py`\n- `validate.py`\n- `verify.py`\n- `check.py`\n\nThis step passes with a skipped result if no validation script is configured or found.\nThis step must fail if the validation script exits with a non-zero status.\nWhen this step fails, the workflow retries from Build with the full validation output as feedback.\n",
+            "templateContent": "This is a Python function step.\n\nIt runs the project validation script for this run when one is configured or present.\n\nRun-specific validation script:\n{{validation_script}}\n\nIf the run-specific validation script is empty, fallback script names are used in priority order:\n- `validation.py`\n- `validate.py`\n- `verify.py`\n- `check.py`\n\nThis step passes with a skipped result if no validation script is configured or found.\nThis step must fail if the validation script exits with a non-zero status.\nWhen this step fails, the workflow retries from Build with the full validation output as feedback.\n",
             "approvalMessage": "",
             "agentOptions": {},
             "requireProjectChanges": false
@@ -1513,7 +1995,27 @@
           "allow_interaction": false,
           "thinking": false,
           "pause_after_step": false,
-          "events": []
+          "events": [
+            {
+              "time": "2026-07-03T12:50:28.026272+00:00",
+              "ts": "2026-07-03T12:50:28.026272+00:00",
+              "step_key": "run_external_validation",
+              "stepKey": "run_external_validation",
+              "kind": "started",
+              "type": "started",
+              "message": "run_external_validation: started"
+            },
+            {
+              "time": "2026-07-03T12:50:28.258395+00:00",
+              "ts": "2026-07-03T12:50:28.258395+00:00",
+              "step_key": "run_external_validation",
+              "stepKey": "run_external_validation",
+              "kind": "passed",
+              "type": "passed",
+              "message": "run_external_validation: passed"
+            }
+          ],
+          "last_event": "run_external_validation: passed"
         },
         {
           "key": "final_review",
@@ -1521,9 +2023,9 @@
           "kind": "python",
           "type": "python",
           "agent": "qwen",
-          "status": "pending",
-          "started_at": null,
-          "ended_at": null,
+          "status": "passed",
+          "started_at": "2026-07-03T12:50:28.333124+00:00",
+          "ended_at": "2026-07-03T12:50:28.575296+00:00",
           "error": null,
           "error_code": null,
           "retry_count": 0,
@@ -1580,7 +2082,18 @@
           "allow_interaction": false,
           "thinking": false,
           "pause_after_step": false,
-          "events": []
+          "events": [
+            {
+              "time": "2026-07-03T12:50:28.418082+00:00",
+              "ts": "2026-07-03T12:50:28.418082+00:00",
+              "step_key": "final_review",
+              "stepKey": "final_review",
+              "kind": "started",
+              "type": "started",
+              "message": "final_review: started"
+            }
+          ],
+          "last_event": "final_review: started"
         },
         {
           "key": "final_gate",
@@ -1654,56 +2167,266 @@
       ],
       "artifacts": [
         {
-          "id": "6faf89b4-3e87-4704-ac03-9178c241c5b5:requirement.md",
+          "id": "19a30cba-d757-41ab-ab12-4fc415ef6671:requirement.md",
           "name": "requirement.md",
           "path": "requirement.md",
-          "size": 96,
-          "updated_at": "2026-07-03T12:50:30.500567+00:00"
+          "size": 47,
+          "updated_at": "2026-07-03T12:50:28.505966+00:00"
         },
         {
-          "id": "6faf89b4-3e87-4704-ac03-9178c241c5b5:prompts|skill-context.md",
+          "id": "19a30cba-d757-41ab-ab12-4fc415ef6671:prompts|skill-context.md",
           "name": "skill-context.md",
           "path": "prompts/skill-context.md",
-          "size": 440,
-          "updated_at": "2026-07-03T12:50:30.501543+00:00"
+          "size": 729,
+          "updated_at": "2026-07-03T12:50:28.505966+00:00"
         },
         {
-          "id": "6faf89b4-3e87-4704-ac03-9178c241c5b5:.workflow|run-log.md",
+          "id": "19a30cba-d757-41ab-ab12-4fc415ef6671:.workflow|run-log.md",
           "name": "run-log.md",
           "path": ".workflow/run-log.md",
-          "size": 1116,
-          "updated_at": "2026-07-03T12:50:30.501543+00:00"
+          "size": 7352,
+          "updated_at": "2026-07-03T12:50:28.505966+00:00"
         },
         {
-          "id": "6faf89b4-3e87-4704-ac03-9178c241c5b5:.workflow|state.json",
+          "id": "19a30cba-d757-41ab-ab12-4fc415ef6671:.workflow|state.json",
           "name": "state.json",
           "path": ".workflow/state.json",
-          "size": 33989,
-          "updated_at": "2026-07-03T12:50:30.501543+00:00"
+          "size": 33983,
+          "updated_at": "2026-07-03T12:50:28.506943+00:00"
         },
         {
-          "id": "6faf89b4-3e87-4704-ac03-9178c241c5b5:prompts|prepare_project.md",
+          "id": "19a30cba-d757-41ab-ab12-4fc415ef6671:prompts|prepare_project.md",
           "name": "prepare_project.md",
           "path": "prompts/prepare_project.md",
-          "size": 3415,
-          "updated_at": "2026-07-03T12:50:30.501543+00:00"
+          "size": 3324,
+          "updated_at": "2026-07-03T12:50:28.506943+00:00"
+        },
+        {
+          "id": "19a30cba-d757-41ab-ab12-4fc415ef6671:output|architecture.md",
+          "name": "architecture.md",
+          "path": "output/architecture.md",
+          "size": 901,
+          "updated_at": "2026-07-03T12:50:28.506943+00:00"
+        },
+        {
+          "id": "19a30cba-d757-41ab-ab12-4fc415ef6671:prompts|plan_tasks.md",
+          "name": "plan_tasks.md",
+          "path": "prompts/plan_tasks.md",
+          "size": 5648,
+          "updated_at": "2026-07-03T12:50:28.506943+00:00"
+        },
+        {
+          "id": "19a30cba-d757-41ab-ab12-4fc415ef6671:output|todo.md",
+          "name": "todo.md",
+          "path": "output/todo.md",
+          "size": 868,
+          "updated_at": "2026-07-03T12:50:28.506943+00:00"
+        },
+        {
+          "id": "19a30cba-d757-41ab-ab12-4fc415ef6671:output|implementation-review.md",
+          "name": "implementation-review.md",
+          "path": "output/implementation-review.md",
+          "size": 368,
+          "updated_at": "2026-07-03T12:50:28.506943+00:00"
+        },
+        {
+          "id": "19a30cba-d757-41ab-ab12-4fc415ef6671:prompts|build.md",
+          "name": "build.md",
+          "path": "prompts/build.md",
+          "size": 5412,
+          "updated_at": "2026-07-03T12:50:28.506943+00:00"
+        },
+        {
+          "id": "19a30cba-d757-41ab-ab12-4fc415ef6671:output|build-result.md",
+          "name": "build-result.md",
+          "path": "output/build-result.md",
+          "size": 573,
+          "updated_at": "2026-07-03T12:50:28.507919+00:00"
+        },
+        {
+          "id": "19a30cba-d757-41ab-ab12-4fc415ef6671:prompts|generate_tests.md",
+          "name": "generate_tests.md",
+          "path": "prompts/generate_tests.md",
+          "size": 5646,
+          "updated_at": "2026-07-03T12:50:28.507919+00:00"
+        },
+        {
+          "id": "19a30cba-d757-41ab-ab12-4fc415ef6671:output|test-plan.md",
+          "name": "test-plan.md",
+          "path": "output/test-plan.md",
+          "size": 462,
+          "updated_at": "2026-07-03T12:50:28.507919+00:00"
+        },
+        {
+          "id": "19a30cba-d757-41ab-ab12-4fc415ef6671:output|test-result.md",
+          "name": "test-result.md",
+          "path": "output/test-result.md",
+          "size": 470,
+          "updated_at": "2026-07-03T12:50:28.507919+00:00"
+        },
+        {
+          "id": "19a30cba-d757-41ab-ab12-4fc415ef6671:output|external-validation-result.md",
+          "name": "external-validation-result.md",
+          "path": "output/external-validation-result.md",
+          "size": 779,
+          "updated_at": "2026-07-03T12:50:28.507919+00:00"
+        },
+        {
+          "id": "19a30cba-d757-41ab-ab12-4fc415ef6671:output|final-review.md",
+          "name": "final-review.md",
+          "path": "output/final-review.md",
+          "size": 677,
+          "updated_at": "2026-07-03T12:50:28.507919+00:00"
+        },
+        {
+          "id": "19a30cba-d757-41ab-ab12-4fc415ef6671:output|run_external_validation-result.md",
+          "name": "run_external_validation-result.md",
+          "path": "output/run_external_validation-result.md",
+          "size": 762,
+          "updated_at": "2026-07-03T12:50:28.508895+00:00"
         }
       ],
       "timeline": [
         {
-          "time": "2026-07-03T12:50:30.378909+00:00",
-          "ts": "2026-07-03T12:50:30.378909+00:00",
+          "time": "2026-07-03T12:50:22.942013+00:00",
+          "ts": "2026-07-03T12:50:22.942013+00:00",
           "step_key": "prepare_project",
           "stepKey": "prepare_project",
           "kind": "started",
           "type": "started",
           "message": "prepare_project: started"
+        },
+        {
+          "time": "2026-07-03T12:50:23.805291+00:00",
+          "ts": "2026-07-03T12:50:23.805291+00:00",
+          "step_key": "prepare_project",
+          "stepKey": "prepare_project",
+          "kind": "passed",
+          "type": "passed",
+          "message": "prepare_project: passed"
+        },
+        {
+          "time": "2026-07-03T12:50:23.929840+00:00",
+          "ts": "2026-07-03T12:50:23.929840+00:00",
+          "step_key": "plan_tasks",
+          "stepKey": "plan_tasks",
+          "kind": "started",
+          "type": "started",
+          "message": "plan_tasks: started"
+        },
+        {
+          "time": "2026-07-03T12:50:24.867794+00:00",
+          "ts": "2026-07-03T12:50:24.867794+00:00",
+          "step_key": "plan_tasks",
+          "stepKey": "plan_tasks",
+          "kind": "passed",
+          "type": "passed",
+          "message": "plan_tasks: passed"
+        },
+        {
+          "time": "2026-07-03T12:50:25.025987+00:00",
+          "ts": "2026-07-03T12:50:25.025987+00:00",
+          "step_key": "implementation_review",
+          "stepKey": "implementation_review",
+          "kind": "started",
+          "type": "started",
+          "message": "implementation_review: started"
+        },
+        {
+          "time": "2026-07-03T12:50:25.240817+00:00",
+          "ts": "2026-07-03T12:50:25.240817+00:00",
+          "step_key": "implementation_review",
+          "stepKey": "implementation_review",
+          "kind": "passed",
+          "type": "passed",
+          "message": "implementation_review: passed"
+        },
+        {
+          "time": "2026-07-03T12:50:25.399010+00:00",
+          "ts": "2026-07-03T12:50:25.399010+00:00",
+          "step_key": "build",
+          "stepKey": "build",
+          "kind": "started",
+          "type": "started",
+          "message": "build: started"
+        },
+        {
+          "time": "2026-07-03T12:50:26.212911+00:00",
+          "ts": "2026-07-03T12:50:26.212911+00:00",
+          "step_key": "build",
+          "stepKey": "build",
+          "kind": "passed",
+          "type": "passed",
+          "message": "build: passed"
+        },
+        {
+          "time": "2026-07-03T12:50:26.364269+00:00",
+          "ts": "2026-07-03T12:50:26.364269+00:00",
+          "step_key": "generate_tests",
+          "stepKey": "generate_tests",
+          "kind": "started",
+          "type": "started",
+          "message": "generate_tests: started"
+        },
+        {
+          "time": "2026-07-03T12:50:27.041960+00:00",
+          "ts": "2026-07-03T12:50:27.041960+00:00",
+          "step_key": "generate_tests",
+          "stepKey": "generate_tests",
+          "kind": "passed",
+          "type": "passed",
+          "message": "generate_tests: passed"
+        },
+        {
+          "time": "2026-07-03T12:50:27.197224+00:00",
+          "ts": "2026-07-03T12:50:27.197224+00:00",
+          "step_key": "run_test",
+          "stepKey": "run_test",
+          "kind": "started",
+          "type": "started",
+          "message": "run_test: started"
+        },
+        {
+          "time": "2026-07-03T12:50:27.876868+00:00",
+          "ts": "2026-07-03T12:50:27.876868+00:00",
+          "step_key": "run_test",
+          "stepKey": "run_test",
+          "kind": "passed",
+          "type": "passed",
+          "message": "run_test: passed"
+        },
+        {
+          "time": "2026-07-03T12:50:28.026272+00:00",
+          "ts": "2026-07-03T12:50:28.026272+00:00",
+          "step_key": "run_external_validation",
+          "stepKey": "run_external_validation",
+          "kind": "started",
+          "type": "started",
+          "message": "run_external_validation: started"
+        },
+        {
+          "time": "2026-07-03T12:50:28.258395+00:00",
+          "ts": "2026-07-03T12:50:28.258395+00:00",
+          "step_key": "run_external_validation",
+          "stepKey": "run_external_validation",
+          "kind": "passed",
+          "type": "passed",
+          "message": "run_external_validation: passed"
+        },
+        {
+          "time": "2026-07-03T12:50:28.418082+00:00",
+          "ts": "2026-07-03T12:50:28.418082+00:00",
+          "step_key": "final_review",
+          "stepKey": "final_review",
+          "kind": "started",
+          "type": "started",
+          "message": "final_review: started"
         }
       ],
-      "created_at": "2026-07-03T12:50:30.001003+00:00",
-      "updated_at": "2026-07-03T12:50:30.502520+00:00",
-      "started_at": "2026-07-03T12:50:30.221692+00:00",
-      "ended_at": null
+      "created_at": "2026-07-03T12:50:22.686167+00:00",
+      "updated_at": "2026-07-03T13:13:05.129822+00:00",
+      "started_at": "2026-07-03T12:50:22.829712+00:00",
+      "ended_at": "2026-07-03T13:13:05.129822+00:00"
     },
     {
       "id": "59f12649-3375-4217-bbb9-c42ce5db2804",
@@ -1865,7 +2588,7 @@
             "keepSameSession": true,
             "injectFailureFeedback": true,
             "stopAfterFailures": 3,
-            "templateContent": "Create a practical implementation task plan.\n\nRequirement:\n{{requirement}}\n\nArchitecture:\n{{architecture}}\n\nProject profile:\n{{project_profile}}\n\nValidation script for this run:\n{{validation_script}}\n\nGuidance:\n{{guidance}}\n\nFailure feedback:\n{{failure_feedback}}\n\nPlanning rules:\n- Do not ask the user questions unless the requirement has no actionable task at all.\n- User instructions and provided config files are the source of truth. Follow explicit user-provided steps, file paths, formats, and validation expectations before applying defaults.\n- If the user restricts allowed tools, libraries, commands, languages, or frameworks, preserve those restrictions in the plan and do not substitute alternatives.\n- Use reasonable defaults only for minor missing details and record them in the plan.\n- Split the work into small tasks, but do not over-split. Prefer 3 to 8 tasks, and never more than 12 unless the request is truly large.\n- Every task must have clear acceptance criteria.\n- Build production changes before Generate Tests so the model does not mix test blocks into Build.\n- For data/config tasks, treat requested project artifacts such as YAML/JSON/config output files as Build-owned deliverables.\n- If a config file defines CRUD operations, include source file, operation config file, and expected output path in the plan.\n- Include a focused automated test strategy after Build and before external validation.\n- Include validation coverage for the user-provided validation script when one is provided.\n- Keep TODO content concise and actionable.\n- If multiple TODO files would help, list the recommended file names, but keep this step output in `todo.md`.\n- Do not invent a new architecture when the project already has one.\n\nOutput only Markdown with this exact structure:\n\n# Todo\n\nStatus: READY\n\n## Requirement\n- ...\n\n## Task Index\n| ID | Task | Acceptance Criteria |\n| --- | --- | --- |\n| TASK-001 | ... | AC-001 |\n\n## Tasks\n\n### TASK-001: ...\n- Goal:\n- Files:\n- Acceptance Criteria:\n  - AC-001:\n- Validation:\n  - Covered by Build, Generate Tests, Run Test, and external validation when configured or present.\n\n## Execution SOP\n- Step 1: Build production code only.\n- Step 2: Generate tests only under the project test folder.\n- Step 3: Run automated tests.\n- Step 4: Run external validation when a script is configured or present.\n- Step 5: Retry Build with concrete failure feedback when tests or validation fail.\n\n## External Validation\n- If a validation script path is provided above, that exact script is mandatory for this run.\n- If no validation script path is provided, fallback script names are: `驗證.py`, `validation.py`, `validate.py`, `verify.py`, `check.py`\n- If no validation script is configured or found, external validation is skipped with a PASS result.\n- The workflow must run automated tests before this external validation step.\n- The workflow must retry Build when tests or validation fail.\n\n## Assumptions\n- Use the detected project language and structure.\n- Use standard implementation details only when the requirement does not specify minor choices.\n\n## Suggested Todo Files\n- None unless the task is large enough to benefit from split TODO files.\n",
+            "templateContent": "Create a practical implementation task plan.\n\nRequirement:\n{{requirement}}\n\nArchitecture:\n{{architecture}}\n\nProject profile:\n{{project_profile}}\n\nValidation script for this run:\n{{validation_script}}\n\nGuidance:\n{{guidance}}\n\nFailure feedback:\n{{failure_feedback}}\n\nPlanning rules:\n- Do not ask the user questions unless the requirement has no actionable task at all.\n- User instructions and provided config files are the source of truth. Follow explicit user-provided steps, file paths, formats, and validation expectations before applying defaults.\n- If the user restricts allowed tools, libraries, commands, languages, or frameworks, preserve those restrictions in the plan and do not substitute alternatives.\n- Use reasonable defaults only for minor missing details and record them in the plan.\n- Split the work into small tasks, but do not over-split. Prefer 3 to 8 tasks, and never more than 12 unless the request is truly large.\n- Every task must have clear acceptance criteria.\n- Build production changes before Generate Tests so the model does not mix test blocks into Build.\n- For data/config tasks, treat requested project artifacts such as YAML/JSON/config output files as Build-owned deliverables.\n- If a config file defines CRUD operations, include source file, operation config file, and expected output path in the plan.\n- Include a focused automated test strategy after Build and before external validation.\n- Include validation coverage for the user-provided validation script when one is provided.\n- Keep TODO content concise and actionable.\n- If multiple TODO files would help, list the recommended file names, but keep this step output in `todo.md`.\n- Do not invent a new architecture when the project already has one.\n\nOutput only Markdown with this exact structure:\n\n# Todo\n\nStatus: READY\n\n## Requirement\n- ...\n\n## Task Index\n| ID | Task | Acceptance Criteria |\n| --- | --- | --- |\n| TASK-001 | ... | AC-001 |\n\n## Tasks\n\n### TASK-001: ...\n- Goal:\n- Files:\n- Acceptance Criteria:\n  - AC-001:\n- Validation:\n  - Covered by Build, Generate Tests, Run Test, and external validation when configured or present.\n\n## Execution SOP\n- Step 1: Build production code only.\n- Step 2: Generate tests only under the project test folder.\n- Step 3: Run automated tests.\n- Step 4: Run external validation when a script is configured or present.\n- Step 5: Retry Build with concrete failure feedback when tests or validation fail.\n\n## External Validation\n- If a validation script path is provided above, that exact script is mandatory for this run.\n- If no validation script path is provided, fallback script names are: `validation.py`, `validate.py`, `verify.py`, `check.py`\n- If no validation script is configured or found, external validation is skipped with a PASS result.\n- The workflow must run automated tests before this external validation step.\n- The workflow must retry Build when tests or validation fail.\n\n## Assumptions\n- Use the detected project language and structure.\n- Use standard implementation details only when the requirement does not specify minor choices.\n\n## Suggested Todo Files\n- None unless the task is large enough to benefit from split TODO files.\n",
             "approvalMessage": "",
             "agentOptions": {},
             "requireProjectChanges": false
@@ -2680,7 +3403,7 @@
             "keepSameSession": true,
             "injectFailureFeedback": true,
             "stopAfterFailures": 3,
-            "templateContent": "This is a Python function step.\n\nIt runs the project validation script for this run when one is configured or present.\n\nRun-specific validation script:\n{{validation_script}}\n\nIf the run-specific validation script is empty, fallback script names are used in priority order:\n- `驗證.py`\n- `validation.py`\n- `validate.py`\n- `verify.py`\n- `check.py`\n\nThis step passes with a skipped result if no validation script is configured or found.\nThis step must fail if the validation script exits with a non-zero status.\nWhen this step fails, the workflow retries from Build with the full validation output as feedback.\n",
+            "templateContent": "This is a Python function step.\n\nIt runs the project validation script for this run when one is configured or present.\n\nRun-specific validation script:\n{{validation_script}}\n\nIf the run-specific validation script is empty, fallback script names are used in priority order:\n- `validation.py`\n- `validate.py`\n- `verify.py`\n- `check.py`\n\nThis step passes with a skipped result if no validation script is configured or found.\nThis step must fail if the validation script exits with a non-zero status.\nWhen this step fails, the workflow retries from Build with the full validation output as feedback.\n",
             "approvalMessage": "",
             "agentOptions": {},
             "requireProjectChanges": false
@@ -3622,7 +4345,7 @@
             "keepSameSession": true,
             "injectFailureFeedback": true,
             "stopAfterFailures": 3,
-            "templateContent": "Create a practical implementation task plan.\n\nRequirement:\n{{requirement}}\n\nArchitecture:\n{{architecture}}\n\nProject profile:\n{{project_profile}}\n\nValidation script for this run:\n{{validation_script}}\n\nGuidance:\n{{guidance}}\n\nFailure feedback:\n{{failure_feedback}}\n\nPlanning rules:\n- Do not ask the user questions unless the requirement has no actionable task at all.\n- User instructions and provided config files are the source of truth. Follow explicit user-provided steps, file paths, formats, and validation expectations before applying defaults.\n- If the user restricts allowed tools, libraries, commands, languages, or frameworks, preserve those restrictions in the plan and do not substitute alternatives.\n- Use reasonable defaults only for minor missing details and record them in the plan.\n- Split the work into small tasks, but do not over-split. Prefer 3 to 8 tasks, and never more than 12 unless the request is truly large.\n- Every task must have clear acceptance criteria.\n- Build production changes before Generate Tests so the model does not mix test blocks into Build.\n- For data/config tasks, treat requested project artifacts such as YAML/JSON/config output files as Build-owned deliverables.\n- If a config file defines CRUD operations, include source file, operation config file, and expected output path in the plan.\n- Include a focused automated test strategy after Build and before external validation.\n- Include validation coverage for the user-provided validation script when one is provided.\n- Keep TODO content concise and actionable.\n- If multiple TODO files would help, list the recommended file names, but keep this step output in `todo.md`.\n- Do not invent a new architecture when the project already has one.\n\nOutput only Markdown with this exact structure:\n\n# Todo\n\nStatus: READY\n\n## Requirement\n- ...\n\n## Task Index\n| ID | Task | Acceptance Criteria |\n| --- | --- | --- |\n| TASK-001 | ... | AC-001 |\n\n## Tasks\n\n### TASK-001: ...\n- Goal:\n- Files:\n- Acceptance Criteria:\n  - AC-001:\n- Validation:\n  - Covered by Build, Generate Tests, Run Test, and external validation when configured or present.\n\n## Execution SOP\n- Step 1: Build production code only.\n- Step 2: Generate tests only under the project test folder.\n- Step 3: Run automated tests.\n- Step 4: Run external validation when a script is configured or present.\n- Step 5: Retry Build with concrete failure feedback when tests or validation fail.\n\n## External Validation\n- If a validation script path is provided above, that exact script is mandatory for this run.\n- If no validation script path is provided, fallback script names are: `驗證.py`, `validation.py`, `validate.py`, `verify.py`, `check.py`\n- If no validation script is configured or found, external validation is skipped with a PASS result.\n- The workflow must run automated tests before this external validation step.\n- The workflow must retry Build when tests or validation fail.\n\n## Assumptions\n- Use the detected project language and structure.\n- Use standard implementation details only when the requirement does not specify minor choices.\n\n## Suggested Todo Files\n- None unless the task is large enough to benefit from split TODO files.\n",
+            "templateContent": "Create a practical implementation task plan.\n\nRequirement:\n{{requirement}}\n\nArchitecture:\n{{architecture}}\n\nProject profile:\n{{project_profile}}\n\nValidation script for this run:\n{{validation_script}}\n\nGuidance:\n{{guidance}}\n\nFailure feedback:\n{{failure_feedback}}\n\nPlanning rules:\n- Do not ask the user questions unless the requirement has no actionable task at all.\n- User instructions and provided config files are the source of truth. Follow explicit user-provided steps, file paths, formats, and validation expectations before applying defaults.\n- If the user restricts allowed tools, libraries, commands, languages, or frameworks, preserve those restrictions in the plan and do not substitute alternatives.\n- Use reasonable defaults only for minor missing details and record them in the plan.\n- Split the work into small tasks, but do not over-split. Prefer 3 to 8 tasks, and never more than 12 unless the request is truly large.\n- Every task must have clear acceptance criteria.\n- Build production changes before Generate Tests so the model does not mix test blocks into Build.\n- For data/config tasks, treat requested project artifacts such as YAML/JSON/config output files as Build-owned deliverables.\n- If a config file defines CRUD operations, include source file, operation config file, and expected output path in the plan.\n- Include a focused automated test strategy after Build and before external validation.\n- Include validation coverage for the user-provided validation script when one is provided.\n- Keep TODO content concise and actionable.\n- If multiple TODO files would help, list the recommended file names, but keep this step output in `todo.md`.\n- Do not invent a new architecture when the project already has one.\n\nOutput only Markdown with this exact structure:\n\n# Todo\n\nStatus: READY\n\n## Requirement\n- ...\n\n## Task Index\n| ID | Task | Acceptance Criteria |\n| --- | --- | --- |\n| TASK-001 | ... | AC-001 |\n\n## Tasks\n\n### TASK-001: ...\n- Goal:\n- Files:\n- Acceptance Criteria:\n  - AC-001:\n- Validation:\n  - Covered by Build, Generate Tests, Run Test, and external validation when configured or present.\n\n## Execution SOP\n- Step 1: Build production code only.\n- Step 2: Generate tests only under the project test folder.\n- Step 3: Run automated tests.\n- Step 4: Run external validation when a script is configured or present.\n- Step 5: Retry Build with concrete failure feedback when tests or validation fail.\n\n## External Validation\n- If a validation script path is provided above, that exact script is mandatory for this run.\n- If no validation script path is provided, fallback script names are: `validation.py`, `validate.py`, `verify.py`, `check.py`\n- If no validation script is configured or found, external validation is skipped with a PASS result.\n- The workflow must run automated tests before this external validation step.\n- The workflow must retry Build when tests or validation fail.\n\n## Assumptions\n- Use the detected project language and structure.\n- Use standard implementation details only when the requirement does not specify minor choices.\n\n## Suggested Todo Files\n- None unless the task is large enough to benefit from split TODO files.\n",
             "approvalMessage": "",
             "agentOptions": {},
             "requireProjectChanges": false
@@ -4361,7 +5084,7 @@
             "keepSameSession": true,
             "injectFailureFeedback": true,
             "stopAfterFailures": 3,
-            "templateContent": "This is a Python function step.\n\nIt runs the project validation script for this run when one is configured or present.\n\nRun-specific validation script:\n{{validation_script}}\n\nIf the run-specific validation script is empty, fallback script names are used in priority order:\n- `驗證.py`\n- `validation.py`\n- `validate.py`\n- `verify.py`\n- `check.py`\n\nThis step passes with a skipped result if no validation script is configured or found.\nThis step must fail if the validation script exits with a non-zero status.\nWhen this step fails, the workflow retries from Build with the full validation output as feedback.\n",
+            "templateContent": "This is a Python function step.\n\nIt runs the project validation script for this run when one is configured or present.\n\nRun-specific validation script:\n{{validation_script}}\n\nIf the run-specific validation script is empty, fallback script names are used in priority order:\n- `validation.py`\n- `validate.py`\n- `verify.py`\n- `check.py`\n\nThis step passes with a skipped result if no validation script is configured or found.\nThis step must fail if the validation script exits with a non-zero status.\nWhen this step fails, the workflow retries from Build with the full validation output as feedback.\n",
             "approvalMessage": "",
             "agentOptions": {},
             "requireProjectChanges": false
@@ -5122,7 +5845,7 @@
             "keepSameSession": true,
             "injectFailureFeedback": true,
             "stopAfterFailures": 3,
-            "templateContent": "Create a practical implementation task plan.\n\nRequirement:\n{{requirement}}\n\nArchitecture:\n{{architecture}}\n\nProject profile:\n{{project_profile}}\n\nValidation script for this run:\n{{validation_script}}\n\nGuidance:\n{{guidance}}\n\nFailure feedback:\n{{failure_feedback}}\n\nPlanning rules:\n- Do not ask the user questions unless the requirement has no actionable task at all.\n- User instructions and provided config files are the source of truth. Follow explicit user-provided steps, file paths, formats, and validation expectations before applying defaults.\n- If the user restricts allowed tools, libraries, commands, languages, or frameworks, preserve those restrictions in the plan and do not substitute alternatives.\n- Use reasonable defaults only for minor missing details and record them in the plan.\n- Split the work into small tasks, but do not over-split. Prefer 3 to 8 tasks, and never more than 12 unless the request is truly large.\n- Every task must have clear acceptance criteria.\n- Build production changes before Generate Tests so the model does not mix test blocks into Build.\n- For data/config tasks, treat requested project artifacts such as YAML/JSON/config output files as Build-owned deliverables.\n- If a config file defines CRUD operations, include source file, operation config file, and expected output path in the plan.\n- Include a focused automated test strategy after Build and before external validation.\n- Include validation coverage for the user-provided validation script when one is provided.\n- Keep TODO content concise and actionable.\n- If multiple TODO files would help, list the recommended file names, but keep this step output in `todo.md`.\n- Do not invent a new architecture when the project already has one.\n\nOutput only Markdown with this exact structure:\n\n# Todo\n\nStatus: READY\n\n## Requirement\n- ...\n\n## Task Index\n| ID | Task | Acceptance Criteria |\n| --- | --- | --- |\n| TASK-001 | ... | AC-001 |\n\n## Tasks\n\n### TASK-001: ...\n- Goal:\n- Files:\n- Acceptance Criteria:\n  - AC-001:\n- Validation:\n  - Covered by Build, Generate Tests, Run Test, and external validation when configured or present.\n\n## Execution SOP\n- Step 1: Build production code only.\n- Step 2: Generate tests only under the project test folder.\n- Step 3: Run automated tests.\n- Step 4: Run external validation when a script is configured or present.\n- Step 5: Retry Build with concrete failure feedback when tests or validation fail.\n\n## External Validation\n- If a validation script path is provided above, that exact script is mandatory for this run.\n- If no validation script path is provided, fallback script names are: `驗證.py`, `validation.py`, `validate.py`, `verify.py`, `check.py`\n- If no validation script is configured or found, external validation is skipped with a PASS result.\n- The workflow must run automated tests before this external validation step.\n- The workflow must retry Build when tests or validation fail.\n\n## Assumptions\n- Use the detected project language and structure.\n- Use standard implementation details only when the requirement does not specify minor choices.\n\n## Suggested Todo Files\n- None unless the task is large enough to benefit from split TODO files.\n",
+            "templateContent": "Create a practical implementation task plan.\n\nRequirement:\n{{requirement}}\n\nArchitecture:\n{{architecture}}\n\nProject profile:\n{{project_profile}}\n\nValidation script for this run:\n{{validation_script}}\n\nGuidance:\n{{guidance}}\n\nFailure feedback:\n{{failure_feedback}}\n\nPlanning rules:\n- Do not ask the user questions unless the requirement has no actionable task at all.\n- User instructions and provided config files are the source of truth. Follow explicit user-provided steps, file paths, formats, and validation expectations before applying defaults.\n- If the user restricts allowed tools, libraries, commands, languages, or frameworks, preserve those restrictions in the plan and do not substitute alternatives.\n- Use reasonable defaults only for minor missing details and record them in the plan.\n- Split the work into small tasks, but do not over-split. Prefer 3 to 8 tasks, and never more than 12 unless the request is truly large.\n- Every task must have clear acceptance criteria.\n- Build production changes before Generate Tests so the model does not mix test blocks into Build.\n- For data/config tasks, treat requested project artifacts such as YAML/JSON/config output files as Build-owned deliverables.\n- If a config file defines CRUD operations, include source file, operation config file, and expected output path in the plan.\n- Include a focused automated test strategy after Build and before external validation.\n- Include validation coverage for the user-provided validation script when one is provided.\n- Keep TODO content concise and actionable.\n- If multiple TODO files would help, list the recommended file names, but keep this step output in `todo.md`.\n- Do not invent a new architecture when the project already has one.\n\nOutput only Markdown with this exact structure:\n\n# Todo\n\nStatus: READY\n\n## Requirement\n- ...\n\n## Task Index\n| ID | Task | Acceptance Criteria |\n| --- | --- | --- |\n| TASK-001 | ... | AC-001 |\n\n## Tasks\n\n### TASK-001: ...\n- Goal:\n- Files:\n- Acceptance Criteria:\n  - AC-001:\n- Validation:\n  - Covered by Build, Generate Tests, Run Test, and external validation when configured or present.\n\n## Execution SOP\n- Step 1: Build production code only.\n- Step 2: Generate tests only under the project test folder.\n- Step 3: Run automated tests.\n- Step 4: Run external validation when a script is configured or present.\n- Step 5: Retry Build with concrete failure feedback when tests or validation fail.\n\n## External Validation\n- If a validation script path is provided above, that exact script is mandatory for this run.\n- If no validation script path is provided, fallback script names are: `validation.py`, `validate.py`, `verify.py`, `check.py`\n- If no validation script is configured or found, external validation is skipped with a PASS result.\n- The workflow must run automated tests before this external validation step.\n- The workflow must retry Build when tests or validation fail.\n\n## Assumptions\n- Use the detected project language and structure.\n- Use standard implementation details only when the requirement does not specify minor choices.\n\n## Suggested Todo Files\n- None unless the task is large enough to benefit from split TODO files.\n",
             "approvalMessage": "",
             "agentOptions": {},
             "requireProjectChanges": false
@@ -6009,7 +6732,7 @@
             "keepSameSession": true,
             "injectFailureFeedback": true,
             "stopAfterFailures": 3,
-            "templateContent": "This is a Python function step.\n\nIt runs the project validation script for this run when one is configured or present.\n\nRun-specific validation script:\n{{validation_script}}\n\nIf the run-specific validation script is empty, fallback script names are used in priority order:\n- `驗證.py`\n- `validation.py`\n- `validate.py`\n- `verify.py`\n- `check.py`\n\nThis step passes with a skipped result if no validation script is configured or found.\nThis step must fail if the validation script exits with a non-zero status.\nWhen this step fails, the workflow retries from Build with the full validation output as feedback.\n",
+            "templateContent": "This is a Python function step.\n\nIt runs the project validation script for this run when one is configured or present.\n\nRun-specific validation script:\n{{validation_script}}\n\nIf the run-specific validation script is empty, fallback script names are used in priority order:\n- `validation.py`\n- `validate.py`\n- `verify.py`\n- `check.py`\n\nThis step passes with a skipped result if no validation script is configured or found.\nThis step must fail if the validation script exits with a non-zero status.\nWhen this step fails, the workflow retries from Build with the full validation output as feedback.\n",
             "approvalMessage": "",
             "agentOptions": {},
             "requireProjectChanges": false
@@ -6888,7 +7611,7 @@
             "keepSameSession": true,
             "injectFailureFeedback": true,
             "stopAfterFailures": 3,
-            "templateContent": "Create a practical implementation task plan.\n\nRequirement:\n{{requirement}}\n\nArchitecture:\n{{architecture}}\n\nProject profile:\n{{project_profile}}\n\nValidation script for this run:\n{{validation_script}}\n\nGuidance:\n{{guidance}}\n\nFailure feedback:\n{{failure_feedback}}\n\nPlanning rules:\n- Do not ask the user questions unless the requirement has no actionable task at all.\n- User instructions and provided config files are the source of truth. Follow explicit user-provided steps, file paths, formats, and validation expectations before applying defaults.\n- If the user restricts allowed tools, libraries, commands, languages, or frameworks, preserve those restrictions in the plan and do not substitute alternatives.\n- Use reasonable defaults only for minor missing details and record them in the plan.\n- Split the work into small tasks, but do not over-split. Prefer 3 to 8 tasks, and never more than 12 unless the request is truly large.\n- Every task must have clear acceptance criteria.\n- Build production changes before Generate Tests so the model does not mix test blocks into Build.\n- For data/config tasks, treat requested project artifacts such as YAML/JSON/config output files as Build-owned deliverables.\n- If a config file defines CRUD operations, include source file, operation config file, and expected output path in the plan.\n- Include a focused automated test strategy after Build and before external validation.\n- Include validation coverage for the user-provided validation script when one is provided.\n- Keep TODO content concise and actionable.\n- If multiple TODO files would help, list the recommended file names, but keep this step output in `todo.md`.\n- Do not invent a new architecture when the project already has one.\n\nOutput only Markdown with this exact structure:\n\n# Todo\n\nStatus: READY\n\n## Requirement\n- ...\n\n## Task Index\n| ID | Task | Acceptance Criteria |\n| --- | --- | --- |\n| TASK-001 | ... | AC-001 |\n\n## Tasks\n\n### TASK-001: ...\n- Goal:\n- Files:\n- Acceptance Criteria:\n  - AC-001:\n- Validation:\n  - Covered by Build, Generate Tests, Run Test, and external validation when configured or present.\n\n## Execution SOP\n- Step 1: Build production code only.\n- Step 2: Generate tests only under the project test folder.\n- Step 3: Run automated tests.\n- Step 4: Run external validation when a script is configured or present.\n- Step 5: Retry Build with concrete failure feedback when tests or validation fail.\n\n## External Validation\n- If a validation script path is provided above, that exact script is mandatory for this run.\n- If no validation script path is provided, fallback script names are: `驗證.py`, `validation.py`, `validate.py`, `verify.py`, `check.py`\n- If no validation script is configured or found, external validation is skipped with a PASS result.\n- The workflow must run automated tests before this external validation step.\n- The workflow must retry Build when tests or validation fail.\n\n## Assumptions\n- Use the detected project language and structure.\n- Use standard implementation details only when the requirement does not specify minor choices.\n\n## Suggested Todo Files\n- None unless the task is large enough to benefit from split TODO files.\n",
+            "templateContent": "Create a practical implementation task plan.\n\nRequirement:\n{{requirement}}\n\nArchitecture:\n{{architecture}}\n\nProject profile:\n{{project_profile}}\n\nValidation script for this run:\n{{validation_script}}\n\nGuidance:\n{{guidance}}\n\nFailure feedback:\n{{failure_feedback}}\n\nPlanning rules:\n- Do not ask the user questions unless the requirement has no actionable task at all.\n- User instructions and provided config files are the source of truth. Follow explicit user-provided steps, file paths, formats, and validation expectations before applying defaults.\n- If the user restricts allowed tools, libraries, commands, languages, or frameworks, preserve those restrictions in the plan and do not substitute alternatives.\n- Use reasonable defaults only for minor missing details and record them in the plan.\n- Split the work into small tasks, but do not over-split. Prefer 3 to 8 tasks, and never more than 12 unless the request is truly large.\n- Every task must have clear acceptance criteria.\n- Build production changes before Generate Tests so the model does not mix test blocks into Build.\n- For data/config tasks, treat requested project artifacts such as YAML/JSON/config output files as Build-owned deliverables.\n- If a config file defines CRUD operations, include source file, operation config file, and expected output path in the plan.\n- Include a focused automated test strategy after Build and before external validation.\n- Include validation coverage for the user-provided validation script when one is provided.\n- Keep TODO content concise and actionable.\n- If multiple TODO files would help, list the recommended file names, but keep this step output in `todo.md`.\n- Do not invent a new architecture when the project already has one.\n\nOutput only Markdown with this exact structure:\n\n# Todo\n\nStatus: READY\n\n## Requirement\n- ...\n\n## Task Index\n| ID | Task | Acceptance Criteria |\n| --- | --- | --- |\n| TASK-001 | ... | AC-001 |\n\n## Tasks\n\n### TASK-001: ...\n- Goal:\n- Files:\n- Acceptance Criteria:\n  - AC-001:\n- Validation:\n  - Covered by Build, Generate Tests, Run Test, and external validation when configured or present.\n\n## Execution SOP\n- Step 1: Build production code only.\n- Step 2: Generate tests only under the project test folder.\n- Step 3: Run automated tests.\n- Step 4: Run external validation when a script is configured or present.\n- Step 5: Retry Build with concrete failure feedback when tests or validation fail.\n\n## External Validation\n- If a validation script path is provided above, that exact script is mandatory for this run.\n- If no validation script path is provided, fallback script names are: `validation.py`, `validate.py`, `verify.py`, `check.py`\n- If no validation script is configured or found, external validation is skipped with a PASS result.\n- The workflow must run automated tests before this external validation step.\n- The workflow must retry Build when tests or validation fail.\n\n## Assumptions\n- Use the detected project language and structure.\n- Use standard implementation details only when the requirement does not specify minor choices.\n\n## Suggested Todo Files\n- None unless the task is large enough to benefit from split TODO files.\n",
             "approvalMessage": "",
             "agentOptions": {},
             "requireProjectChanges": false
@@ -8517,7 +9240,7 @@
             "keepSameSession": true,
             "injectFailureFeedback": true,
             "stopAfterFailures": 3,
-            "templateContent": "This is a Python function step.\n\nIt runs the project validation script for this run when one is configured or present.\n\nRun-specific validation script:\n{{validation_script}}\n\nIf the run-specific validation script is empty, fallback script names are used in priority order:\n- `驗證.py`\n- `validation.py`\n- `validate.py`\n- `verify.py`\n- `check.py`\n\nThis step passes with a skipped result if no validation script is configured or found.\nThis step must fail if the validation script exits with a non-zero status.\nWhen this step fails, the workflow retries from Build with the full validation output as feedback.\n",
+            "templateContent": "This is a Python function step.\n\nIt runs the project validation script for this run when one is configured or present.\n\nRun-specific validation script:\n{{validation_script}}\n\nIf the run-specific validation script is empty, fallback script names are used in priority order:\n- `validation.py`\n- `validate.py`\n- `verify.py`\n- `check.py`\n\nThis step passes with a skipped result if no validation script is configured or found.\nThis step must fail if the validation script exits with a non-zero status.\nWhen this step fails, the workflow retries from Build with the full validation output as feedback.\n",
             "approvalMessage": "",
             "agentOptions": {},
             "requireProjectChanges": false
@@ -9982,7 +10705,7 @@
             "keepSameSession": true,
             "injectFailureFeedback": true,
             "stopAfterFailures": 3,
-            "templateContent": "Create a practical implementation task plan.\n\nRequirement:\n{{requirement}}\n\nArchitecture:\n{{architecture}}\n\nProject profile:\n{{project_profile}}\n\nValidation script for this run:\n{{validation_script}}\n\nGuidance:\n{{guidance}}\n\nFailure feedback:\n{{failure_feedback}}\n\nPlanning rules:\n- Do not ask the user questions unless the requirement has no actionable task at all.\n- User instructions and provided config files are the source of truth. Follow explicit user-provided steps, file paths, formats, and validation expectations before applying defaults.\n- If the user restricts allowed tools, libraries, commands, languages, or frameworks, preserve those restrictions in the plan and do not substitute alternatives.\n- Use reasonable defaults only for minor missing details and record them in the plan.\n- Split the work into small tasks, but do not over-split. Prefer 3 to 8 tasks, and never more than 12 unless the request is truly large.\n- Every task must have clear acceptance criteria.\n- Build production changes before Generate Tests so the model does not mix test blocks into Build.\n- For data/config tasks, treat requested project artifacts such as YAML/JSON/config output files as Build-owned deliverables.\n- If a config file defines CRUD operations, include source file, operation config file, and expected output path in the plan.\n- Include a focused automated test strategy after Build and before external validation.\n- Include validation coverage for the user-provided validation script when one is provided.\n- Keep TODO content concise and actionable.\n- If multiple TODO files would help, list the recommended file names, but keep this step output in `todo.md`.\n- Do not invent a new architecture when the project already has one.\n\nOutput only Markdown with this exact structure:\n\n# Todo\n\nStatus: READY\n\n## Requirement\n- ...\n\n## Task Index\n| ID | Task | Acceptance Criteria |\n| --- | --- | --- |\n| TASK-001 | ... | AC-001 |\n\n## Tasks\n\n### TASK-001: ...\n- Goal:\n- Files:\n- Acceptance Criteria:\n  - AC-001:\n- Validation:\n  - Covered by Build, Generate Tests, Run Test, and external validation when configured or present.\n\n## Execution SOP\n- Step 1: Build production code only.\n- Step 2: Generate tests only under the project test folder.\n- Step 3: Run automated tests.\n- Step 4: Run external validation when a script is configured or present.\n- Step 5: Retry Build with concrete failure feedback when tests or validation fail.\n\n## External Validation\n- If a validation script path is provided above, that exact script is mandatory for this run.\n- If no validation script path is provided, fallback script names are: `驗證.py`, `validation.py`, `validate.py`, `verify.py`, `check.py`\n- If no validation script is configured or found, external validation is skipped with a PASS result.\n- The workflow must run automated tests before this external validation step.\n- The workflow must retry Build when tests or validation fail.\n\n## Assumptions\n- Use the detected project language and structure.\n- Use standard implementation details only when the requirement does not specify minor choices.\n\n## Suggested Todo Files\n- None unless the task is large enough to benefit from split TODO files.\n",
+            "templateContent": "Create a practical implementation task plan.\n\nRequirement:\n{{requirement}}\n\nArchitecture:\n{{architecture}}\n\nProject profile:\n{{project_profile}}\n\nValidation script for this run:\n{{validation_script}}\n\nGuidance:\n{{guidance}}\n\nFailure feedback:\n{{failure_feedback}}\n\nPlanning rules:\n- Do not ask the user questions unless the requirement has no actionable task at all.\n- User instructions and provided config files are the source of truth. Follow explicit user-provided steps, file paths, formats, and validation expectations before applying defaults.\n- If the user restricts allowed tools, libraries, commands, languages, or frameworks, preserve those restrictions in the plan and do not substitute alternatives.\n- Use reasonable defaults only for minor missing details and record them in the plan.\n- Split the work into small tasks, but do not over-split. Prefer 3 to 8 tasks, and never more than 12 unless the request is truly large.\n- Every task must have clear acceptance criteria.\n- Build production changes before Generate Tests so the model does not mix test blocks into Build.\n- For data/config tasks, treat requested project artifacts such as YAML/JSON/config output files as Build-owned deliverables.\n- If a config file defines CRUD operations, include source file, operation config file, and expected output path in the plan.\n- Include a focused automated test strategy after Build and before external validation.\n- Include validation coverage for the user-provided validation script when one is provided.\n- Keep TODO content concise and actionable.\n- If multiple TODO files would help, list the recommended file names, but keep this step output in `todo.md`.\n- Do not invent a new architecture when the project already has one.\n\nOutput only Markdown with this exact structure:\n\n# Todo\n\nStatus: READY\n\n## Requirement\n- ...\n\n## Task Index\n| ID | Task | Acceptance Criteria |\n| --- | --- | --- |\n| TASK-001 | ... | AC-001 |\n\n## Tasks\n\n### TASK-001: ...\n- Goal:\n- Files:\n- Acceptance Criteria:\n  - AC-001:\n- Validation:\n  - Covered by Build, Generate Tests, Run Test, and external validation when configured or present.\n\n## Execution SOP\n- Step 1: Build production code only.\n- Step 2: Generate tests only under the project test folder.\n- Step 3: Run automated tests.\n- Step 4: Run external validation when a script is configured or present.\n- Step 5: Retry Build with concrete failure feedback when tests or validation fail.\n\n## External Validation\n- If a validation script path is provided above, that exact script is mandatory for this run.\n- If no validation script path is provided, fallback script names are: `validation.py`, `validate.py`, `verify.py`, `check.py`\n- If no validation script is configured or found, external validation is skipped with a PASS result.\n- The workflow must run automated tests before this external validation step.\n- The workflow must retry Build when tests or validation fail.\n\n## Assumptions\n- Use the detected project language and structure.\n- Use standard implementation details only when the requirement does not specify minor choices.\n\n## Suggested Todo Files\n- None unless the task is large enough to benefit from split TODO files.\n",
             "approvalMessage": "",
             "agentOptions": {},
             "requireProjectChanges": false
@@ -10529,7 +11252,7 @@
             "keepSameSession": true,
             "injectFailureFeedback": true,
             "stopAfterFailures": 3,
-            "templateContent": "This is a Python function step.\n\nIt runs the project validation script for this run when one is configured or present.\n\nRun-specific validation script:\n{{validation_script}}\n\nIf the run-specific validation script is empty, fallback script names are used in priority order:\n- `驗證.py`\n- `validation.py`\n- `validate.py`\n- `verify.py`\n- `check.py`\n\nThis step passes with a skipped result if no validation script is configured or found.\nThis step must fail if the validation script exits with a non-zero status.\nWhen this step fails, the workflow retries from Build with the full validation output as feedback.\n",
+            "templateContent": "This is a Python function step.\n\nIt runs the project validation script for this run when one is configured or present.\n\nRun-specific validation script:\n{{validation_script}}\n\nIf the run-specific validation script is empty, fallback script names are used in priority order:\n- `validation.py`\n- `validate.py`\n- `verify.py`\n- `check.py`\n\nThis step passes with a skipped result if no validation script is configured or found.\nThis step must fail if the validation script exits with a non-zero status.\nWhen this step fails, the workflow retries from Build with the full validation output as feedback.\n",
             "approvalMessage": "",
             "agentOptions": {},
             "requireProjectChanges": false
@@ -11268,7 +11991,7 @@
             "keepSameSession": true,
             "injectFailureFeedback": true,
             "stopAfterFailures": 3,
-            "templateContent": "Create a practical implementation task plan.\n\nRequirement:\n{{requirement}}\n\nArchitecture:\n{{architecture}}\n\nProject profile:\n{{project_profile}}\n\nValidation script for this run:\n{{validation_script}}\n\nGuidance:\n{{guidance}}\n\nFailure feedback:\n{{failure_feedback}}\n\nPlanning rules:\n- Do not ask the user questions unless the requirement has no actionable task at all.\n- User instructions and provided config files are the source of truth. Follow explicit user-provided steps, file paths, formats, and validation expectations before applying defaults.\n- If the user restricts allowed tools, libraries, commands, languages, or frameworks, preserve those restrictions in the plan and do not substitute alternatives.\n- Use reasonable defaults only for minor missing details and record them in the plan.\n- Split the work into small tasks, but do not over-split. Prefer 3 to 8 tasks, and never more than 12 unless the request is truly large.\n- Every task must have clear acceptance criteria.\n- Build production changes before Generate Tests so the model does not mix test blocks into Build.\n- For data/config tasks, treat requested project artifacts such as YAML/JSON/config output files as Build-owned deliverables.\n- If a config file defines CRUD operations, include source file, operation config file, and expected output path in the plan.\n- Include a focused automated test strategy after Build and before external validation.\n- Include validation coverage for the user-provided validation script when one is provided.\n- Keep TODO content concise and actionable.\n- If multiple TODO files would help, list the recommended file names, but keep this step output in `todo.md`.\n- Do not invent a new architecture when the project already has one.\n\nOutput only Markdown with this exact structure:\n\n# Todo\n\nStatus: READY\n\n## Requirement\n- ...\n\n## Task Index\n| ID | Task | Acceptance Criteria |\n| --- | --- | --- |\n| TASK-001 | ... | AC-001 |\n\n## Tasks\n\n### TASK-001: ...\n- Goal:\n- Files:\n- Acceptance Criteria:\n  - AC-001:\n- Validation:\n  - Covered by Build, Generate Tests, Run Test, and external validation when configured or present.\n\n## Execution SOP\n- Step 1: Build production code only.\n- Step 2: Generate tests only under the project test folder.\n- Step 3: Run automated tests.\n- Step 4: Run external validation when a script is configured or present.\n- Step 5: Retry Build with concrete failure feedback when tests or validation fail.\n\n## External Validation\n- If a validation script path is provided above, that exact script is mandatory for this run.\n- If no validation script path is provided, fallback script names are: `驗證.py`, `validation.py`, `validate.py`, `verify.py`, `check.py`\n- If no validation script is configured or found, external validation is skipped with a PASS result.\n- The workflow must run automated tests before this external validation step.\n- The workflow must retry Build when tests or validation fail.\n\n## Assumptions\n- Use the detected project language and structure.\n- Use standard implementation details only when the requirement does not specify minor choices.\n\n## Suggested Todo Files\n- None unless the task is large enough to benefit from split TODO files.\n",
+            "templateContent": "Create a practical implementation task plan.\n\nRequirement:\n{{requirement}}\n\nArchitecture:\n{{architecture}}\n\nProject profile:\n{{project_profile}}\n\nValidation script for this run:\n{{validation_script}}\n\nGuidance:\n{{guidance}}\n\nFailure feedback:\n{{failure_feedback}}\n\nPlanning rules:\n- Do not ask the user questions unless the requirement has no actionable task at all.\n- User instructions and provided config files are the source of truth. Follow explicit user-provided steps, file paths, formats, and validation expectations before applying defaults.\n- If the user restricts allowed tools, libraries, commands, languages, or frameworks, preserve those restrictions in the plan and do not substitute alternatives.\n- Use reasonable defaults only for minor missing details and record them in the plan.\n- Split the work into small tasks, but do not over-split. Prefer 3 to 8 tasks, and never more than 12 unless the request is truly large.\n- Every task must have clear acceptance criteria.\n- Build production changes before Generate Tests so the model does not mix test blocks into Build.\n- For data/config tasks, treat requested project artifacts such as YAML/JSON/config output files as Build-owned deliverables.\n- If a config file defines CRUD operations, include source file, operation config file, and expected output path in the plan.\n- Include a focused automated test strategy after Build and before external validation.\n- Include validation coverage for the user-provided validation script when one is provided.\n- Keep TODO content concise and actionable.\n- If multiple TODO files would help, list the recommended file names, but keep this step output in `todo.md`.\n- Do not invent a new architecture when the project already has one.\n\nOutput only Markdown with this exact structure:\n\n# Todo\n\nStatus: READY\n\n## Requirement\n- ...\n\n## Task Index\n| ID | Task | Acceptance Criteria |\n| --- | --- | --- |\n| TASK-001 | ... | AC-001 |\n\n## Tasks\n\n### TASK-001: ...\n- Goal:\n- Files:\n- Acceptance Criteria:\n  - AC-001:\n- Validation:\n  - Covered by Build, Generate Tests, Run Test, and external validation when configured or present.\n\n## Execution SOP\n- Step 1: Build production code only.\n- Step 2: Generate tests only under the project test folder.\n- Step 3: Run automated tests.\n- Step 4: Run external validation when a script is configured or present.\n- Step 5: Retry Build with concrete failure feedback when tests or validation fail.\n\n## External Validation\n- If a validation script path is provided above, that exact script is mandatory for this run.\n- If no validation script path is provided, fallback script names are: `validation.py`, `validate.py`, `verify.py`, `check.py`\n- If no validation script is configured or found, external validation is skipped with a PASS result.\n- The workflow must run automated tests before this external validation step.\n- The workflow must retry Build when tests or validation fail.\n\n## Assumptions\n- Use the detected project language and structure.\n- Use standard implementation details only when the requirement does not specify minor choices.\n\n## Suggested Todo Files\n- None unless the task is large enough to benefit from split TODO files.\n",
             "approvalMessage": "",
             "agentOptions": {},
             "requireProjectChanges": false
@@ -12311,7 +13034,7 @@
             "keepSameSession": true,
             "injectFailureFeedback": true,
             "stopAfterFailures": 3,
-            "templateContent": "This is a Python function step.\n\nIt runs the project validation script for this run when one is configured or present.\n\nRun-specific validation script:\n{{validation_script}}\n\nIf the run-specific validation script is empty, fallback script names are used in priority order:\n- `驗證.py`\n- `validation.py`\n- `validate.py`\n- `verify.py`\n- `check.py`\n\nThis step passes with a skipped result if no validation script is configured or found.\nThis step must fail if the validation script exits with a non-zero status.\nWhen this step fails, the workflow retries from Build with the full validation output as feedback.\n",
+            "templateContent": "This is a Python function step.\n\nIt runs the project validation script for this run when one is configured or present.\n\nRun-specific validation script:\n{{validation_script}}\n\nIf the run-specific validation script is empty, fallback script names are used in priority order:\n- `validation.py`\n- `validate.py`\n- `verify.py`\n- `check.py`\n\nThis step passes with a skipped result if no validation script is configured or found.\nThis step must fail if the validation script exits with a non-zero status.\nWhen this step fails, the workflow retries from Build with the full validation output as feedback.\n",
             "approvalMessage": "",
             "agentOptions": {},
             "requireProjectChanges": false
@@ -13271,7 +13994,7 @@
             "keepSameSession": true,
             "injectFailureFeedback": true,
             "stopAfterFailures": 3,
-            "templateContent": "Create a practical implementation task plan.\n\nRequirement:\n{{requirement}}\n\nArchitecture:\n{{architecture}}\n\nProject profile:\n{{project_profile}}\n\nValidation script for this run:\n{{validation_script}}\n\nGuidance:\n{{guidance}}\n\nFailure feedback:\n{{failure_feedback}}\n\nPlanning rules:\n- Do not ask the user questions unless the requirement has no actionable task at all.\n- User instructions and provided config files are the source of truth. Follow explicit user-provided steps, file paths, formats, and validation expectations before applying defaults.\n- If the user restricts allowed tools, libraries, commands, languages, or frameworks, preserve those restrictions in the plan and do not substitute alternatives.\n- Use reasonable defaults only for minor missing details and record them in the plan.\n- Split the work into small tasks, but do not over-split. Prefer 3 to 8 tasks, and never more than 12 unless the request is truly large.\n- Every task must have clear acceptance criteria.\n- Build production changes before Generate Tests so the model does not mix test blocks into Build.\n- For data/config tasks, treat requested project artifacts such as YAML/JSON/config output files as Build-owned deliverables.\n- If a config file defines CRUD operations, include source file, operation config file, and expected output path in the plan.\n- Include a focused automated test strategy after Build and before external validation.\n- Include validation coverage for the user-provided validation script when one is provided.\n- Keep TODO content concise and actionable.\n- If multiple TODO files would help, list the recommended file names, but keep this step output in `todo.md`.\n- Do not invent a new architecture when the project already has one.\n\nOutput only Markdown with this exact structure:\n\n# Todo\n\nStatus: READY\n\n## Requirement\n- ...\n\n## Task Index\n| ID | Task | Acceptance Criteria |\n| --- | --- | --- |\n| TASK-001 | ... | AC-001 |\n\n## Tasks\n\n### TASK-001: ...\n- Goal:\n- Files:\n- Acceptance Criteria:\n  - AC-001:\n- Validation:\n  - Covered by Build, Generate Tests, Run Test, and external validation when configured or present.\n\n## Execution SOP\n- Step 1: Build production code only.\n- Step 2: Generate tests only under the project test folder.\n- Step 3: Run automated tests.\n- Step 4: Run external validation when a script is configured or present.\n- Step 5: Retry Build with concrete failure feedback when tests or validation fail.\n\n## External Validation\n- If a validation script path is provided above, that exact script is mandatory for this run.\n- If no validation script path is provided, fallback script names are: `驗證.py`, `validation.py`, `validate.py`, `verify.py`, `check.py`\n- If no validation script is configured or found, external validation is skipped with a PASS result.\n- The workflow must run automated tests before this external validation step.\n- The workflow must retry Build when tests or validation fail.\n\n## Assumptions\n- Use the detected project language and structure.\n- Use standard implementation details only when the requirement does not specify minor choices.\n\n## Suggested Todo Files\n- None unless the task is large enough to benefit from split TODO files.\n",
+            "templateContent": "Create a practical implementation task plan.\n\nRequirement:\n{{requirement}}\n\nArchitecture:\n{{architecture}}\n\nProject profile:\n{{project_profile}}\n\nValidation script for this run:\n{{validation_script}}\n\nGuidance:\n{{guidance}}\n\nFailure feedback:\n{{failure_feedback}}\n\nPlanning rules:\n- Do not ask the user questions unless the requirement has no actionable task at all.\n- User instructions and provided config files are the source of truth. Follow explicit user-provided steps, file paths, formats, and validation expectations before applying defaults.\n- If the user restricts allowed tools, libraries, commands, languages, or frameworks, preserve those restrictions in the plan and do not substitute alternatives.\n- Use reasonable defaults only for minor missing details and record them in the plan.\n- Split the work into small tasks, but do not over-split. Prefer 3 to 8 tasks, and never more than 12 unless the request is truly large.\n- Every task must have clear acceptance criteria.\n- Build production changes before Generate Tests so the model does not mix test blocks into Build.\n- For data/config tasks, treat requested project artifacts such as YAML/JSON/config output files as Build-owned deliverables.\n- If a config file defines CRUD operations, include source file, operation config file, and expected output path in the plan.\n- Include a focused automated test strategy after Build and before external validation.\n- Include validation coverage for the user-provided validation script when one is provided.\n- Keep TODO content concise and actionable.\n- If multiple TODO files would help, list the recommended file names, but keep this step output in `todo.md`.\n- Do not invent a new architecture when the project already has one.\n\nOutput only Markdown with this exact structure:\n\n# Todo\n\nStatus: READY\n\n## Requirement\n- ...\n\n## Task Index\n| ID | Task | Acceptance Criteria |\n| --- | --- | --- |\n| TASK-001 | ... | AC-001 |\n\n## Tasks\n\n### TASK-001: ...\n- Goal:\n- Files:\n- Acceptance Criteria:\n  - AC-001:\n- Validation:\n  - Covered by Build, Generate Tests, Run Test, and external validation when configured or present.\n\n## Execution SOP\n- Step 1: Build production code only.\n- Step 2: Generate tests only under the project test folder.\n- Step 3: Run automated tests.\n- Step 4: Run external validation when a script is configured or present.\n- Step 5: Retry Build with concrete failure feedback when tests or validation fail.\n\n## External Validation\n- If a validation script path is provided above, that exact script is mandatory for this run.\n- If no validation script path is provided, fallback script names are: `validation.py`, `validate.py`, `verify.py`, `check.py`\n- If no validation script is configured or found, external validation is skipped with a PASS result.\n- The workflow must run automated tests before this external validation step.\n- The workflow must retry Build when tests or validation fail.\n\n## Assumptions\n- Use the detected project language and structure.\n- Use standard implementation details only when the requirement does not specify minor choices.\n\n## Suggested Todo Files\n- None unless the task is large enough to benefit from split TODO files.\n",
             "approvalMessage": "",
             "agentOptions": {},
             "requireProjectChanges": false
@@ -13956,7 +14679,7 @@
             "keepSameSession": true,
             "injectFailureFeedback": true,
             "stopAfterFailures": 3,
-            "templateContent": "This is a Python function step.\n\nIt runs the project validation script for this run when one is configured or present.\n\nRun-specific validation script:\n{{validation_script}}\n\nIf the run-specific validation script is empty, fallback script names are used in priority order:\n- `驗證.py`\n- `validation.py`\n- `validate.py`\n- `verify.py`\n- `check.py`\n\nThis step passes with a skipped result if no validation script is configured or found.\nThis step must fail if the validation script exits with a non-zero status.\nWhen this step fails, the workflow retries from Build with the full validation output as feedback.\n",
+            "templateContent": "This is a Python function step.\n\nIt runs the project validation script for this run when one is configured or present.\n\nRun-specific validation script:\n{{validation_script}}\n\nIf the run-specific validation script is empty, fallback script names are used in priority order:\n- `validation.py`\n- `validate.py`\n- `verify.py`\n- `check.py`\n\nThis step passes with a skipped result if no validation script is configured or found.\nThis step must fail if the validation script exits with a non-zero status.\nWhen this step fails, the workflow retries from Build with the full validation output as feedback.\n",
             "approvalMessage": "",
             "agentOptions": {},
             "requireProjectChanges": false
@@ -14791,7 +15514,7 @@
             "keepSameSession": true,
             "injectFailureFeedback": true,
             "stopAfterFailures": 3,
-            "templateContent": "Create a practical implementation task plan.\n\nRequirement:\n{{requirement}}\n\nArchitecture:\n{{architecture}}\n\nProject profile:\n{{project_profile}}\n\nValidation script for this run:\n{{validation_script}}\n\nGuidance:\n{{guidance}}\n\nFailure feedback:\n{{failure_feedback}}\n\nPlanning rules:\n- Do not ask the user questions unless the requirement has no actionable task at all.\n- User instructions and provided config files are the source of truth. Follow explicit user-provided steps, file paths, formats, and validation expectations before applying defaults.\n- If the user restricts allowed tools, libraries, commands, languages, or frameworks, preserve those restrictions in the plan and do not substitute alternatives.\n- Use reasonable defaults only for minor missing details and record them in the plan.\n- Split the work into small tasks, but do not over-split. Prefer 3 to 8 tasks, and never more than 12 unless the request is truly large.\n- Every task must have clear acceptance criteria.\n- Build production changes before Generate Tests so the model does not mix test blocks into Build.\n- For data/config tasks, treat requested project artifacts such as YAML/JSON/config output files as Build-owned deliverables.\n- If a config file defines CRUD operations, include source file, operation config file, and expected output path in the plan.\n- Include a focused automated test strategy after Build and before external validation.\n- Include validation coverage for the user-provided validation script.\n- Keep TODO content concise and actionable.\n- If multiple TODO files would help, list the recommended file names, but keep this step output in `todo.md`.\n- Do not invent a new architecture when the project already has one.\n\nOutput only Markdown with this exact structure:\n\n# Todo\n\nStatus: READY\n\n## Requirement\n- ...\n\n## Task Index\n| ID | Task | Acceptance Criteria |\n| --- | --- | --- |\n| TASK-001 | ... | AC-001 |\n\n## Tasks\n\n### TASK-001: ...\n- Goal:\n- Files:\n- Acceptance Criteria:\n  - AC-001:\n- Validation:\n  - Covered by Build, Generate Tests, Run Test, and the mandatory external validation step.\n\n## Execution SOP\n- Step 1: Build production code only.\n- Step 2: Generate tests only under the project test folder.\n- Step 3: Run automated tests.\n- Step 4: Run mandatory external validation script.\n- Step 5: Retry Build with concrete failure feedback when tests or validation fail.\n\n## External Validation\n- If a validation script path is provided above, that exact script is mandatory for this run.\n- If no validation script path is provided, fallback script names are: `驗證.py`, `validation.py`, `validate.py`, `verify.py`, `check.py`\n- The workflow must stop if no validation script exists.\n- The workflow must run automated tests before this external validation step.\n- The workflow must retry Build when tests or validation fail.\n\n## Assumptions\n- Use the detected project language and structure.\n- Use standard implementation details only when the requirement does not specify minor choices.\n\n## Suggested Todo Files\n- None unless the task is large enough to benefit from split TODO files.\n",
+            "templateContent": "Create a practical implementation task plan.\n\nRequirement:\n{{requirement}}\n\nArchitecture:\n{{architecture}}\n\nProject profile:\n{{project_profile}}\n\nValidation script for this run:\n{{validation_script}}\n\nGuidance:\n{{guidance}}\n\nFailure feedback:\n{{failure_feedback}}\n\nPlanning rules:\n- Do not ask the user questions unless the requirement has no actionable task at all.\n- User instructions and provided config files are the source of truth. Follow explicit user-provided steps, file paths, formats, and validation expectations before applying defaults.\n- If the user restricts allowed tools, libraries, commands, languages, or frameworks, preserve those restrictions in the plan and do not substitute alternatives.\n- Use reasonable defaults only for minor missing details and record them in the plan.\n- Split the work into small tasks, but do not over-split. Prefer 3 to 8 tasks, and never more than 12 unless the request is truly large.\n- Every task must have clear acceptance criteria.\n- Build production changes before Generate Tests so the model does not mix test blocks into Build.\n- For data/config tasks, treat requested project artifacts such as YAML/JSON/config output files as Build-owned deliverables.\n- If a config file defines CRUD operations, include source file, operation config file, and expected output path in the plan.\n- Include a focused automated test strategy after Build and before external validation.\n- Include validation coverage for the user-provided validation script.\n- Keep TODO content concise and actionable.\n- If multiple TODO files would help, list the recommended file names, but keep this step output in `todo.md`.\n- Do not invent a new architecture when the project already has one.\n\nOutput only Markdown with this exact structure:\n\n# Todo\n\nStatus: READY\n\n## Requirement\n- ...\n\n## Task Index\n| ID | Task | Acceptance Criteria |\n| --- | --- | --- |\n| TASK-001 | ... | AC-001 |\n\n## Tasks\n\n### TASK-001: ...\n- Goal:\n- Files:\n- Acceptance Criteria:\n  - AC-001:\n- Validation:\n  - Covered by Build, Generate Tests, Run Test, and the mandatory external validation step.\n\n## Execution SOP\n- Step 1: Build production code only.\n- Step 2: Generate tests only under the project test folder.\n- Step 3: Run automated tests.\n- Step 4: Run mandatory external validation script.\n- Step 5: Retry Build with concrete failure feedback when tests or validation fail.\n\n## External Validation\n- If a validation script path is provided above, that exact script is mandatory for this run.\n- If no validation script path is provided, fallback script names are: `validation.py`, `validate.py`, `verify.py`, `check.py`\n- The workflow must stop if no validation script exists.\n- The workflow must run automated tests before this external validation step.\n- The workflow must retry Build when tests or validation fail.\n\n## Assumptions\n- Use the detected project language and structure.\n- Use standard implementation details only when the requirement does not specify minor choices.\n\n## Suggested Todo Files\n- None unless the task is large enough to benefit from split TODO files.\n",
             "approvalMessage": "",
             "agentOptions": {},
             "requireProjectChanges": false
@@ -15290,12 +16013,12 @@
               "stepKey": "build",
               "kind": "retry",
               "type": "retry",
-              "message": "Retry 10/12 from run_external_validation: No validation script found. Expected: 驗證.py, validation.py, validate.py, verify.py, check.py",
+              "message": "Retry 10/12 from run_external_validation: No validation script found. Expected: validation.py, validate.py, verify.py, check.py",
               "source_step": "run_external_validation",
               "target_step": "build",
               "retry_count": 10,
               "max_retries": 12,
-              "error": "No validation script found. Expected: 驗證.py, validation.py, validate.py, verify.py, check.py"
+              "error": "No validation script found. Expected: validation.py, validate.py, verify.py, check.py"
             },
             {
               "time": "2026-07-03T12:07:40.157126+00:00",
@@ -15515,12 +16238,12 @@
               "stepKey": "build",
               "kind": "retry",
               "type": "retry",
-              "message": "Retry 10/12 from run_external_validation: No validation script found. Expected: 驗證.py, validation.py, validate.py, verify.py, check.py",
+              "message": "Retry 10/12 from run_external_validation: No validation script found. Expected: validation.py, validate.py, verify.py, check.py",
               "source_step": "run_external_validation",
               "target_step": "build",
               "retry_count": 10,
               "max_retries": 12,
-              "error": "No validation script found. Expected: 驗證.py, validation.py, validate.py, verify.py, check.py"
+              "error": "No validation script found. Expected: validation.py, validate.py, verify.py, check.py"
             },
             {
               "time": "2026-07-03T12:07:47.788716+00:00",
@@ -15834,7 +16557,7 @@
             "keepSameSession": true,
             "injectFailureFeedback": true,
             "stopAfterFailures": 3,
-            "templateContent": "This is a Python function step.\n\nIt runs the mandatory project validation script for this run.\n\nRun-specific validation script:\n{{validation_script}}\n\nIf the run-specific validation script is empty, fallback script names are used in priority order:\n- `驗證.py`\n- `validation.py`\n- `validate.py`\n- `verify.py`\n- `check.py`\n\nThis step must fail if no validation script exists.\nThis step must fail if the validation script exits with a non-zero status.\nWhen this step fails, the workflow retries from Build with the full validation output as feedback.\n",
+            "templateContent": "This is a Python function step.\n\nIt runs the mandatory project validation script for this run.\n\nRun-specific validation script:\n{{validation_script}}\n\nIf the run-specific validation script is empty, fallback script names are used in priority order:\n- `validation.py`\n- `validate.py`\n- `verify.py`\n- `check.py`\n\nThis step must fail if no validation script exists.\nThis step must fail if the validation script exits with a non-zero status.\nWhen this step fails, the workflow retries from Build with the full validation output as feedback.\n",
             "approvalMessage": "",
             "agentOptions": {},
             "requireProjectChanges": false
@@ -15862,10 +16585,10 @@
               "stepKey": "run_external_validation",
               "kind": "failed",
               "type": "failed",
-              "message": "No validation script found. Expected: 驗證.py, validation.py, validate.py, verify.py, check.py"
+              "message": "No validation script found. Expected: validation.py, validate.py, verify.py, check.py"
             }
           ],
-          "last_event": "No validation script found. Expected: 驗證.py, validation.py, validate.py, verify.py, check.py"
+          "last_event": "No validation script found. Expected: validation.py, validate.py, verify.py, check.py"
         },
         {
           "key": "final_review",
@@ -16538,7 +17261,7 @@
           "stepKey": "run_external_validation",
           "kind": "failed",
           "type": "failed",
-          "message": "No validation script found. Expected: 驗證.py, validation.py, validate.py, verify.py, check.py"
+          "message": "No validation script found. Expected: validation.py, validate.py, verify.py, check.py"
         },
         {
           "time": "2026-07-03T12:07:39.963779+00:00",
@@ -16547,12 +17270,12 @@
           "stepKey": "build",
           "kind": "retry",
           "type": "retry",
-          "message": "Retry 10/12 from run_external_validation: No validation script found. Expected: 驗證.py, validation.py, validate.py, verify.py, check.py",
+          "message": "Retry 10/12 from run_external_validation: No validation script found. Expected: validation.py, validate.py, verify.py, check.py",
           "source_step": "run_external_validation",
           "target_step": "build",
           "retry_count": 10,
           "max_retries": 12,
-          "error": "No validation script found. Expected: 驗證.py, validation.py, validate.py, verify.py, check.py"
+          "error": "No validation script found. Expected: validation.py, validate.py, verify.py, check.py"
         },
         {
           "time": "2026-07-03T12:07:40.157126+00:00",
@@ -16839,7 +17562,7 @@
             "keepSameSession": true,
             "injectFailureFeedback": true,
             "stopAfterFailures": 3,
-            "templateContent": "Create a practical implementation task plan.\n\nRequirement:\n{{requirement}}\n\nArchitecture:\n{{architecture}}\n\nProject profile:\n{{project_profile}}\n\nValidation script for this run:\n{{validation_script}}\n\nGuidance:\n{{guidance}}\n\nFailure feedback:\n{{failure_feedback}}\n\nPlanning rules:\n- Do not ask the user questions unless the requirement has no actionable task at all.\n- User instructions and provided config files are the source of truth. Follow explicit user-provided steps, file paths, formats, and validation expectations before applying defaults.\n- If the user restricts allowed tools, libraries, commands, languages, or frameworks, preserve those restrictions in the plan and do not substitute alternatives.\n- Use reasonable defaults only for minor missing details and record them in the plan.\n- Split the work into small tasks, but do not over-split. Prefer 3 to 8 tasks, and never more than 12 unless the request is truly large.\n- Every task must have clear acceptance criteria.\n- Build production changes before Generate Tests so the model does not mix test blocks into Build.\n- For data/config tasks, treat requested project artifacts such as YAML/JSON/config output files as Build-owned deliverables.\n- If a config file defines CRUD operations, include source file, operation config file, and expected output path in the plan.\n- Include a focused automated test strategy after Build and before external validation.\n- Include validation coverage for the user-provided validation script.\n- Keep TODO content concise and actionable.\n- If multiple TODO files would help, list the recommended file names, but keep this step output in `todo.md`.\n- Do not invent a new architecture when the project already has one.\n\nOutput only Markdown with this exact structure:\n\n# Todo\n\nStatus: READY\n\n## Requirement\n- ...\n\n## Task Index\n| ID | Task | Acceptance Criteria |\n| --- | --- | --- |\n| TASK-001 | ... | AC-001 |\n\n## Tasks\n\n### TASK-001: ...\n- Goal:\n- Files:\n- Acceptance Criteria:\n  - AC-001:\n- Validation:\n  - Covered by Build, Generate Tests, Run Test, and the mandatory external validation step.\n\n## Execution SOP\n- Step 1: Build production code only.\n- Step 2: Generate tests only under the project test folder.\n- Step 3: Run automated tests.\n- Step 4: Run mandatory external validation script.\n- Step 5: Retry Build with concrete failure feedback when tests or validation fail.\n\n## External Validation\n- If a validation script path is provided above, that exact script is mandatory for this run.\n- If no validation script path is provided, fallback script names are: `驗證.py`, `validation.py`, `validate.py`, `verify.py`, `check.py`\n- The workflow must stop if no validation script exists.\n- The workflow must run automated tests before this external validation step.\n- The workflow must retry Build when tests or validation fail.\n\n## Assumptions\n- Use the detected project language and structure.\n- Use standard implementation details only when the requirement does not specify minor choices.\n\n## Suggested Todo Files\n- None unless the task is large enough to benefit from split TODO files.\n",
+            "templateContent": "Create a practical implementation task plan.\n\nRequirement:\n{{requirement}}\n\nArchitecture:\n{{architecture}}\n\nProject profile:\n{{project_profile}}\n\nValidation script for this run:\n{{validation_script}}\n\nGuidance:\n{{guidance}}\n\nFailure feedback:\n{{failure_feedback}}\n\nPlanning rules:\n- Do not ask the user questions unless the requirement has no actionable task at all.\n- User instructions and provided config files are the source of truth. Follow explicit user-provided steps, file paths, formats, and validation expectations before applying defaults.\n- If the user restricts allowed tools, libraries, commands, languages, or frameworks, preserve those restrictions in the plan and do not substitute alternatives.\n- Use reasonable defaults only for minor missing details and record them in the plan.\n- Split the work into small tasks, but do not over-split. Prefer 3 to 8 tasks, and never more than 12 unless the request is truly large.\n- Every task must have clear acceptance criteria.\n- Build production changes before Generate Tests so the model does not mix test blocks into Build.\n- For data/config tasks, treat requested project artifacts such as YAML/JSON/config output files as Build-owned deliverables.\n- If a config file defines CRUD operations, include source file, operation config file, and expected output path in the plan.\n- Include a focused automated test strategy after Build and before external validation.\n- Include validation coverage for the user-provided validation script.\n- Keep TODO content concise and actionable.\n- If multiple TODO files would help, list the recommended file names, but keep this step output in `todo.md`.\n- Do not invent a new architecture when the project already has one.\n\nOutput only Markdown with this exact structure:\n\n# Todo\n\nStatus: READY\n\n## Requirement\n- ...\n\n## Task Index\n| ID | Task | Acceptance Criteria |\n| --- | --- | --- |\n| TASK-001 | ... | AC-001 |\n\n## Tasks\n\n### TASK-001: ...\n- Goal:\n- Files:\n- Acceptance Criteria:\n  - AC-001:\n- Validation:\n  - Covered by Build, Generate Tests, Run Test, and the mandatory external validation step.\n\n## Execution SOP\n- Step 1: Build production code only.\n- Step 2: Generate tests only under the project test folder.\n- Step 3: Run automated tests.\n- Step 4: Run mandatory external validation script.\n- Step 5: Retry Build with concrete failure feedback when tests or validation fail.\n\n## External Validation\n- If a validation script path is provided above, that exact script is mandatory for this run.\n- If no validation script path is provided, fallback script names are: `validation.py`, `validate.py`, `verify.py`, `check.py`\n- The workflow must stop if no validation script exists.\n- The workflow must run automated tests before this external validation step.\n- The workflow must retry Build when tests or validation fail.\n\n## Assumptions\n- Use the detected project language and structure.\n- Use standard implementation details only when the requirement does not specify minor choices.\n\n## Suggested Todo Files\n- None unless the task is large enough to benefit from split TODO files.\n",
             "approvalMessage": "",
             "agentOptions": {},
             "requireProjectChanges": false
@@ -17662,7 +18385,7 @@
             "keepSameSession": true,
             "injectFailureFeedback": true,
             "stopAfterFailures": 3,
-            "templateContent": "This is a Python function step.\n\nIt runs the mandatory project validation script for this run.\n\nRun-specific validation script:\n{{validation_script}}\n\nIf the run-specific validation script is empty, fallback script names are used in priority order:\n- `驗證.py`\n- `validation.py`\n- `validate.py`\n- `verify.py`\n- `check.py`\n\nThis step must fail if no validation script exists.\nThis step must fail if the validation script exits with a non-zero status.\nWhen this step fails, the workflow retries from Build with the full validation output as feedback.\n",
+            "templateContent": "This is a Python function step.\n\nIt runs the mandatory project validation script for this run.\n\nRun-specific validation script:\n{{validation_script}}\n\nIf the run-specific validation script is empty, fallback script names are used in priority order:\n- `validation.py`\n- `validate.py`\n- `verify.py`\n- `check.py`\n\nThis step must fail if no validation script exists.\nThis step must fail if the validation script exits with a non-zero status.\nWhen this step fails, the workflow retries from Build with the full validation output as feedback.\n",
             "approvalMessage": "",
             "agentOptions": {},
             "requireProjectChanges": false
@@ -18484,7 +19207,7 @@
             "keepSameSession": true,
             "injectFailureFeedback": true,
             "stopAfterFailures": 3,
-            "templateContent": "Create a practical implementation task plan.\n\nRequirement:\n{{requirement}}\n\nArchitecture:\n{{architecture}}\n\nProject profile:\n{{project_profile}}\n\nValidation script for this run:\n{{validation_script}}\n\nGuidance:\n{{guidance}}\n\nFailure feedback:\n{{failure_feedback}}\n\nPlanning rules:\n- Do not ask the user questions unless the requirement has no actionable task at all.\n- User instructions and provided config files are the source of truth. Follow explicit user-provided steps, file paths, formats, and validation expectations before applying defaults.\n- If the user restricts allowed tools, libraries, commands, languages, or frameworks, preserve those restrictions in the plan and do not substitute alternatives.\n- Use reasonable defaults only for minor missing details and record them in the plan.\n- Split the work into small tasks, but do not over-split. Prefer 3 to 8 tasks, and never more than 12 unless the request is truly large.\n- Every task must have clear acceptance criteria.\n- Build production changes before Generate Tests so the model does not mix test blocks into Build.\n- For data/config tasks, treat requested project artifacts such as YAML/JSON/config output files as Build-owned deliverables.\n- If a config file defines CRUD operations, include source file, operation config file, and expected output path in the plan.\n- Include a focused automated test strategy after Build and before external validation.\n- Include validation coverage for the user-provided validation script.\n- Keep TODO content concise and actionable.\n- If multiple TODO files would help, list the recommended file names, but keep this step output in `todo.md`.\n- Do not invent a new architecture when the project already has one.\n\nOutput only Markdown with this exact structure:\n\n# Todo\n\nStatus: READY\n\n## Requirement\n- ...\n\n## Task Index\n| ID | Task | Acceptance Criteria |\n| --- | --- | --- |\n| TASK-001 | ... | AC-001 |\n\n## Tasks\n\n### TASK-001: ...\n- Goal:\n- Files:\n- Acceptance Criteria:\n  - AC-001:\n- Validation:\n  - Covered by Build, Generate Tests, Run Test, and the mandatory external validation step.\n\n## Execution SOP\n- Step 1: Build production code only.\n- Step 2: Generate tests only under the project test folder.\n- Step 3: Run automated tests.\n- Step 4: Run mandatory external validation script.\n- Step 5: Retry Build with concrete failure feedback when tests or validation fail.\n\n## External Validation\n- If a validation script path is provided above, that exact script is mandatory for this run.\n- If no validation script path is provided, fallback script names are: `驗證.py`, `validation.py`, `validate.py`, `verify.py`, `check.py`\n- The workflow must stop if no validation script exists.\n- The workflow must run automated tests before this external validation step.\n- The workflow must retry Build when tests or validation fail.\n\n## Assumptions\n- Use the detected project language and structure.\n- Use standard implementation details only when the requirement does not specify minor choices.\n\n## Suggested Todo Files\n- None unless the task is large enough to benefit from split TODO files.\n",
+            "templateContent": "Create a practical implementation task plan.\n\nRequirement:\n{{requirement}}\n\nArchitecture:\n{{architecture}}\n\nProject profile:\n{{project_profile}}\n\nValidation script for this run:\n{{validation_script}}\n\nGuidance:\n{{guidance}}\n\nFailure feedback:\n{{failure_feedback}}\n\nPlanning rules:\n- Do not ask the user questions unless the requirement has no actionable task at all.\n- User instructions and provided config files are the source of truth. Follow explicit user-provided steps, file paths, formats, and validation expectations before applying defaults.\n- If the user restricts allowed tools, libraries, commands, languages, or frameworks, preserve those restrictions in the plan and do not substitute alternatives.\n- Use reasonable defaults only for minor missing details and record them in the plan.\n- Split the work into small tasks, but do not over-split. Prefer 3 to 8 tasks, and never more than 12 unless the request is truly large.\n- Every task must have clear acceptance criteria.\n- Build production changes before Generate Tests so the model does not mix test blocks into Build.\n- For data/config tasks, treat requested project artifacts such as YAML/JSON/config output files as Build-owned deliverables.\n- If a config file defines CRUD operations, include source file, operation config file, and expected output path in the plan.\n- Include a focused automated test strategy after Build and before external validation.\n- Include validation coverage for the user-provided validation script.\n- Keep TODO content concise and actionable.\n- If multiple TODO files would help, list the recommended file names, but keep this step output in `todo.md`.\n- Do not invent a new architecture when the project already has one.\n\nOutput only Markdown with this exact structure:\n\n# Todo\n\nStatus: READY\n\n## Requirement\n- ...\n\n## Task Index\n| ID | Task | Acceptance Criteria |\n| --- | --- | --- |\n| TASK-001 | ... | AC-001 |\n\n## Tasks\n\n### TASK-001: ...\n- Goal:\n- Files:\n- Acceptance Criteria:\n  - AC-001:\n- Validation:\n  - Covered by Build, Generate Tests, Run Test, and the mandatory external validation step.\n\n## Execution SOP\n- Step 1: Build production code only.\n- Step 2: Generate tests only under the project test folder.\n- Step 3: Run automated tests.\n- Step 4: Run mandatory external validation script.\n- Step 5: Retry Build with concrete failure feedback when tests or validation fail.\n\n## External Validation\n- If a validation script path is provided above, that exact script is mandatory for this run.\n- If no validation script path is provided, fallback script names are: `validation.py`, `validate.py`, `verify.py`, `check.py`\n- The workflow must stop if no validation script exists.\n- The workflow must run automated tests before this external validation step.\n- The workflow must retry Build when tests or validation fail.\n\n## Assumptions\n- Use the detected project language and structure.\n- Use standard implementation details only when the requirement does not specify minor choices.\n\n## Suggested Todo Files\n- None unless the task is large enough to benefit from split TODO files.\n",
             "approvalMessage": "",
             "agentOptions": {},
             "requireProjectChanges": false
@@ -18982,7 +19705,7 @@
             "keepSameSession": true,
             "injectFailureFeedback": true,
             "stopAfterFailures": 3,
-            "templateContent": "This is a Python function step.\n\nIt runs the mandatory project validation script for this run.\n\nRun-specific validation script:\n{{validation_script}}\n\nIf the run-specific validation script is empty, fallback script names are used in priority order:\n- `驗證.py`\n- `validation.py`\n- `validate.py`\n- `verify.py`\n- `check.py`\n\nThis step must fail if no validation script exists.\nThis step must fail if the validation script exits with a non-zero status.\nWhen this step fails, the workflow retries from Build with the full validation output as feedback.\n",
+            "templateContent": "This is a Python function step.\n\nIt runs the mandatory project validation script for this run.\n\nRun-specific validation script:\n{{validation_script}}\n\nIf the run-specific validation script is empty, fallback script names are used in priority order:\n- `validation.py`\n- `validate.py`\n- `verify.py`\n- `check.py`\n\nThis step must fail if no validation script exists.\nThis step must fail if the validation script exits with a non-zero status.\nWhen this step fails, the workflow retries from Build with the full validation output as feedback.\n",
             "approvalMessage": "",
             "agentOptions": {},
             "requireProjectChanges": false
@@ -19520,7 +20243,7 @@
             "keepSameSession": true,
             "injectFailureFeedback": true,
             "stopAfterFailures": 3,
-            "templateContent": "Create a practical implementation task plan.\n\nRequirement:\n{{requirement}}\n\nArchitecture:\n{{architecture}}\n\nProject profile:\n{{project_profile}}\n\nValidation script for this run:\n{{validation_script}}\n\nGuidance:\n{{guidance}}\n\nFailure feedback:\n{{failure_feedback}}\n\nPlanning rules:\n- Do not ask the user questions unless the requirement has no actionable task at all.\n- User instructions and provided config files are the source of truth. Follow explicit user-provided steps, file paths, formats, and validation expectations before applying defaults.\n- If the user restricts allowed tools, libraries, commands, languages, or frameworks, preserve those restrictions in the plan and do not substitute alternatives.\n- Use reasonable defaults only for minor missing details and record them in the plan.\n- Split the work into small tasks, but do not over-split. Prefer 3 to 8 tasks, and never more than 12 unless the request is truly large.\n- Every task must have clear acceptance criteria.\n- Build production changes before Generate Tests so the model does not mix test blocks into Build.\n- For data/config tasks, treat requested project artifacts such as YAML/JSON/config output files as Build-owned deliverables.\n- If a config file defines CRUD operations, include source file, operation config file, and expected output path in the plan.\n- Include a focused automated test strategy after Build and before external validation.\n- Include validation coverage for the user-provided validation script.\n- Keep TODO content concise and actionable.\n- If multiple TODO files would help, list the recommended file names, but keep this step output in `todo.md`.\n- Do not invent a new architecture when the project already has one.\n\nOutput only Markdown with this exact structure:\n\n# Todo\n\nStatus: READY\n\n## Requirement\n- ...\n\n## Task Index\n| ID | Task | Acceptance Criteria |\n| --- | --- | --- |\n| TASK-001 | ... | AC-001 |\n\n## Tasks\n\n### TASK-001: ...\n- Goal:\n- Files:\n- Acceptance Criteria:\n  - AC-001:\n- Validation:\n  - Covered by Build, Generate Tests, Run Test, and the mandatory external validation step.\n\n## Execution SOP\n- Step 1: Build production code only.\n- Step 2: Generate tests only under the project test folder.\n- Step 3: Run automated tests.\n- Step 4: Run mandatory external validation script.\n- Step 5: Retry Build with concrete failure feedback when tests or validation fail.\n\n## External Validation\n- If a validation script path is provided above, that exact script is mandatory for this run.\n- If no validation script path is provided, fallback script names are: `驗證.py`, `validation.py`, `validate.py`, `verify.py`, `check.py`\n- The workflow must stop if no validation script exists.\n- The workflow must run automated tests before this external validation step.\n- The workflow must retry Build when tests or validation fail.\n\n## Assumptions\n- Use the detected project language and structure.\n- Use standard implementation details only when the requirement does not specify minor choices.\n\n## Suggested Todo Files\n- None unless the task is large enough to benefit from split TODO files.\n",
+            "templateContent": "Create a practical implementation task plan.\n\nRequirement:\n{{requirement}}\n\nArchitecture:\n{{architecture}}\n\nProject profile:\n{{project_profile}}\n\nValidation script for this run:\n{{validation_script}}\n\nGuidance:\n{{guidance}}\n\nFailure feedback:\n{{failure_feedback}}\n\nPlanning rules:\n- Do not ask the user questions unless the requirement has no actionable task at all.\n- User instructions and provided config files are the source of truth. Follow explicit user-provided steps, file paths, formats, and validation expectations before applying defaults.\n- If the user restricts allowed tools, libraries, commands, languages, or frameworks, preserve those restrictions in the plan and do not substitute alternatives.\n- Use reasonable defaults only for minor missing details and record them in the plan.\n- Split the work into small tasks, but do not over-split. Prefer 3 to 8 tasks, and never more than 12 unless the request is truly large.\n- Every task must have clear acceptance criteria.\n- Build production changes before Generate Tests so the model does not mix test blocks into Build.\n- For data/config tasks, treat requested project artifacts such as YAML/JSON/config output files as Build-owned deliverables.\n- If a config file defines CRUD operations, include source file, operation config file, and expected output path in the plan.\n- Include a focused automated test strategy after Build and before external validation.\n- Include validation coverage for the user-provided validation script.\n- Keep TODO content concise and actionable.\n- If multiple TODO files would help, list the recommended file names, but keep this step output in `todo.md`.\n- Do not invent a new architecture when the project already has one.\n\nOutput only Markdown with this exact structure:\n\n# Todo\n\nStatus: READY\n\n## Requirement\n- ...\n\n## Task Index\n| ID | Task | Acceptance Criteria |\n| --- | --- | --- |\n| TASK-001 | ... | AC-001 |\n\n## Tasks\n\n### TASK-001: ...\n- Goal:\n- Files:\n- Acceptance Criteria:\n  - AC-001:\n- Validation:\n  - Covered by Build, Generate Tests, Run Test, and the mandatory external validation step.\n\n## Execution SOP\n- Step 1: Build production code only.\n- Step 2: Generate tests only under the project test folder.\n- Step 3: Run automated tests.\n- Step 4: Run mandatory external validation script.\n- Step 5: Retry Build with concrete failure feedback when tests or validation fail.\n\n## External Validation\n- If a validation script path is provided above, that exact script is mandatory for this run.\n- If no validation script path is provided, fallback script names are: `validation.py`, `validate.py`, `verify.py`, `check.py`\n- The workflow must stop if no validation script exists.\n- The workflow must run automated tests before this external validation step.\n- The workflow must retry Build when tests or validation fail.\n\n## Assumptions\n- Use the detected project language and structure.\n- Use standard implementation details only when the requirement does not specify minor choices.\n\n## Suggested Todo Files\n- None unless the task is large enough to benefit from split TODO files.\n",
             "approvalMessage": "",
             "agentOptions": {},
             "requireProjectChanges": false
@@ -20487,7 +21210,7 @@
             "keepSameSession": true,
             "injectFailureFeedback": true,
             "stopAfterFailures": 3,
-            "templateContent": "This is a Python function step.\n\nIt runs the mandatory project validation script for this run.\n\nRun-specific validation script:\n{{validation_script}}\n\nIf the run-specific validation script is empty, fallback script names are used in priority order:\n- `驗證.py`\n- `validation.py`\n- `validate.py`\n- `verify.py`\n- `check.py`\n\nThis step must fail if no validation script exists.\nThis step must fail if the validation script exits with a non-zero status.\nWhen this step fails, the workflow retries from Build with the full validation output as feedback.\n",
+            "templateContent": "This is a Python function step.\n\nIt runs the mandatory project validation script for this run.\n\nRun-specific validation script:\n{{validation_script}}\n\nIf the run-specific validation script is empty, fallback script names are used in priority order:\n- `validation.py`\n- `validate.py`\n- `verify.py`\n- `check.py`\n\nThis step must fail if no validation script exists.\nThis step must fail if the validation script exits with a non-zero status.\nWhen this step fails, the workflow retries from Build with the full validation output as feedback.\n",
             "approvalMessage": "",
             "agentOptions": {},
             "requireProjectChanges": false
@@ -21354,7 +22077,7 @@
             "keepSameSession": true,
             "injectFailureFeedback": true,
             "stopAfterFailures": 3,
-            "templateContent": "Create a practical implementation task plan.\n\nRequirement:\n{{requirement}}\n\nArchitecture:\n{{architecture}}\n\nProject profile:\n{{project_profile}}\n\nValidation script for this run:\n{{validation_script}}\n\nGuidance:\n{{guidance}}\n\nFailure feedback:\n{{failure_feedback}}\n\nPlanning rules:\n- Do not ask the user questions unless the requirement has no actionable task at all.\n- User instructions and provided config files are the source of truth. Follow explicit user-provided steps, file paths, formats, and validation expectations before applying defaults.\n- If the user restricts allowed tools, libraries, commands, languages, or frameworks, preserve those restrictions in the plan and do not substitute alternatives.\n- Use reasonable defaults only for minor missing details and record them in the plan.\n- Split the work into small tasks, but do not over-split. Prefer 3 to 8 tasks, and never more than 12 unless the request is truly large.\n- Every task must have clear acceptance criteria.\n- Build production changes before Generate Tests so the model does not mix test blocks into Build.\n- For data/config tasks, treat requested project artifacts such as YAML/JSON/config output files as Build-owned deliverables.\n- If a config file defines CRUD operations, include source file, operation config file, and expected output path in the plan.\n- Include a focused automated test strategy after Build and before external validation.\n- Include validation coverage for the user-provided validation script.\n- Keep TODO content concise and actionable.\n- If multiple TODO files would help, list the recommended file names, but keep this step output in `todo.md`.\n- Do not invent a new architecture when the project already has one.\n\nOutput only Markdown with this exact structure:\n\n# Todo\n\nStatus: READY\n\n## Requirement\n- ...\n\n## Task Index\n| ID | Task | Acceptance Criteria |\n| --- | --- | --- |\n| TASK-001 | ... | AC-001 |\n\n## Tasks\n\n### TASK-001: ...\n- Goal:\n- Files:\n- Acceptance Criteria:\n  - AC-001:\n- Validation:\n  - Covered by Build, Generate Tests, Run Test, and the mandatory external validation step.\n\n## Execution SOP\n- Step 1: Build production code only.\n- Step 2: Generate tests only under the project test folder.\n- Step 3: Run automated tests.\n- Step 4: Run mandatory external validation script.\n- Step 5: Retry Build with concrete failure feedback when tests or validation fail.\n\n## External Validation\n- If a validation script path is provided above, that exact script is mandatory for this run.\n- If no validation script path is provided, fallback script names are: `驗證.py`, `validation.py`, `validate.py`, `verify.py`, `check.py`\n- The workflow must stop if no validation script exists.\n- The workflow must run automated tests before this external validation step.\n- The workflow must retry Build when tests or validation fail.\n\n## Assumptions\n- Use the detected project language and structure.\n- Use standard implementation details only when the requirement does not specify minor choices.\n\n## Suggested Todo Files\n- None unless the task is large enough to benefit from split TODO files.\n",
+            "templateContent": "Create a practical implementation task plan.\n\nRequirement:\n{{requirement}}\n\nArchitecture:\n{{architecture}}\n\nProject profile:\n{{project_profile}}\n\nValidation script for this run:\n{{validation_script}}\n\nGuidance:\n{{guidance}}\n\nFailure feedback:\n{{failure_feedback}}\n\nPlanning rules:\n- Do not ask the user questions unless the requirement has no actionable task at all.\n- User instructions and provided config files are the source of truth. Follow explicit user-provided steps, file paths, formats, and validation expectations before applying defaults.\n- If the user restricts allowed tools, libraries, commands, languages, or frameworks, preserve those restrictions in the plan and do not substitute alternatives.\n- Use reasonable defaults only for minor missing details and record them in the plan.\n- Split the work into small tasks, but do not over-split. Prefer 3 to 8 tasks, and never more than 12 unless the request is truly large.\n- Every task must have clear acceptance criteria.\n- Build production changes before Generate Tests so the model does not mix test blocks into Build.\n- For data/config tasks, treat requested project artifacts such as YAML/JSON/config output files as Build-owned deliverables.\n- If a config file defines CRUD operations, include source file, operation config file, and expected output path in the plan.\n- Include a focused automated test strategy after Build and before external validation.\n- Include validation coverage for the user-provided validation script.\n- Keep TODO content concise and actionable.\n- If multiple TODO files would help, list the recommended file names, but keep this step output in `todo.md`.\n- Do not invent a new architecture when the project already has one.\n\nOutput only Markdown with this exact structure:\n\n# Todo\n\nStatus: READY\n\n## Requirement\n- ...\n\n## Task Index\n| ID | Task | Acceptance Criteria |\n| --- | --- | --- |\n| TASK-001 | ... | AC-001 |\n\n## Tasks\n\n### TASK-001: ...\n- Goal:\n- Files:\n- Acceptance Criteria:\n  - AC-001:\n- Validation:\n  - Covered by Build, Generate Tests, Run Test, and the mandatory external validation step.\n\n## Execution SOP\n- Step 1: Build production code only.\n- Step 2: Generate tests only under the project test folder.\n- Step 3: Run automated tests.\n- Step 4: Run mandatory external validation script.\n- Step 5: Retry Build with concrete failure feedback when tests or validation fail.\n\n## External Validation\n- If a validation script path is provided above, that exact script is mandatory for this run.\n- If no validation script path is provided, fallback script names are: `validation.py`, `validate.py`, `verify.py`, `check.py`\n- The workflow must stop if no validation script exists.\n- The workflow must run automated tests before this external validation step.\n- The workflow must retry Build when tests or validation fail.\n\n## Assumptions\n- Use the detected project language and structure.\n- Use standard implementation details only when the requirement does not specify minor choices.\n\n## Suggested Todo Files\n- None unless the task is large enough to benefit from split TODO files.\n",
             "approvalMessage": "",
             "agentOptions": {},
             "requireProjectChanges": false
@@ -22731,7 +23454,7 @@
             "keepSameSession": true,
             "injectFailureFeedback": true,
             "stopAfterFailures": 3,
-            "templateContent": "This is a Python function step.\n\nIt runs the mandatory project validation script for this run.\n\nRun-specific validation script:\n{{validation_script}}\n\nIf the run-specific validation script is empty, fallback script names are used in priority order:\n- `驗證.py`\n- `validation.py`\n- `validate.py`\n- `verify.py`\n- `check.py`\n\nThis step must fail if no validation script exists.\nThis step must fail if the validation script exits with a non-zero status.\nWhen this step fails, the workflow retries from Build with the full validation output as feedback.\n",
+            "templateContent": "This is a Python function step.\n\nIt runs the mandatory project validation script for this run.\n\nRun-specific validation script:\n{{validation_script}}\n\nIf the run-specific validation script is empty, fallback script names are used in priority order:\n- `validation.py`\n- `validate.py`\n- `verify.py`\n- `check.py`\n\nThis step must fail if no validation script exists.\nThis step must fail if the validation script exits with a non-zero status.\nWhen this step fails, the workflow retries from Build with the full validation output as feedback.\n",
             "approvalMessage": "",
             "agentOptions": {},
             "requireProjectChanges": false
@@ -23937,7 +24660,7 @@
             "keepSameSession": true,
             "injectFailureFeedback": true,
             "stopAfterFailures": 3,
-            "templateContent": "Create a practical implementation task plan.\n\nRequirement:\n{{requirement}}\n\nArchitecture:\n{{architecture}}\n\nProject profile:\n{{project_profile}}\n\nValidation script for this run:\n{{validation_script}}\n\nGuidance:\n{{guidance}}\n\nFailure feedback:\n{{failure_feedback}}\n\nPlanning rules:\n- Do not ask the user questions unless the requirement has no actionable task at all.\n- User instructions and provided config files are the source of truth. Follow explicit user-provided steps, file paths, formats, and validation expectations before applying defaults.\n- If the user restricts allowed tools, libraries, commands, languages, or frameworks, preserve those restrictions in the plan and do not substitute alternatives.\n- Use reasonable defaults only for minor missing details and record them in the plan.\n- Split the work into small tasks, but do not over-split. Prefer 3 to 8 tasks, and never more than 12 unless the request is truly large.\n- Every task must have clear acceptance criteria.\n- Build production changes before Generate Tests so the model does not mix test blocks into Build.\n- For data/config tasks, treat requested project artifacts such as YAML/JSON/config output files as Build-owned deliverables.\n- If a config file defines CRUD operations, include source file, operation config file, and expected output path in the plan.\n- Include a focused automated test strategy after Build and before external validation.\n- Include validation coverage for the user-provided validation script.\n- Keep TODO content concise and actionable.\n- If multiple TODO files would help, list the recommended file names, but keep this step output in `todo.md`.\n- Do not invent a new architecture when the project already has one.\n\nOutput only Markdown with this exact structure:\n\n# Todo\n\nStatus: READY\n\n## Requirement\n- ...\n\n## Task Index\n| ID | Task | Acceptance Criteria |\n| --- | --- | --- |\n| TASK-001 | ... | AC-001 |\n\n## Tasks\n\n### TASK-001: ...\n- Goal:\n- Files:\n- Acceptance Criteria:\n  - AC-001:\n- Validation:\n  - Covered by Build, Generate Tests, Run Test, and the mandatory external validation step.\n\n## Execution SOP\n- Step 1: Build production code only.\n- Step 2: Generate tests only under the project test folder.\n- Step 3: Run automated tests.\n- Step 4: Run mandatory external validation script.\n- Step 5: Retry Build with concrete failure feedback when tests or validation fail.\n\n## External Validation\n- If a validation script path is provided above, that exact script is mandatory for this run.\n- If no validation script path is provided, fallback script names are: `驗證.py`, `validation.py`, `validate.py`, `verify.py`, `check.py`\n- The workflow must stop if no validation script exists.\n- The workflow must run automated tests before this external validation step.\n- The workflow must retry Build when tests or validation fail.\n\n## Assumptions\n- Use the detected project language and structure.\n- Use standard implementation details only when the requirement does not specify minor choices.\n\n## Suggested Todo Files\n- None unless the task is large enough to benefit from split TODO files.\n",
+            "templateContent": "Create a practical implementation task plan.\n\nRequirement:\n{{requirement}}\n\nArchitecture:\n{{architecture}}\n\nProject profile:\n{{project_profile}}\n\nValidation script for this run:\n{{validation_script}}\n\nGuidance:\n{{guidance}}\n\nFailure feedback:\n{{failure_feedback}}\n\nPlanning rules:\n- Do not ask the user questions unless the requirement has no actionable task at all.\n- User instructions and provided config files are the source of truth. Follow explicit user-provided steps, file paths, formats, and validation expectations before applying defaults.\n- If the user restricts allowed tools, libraries, commands, languages, or frameworks, preserve those restrictions in the plan and do not substitute alternatives.\n- Use reasonable defaults only for minor missing details and record them in the plan.\n- Split the work into small tasks, but do not over-split. Prefer 3 to 8 tasks, and never more than 12 unless the request is truly large.\n- Every task must have clear acceptance criteria.\n- Build production changes before Generate Tests so the model does not mix test blocks into Build.\n- For data/config tasks, treat requested project artifacts such as YAML/JSON/config output files as Build-owned deliverables.\n- If a config file defines CRUD operations, include source file, operation config file, and expected output path in the plan.\n- Include a focused automated test strategy after Build and before external validation.\n- Include validation coverage for the user-provided validation script.\n- Keep TODO content concise and actionable.\n- If multiple TODO files would help, list the recommended file names, but keep this step output in `todo.md`.\n- Do not invent a new architecture when the project already has one.\n\nOutput only Markdown with this exact structure:\n\n# Todo\n\nStatus: READY\n\n## Requirement\n- ...\n\n## Task Index\n| ID | Task | Acceptance Criteria |\n| --- | --- | --- |\n| TASK-001 | ... | AC-001 |\n\n## Tasks\n\n### TASK-001: ...\n- Goal:\n- Files:\n- Acceptance Criteria:\n  - AC-001:\n- Validation:\n  - Covered by Build, Generate Tests, Run Test, and the mandatory external validation step.\n\n## Execution SOP\n- Step 1: Build production code only.\n- Step 2: Generate tests only under the project test folder.\n- Step 3: Run automated tests.\n- Step 4: Run mandatory external validation script.\n- Step 5: Retry Build with concrete failure feedback when tests or validation fail.\n\n## External Validation\n- If a validation script path is provided above, that exact script is mandatory for this run.\n- If no validation script path is provided, fallback script names are: `validation.py`, `validate.py`, `verify.py`, `check.py`\n- The workflow must stop if no validation script exists.\n- The workflow must run automated tests before this external validation step.\n- The workflow must retry Build when tests or validation fail.\n\n## Assumptions\n- Use the detected project language and structure.\n- Use standard implementation details only when the requirement does not specify minor choices.\n\n## Suggested Todo Files\n- None unless the task is large enough to benefit from split TODO files.\n",
             "approvalMessage": "",
             "agentOptions": {},
             "requireProjectChanges": false
@@ -24862,7 +25585,7 @@
             "keepSameSession": true,
             "injectFailureFeedback": true,
             "stopAfterFailures": 3,
-            "templateContent": "This is a Python function step.\n\nIt runs the mandatory project validation script for this run.\n\nRun-specific validation script:\n{{validation_script}}\n\nIf the run-specific validation script is empty, fallback script names are used in priority order:\n- `驗證.py`\n- `validation.py`\n- `validate.py`\n- `verify.py`\n- `check.py`\n\nThis step must fail if no validation script exists.\nThis step must fail if the validation script exits with a non-zero status.\nWhen this step fails, the workflow retries from Build with the full validation output as feedback.\n",
+            "templateContent": "This is a Python function step.\n\nIt runs the mandatory project validation script for this run.\n\nRun-specific validation script:\n{{validation_script}}\n\nIf the run-specific validation script is empty, fallback script names are used in priority order:\n- `validation.py`\n- `validate.py`\n- `verify.py`\n- `check.py`\n\nThis step must fail if no validation script exists.\nThis step must fail if the validation script exits with a non-zero status.\nWhen this step fails, the workflow retries from Build with the full validation output as feedback.\n",
             "approvalMessage": "",
             "agentOptions": {},
             "requireProjectChanges": false
@@ -25799,7 +26522,7 @@
             "keepSameSession": true,
             "injectFailureFeedback": true,
             "stopAfterFailures": 3,
-            "templateContent": "Create a practical implementation task plan.\n\nRequirement:\n{{requirement}}\n\nArchitecture:\n{{architecture}}\n\nProject profile:\n{{project_profile}}\n\nValidation script for this run:\n{{validation_script}}\n\nGuidance:\n{{guidance}}\n\nFailure feedback:\n{{failure_feedback}}\n\nPlanning rules:\n- Split the work into small tasks, but do not over-split. Prefer 3 to 8 tasks, and never more than 12 unless the request is truly large.\n- Every task must have clear acceptance criteria.\n- Include a focused automated test strategy before external validation.\n- Include validation coverage for the user-provided validation script.\n- Keep TODO content concise and actionable.\n- If multiple TODO files would help, list the recommended file names, but keep this step output in `todo.md`.\n- Do not invent a new architecture when the project already has one.\n- Do not ask the user questions. If the project is empty and the requirement does not specify a language, choose Python as the safest default and record the assumption.\n- If the requirement is vague, infer the smallest useful implementation from the words provided, record the assumption, and continue.\n- This workflow is fully automated: produce todo.md every time unless the requirement is literally empty.\n\nOutput only Markdown with this exact structure:\n\n# Todo\n\nStatus: READY\n\n## Requirement\n- ...\n\n## Task Index\n| ID | Task | Acceptance Criteria |\n| --- | --- | --- |\n| TASK-001 | ... | AC-001: ... |\n\n## Tasks\n\n### TASK-001: ...\n- Goal:\n- Goal:\n- Files:\n- Acceptance Criteria:\n  - AC-001: concrete observable behavior for this task.\n- Implementation Order:\n  - Do this task after the previous TASK and before the next TASK.\n- Validation:\n  - Covered by generated automated tests and the mandatory external validation step.\n\n## External Validation\n- If a validation script path is provided above, that exact script is mandatory for this run.\n- If no validation script path is provided, fallback script names are: `驗證.py`, `validation.py`, `validate.py`, `verify.py`, `check.py`\n- The workflow must stop if no validation script exists.\n- The workflow must run automated tests before this external validation step.\n- The workflow must retry Build when tests or validation fail.\n\n## Suggested Todo Files\n- None unless the task is large enough to benefit from split TODO files.\n",
+            "templateContent": "Create a practical implementation task plan.\n\nRequirement:\n{{requirement}}\n\nArchitecture:\n{{architecture}}\n\nProject profile:\n{{project_profile}}\n\nValidation script for this run:\n{{validation_script}}\n\nGuidance:\n{{guidance}}\n\nFailure feedback:\n{{failure_feedback}}\n\nPlanning rules:\n- Split the work into small tasks, but do not over-split. Prefer 3 to 8 tasks, and never more than 12 unless the request is truly large.\n- Every task must have clear acceptance criteria.\n- Include a focused automated test strategy before external validation.\n- Include validation coverage for the user-provided validation script.\n- Keep TODO content concise and actionable.\n- If multiple TODO files would help, list the recommended file names, but keep this step output in `todo.md`.\n- Do not invent a new architecture when the project already has one.\n- Do not ask the user questions. If the project is empty and the requirement does not specify a language, choose Python as the safest default and record the assumption.\n- If the requirement is vague, infer the smallest useful implementation from the words provided, record the assumption, and continue.\n- This workflow is fully automated: produce todo.md every time unless the requirement is literally empty.\n\nOutput only Markdown with this exact structure:\n\n# Todo\n\nStatus: READY\n\n## Requirement\n- ...\n\n## Task Index\n| ID | Task | Acceptance Criteria |\n| --- | --- | --- |\n| TASK-001 | ... | AC-001: ... |\n\n## Tasks\n\n### TASK-001: ...\n- Goal:\n- Goal:\n- Files:\n- Acceptance Criteria:\n  - AC-001: concrete observable behavior for this task.\n- Implementation Order:\n  - Do this task after the previous TASK and before the next TASK.\n- Validation:\n  - Covered by generated automated tests and the mandatory external validation step.\n\n## External Validation\n- If a validation script path is provided above, that exact script is mandatory for this run.\n- If no validation script path is provided, fallback script names are: `validation.py`, `validate.py`, `verify.py`, `check.py`\n- The workflow must stop if no validation script exists.\n- The workflow must run automated tests before this external validation step.\n- The workflow must retry Build when tests or validation fail.\n\n## Suggested Todo Files\n- None unless the task is large enough to benefit from split TODO files.\n",
             "approvalMessage": "",
             "agentOptions": {},
             "requireProjectChanges": false
@@ -28099,7 +28822,7 @@
             "keepSameSession": true,
             "injectFailureFeedback": true,
             "stopAfterFailures": 3,
-            "templateContent": "This is a Python function step.\n\nIt runs the mandatory project validation script for this run.\n\nRun-specific validation script:\n{{validation_script}}\n\nIf the run-specific validation script is empty, fallback script names are used in priority order:\n- `驗證.py`\n- `validation.py`\n- `validate.py`\n- `verify.py`\n- `check.py`\n\nThis step must fail if no validation script exists.\nThis step must fail if the validation script exits with a non-zero status.\nWhen this step fails, the workflow retries from Build with the full validation output as feedback.\n",
+            "templateContent": "This is a Python function step.\n\nIt runs the mandatory project validation script for this run.\n\nRun-specific validation script:\n{{validation_script}}\n\nIf the run-specific validation script is empty, fallback script names are used in priority order:\n- `validation.py`\n- `validate.py`\n- `verify.py`\n- `check.py`\n\nThis step must fail if no validation script exists.\nThis step must fail if the validation script exits with a non-zero status.\nWhen this step fails, the workflow retries from Build with the full validation output as feedback.\n",
             "approvalMessage": "",
             "agentOptions": {},
             "requireProjectChanges": false

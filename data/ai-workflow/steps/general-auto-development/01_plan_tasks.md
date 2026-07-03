@@ -28,7 +28,7 @@ Planning rules:
 - Build production changes before Generate Tests so the model does not mix test blocks into Build.
 - For data/config tasks, treat requested project artifacts such as YAML/JSON/config output files as Build-owned deliverables.
 - If a config file defines CRUD operations, include source file, operation config file, and expected output path in the plan.
-- Treat validation scripts such as `驗證.py`, `validation.py`, `validate.py`, `verify.py`, and `check.py` as protected acceptance tools when they already exist or are provided for this run.
+- Treat validation scripts such as `validation.py`, `validate.py`, `verify.py`, and `check.py` as protected acceptance tools when they already exist or are provided for this run.
 - Do not list a validation script under task Files or ask Build to modify it unless the user explicitly asks to create or change that validator itself.
 - Include a focused automated test strategy after Build and before external validation.
 - Include validation coverage for the user-provided validation script when one is provided.
@@ -69,7 +69,7 @@ Status: READY
 
 ## External Validation
 - If a validation script path is provided above, that exact script is mandatory for this run.
-- If no validation script path is provided, fallback script names are: `驗證.py`, `validation.py`, `validate.py`, `verify.py`, `check.py`
+- If no validation script path is provided, fallback script names are: `validation.py`, `validate.py`, `verify.py`, `check.py`
 - Existing validation scripts are read-only to Build and must be run after automated tests.
 - If no validation script is configured or found, external validation is skipped with a PASS result.
 - The workflow must run automated tests before this external validation step.

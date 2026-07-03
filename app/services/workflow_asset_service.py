@@ -244,7 +244,7 @@ PROMPT_PARAMS = [
     {"id": "todo_review", "label": "Todo Review", "description": "Content of output/todo-review.md.", "sample": "Status: PASS"},
     {"id": "test_plan", "label": "Test Plan", "description": "Content of output/test-plan.md.", "sample": "## Test Plan\n- TEST-001 Verify output."},
     {"id": "test_result", "label": "Test Result", "description": "Content of output/test-result.md.", "sample": "Status: FAIL\nAssertionError: expected file missing."},
-    {"id": "external_validation_result", "label": "External Validation Result", "description": "Content of output/external-validation-result.md from a project-provided validation script.", "sample": "Status: PASS\nScript: 驗證.py"},
+    {"id": "external_validation_result", "label": "External Validation Result", "description": "Content of output/external-validation-result.md from a project-provided validation script.", "sample": "Status: PASS\nScript: validation.py"},
     {"id": "build_result", "label": "Build Result", "description": "Content of output/build-result.md.", "sample": "FILE: app/main.py\nCONTENT:\n..."},
     {"id": "final_review", "label": "Final Review", "description": "Content of output/final-review.md.", "sample": "Status: PASS"},
     {"id": "raw_spec", "label": "Raw Spec", "description": "Alias of output/spec.md for older templates.", "sample": "## Goal\nBuild the requested workflow feature."},

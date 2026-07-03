@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import tempfile
 import unittest
 from pathlib import Path
@@ -9,6 +10,7 @@ from app.runtime_modules.files import (
     apply_extracted_files,
     classify_test_retry_target,
     extract_build_files,
+    synthesize_yaml_crud_build_files,
     validate_build_files_do_not_overwrite_validation_scripts,
 )
 from app.services import workflow_asset_service, workflow_config_service
@@ -20,6 +22,40 @@ from app.workflow_runtime.step_config import initial_steps
 
 
 class WorkflowCoreTests(unittest.TestCase):
+    def test_prepare_project_accepts_direct_architecture_markdown(self) -> None:
+        class FakeAgentRunner:
+            async def run(self, run, step_key, prompt_name, artifact, **_kwargs):
+                text = (
+                    "# Architecture\n\n"
+                    "## Project Summary\n- Current purpose: config workflow.\n\n"
+                    "## Runtime Agent Settings\n- Qwen project settings: missing at `.qwen/settings.json`\n\n"
+                    "## Detected Stack\n- Primary language: YAML\n\n"
+                    "## Current Structure\n- Source layout: config/\n\n"
+                    "## Implementation Rules\n- Keep changes small.\n"
+                )
+                output = Path(run["workspace"]) / "output"
+                output.mkdir(parents=True, exist_ok=True)
+                (output / artifact).write_text(text, encoding="utf-8")
+                return text
+
+        async def log(_run, _message):
+            return None
+
+        async def refresh(_run_id):
+            return None
+
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp) / "project"
+            workspace = Path(tmp) / "workspace"
+            project.mkdir()
+            (project / "config").mkdir()
+            (project / "config" / "users.yaml").write_text("users: []\n", encoding="utf-8")
+            actions = WorkflowActions(agent_runner=FakeAgentRunner(), functions=None, log=log, refresh_artifacts=refresh)
+
+            asyncio.run(actions.prepare_project_step({"id": "run-1", "workspace": str(workspace), "project_path": str(project)}))
+
+            self.assertIn("Primary language: YAML", (project / "architecture.md").read_text(encoding="utf-8"))
+
     def test_catalog_function_ids_are_executable_or_runtime_special_cases(self) -> None:
         function_ids = {item["id"] for item in workflow_asset_service.function_catalog()["functions"]}
         executable_or_special = set(PYTHON_FUNCTIONS) | {"consensus_agent"}
@@ -60,6 +96,12 @@ class WorkflowCoreTests(unittest.TestCase):
             )
             self.assertEqual(retry_target_for_failure(run, steps[2], steps, 2, output_dir), "generate_tests")
 
+            (output_dir / "test-result.md").write_text(
+                "E       NameError: name 'os' is not defined\nFAILED tests/test_yaml_crud.py::test_output",
+                encoding="utf-8",
+            )
+            self.assertEqual(retry_target_for_failure(run, steps[2], steps, 2, output_dir), "generate_tests")
+
             (output_dir / "test-result.md").write_text("AssertionError: wrong result", encoding="utf-8")
             self.assertEqual(retry_target_for_failure(run, steps[2], steps, 2, output_dir), "build")
 
@@ -94,6 +136,50 @@ class WorkflowCoreTests(unittest.TestCase):
             written = apply_extracted_files(project, files)
 
             self.assertEqual([path.relative_to(project).as_posix() for path in written], ["generated/users.yaml"])
+
+    def test_yaml_crud_build_fallback_synthesizes_requested_output(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp)
+            (project / "config").mkdir()
+            (project / "config" / "users.yaml").write_text(
+                "users:\n"
+                "  - id: alice\n"
+                "    role: reader\n"
+                "    enabled: true\n"
+                "  - id: bob\n"
+                "    role: writer\n"
+                "    enabled: false\n"
+                "  - id: legacy\n"
+                "    role: reader\n"
+                "    enabled: false\n",
+                encoding="utf-8",
+            )
+            (project / "config" / "crud.yaml").write_text(
+                "source: config/users.yaml\n"
+                "output: generated/users.yaml\n"
+                "operations:\n"
+                "  - action: update\n"
+                "    id: bob\n"
+                "    set:\n"
+                "      role: admin\n"
+                "      enabled: true\n"
+                "  - action: create\n"
+                "    value:\n"
+                "      id: carol\n"
+                "      role: reader\n"
+                "      enabled: true\n"
+                "  - action: delete\n"
+                "    id: legacy\n",
+                encoding="utf-8",
+            )
+
+            files = synthesize_yaml_crud_build_files(project)
+
+            self.assertEqual([rel_path for rel_path, _content in files], ["generated/users.yaml"])
+            self.assertIn("  - id: alice", files[0][1])
+            self.assertIn("role: admin", files[0][1])
+            self.assertIn("id: carol", files[0][1])
+            self.assertNotIn("id: legacy", files[0][1])
 
     def test_generate_tests_retry_removes_stale_workflow_generated_tests(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
