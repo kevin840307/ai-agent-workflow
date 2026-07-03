@@ -1,4 +1,4 @@
-import { ensureActiveTabForStep as ensureStepTab, tabsForStep } from "./step-tabs.js?v=20260703-wf-cli-config1";
+import { ensureActiveTabForStep as ensureStepTab, tabsForStep } from "./step-tabs.js?v=20260703-wf-wstep1";
 
 export function installLayoutRenderer(ctx) {
   const {
@@ -115,9 +115,11 @@ function renderCliCommands(wf) {
   const workflowId = wf.id || "workflow-id";
   const validationSuffix = workflowRequiresValidationScript(wf) ? " --validation-script <validate.py>" : "";
   setText("designerCliWorkflowName", wf.name || workflowId);
-  setText("designerAutoCliCommand", `python -m app.cli.aiwf . --engine auto --workflow ${workflowId} --user "需求"${validationSuffix}`);
-  setText("designerQwenCliCommand", `/wf --workflow ${workflowId} --user "需求"${validationSuffix}`);
-  setText("designerOpenCodeCliCommand", `/wf --workflow ${workflowId} --user "需求"${validationSuffix}`);
+  setText("designerAutoCliCommand", `python -m app.cli.aiwf wf ${workflowId} "需求"${validationSuffix}`);
+  setText("designerQwenCliCommand", `/wf ${workflowId} "需求"${validationSuffix}`);
+  setText("designerOpenCodeCliCommand", `/wf ${workflowId} "需求"${validationSuffix}`);
+  setText("designerSkillConfigCliCommand", `/wstep xxx.md build.yaml "需求"`);
+  setText("designerSlashConfigCliCommand", `/wstep /build build.yaml "需求"`);
 }
 
 function workflowRequiresValidationScript(workflow = {}) {

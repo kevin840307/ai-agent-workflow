@@ -1,7 +1,7 @@
-import { initSharedSidebar } from "./shared/sidebar.js?v=20260703-wf-cli-config1";
-import { initWorkflowAssetsPage } from "./pages/ai-workflow-assets.js?v=20260703-wf-cli-config1";
-import { initWorkflowDesignerPage } from "./pages/workflow-designer.js?v=20260703-wf-cli-config1";
-import { initWorkflowRunnerPage } from "./pages/workflow-runner.js?v=20260703-wf-cli-config1";
+import { initSharedSidebar } from "./shared/sidebar.js?v=20260703-wf-wstep1";
+import { initWorkflowAssetsPage } from "./pages/ai-workflow-assets.js?v=20260703-wf-wstep1";
+import { initWorkflowDesignerPage } from "./pages/workflow-designer.js?v=20260703-wf-wstep1";
+import { initWorkflowRunnerPage } from "./pages/workflow-runner.js?v=20260703-wf-wstep1";
 
 const page = document.body?.dataset.page || "workflow-runner";
 initSharedSidebar();

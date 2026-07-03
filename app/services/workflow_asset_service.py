@@ -479,7 +479,7 @@ def normalize_contract(contract: dict[str, Any], *, fallback_id: str = "contract
         item["approval"] = item.get("approvalRequired")
     return item
 
-def _contract_reference_candidates(value: str, project_path: str | None = None, workflow_id: str | None = None) -> list[str]:
+def _contract_reference_candidates(value: str, project_path: str | None = None) -> list[str]:
     raw = str(value or "").strip()
     if not raw:
         raise HTTPException(status_code=400, detail="Contract id/path is required")
@@ -490,48 +490,15 @@ def _contract_reference_candidates(value: str, project_path: str | None = None, 
         return [normalized]
 
     suffix = Path(normalized).suffix.lower()
-    preferred: list[str] = []
+    preferred: list[str]
     if suffix in ASSET_DIRS["contracts"]:
         if "/" in normalized:
-            preferred.append(f"contracts/{normalized}")
+            preferred = [f"contracts/{normalized}"]
         else:
-            if workflow_id:
-                preferred.append(f"contracts/{_slug(workflow_id, workflow_id)}/{normalized}")
-            preferred.extend([
-                f"contracts/general-auto-development/{normalized}",
-                f"contracts/{SYSTEM_WORKFLOW_FALLBACK_FOLDER}/{normalized}",
-                f"contracts/{normalized}",
-            ])
+            preferred = [f"contracts/{normalized}"]
     else:
-        if workflow_id:
-            preferred.append(f"contracts/{_slug(workflow_id, workflow_id)}/{normalized}.yaml")
-        preferred.extend([
-            f"contracts/general-auto-development/{normalized}.yaml",
-            f"contracts/{SYSTEM_WORKFLOW_FALLBACK_FOLDER}/{normalized}.yaml",
-            f"contracts/{normalized}.yaml",
-        ])
-
-    candidates = _unique_strings(preferred)
-    if any(Path(candidate).name == Path(normalized).name for candidate in candidates):
-        candidates.extend(_matching_contract_filenames(Path(normalized).name, project_path))
-    return _unique_strings(candidates)
-
-
-SYSTEM_WORKFLOW_FALLBACK_FOLDER = "system-controlled-qwen"
-
-
-def _matching_contract_filenames(filename: str, project_path: str | None = None) -> list[str]:
-    if not filename:
-        return []
-    matches: list[str] = []
-    for _scope, root in _workflow_roots(project_path):
-        contracts_dir = root / "contracts"
-        if not contracts_dir.exists():
-            continue
-        for path in sorted(contracts_dir.rglob(filename)):
-            if path.is_file():
-                matches.append(path.relative_to(root).as_posix())
-    return matches
+        preferred = [f"contracts/{normalized}.yaml"]
+    return _unique_strings(preferred)
 
 
 def _unique_strings(values: list[str]) -> list[str]:
@@ -544,7 +511,7 @@ def _unique_strings(values: list[str]) -> list[str]:
     return result
 
 
-def _load_contract_by_id_or_path(value: str, project_path: str | None = None, workflow_id: str | None = None) -> dict[str, Any]:
+def _load_contract_by_id_or_path(value: str, project_path: str | None = None) -> dict[str, Any]:
     path_value = ""
     path: Path | None = None
     raw = str(value or "").strip()
@@ -555,7 +522,7 @@ def _load_contract_by_id_or_path(value: str, project_path: str | None = None, wo
         path = raw_path
         path_value = raw_path.name
     else:
-        for candidate in _contract_reference_candidates(value, project_path, workflow_id):
+        for candidate in _contract_reference_candidates(value, project_path):
             try:
                 path = resolve_asset_path(candidate, project_path)
                 path_value = candidate
@@ -564,7 +531,7 @@ def _load_contract_by_id_or_path(value: str, project_path: str | None = None, wo
                 if exc.status_code != 404:
                     raise
         if path is None:
-            candidates = ", ".join(_contract_reference_candidates(value, project_path, workflow_id)[:5])
+            candidates = ", ".join(_contract_reference_candidates(value, project_path)[:5])
             raise HTTPException(status_code=404, detail=f"Workflow contract not found: {value}. Tried: {candidates}")
     contract = normalize_contract(_read_structured_file(path), fallback_id=Path(path_value).stem)
     contract["path"] = _clean_relative_path(path_value) if str(path_value).startswith("contracts/") else ""
@@ -874,7 +841,7 @@ def load_ad_hoc_workflow_asset(
     """Build a one-step workflow from a skill/slash command plus metadata.
 
     This is used by lightweight CLI shapes such as
-    ``/wf steps/build.md contracts/build.yaml --user ...`` without requiring the
+    ``/wstep steps/build.md contracts/build.yaml "..."`` without requiring the
     caller to create a dedicated .workflow file first.
     """
     skill_value = str(skill or "").strip()
@@ -883,7 +850,7 @@ def load_ad_hoc_workflow_asset(
         raise HTTPException(status_code=400, detail="skill or config is required for ad-hoc workflow runs")
 
     if config_value:
-        metadata = _load_contract_by_id_or_path(config_value, project_path, workflow_id)
+        metadata = _load_contract_by_id_or_path(config_value, project_path)
     else:
         fallback_id = Path(skill_value.lstrip("/")).stem or "ad-hoc"
         metadata = normalize_contract({"id": fallback_id, "key": fallback_id, "type": "ai"}, fallback_id=fallback_id)
@@ -899,7 +866,7 @@ def load_ad_hoc_workflow_asset(
             if not metadata.get("skill"):
                 inline_template = _default_inline_skill_template(skill_value)
         else:
-            metadata["skill"] = _normalize_skill_reference(skill_value, original_path, workflow_id)
+            metadata["skill"] = _normalize_skill_reference(skill_value, original_path)
 
     if not metadata.get("skill") and not inline_template:
         raise HTTPException(

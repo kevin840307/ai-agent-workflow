@@ -320,10 +320,15 @@ class WorkflowAssetServiceTests(unittest.TestCase):
         self.assertEqual(step["templateContent"], "Quick {{requirement}}")
 
     def test_ad_hoc_workflow_combines_skill_and_config(self) -> None:
-        workflow_asset_service.write_asset("steps/general-auto-development/custom_build.md", "Build {{requirement}}", scope="global")
+        workflow_asset_service.write_asset("steps/custom_build.md", "Build {{requirement}}", scope="global")
+        workflow_asset_service.write_asset(
+            "contracts/build.yaml",
+            "id: build\nkey: build\nname: Build\ntype: ai\noutputs:\n  - build-result.md\nretry: 7\nfailAction: retry_from_step\nretryFromStepKey: build\n",
+            scope="global",
+        )
         workflow_asset_service.write_asset(
             "contracts/general-auto-development/build.yaml",
-            "id: build\nkey: build\nname: Build\nskill: steps/general-auto-development/03_build.md\ntype: ai\noutputs:\n  - build-result.md\nretry: 7\nfailAction: retry_from_step\nretryFromStepKey: build\n",
+            "id: build\nkey: build\nname: Wrong Build\ntype: ai\noutputs:\n  - wrong.md\nretry: 99\n",
             scope="global",
         )
 
@@ -331,21 +336,20 @@ class WorkflowAssetServiceTests(unittest.TestCase):
             skill="custom_build.md",
             config="build.yaml",
             project_path=str(self.project_root),
-            workflow_id="general-auto-development",
         )
         step = workflow["steps"][0]
 
-        self.assertEqual(workflow["id"], "general-auto-development")
+        self.assertEqual(workflow["id"], "ad-hoc-build")
         self.assertEqual(step["key"], "build")
-        self.assertEqual(step["skillPath"], "steps/general-auto-development/custom_build.md")
+        self.assertEqual(step["skillPath"], "steps/custom_build.md")
         self.assertEqual(step["maxRetries"], 7)
         self.assertEqual(step["failAction"], "retry_from_step")
         self.assertEqual(step["retryFromStepKey"], "build")
 
     def test_ad_hoc_workflow_combines_slash_command_and_config(self) -> None:
         workflow_asset_service.write_asset(
-            "contracts/general-auto-development/build.yaml",
-            "id: build\nkey: build\nname: Build\nskill: steps/general-auto-development/03_build.md\ntype: ai\noutputs:\n  - build-result.md\nretry: 9\n",
+            "contracts/build.yaml",
+            "id: build\nkey: build\nname: Build\ntype: ai\noutputs:\n  - build-result.md\nretry: 9\n",
             scope="global",
         )
 
@@ -353,12 +357,12 @@ class WorkflowAssetServiceTests(unittest.TestCase):
             skill="/build",
             config="build.yaml",
             project_path=str(self.project_root),
-            workflow_id="general-auto-development",
         )
         step = workflow["steps"][0]
 
         self.assertEqual(step["command"], "/build")
-        self.assertEqual(step["skillPath"], "steps/general-auto-development/03_build.md")
+        self.assertEqual(step["skillPath"], "")
+        self.assertIn("{{requirement}}", step["templateContent"])
         self.assertEqual(step["maxRetries"], 9)
 
     def test_rejects_invalid_python_asset(self) -> None:

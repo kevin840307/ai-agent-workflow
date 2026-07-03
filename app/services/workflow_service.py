@@ -181,15 +181,15 @@ async def create_workflow_run(session_id: str, body: runtime.CreateRunRequest) -
         if not session:
             raise HTTPException(status_code=404, detail="Session not found")
         project_path = str(runtime.resolve_project_path(body.project_path or session.get("project_path") or str(runtime.ROOT)))
-        workflow_id = body.workflow_id or workflow_config_service.SYSTEM_WORKFLOW_ID
         if body.skill or body.config:
             workflow = workflow_asset_service.load_ad_hoc_workflow_asset(
                 skill=body.skill,
                 config=body.config,
                 project_path=project_path,
-                workflow_id=workflow_id,
+                workflow_id=body.workflow_id,
             )
         else:
+            workflow_id = body.workflow_id or workflow_config_service.SYSTEM_WORKFLOW_ID
             try:
                 workflow = await workflow_config_service.get_workflow(workflow_id, project_path=project_path)
             except TypeError as exc:

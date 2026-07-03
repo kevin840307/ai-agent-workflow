@@ -1,4 +1,4 @@
-import { LocalStore, StorageKeys } from "./storage.js?v=20260703-wf-cli-config1";
+import { LocalStore, StorageKeys } from "./storage.js?v=20260703-wf-wstep1";
 
 export const AppState = {
   sessions: [],

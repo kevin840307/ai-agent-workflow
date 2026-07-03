@@ -90,7 +90,7 @@ class StaticArchitectureContractTests(unittest.TestCase):
                 continue
             source = path.read_text(encoding="utf-8")
             versions.update(re.findall(r"\?v=([A-Za-z0-9_-]+)", source))
-        self.assertEqual(versions, {"20260703-wf-cli-config1"})
+        self.assertEqual(versions, {"20260703-wf-wstep1"})
 
     def test_static_structure_document_mentions_designer_modules(self):
         source = (ROOT / "static/FRONTEND_STRUCTURE.md").read_text(encoding="utf-8")

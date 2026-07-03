@@ -13,6 +13,20 @@ from app.services import workflow_asset_service, workflow_config_service, workfl
 from app.services.project_service import create_project
 
 
+VALUE_OPTIONS = {
+    "--workflow",
+    "--workflow-id",
+    "--validation-script",
+    "--test-command",
+    "--title",
+    "--skill",
+    "--config",
+    "--project",
+    "--project-path",
+    "--requirement-file",
+}
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="aiwf", description="Run Agent Workflow from the same backend used by the Web UI.")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -40,44 +54,105 @@ def normalize_cli_args(argv: Sequence[str] | None) -> list[str] | None:
     if argv is None:
         return None
     args = list(argv)
-    if not args or args[0] in {"run", "assets"} or "--user" not in args:
+    if not args or args[0] in {"run", "assets"}:
         return args
-    rest = _strip_option_with_value(args, "--engine")
-    user_index = rest.index("--user")
-    user_value = rest[user_index + 1] if user_index + 1 < len(rest) else ""
-    rest = rest[:user_index] + rest[user_index + 2 :]
+    args = _strip_option_with_value(args, "--engine")
+    command = args[0]
+    if command in {"/wf", "wf"}:
+        return _normalize_workflow_shortcut(args[1:])
+    if command in {"/wstep", "wstep", "step"}:
+        return _normalize_step_shortcut(args[1:])
+    if "--user" in args:
+        return _normalize_user_shortcut(args)
+    if len(args) >= 2 and not args[0].startswith("-") and not _looks_like_skill_or_config(args[0]):
+        return _normalize_workflow_shortcut(args)
+    return args
+
+
+def _normalize_user_shortcut(args: list[str]) -> list[str]:
+    user_value, rest = _extract_option_with_value(args, "--user")
     target = "."
     if rest and not rest[0].startswith("-") and not _looks_like_skill_or_config(rest[0]):
         target = rest[0]
         rest = rest[1:]
     normalized = ["run", "--project", target]
-    positional: list[str] = []
-    remaining: list[str] = []
-    skip_next = False
-    for value in rest:
-        if skip_next:
-            skip_next = False
-            continue
-        if value in {"--workflow", "--workflow-id", "--validation-script", "--test-command", "--title", "--skill", "--config", "--project", "--project-path"}:
-            remaining.append(value)
-            skip_next = True
+    normalized.extend(rest)
+    normalized.append(user_value or "")
+    return normalized
+
+
+def _normalize_workflow_shortcut(args: list[str]) -> list[str]:
+    user_value, rest = _extract_option_with_value(args, "--user")
+    options, positionals = _split_options_and_positionals(rest)
+    workflow_id = ""
+    requirement_parts: list[str] = []
+    if positionals:
+        workflow_id = positionals[0]
+        requirement_parts = positionals[1:]
+    if not user_value:
+        user_value = " ".join(requirement_parts)
+    normalized = ["run", "--project", "."]
+    if workflow_id:
+        normalized.extend(["--workflow", workflow_id])
+    normalized.extend(options)
+    normalized.append(user_value or "")
+    return normalized
+
+
+def _normalize_step_shortcut(args: list[str]) -> list[str]:
+    user_value, rest = _extract_option_with_value(args, "--user")
+    options, positionals = _split_options_and_positionals(rest)
+    skill = positionals[0] if len(positionals) >= 1 else ""
+    config = positionals[1] if len(positionals) >= 2 else ""
+    if not user_value and len(positionals) >= 3:
+        user_value = " ".join(positionals[2:])
+    normalized = ["run", "--project", "."]
+    if skill:
+        normalized.extend(["--skill", skill])
+    if config:
+        normalized.extend(["--config", config])
+    normalized.extend(options)
+    normalized.append(user_value or "")
+    return normalized
+
+
+def _split_options_and_positionals(args: list[str]) -> tuple[list[str], list[str]]:
+    options: list[str] = []
+    positionals: list[str] = []
+    index = 0
+    while index < len(args):
+        value = args[index]
+        if value in VALUE_OPTIONS:
+            options.append(value)
+            if index + 1 < len(args):
+                options.append(args[index + 1])
+                index += 2
+                continue
+            index += 1
             continue
         if value.startswith("-"):
-            remaining.append(value)
+            options.append(value)
+            index += 1
             continue
-        positional.append(value)
+        positionals.append(value)
+        index += 1
+    return options, positionals
 
-    for token in positional:
-        if _looks_like_config(token) and "--config" not in remaining:
-            normalized.extend(["--config", token])
-        elif "--skill" not in remaining:
-            normalized.extend(["--skill", token])
+
+def _extract_option_with_value(args: list[str], option: str) -> tuple[str | None, list[str]]:
+    value: str | None = None
+    rest: list[str] = []
+    index = 0
+    while index < len(args):
+        item = args[index]
+        if item == option:
+            value = args[index + 1] if index + 1 < len(args) else ""
+            index += 2
+            continue
         else:
-            normalized.append(token)
-
-    normalized.extend(rest_value for rest_value in _strip_positional_tokens(rest, positional))
-    normalized.append(user_value)
-    return normalized
+            rest.append(item)
+            index += 1
+    return value, rest
 
 
 def _strip_option_with_value(args: list[str], option: str) -> list[str]:
@@ -91,25 +166,6 @@ def _strip_option_with_value(args: list[str], option: str) -> list[str]:
             skip_next = True
             continue
         result.append(value)
-    return result
-
-
-def _strip_positional_tokens(rest: list[str], positional: list[str]) -> list[str]:
-    positional_ids = {id(value) for value in positional}
-    result: list[str] = []
-    index = 0
-    while index < len(rest):
-        value = rest[index]
-        if id(value) in positional_ids:
-            index += 1
-            continue
-        result.append(value)
-        if value in {"--workflow", "--workflow-id", "--validation-script", "--test-command", "--title", "--skill", "--config", "--project", "--project-path"}:
-            if index + 1 < len(rest):
-                result.append(rest[index + 1])
-                index += 2
-                continue
-        index += 1
     return result
 
 

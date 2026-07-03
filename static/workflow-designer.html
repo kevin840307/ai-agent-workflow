@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Workflow Designer</title>
-    <link rel="stylesheet" href="/static/styles.css?v=20260703-wf-cli-config1" />
+    <link rel="stylesheet" href="/static/styles.css?v=20260703-wf-wstep1" />
   </head>
   <body data-page="workflow-designer">
     <div class="designer-shell">
@@ -88,23 +88,33 @@
             <span id="designerCliWorkflowName">Select workflow</span>
           </summary>
           <div class="designer-cli-head">
-            <p>Default target is the current project folder. Replace <code>需求</code> with the user request. Use <code>/wf xxx.md build.yaml --user "需求"</code> for skill + config, or <code>/wf /build build.yaml --user "需求"</code> for an agent slash command + config.</p>
+            <p>Default target is the current project folder. Use <code>/wf workflow-id "需求"</code> for saved workflows. Use <code>/wstep xxx.md build.yaml "需求"</code> for skill + config, or <code>/wstep /build build.yaml "需求"</code> for an agent slash command + config.</p>
           </div>
           <div class="designer-cli-command-list">
             <div class="designer-cli-command">
               <span>Auto CLI</span>
-              <code id="designerAutoCliCommand">python -m app.cli.aiwf . --engine auto --workflow workflow-id --user "需求"</code>
+              <code id="designerAutoCliCommand">python -m app.cli.aiwf wf workflow-id "需求"</code>
               <button type="button" data-designer-action="copy-cli-command" data-command-target="designerAutoCliCommand">Copy</button>
             </div>
             <div class="designer-cli-command">
               <span>Qwen CLI</span>
-              <code id="designerQwenCliCommand">/wf --workflow workflow-id --user "需求"</code>
+              <code id="designerQwenCliCommand">/wf workflow-id "需求"</code>
               <button type="button" data-designer-action="copy-cli-command" data-command-target="designerQwenCliCommand">Copy</button>
             </div>
             <div class="designer-cli-command">
               <span>OpenCode CLI</span>
-              <code id="designerOpenCodeCliCommand">/wf --workflow workflow-id --user "需求"</code>
+              <code id="designerOpenCodeCliCommand">/wf workflow-id "需求"</code>
               <button type="button" data-designer-action="copy-cli-command" data-command-target="designerOpenCodeCliCommand">Copy</button>
+            </div>
+            <div class="designer-cli-command">
+              <span>Skill + Config</span>
+              <code id="designerSkillConfigCliCommand">/wstep xxx.md build.yaml "需求"</code>
+              <button type="button" data-designer-action="copy-cli-command" data-command-target="designerSkillConfigCliCommand">Copy</button>
+            </div>
+            <div class="designer-cli-command">
+              <span>Slash + Config</span>
+              <code id="designerSlashConfigCliCommand">/wstep /build build.yaml "需求"</code>
+              <button type="button" data-designer-action="copy-cli-command" data-command-target="designerSlashConfigCliCommand">Copy</button>
             </div>
           </div>
         </details>
@@ -245,6 +255,6 @@
       </main>
     </div>
 
-    <script type="module" src="/static/js/main.js?v=20260703-wf-cli-config1"></script>
+    <script type="module" src="/static/js/main.js?v=20260703-wf-wstep1"></script>
   </body>
 </html>
