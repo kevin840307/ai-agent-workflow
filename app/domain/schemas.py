@@ -16,6 +16,8 @@ class CreateRunRequest(BaseModel):
     validation_script: str | None = None
     project_path: str | None = None
     workflow_id: str | None = None
+    skill: str | None = None
+    config: str | None = None
 
 
 class CreateSessionRequest(BaseModel):

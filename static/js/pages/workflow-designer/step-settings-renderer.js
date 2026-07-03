@@ -1,4 +1,4 @@
-import { tabsForStep } from "./step-tabs.js?v=20260702-assets-bugfix3";
+import { tabsForStep } from "./step-tabs.js?v=20260703-wf-cli-config1";
 
 export function installStepSettingsRenderer(ctx) {
   const {

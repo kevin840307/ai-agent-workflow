@@ -1,3 +1,3 @@
-import { initWorkflowDesignerPage } from "./workflow-designer/controller.js?v=20260702-assets-bugfix3";
+import { initWorkflowDesignerPage } from "./workflow-designer/controller.js?v=20260703-wf-cli-config1";
 
 export { initWorkflowDesignerPage };

@@ -1,4 +1,4 @@
-import { renderMarkdownPreview } from "./markdown-preview.js?v=20260702-assets-bugfix3";
+import { renderMarkdownPreview } from "./markdown-preview.js?v=20260703-wf-cli-config1";
 
 const WORKFLOW_ASSET_API = "/api/workflow-assets";
 const TYPE_DEFAULTS = {

@@ -1,6 +1,6 @@
-import { Api } from "./api.js?v=20260702-assets-bugfix3";
-import { UI } from "./dom.js?v=20260702-assets-bugfix3";
-import { AppState } from "./state.js?v=20260702-assets-bugfix3";
+import { Api } from "./api.js?v=20260703-wf-cli-config1";
+import { UI } from "./dom.js?v=20260703-wf-cli-config1";
+import { AppState } from "./state.js?v=20260703-wf-cli-config1";
 
 export function createAppContext() {
   return {

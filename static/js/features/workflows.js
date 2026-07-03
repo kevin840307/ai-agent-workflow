@@ -1,4 +1,4 @@
-import { LocalStore, StorageKeys } from "../core/storage.js?v=20260702-assets-bugfix3";
+import { LocalStore, StorageKeys } from "../core/storage.js?v=20260703-wf-cli-config1";
 
 export function createWorkflows(ctx) {
   const { api, state, ui } = ctx;

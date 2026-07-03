@@ -479,17 +479,95 @@ def normalize_contract(contract: dict[str, Any], *, fallback_id: str = "contract
         item["approval"] = item.get("approvalRequired")
     return item
 
-def _load_contract_by_id_or_path(value: str, project_path: str | None = None) -> dict[str, Any]:
+def _contract_reference_candidates(value: str, project_path: str | None = None, workflow_id: str | None = None) -> list[str]:
     raw = str(value or "").strip()
     if not raw:
         raise HTTPException(status_code=400, detail="Contract id/path is required")
-    if raw.startswith("contracts/") or raw.startswith(f"{PROJECT_ASSET_DIR}/contracts/"):
-        path_value = raw
+    normalized = raw.replace("\\", "/")
+    if normalized.startswith(f"{PROJECT_ASSET_DIR}/"):
+        normalized = normalized[len(PROJECT_ASSET_DIR) + 1 :]
+    if normalized.startswith("contracts/"):
+        return [normalized]
+
+    suffix = Path(normalized).suffix.lower()
+    preferred: list[str] = []
+    if suffix in ASSET_DIRS["contracts"]:
+        if "/" in normalized:
+            preferred.append(f"contracts/{normalized}")
+        else:
+            if workflow_id:
+                preferred.append(f"contracts/{_slug(workflow_id, workflow_id)}/{normalized}")
+            preferred.extend([
+                f"contracts/general-auto-development/{normalized}",
+                f"contracts/{SYSTEM_WORKFLOW_FALLBACK_FOLDER}/{normalized}",
+                f"contracts/{normalized}",
+            ])
     else:
-        path_value = f"contracts/{raw}.yaml"
-    path = resolve_asset_path(path_value, project_path)
+        if workflow_id:
+            preferred.append(f"contracts/{_slug(workflow_id, workflow_id)}/{normalized}.yaml")
+        preferred.extend([
+            f"contracts/general-auto-development/{normalized}.yaml",
+            f"contracts/{SYSTEM_WORKFLOW_FALLBACK_FOLDER}/{normalized}.yaml",
+            f"contracts/{normalized}.yaml",
+        ])
+
+    candidates = _unique_strings(preferred)
+    if any(Path(candidate).name == Path(normalized).name for candidate in candidates):
+        candidates.extend(_matching_contract_filenames(Path(normalized).name, project_path))
+    return _unique_strings(candidates)
+
+
+SYSTEM_WORKFLOW_FALLBACK_FOLDER = "system-controlled-qwen"
+
+
+def _matching_contract_filenames(filename: str, project_path: str | None = None) -> list[str]:
+    if not filename:
+        return []
+    matches: list[str] = []
+    for _scope, root in _workflow_roots(project_path):
+        contracts_dir = root / "contracts"
+        if not contracts_dir.exists():
+            continue
+        for path in sorted(contracts_dir.rglob(filename)):
+            if path.is_file():
+                matches.append(path.relative_to(root).as_posix())
+    return matches
+
+
+def _unique_strings(values: list[str]) -> list[str]:
+    result: list[str] = []
+    seen: set[str] = set()
+    for value in values:
+        if value and value not in seen:
+            result.append(value)
+            seen.add(value)
+    return result
+
+
+def _load_contract_by_id_or_path(value: str, project_path: str | None = None, workflow_id: str | None = None) -> dict[str, Any]:
+    path_value = ""
+    path: Path | None = None
+    raw = str(value or "").strip()
+    raw_path = Path(raw).expanduser()
+    if raw_path.is_absolute():
+        if not raw_path.exists():
+            raise HTTPException(status_code=404, detail=f"Workflow asset not found: {value}")
+        path = raw_path
+        path_value = raw_path.name
+    else:
+        for candidate in _contract_reference_candidates(value, project_path, workflow_id):
+            try:
+                path = resolve_asset_path(candidate, project_path)
+                path_value = candidate
+                break
+            except HTTPException as exc:
+                if exc.status_code != 404:
+                    raise
+        if path is None:
+            candidates = ", ".join(_contract_reference_candidates(value, project_path, workflow_id)[:5])
+            raise HTTPException(status_code=404, detail=f"Workflow contract not found: {value}. Tried: {candidates}")
     contract = normalize_contract(_read_structured_file(path), fallback_id=Path(path_value).stem)
-    contract["path"] = _clean_relative_path(path_value)
+    contract["path"] = _clean_relative_path(path_value) if str(path_value).startswith("contracts/") else ""
     return contract
 
 
@@ -784,6 +862,109 @@ def step_from_contract(contract: dict[str, Any], index: int = 0) -> dict[str, An
         "templateContent": "",
     }
     return apply_contract_to_step(step, metadata)
+
+
+def load_ad_hoc_workflow_asset(
+    *,
+    skill: str | None = None,
+    config: str | None = None,
+    project_path: str | None = None,
+    workflow_id: str | None = None,
+) -> dict[str, Any]:
+    """Build a one-step workflow from a skill/slash command plus metadata.
+
+    This is used by lightweight CLI shapes such as
+    ``/wf steps/build.md contracts/build.yaml --user ...`` without requiring the
+    caller to create a dedicated .workflow file first.
+    """
+    skill_value = str(skill or "").strip()
+    config_value = str(config or "").strip()
+    if not skill_value and not config_value:
+        raise HTTPException(status_code=400, detail="skill or config is required for ad-hoc workflow runs")
+
+    if config_value:
+        metadata = _load_contract_by_id_or_path(config_value, project_path, workflow_id)
+    else:
+        fallback_id = Path(skill_value.lstrip("/")).stem or "ad-hoc"
+        metadata = normalize_contract({"id": fallback_id, "key": fallback_id, "type": "ai"}, fallback_id=fallback_id)
+
+    metadata = deepcopy(metadata)
+    original_path = str(metadata.get("path") or "")
+    metadata["path"] = ""
+
+    inline_template = ""
+    if skill_value:
+        if _is_agent_slash_command(skill_value):
+            metadata["command"] = skill_value
+            if not metadata.get("skill"):
+                inline_template = _default_inline_skill_template(skill_value)
+        else:
+            metadata["skill"] = _normalize_skill_reference(skill_value, original_path, workflow_id)
+
+    if not metadata.get("skill") and not inline_template:
+        raise HTTPException(
+            status_code=400,
+            detail="Ad-hoc workflow needs a skill markdown file, a config with skill, or an agent slash command.",
+        )
+
+    step = step_from_contract(metadata, 0)
+    if inline_template:
+        step["templateContent"] = inline_template
+        step["templatePath"] = ""
+        step["skillPath"] = ""
+    workflow_folder = workflow_id or _slug(str(metadata.get("id") or "ad-hoc"), "ad-hoc")
+    workflow_name = str(metadata.get("name") or workflow_folder).replace("_", " ").replace("-", " ").title()
+    return {
+        "id": workflow_id or f"ad-hoc-{step.get('key') or 'step'}",
+        "kind": "ad_hoc",
+        "name": f"Ad-hoc {workflow_name}",
+        "description": "Runtime workflow built from CLI/API skill and config arguments.",
+        "active": False,
+        "protected": False,
+        "deletable": False,
+        "folderName": workflow_folder,
+        "skillRoot": ".ai-workflow",
+        "promptRoot": "steps/",
+        "workflowPath": "",
+        "scope": "runtime",
+        "projectPath": str(_project_root(project_path) or ""),
+        "steps": [step],
+    }
+
+
+def _is_agent_slash_command(value: str) -> bool:
+    raw = str(value or "").strip()
+    return raw.startswith("/") and not Path(raw).expanduser().is_absolute()
+
+
+def _normalize_skill_reference(value: str, contract_path: str, workflow_id: str | None = None) -> str:
+    raw = str(value or "").strip().replace("\\", "/")
+    if not raw:
+        return raw
+    if raw.startswith(f"{PROJECT_ASSET_DIR}/"):
+        raw = raw[len(PROJECT_ASSET_DIR) + 1 :]
+    if raw.startswith("steps/") or Path(raw).expanduser().is_absolute():
+        return raw
+    if "/" in raw:
+        return f"steps/{raw}" if Path(raw).suffix.lower() in ASSET_DIRS["steps"] else raw
+    suffix = Path(raw).suffix.lower()
+    if suffix in ASSET_DIRS["steps"]:
+        contract_parts = contract_path.replace("\\", "/").split("/")
+        if len(contract_parts) >= 3 and contract_parts[0] == "contracts":
+            return f"steps/{contract_parts[1]}/{raw}"
+        if workflow_id:
+            return f"steps/{_slug(workflow_id, workflow_id)}/{raw}"
+        return f"steps/{raw}"
+    return raw
+
+
+def _default_inline_skill_template(command: str) -> str:
+    return (
+        "Use the agent slash command above for this workflow step.\n\n"
+        "Requirement:\n\n{{requirement}}\n\n"
+        "Project path: {{project_path}}\n\n"
+        "Follow the step metadata for retry, timeout, expected files, and validation."
+    )
 
 
 def load_workflow_asset(workflow_id_or_path: str, project_path: str | None = None, *, scope: str = "auto") -> dict[str, Any]:

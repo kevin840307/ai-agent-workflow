@@ -21,6 +21,8 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("requirement", nargs="?", help="Requirement text. If omitted, use --requirement-file.")
     run.add_argument("--project", "--project-path", dest="project_path", default=".", help="Project directory.")
     run.add_argument("--workflow", "--workflow-id", dest="workflow_id", default=None, help="Workflow id. Defaults to the system workflow.")
+    run.add_argument("--skill", default=None, help="Optional workflow skill markdown path or agent slash command.")
+    run.add_argument("--config", default=None, help="Optional workflow contract/config yaml/json path.")
     run.add_argument("--title", default="CLI Workflow", help="Session title.")
     run.add_argument("--test-command", default=None, help="Optional test command passed to the workflow.")
     run.add_argument("--validation-script", default=None, help="Optional Python validation script path passed to the workflow.")
@@ -40,30 +42,89 @@ def normalize_cli_args(argv: Sequence[str] | None) -> list[str] | None:
     args = list(argv)
     if not args or args[0] in {"run", "assets"} or "--user" not in args:
         return args
-    if args[0].startswith("-"):
-        target = "."
-        rest = args
-    else:
-        target = args[0]
-        rest = args[1:]
+    rest = _strip_option_with_value(args, "--engine")
+    user_index = rest.index("--user")
+    user_value = rest[user_index + 1] if user_index + 1 < len(rest) else ""
+    rest = rest[:user_index] + rest[user_index + 2 :]
+    target = "."
+    if rest and not rest[0].startswith("-") and not _looks_like_skill_or_config(rest[0]):
+        target = rest[0]
+        rest = rest[1:]
     normalized = ["run", "--project", target]
+    positional: list[str] = []
+    remaining: list[str] = []
     skip_next = False
-    for index, value in enumerate(rest):
+    for value in rest:
         if skip_next:
             skip_next = False
             continue
-        if value == "--user":
-            if index + 1 >= len(rest):
-                normalized.append("")
-            else:
-                normalized.append(rest[index + 1])
-                skip_next = True
-            continue
-        if value == "--engine":
+        if value in {"--workflow", "--workflow-id", "--validation-script", "--test-command", "--title", "--skill", "--config", "--project", "--project-path"}:
+            remaining.append(value)
             skip_next = True
             continue
-        normalized.append(value)
+        if value.startswith("-"):
+            remaining.append(value)
+            continue
+        positional.append(value)
+
+    for token in positional:
+        if _looks_like_config(token) and "--config" not in remaining:
+            normalized.extend(["--config", token])
+        elif "--skill" not in remaining:
+            normalized.extend(["--skill", token])
+        else:
+            normalized.append(token)
+
+    normalized.extend(rest_value for rest_value in _strip_positional_tokens(rest, positional))
+    normalized.append(user_value)
     return normalized
+
+
+def _strip_option_with_value(args: list[str], option: str) -> list[str]:
+    result: list[str] = []
+    skip_next = False
+    for value in args:
+        if skip_next:
+            skip_next = False
+            continue
+        if value == option:
+            skip_next = True
+            continue
+        result.append(value)
+    return result
+
+
+def _strip_positional_tokens(rest: list[str], positional: list[str]) -> list[str]:
+    positional_ids = {id(value) for value in positional}
+    result: list[str] = []
+    index = 0
+    while index < len(rest):
+        value = rest[index]
+        if id(value) in positional_ids:
+            index += 1
+            continue
+        result.append(value)
+        if value in {"--workflow", "--workflow-id", "--validation-script", "--test-command", "--title", "--skill", "--config", "--project", "--project-path"}:
+            if index + 1 < len(rest):
+                result.append(rest[index + 1])
+                index += 2
+                continue
+        index += 1
+    return result
+
+
+def _looks_like_skill_or_config(value: str) -> bool:
+    return _looks_like_config(value) or _looks_like_skill(value)
+
+
+def _looks_like_config(value: str) -> bool:
+    normalized = str(value or "").strip().replace("\\", "/")
+    return normalized.startswith("contracts/") or normalized.startswith(".ai-workflow/contracts/") or Path(normalized).suffix.lower() in {".yaml", ".yml", ".json"}
+
+
+def _looks_like_skill(value: str) -> bool:
+    normalized = str(value or "").strip().replace("\\", "/")
+    return normalized.startswith("/") or normalized.startswith("steps/") or normalized.startswith(".ai-workflow/steps/") or Path(normalized).suffix.lower() in {".md", ".markdown", ".txt"}
 
 
 async def _init_runtime() -> None:
@@ -110,6 +171,8 @@ async def run_cli(argv: Sequence[str] | None = None) -> int:
                 requirement=requirement,
                 project_path=args.project_path,
                 workflow_id=args.workflow_id,
+                skill=args.skill,
+                config=args.config,
                 test_command=args.test_command,
                 validation_script=args.validation_script,
             ),

@@ -93,8 +93,13 @@ class PromptBuilder:
         skill_context, skill_files = load_skill_context(self._configured_skill_paths(step_config, str(skill_root), project_dir, run))
 
         values = self._template_values(run, output_dir, project_dir, requirement, architecture, profile, answers, guidance, failure_feedback, step_config)
-        prompt_template = read_text(workflow_prompt_path(prompt_name, run))
-        prompt = load_prompt(prompt_name, run=run, **values)
+        inline_template = str(step_config.get("templateContent") or "")
+        if inline_template.strip():
+            prompt_template = inline_template
+            prompt = self._render_template(inline_template, values)
+        else:
+            prompt_template = read_text(workflow_prompt_path(prompt_name, run))
+            prompt = load_prompt(prompt_name, run=run, **values)
 
         command = str(step_config.get("command") or "").strip()
         if command and command != "custom" and not prompt.lstrip().startswith(command):
@@ -195,6 +200,12 @@ class PromptBuilder:
             "workspace_path": str(run.get("workspace", "")),
             "validation_script": str(run.get("validation_script") or ""),
         }
+
+    def _render_template(self, template: str, values: dict[str, str]) -> str:
+        rendered = template
+        for key, value in values.items():
+            rendered = rendered.replace("{{" + key + "}}", value)
+        return rendered
 
     def _read_security_candidate_artifacts(self, output_dir: Path) -> str:
         blocks: list[str] = []

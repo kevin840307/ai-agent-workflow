@@ -1,4 +1,4 @@
-import { LocalStore } from "../core/storage.js?v=20260702-assets-bugfix3";
+import { LocalStore } from "../core/storage.js?v=20260703-wf-cli-config1";
 
 const COLLAPSED_PROJECTS_KEY = "ui.collapsedProjectKeys";
 

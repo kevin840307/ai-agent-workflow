@@ -4,7 +4,7 @@ import {
   SourceTypes,
   StepTypes,
   TemplatePresets,
-} from "../workflow-designer-constants.js?v=20260702-assets-bugfix3";
+} from "../workflow-designer-constants.js?v=20260703-wf-cli-config1";
 import {
   clone,
   copyTextToClipboard,
@@ -19,7 +19,7 @@ import {
   readInputValue,
   setText,
   toast,
-} from "./utils.js?v=20260702-assets-bugfix3";
+} from "./utils.js?v=20260703-wf-cli-config1";
 import {
   createStep,
   createWorkflow,
@@ -32,7 +32,7 @@ import {
   normalizeFunctionList,
   normalizeStep,
   normalizeWorkflow,
-} from "./model.js?v=20260702-assets-bugfix3";
+} from "./model.js?v=20260703-wf-cli-config1";
 import {
   availablePromptParamsFor,
   functionHelpFor,
@@ -40,12 +40,12 @@ import {
   functionOptionsFor,
   stepUiCapabilitiesFor,
   workflowFunctionCountsFor,
-} from "./function-catalog.js?v=20260702-assets-bugfix3";
-import { installLayoutRenderer } from "./layout-renderer.js?v=20260702-assets-bugfix3";
-import { installStepSettingsRenderer } from "./step-settings-renderer.js?v=20260702-assets-bugfix3";
-import { installTemplateEditor } from "./template-editor.js?v=20260702-assets-bugfix3";
-import { installImportExportTools } from "./import-export.js?v=20260702-assets-bugfix3";
-import { installWorkflowAssetTools } from "./asset-tools.js?v=20260702-assets-bugfix3";
+} from "./function-catalog.js?v=20260703-wf-cli-config1";
+import { installLayoutRenderer } from "./layout-renderer.js?v=20260703-wf-cli-config1";
+import { installStepSettingsRenderer } from "./step-settings-renderer.js?v=20260703-wf-cli-config1";
+import { installTemplateEditor } from "./template-editor.js?v=20260703-wf-cli-config1";
+import { installImportExportTools } from "./import-export.js?v=20260703-wf-cli-config1";
+import { installWorkflowAssetTools } from "./asset-tools.js?v=20260703-wf-cli-config1";
 
 const STORAGE_KEY = "qwenWorkflow.workflowDesigner.ui.v1";
 const WORKFLOW_API = "/api/workflows";

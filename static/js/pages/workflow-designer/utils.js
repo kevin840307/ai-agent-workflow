@@ -1,4 +1,4 @@
-import { ReviewModes, StepTypes } from "../workflow-designer-constants.js?v=20260702-assets-bugfix3";
+import { ReviewModes, StepTypes } from "../workflow-designer-constants.js?v=20260703-wf-cli-config1";
 
 function options(items, selected) {
   return items.map(([value, label]) => `

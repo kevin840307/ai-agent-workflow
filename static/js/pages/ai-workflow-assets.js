@@ -1,5 +1,5 @@
-import { installWorkflowAssetManager } from "./ai-workflow-assets/asset-manager.js?v=20260702-assets-bugfix3";
-import { el, escapeAttr, escapeHtml, toast } from "./workflow-designer/utils.js?v=20260702-assets-bugfix3";
+import { installWorkflowAssetManager } from "./ai-workflow-assets/asset-manager.js?v=20260703-wf-cli-config1";
+import { el, escapeAttr, escapeHtml, toast } from "./workflow-designer/utils.js?v=20260703-wf-cli-config1";
 
 async function designerApi(path, options = {}) {
   const response = await fetch(path, {

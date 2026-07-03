@@ -126,6 +126,66 @@ class AiWorkflowCliTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(body.project_path, ".")
         self.assertEqual(body.requirement, "build a config validation tool")
 
+    async def test_cli_shortcut_accepts_skill_and_config_positionals(self) -> None:
+        session = {"id": "session-skill-config", "project_path": "."}
+        created_run = {
+            "id": "run-skill-config",
+            "session_id": "session-skill-config",
+            "status": "queued",
+            "project_path": ".",
+        }
+        with patch.object(aiwf, "_init_runtime", new=AsyncMock()), patch.object(aiwf, "create_project", new=AsyncMock(return_value=session)), patch.object(
+            aiwf.workflow_service,
+            "create_workflow_run",
+            new=AsyncMock(return_value=created_run),
+        ) as create_run:
+            with redirect_stdout(StringIO()):
+                code = await aiwf.run_cli([
+                    "custom_build.md",
+                    "build.yaml",
+                    "--user",
+                    "add quick sort",
+                    "--workflow",
+                    "general-auto-development",
+                ])
+
+        self.assertEqual(code, 0)
+        _, body = create_run.await_args.args
+        self.assertEqual(body.project_path, ".")
+        self.assertEqual(body.skill, "custom_build.md")
+        self.assertEqual(body.config, "build.yaml")
+        self.assertEqual(body.workflow_id, "general-auto-development")
+        self.assertEqual(body.requirement, "add quick sort")
+
+    async def test_cli_shortcut_accepts_agent_slash_command_and_config(self) -> None:
+        session = {"id": "session-slash-config", "project_path": "."}
+        created_run = {
+            "id": "run-slash-config",
+            "session_id": "session-slash-config",
+            "status": "queued",
+            "project_path": ".",
+        }
+        with patch.object(aiwf, "_init_runtime", new=AsyncMock()), patch.object(aiwf, "create_project", new=AsyncMock(return_value=session)), patch.object(
+            aiwf.workflow_service,
+            "create_workflow_run",
+            new=AsyncMock(return_value=created_run),
+        ) as create_run:
+            with redirect_stdout(StringIO()):
+                code = await aiwf.run_cli([
+                    "/build",
+                    "build.yaml",
+                    "--workflow",
+                    "general-auto-development",
+                    "--user",
+                    "implement config crud",
+                ])
+
+        self.assertEqual(code, 0)
+        _, body = create_run.await_args.args
+        self.assertEqual(body.skill, "/build")
+        self.assertEqual(body.config, "build.yaml")
+        self.assertEqual(body.requirement, "implement config crud")
+
 
 if __name__ == "__main__":
     unittest.main()

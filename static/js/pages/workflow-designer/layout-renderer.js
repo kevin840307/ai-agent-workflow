@@ -1,4 +1,4 @@
-import { ensureActiveTabForStep as ensureStepTab, tabsForStep } from "./step-tabs.js?v=20260702-assets-bugfix3";
+import { ensureActiveTabForStep as ensureStepTab, tabsForStep } from "./step-tabs.js?v=20260703-wf-cli-config1";
 
 export function installLayoutRenderer(ctx) {
   const {
@@ -115,9 +115,9 @@ function renderCliCommands(wf) {
   const workflowId = wf.id || "workflow-id";
   const validationSuffix = workflowRequiresValidationScript(wf) ? " --validation-script <validate.py>" : "";
   setText("designerCliWorkflowName", wf.name || workflowId);
-  setText("designerAutoCliCommand", `python -m app.cli.aiwf . --engine auto --user "需求" --workflow ${workflowId}${validationSuffix}`);
-  setText("designerQwenCliCommand", `/wf --engine qwen --workflow ${workflowId} --user "需求"${validationSuffix}`);
-  setText("designerOpenCodeCliCommand", `/wf --engine opencode --workflow ${workflowId} --user "需求"${validationSuffix}`);
+  setText("designerAutoCliCommand", `python -m app.cli.aiwf . --engine auto --workflow ${workflowId} --user "需求"${validationSuffix}`);
+  setText("designerQwenCliCommand", `/wf --workflow ${workflowId} --user "需求"${validationSuffix}`);
+  setText("designerOpenCodeCliCommand", `/wf --workflow ${workflowId} --user "需求"${validationSuffix}`);
 }
 
 function workflowRequiresValidationScript(workflow = {}) {
