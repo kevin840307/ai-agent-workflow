@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from app.workflow_runtime.builtin_functions.core import (
+    adaptive_python_gate,
     require_status_pass,
     run_pytest,
     validate_general_auto_final,
@@ -27,6 +28,7 @@ PYTHON_FUNCTIONS = {
     "validate_todo": validate_todo,
     "require_status_pass": require_status_pass,
     "run_pytest": run_pytest,
+    "adaptive_python_gate": adaptive_python_gate,
     "validate_general_auto_plan": validate_general_auto_plan,
     "validate_general_auto_final": validate_general_auto_final,
     "validate_security_report": validate_security_report,

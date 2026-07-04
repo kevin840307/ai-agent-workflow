@@ -247,6 +247,8 @@ PROMPT_PARAMS = [
     {"id": "test_result", "label": "Test Result", "description": "Content of output/test-result.md.", "sample": "Status: FAIL\nAssertionError: expected file missing."},
     {"id": "external_validation_result", "label": "External Validation Result", "description": "Content of output/external-validation-result.md from a project-provided validation script.", "sample": "Status: PASS\nScript: validation.py"},
     {"id": "build_result", "label": "Build Result", "description": "Content of output/build-result.md.", "sample": "FILE: app/main.py\nCONTENT:\n..."},
+    {"id": "auto_generation_result", "label": "Auto Generation Result", "description": "Content of output/auto-generation-result.md.", "sample": "Status: READY\nFILE: app/main.py\nCONTENT:\n..."},
+    {"id": "python_gate_result", "label": "Python Gate Result", "description": "Content of output/python-gate-result.md.", "sample": "Status: PASS\nMode: pytest"},
     {"id": "final_review", "label": "Final Review", "description": "Content of output/final-review.md.", "sample": "Status: PASS"},
     {"id": "raw_spec", "label": "Raw Spec", "description": "Alias of output/spec.md for older templates.", "sample": "## Goal\nBuild the requested workflow feature."},
     {"id": "answers", "label": "Answers", "description": "User answers from previous workflow interaction.", "sample": "Use Python and FastAPI."},

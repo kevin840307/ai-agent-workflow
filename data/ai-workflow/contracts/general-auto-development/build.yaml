@@ -10,12 +10,12 @@ agent: qwen
 outputs:
 - build-result.md
 function: ''
-retry: 20
+retry: 99
 failAction: same_step
 retryFromStepKey: build
 keepSameSession: true
 injectFailureFeedback: true
-stopAfterFailures: 20
+stopAfterFailures: 99
 allowInteraction: false
 thinking: false
 approvalRequired: false

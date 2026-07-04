@@ -17,6 +17,7 @@ from app.services import workflow_asset_service, workflow_config_service
 from app.workflow_runtime.builtin_functions.registry import PYTHON_FUNCTIONS
 from app.workflow_runtime.actions import WorkflowActions
 from app.workflow_runtime.agents import ADAPTER_FACTORIES, create_agent_manager
+from app.workflow_runtime.functions import WorkflowFunctionService
 from app.workflow_runtime.retry_policy import retry_target_for_failure, retry_target_for_step
 from app.workflow_runtime.run_profiles import apply_run_profile, normalize_run_profile
 from app.workflow_runtime.step_config import initial_steps
@@ -448,23 +449,98 @@ Status: READY
         self.assertEqual(
             keys,
             [
-                "prepare_project",
-                "plan_tasks",
-                "implementation_review",
-                "build",
-                "sub_agent_review",
-                "generate_tests",
-                "run_test",
-                "run_external_validation",
-                "final_review",
-                "final_gate",
+                "auto_generation",
+                "ai_review",
+                "python_gate",
             ],
         )
-        review = next(step for step in workflow["steps"] if step["key"] == "sub_agent_review")
+        generation = next(step for step in workflow["steps"] if step["key"] == "auto_generation")
+        review = next(step for step in workflow["steps"] if step["key"] == "ai_review")
+        gate = next(step for step in workflow["steps"] if step["key"] == "python_gate")
+        self.assertEqual(generation["type"], "ai")
+        self.assertGreaterEqual(generation["maxRetries"], 20)
         self.assertEqual(review["type"], "review")
-        self.assertEqual(review["reviewMode"], "multi_agent")
-        self.assertEqual(review["retryFromStepKey"], "build")
-        self.assertGreaterEqual(len(review.get("reviewers") or []), 3)
+        self.assertEqual(review["reviewMode"], "new_agent")
+        self.assertEqual(review["retryFromStepKey"], "auto_generation")
+        self.assertEqual(gate["function"], "adaptive_python_gate")
+        self.assertEqual(gate["retryFromStepKey"], "auto_generation")
+
+    def test_adaptive_generation_can_materialize_code_and_tests_together(self) -> None:
+        class FakeAgentRunner:
+            async def run(self, run, step_key, prompt_name, artifact, **_kwargs):
+                text = (
+                    "# Adaptive Generation Result\n\n"
+                    "Status: READY\n\n"
+                    "FILE: src/tool.py\n"
+                    "CONTENT:\n"
+                    "def add(a, b):\n"
+                    "    return a + b\n"
+                    "END_FILE\n"
+                    "FILE: tests/test_tool.py\n"
+                    "CONTENT:\n"
+                    "from src.tool import add\n\n"
+                    "def test_add():\n"
+                    "    assert add(1, 2) == 3\n"
+                    "END_FILE\n"
+                )
+                output = Path(run["workspace"]) / "output"
+                output.mkdir(parents=True, exist_ok=True)
+                (output / artifact).write_text(text, encoding="utf-8")
+                return text
+
+        async def log(_run, _message):
+            return None
+
+        async def refresh(_run_id):
+            return None
+
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp) / "project"
+            workspace = Path(tmp) / "workspace"
+            project.mkdir()
+            (workspace / "output").mkdir(parents=True)
+            actions = WorkflowActions(agent_runner=FakeAgentRunner(), functions=None, log=log, refresh_artifacts=refresh)
+
+            asyncio.run(
+                actions.adaptive_generation_step(
+                    {
+                        "id": "run-1",
+                        "workspace": str(workspace),
+                        "project_path": str(project),
+                        "steps": [{"key": "python_gate", "config": {"fallbackValidationScripts": ["validation.py"]}}],
+                    }
+                )
+            )
+
+            self.assertTrue((project / "src" / "tool.py").is_file())
+            self.assertTrue((project / "tests" / "test_tool.py").is_file())
+
+    def test_adaptive_python_gate_skips_when_no_python_gate_exists(self) -> None:
+        async def log(_run, _message):
+            return None
+
+        async def refresh(_run_id):
+            return None
+
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp) / "project"
+            workspace = Path(tmp) / "workspace"
+            output = workspace / "output"
+            project.mkdir()
+            output.mkdir(parents=True)
+            functions = WorkflowFunctionService(log=log, refresh_artifacts=refresh)
+            run = {
+                "id": "run-1",
+                "workspace": str(workspace),
+                "project_path": str(project),
+                "_current_step_config": {"fallbackValidationScripts": ["validation.py"]},
+            }
+
+            asyncio.run(functions.call_python_function(run, "adaptive_python_gate", output, "python-gate-result.md"))
+
+            result = (output / "python-gate-result.md").read_text(encoding="utf-8")
+            self.assertIn("Status: PASS", result)
+            self.assertIn("Mode: skipped", result)
 
 
 if __name__ == "__main__":

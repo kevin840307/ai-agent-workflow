@@ -1,0 +1,36 @@
+id: ai_review
+key: ai_review
+name: AI Review
+description: Review generated project changes in a fresh agent session. Failures retry Auto Generation Workflow with feedback.
+enabled: true
+type: review
+skill: steps/adaptive-auto-workflow/01_ai_review.md
+command: ''
+agent: qwen
+outputs:
+- ai-review.md
+function: ''
+retry: 99
+maxRetries: 99
+failAction: selected_step
+retryFromStepKey: auto_generation
+keepSameSession: false
+injectFailureFeedback: true
+stopAfterFailures: 99
+allowInteraction: false
+thinking: true
+approvalRequired: false
+pauseAfterStep: false
+approvalMessage: ''
+timeoutEnabled: true
+timeoutMinutes: 3.0
+reviewMode: new_agent
+confidenceThreshold: 0.7
+passKeywords: PASS, APPROVED
+failKeywords: FAIL, BLOCKED, RISK
+aggregatorFunction: keyword_confidence
+contextArtifacts:
+- auto-generation-result.md
+sources: []
+agentOptions: {}
+path: contracts/adaptive-auto-workflow/ai_review.yaml

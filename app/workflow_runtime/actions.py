@@ -270,7 +270,7 @@ class WorkflowActions:
     @staticmethod
     def _fallback_validation_scripts(run: dict[str, Any]) -> list[str]:
         for step in run.get("steps") or []:
-            if step.get("key") != "run_external_validation":
+            if step.get("key") not in {"run_external_validation", "python_gate"}:
                 continue
             config = {**step, **step_config(step)}
             value = config.get("fallbackValidationScripts") or config.get("fallback_validation_scripts") or []
@@ -1160,6 +1160,54 @@ class WorkflowActions:
                 "Agent build output must include non-test FILE/CONTENT/END_FILE blocks."
             )
 
+    async def adaptive_generation_step(
+        self,
+        run: dict[str, Any],
+        prompt_name: str = "00_auto_generation.md",
+        artifact: str = "auto-generation-result.md",
+        *,
+        agent_name: str | None = None,
+    ) -> None:
+        """Materialize a whole adaptive task from one agent step.
+
+        Unlike the General Auto Development build/test split, Adaptive Auto
+        Workflow intentionally lets the agent plan internal subtasks and output
+        any project files needed for this one request. Deterministic guards still
+        enforce project isolation, FILE blocks, protected validation scripts, and
+        actual project changes.
+        """
+        project_dir = Path(run.get("project_path") or ROOT)
+        output_dir = Path(run["workspace"]) / "output"
+        artifact = normalize_artifact_name(artifact)
+        before = project_file_snapshot(project_dir)
+
+        try:
+            await self.run_agent_step(run, "auto_generation", prompt_name, artifact, agent_name=agent_name)
+        except UserInputRequired:
+            raise
+        result = read_text(output_dir / artifact)
+        files = extract_build_files(result)
+        if not files:
+            raise WorkflowError(
+                "auto_generation did not return any FILE/CONTENT/END_FILE blocks. "
+                "Adaptive Auto Workflow must materialize the requested project changes inside the selected Project Path."
+            )
+        validate_build_files_do_not_overwrite_validation_scripts(
+            project_dir,
+            files,
+            validation_script=run.get("validation_script"),
+            fallback_scripts=self._fallback_validation_scripts(run),
+        )
+        written = apply_extracted_files(project_dir, files, output_label="adaptive auto generation output")
+        if written:
+            await self.log(run, "auto_generation: materialized files: " + ", ".join(str(path.relative_to(project_dir)) for path in written))
+        after = project_file_snapshot(project_dir)
+        if not snapshot_changed(before, after):
+            raise WorkflowError(
+                f"auto_generation did not create or modify files under Project Path: {project_dir}. "
+                "Agent output must include project FILE/CONTENT/END_FILE blocks."
+            )
+
     async def consensus_agent_step(
         self,
         run: dict[str, Any],
@@ -1320,6 +1368,12 @@ class WorkflowActions:
                 run,
                 step_prompt_name(step_record, "05_build.md"),
                 step_artifact_name(step_record, "build-result.md"),
+                agent_name=agent_name,
+            ),
+            "auto_generation": lambda: self.adaptive_generation_step(
+                run,
+                step_prompt_name(step_record, "00_auto_generation.md"),
+                step_artifact_name(step_record, "auto-generation-result.md"),
                 agent_name=agent_name,
             ),
             "run_test": lambda: self.functions.call_python_functions(

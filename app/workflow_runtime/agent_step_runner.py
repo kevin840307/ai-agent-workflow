@@ -188,6 +188,18 @@ Build output guard:
 - Your final answer must include at least one non-test production file that implements the current Requirement.
 """
             return prompt.rstrip() + base_guard + step_guard
+        if step_key == "auto_generation":
+            step_guard = """
+
+Adaptive generation output guard:
+- You are in the Auto Generation Workflow step.
+- Output project FILE/CONTENT/END_FILE blocks that materialize the requested change.
+- Relative paths only. Do not output absolute paths or parent-directory paths.
+- You may include production files, tests, and small project documentation when useful.
+- Existing validation scripts are read-only unless the user explicitly asked to modify them.
+- Your final answer must include at least one FILE block.
+"""
+            return prompt.rstrip() + base_guard + step_guard
         if step_key == "generate_tests":
             step_guard = """
 

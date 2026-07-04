@@ -29,6 +29,7 @@ class WorkflowFunctionRefactorContractTests(unittest.TestCase):
 
     def test_registry_contains_builtin_callable_contract(self) -> None:
         expected_registry_names = {
+            "adaptive_python_gate",
             "collect_security_context",
             "combine_security_candidates",
             "generate_security_report",

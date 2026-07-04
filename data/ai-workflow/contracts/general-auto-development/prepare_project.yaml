@@ -12,12 +12,12 @@ outputs:
 - project-index.md
 - architecture-contract.json
 function: ''
-retry: 3
+retry: 99
 failAction: same_step
 retryFromStepKey: prepare_project
 keepSameSession: true
 injectFailureFeedback: true
-stopAfterFailures: 3
+stopAfterFailures: 99
 allowInteraction: false
 thinking: false
 approvalRequired: false

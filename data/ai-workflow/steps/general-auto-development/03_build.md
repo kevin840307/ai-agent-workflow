@@ -1,5 +1,11 @@
 Implement the approved task plan.
 
+Critical retry repair contract:
+- Before writing files, read `Failure feedback from previous retries`.
+- If feedback says the implementation mutates input, has side effects, or should not mutate input, the next output must remove writes to caller-owned input arguments. Do not assign into the input object, do not call mutating methods on it, and do not return the same mutated object unless the user explicitly requested in-place behavior.
+- For value-producing functions, return the computed value explicitly. Do not rely on side effects as the output unless the user explicitly requested side effects.
+- If feedback points to a concrete validation script failure, treat that script as the acceptance oracle while still implementing a general reusable solution.
+
 Critical output contract:
 - Your first non-empty line must be `FILE: <actual relative project path>`.
 - Use one or more FILE/CONTENT/END_FILE blocks only.
@@ -7,6 +13,7 @@ Critical output contract:
 - Replace `<actual relative project path>` with a real concrete file path under the Project path.
 - Never output `relative/path.ext`, `relative_path.ext`, `path_to_*`, `example.*`, or a template-only placeholder.
 - Every FILE block must contain complete runnable project content for that file.
+- Use the exact block labels `FILE:`, `CONTENT:`, and `END_FILE`. Do not invent labels such as `CONTENTS:` and do not place filename text after `CONTENT:`.
 
 Requirement:
 {{requirement}}
@@ -44,6 +51,13 @@ Project profile:
 Failure feedback from previous retries:
 {{failure_feedback}}
 
+Retry repair checklist:
+- If feedback reports a missing return value, placeholder content, truncated content, or malformed FILE block, output a complete file with real source code and explicit return values where the behavior produces a value.
+- If feedback reports mutation or side effects, do not modify caller-owned input arguments in place unless explicitly requested. Use a local copy, transform the copy, and return the computed result.
+- For sequence/data transformation utilities, default to returning a new transformed value instead of changing the input object. Only perform in-place updates when the user request or existing API contract explicitly says in-place.
+- If feedback reports an out-of-range/index/key error, review loop bounds and empty/single-item input handling before emitting the next file.
+- If feedback reports import errors, keep production file paths stable and do not rename modules unless the tests or architecture clearly require it.
+
 Validation script for this run:
 {{validation_script}}
 
@@ -62,6 +76,7 @@ Rules:
 - If the project already contains a validation script, create a separate production tool/source file with a task-appropriate name instead of reusing the validator filename.
 - Do not copy validation assertions, pytest test functions, demo snippets, example usage, top-level `assert`, or top-level `print` calls into production files to make a validator pass. Fix the reusable implementation instead.
 - Production Python files must be import-safe: importing the module must not execute examples, assertions, validation checks, or test code. Only define functions/classes/constants unless the user explicitly requested a CLI entry point.
+- Unless the user explicitly asks for in-place mutation, reusable functions should avoid mutating caller-owned input objects. Create a local copy when transforming lists, mappings, configs, records, or other mutable inputs, and return the computed value.
 - If failure feedback mentions side effects, mutation, idempotence, determinism, formatting, paths, or exact output, change the implementation behavior to satisfy that contract; do not weaken, bypass, duplicate, or embed the validation logic.
 - Do not output explanations outside FILE blocks.
 - Do not create or modify test files in this Build step.

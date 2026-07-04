@@ -15,7 +15,7 @@ failAction: selected_step
 retryFromStepKey: build
 keepSameSession: true
 injectFailureFeedback: true
-stopAfterFailures: 3
+stopAfterFailures: 99
 allowInteraction: false
 requiresValidationScript: true
 fallbackValidationScripts:

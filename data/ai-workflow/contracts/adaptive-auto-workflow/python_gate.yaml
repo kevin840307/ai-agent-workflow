@@ -1,22 +1,28 @@
-id: run_test
-key: run_test
-name: Run Test
-description: Run the project automated tests before external validation.
+id: python_gate
+key: python_gate
+name: Python Gate
+description: Run a configured validation script, pytest when tests exist, or skip with PASS when no Python gate is available.
 enabled: true
 type: python
-skill: steps/general-auto-development/run_test.md
+skill: steps/adaptive-auto-workflow/02_python_gate.md
 command: ''
 agent: qwen
 outputs:
-- test-result.md
+- python-gate-result.md
 retry: 99
+maxRetries: 99
 failAction: selected_step
-retryFromStepKey: build
+retryFromStepKey: auto_generation
 keepSameSession: true
 injectFailureFeedback: true
 stopAfterFailures: 99
 allowInteraction: false
 requiresValidationScript: false
+fallbackValidationScripts:
+- validation.py
+- validate.py
+- verify.py
+- check.py
 thinking: false
 approvalRequired: false
 pauseAfterStep: false
@@ -29,15 +35,10 @@ confidenceThreshold: 0.75
 passKeywords: PASS, APPROVED
 failKeywords: FAIL, BLOCKED
 aggregatorFunction: ''
-sources:
-- type: skill_path
-  value: test-driven-development
-- type: skill_path
-  value: debugging-and-error-recovery
+sources: []
 agentOptions: {}
-path: contracts/general-auto-development/run_test.yaml
-function: run_pytest
-timeout: 0.0
+path: contracts/adaptive-auto-workflow/python_gate.yaml
+function: adaptive_python_gate
 functions:
-- run_pytest
+- adaptive_python_gate
 approval: false

@@ -225,6 +225,8 @@ class PromptBuilder:
             "test_result": read_text(output_dir / "test-result.md"),
             "external_validation_result": read_text(output_dir / "external-validation-result.md"),
             "build_result": read_text(output_dir / "build-result.md"),
+            "auto_generation_result": read_text(output_dir / "auto-generation-result.md"),
+            "python_gate_result": read_text(output_dir / "python-gate-result.md"),
             "verifier_report": read_text(output_dir / "verifier-report.json"),
             "diff_context": read_text(output_dir / "diff-context.md"),
             "diff_review": read_text(output_dir / "diff-review.md"),
@@ -294,7 +296,7 @@ class PromptBuilder:
 
     def _fallback_validation_scripts(self, run: dict[str, Any]) -> str:
         for step in run.get("steps") or []:
-            if step.get("key") != "run_external_validation":
+            if step.get("key") not in {"run_external_validation", "python_gate"}:
                 continue
             nested = step.get("config") if isinstance(step.get("config"), dict) else {}
             config = {**step, **nested}

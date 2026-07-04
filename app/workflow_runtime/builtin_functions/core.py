@@ -125,6 +125,168 @@ async def run_pytest(ctx: WorkflowFunctionContext) -> None:
         )
 
 
+async def adaptive_python_gate(ctx: WorkflowFunctionContext, artifact: str = "python-gate-result.md") -> None:
+    """Run the best available Python gate for adaptive workflows.
+
+    Precedence:
+    1. A configured or discovered validation script.
+    2. The project's pytest suite when tests exist.
+    3. A clear skipped PASS artifact when no Python gate is available.
+    """
+    output_dir = Path(ctx.run["workspace"]) / "output"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    script = _find_project_validation_script(ctx)
+    if script:
+        await _run_validation_script(ctx, script, artifact)
+        return
+    if _project_has_pytest_files(ctx.project_dir):
+        await run_pytest(ctx)
+        test_result = ctx.read_text(output_dir / "test-result.md")
+        ctx.write_text(
+            output_dir / artifact,
+            "\n".join(
+                [
+                    "# Python Gate Result",
+                    "",
+                    "Status: PASS",
+                    "Mode: pytest",
+                    "Evidence: output/test-result.md",
+                    "",
+                    "## Test Result",
+                    "```text",
+                    test_result.rstrip(),
+                    "```",
+                    "",
+                ]
+            ),
+        )
+        return
+    ctx.write_text(
+        output_dir / artifact,
+        "\n".join(
+            [
+                "# Python Gate Result",
+                "",
+                "Status: PASS",
+                "Mode: skipped",
+                "Reason: No validation script was configured or found, and no pytest files were present.",
+                "",
+            ]
+        ),
+    )
+
+
+def _find_project_validation_script(ctx: WorkflowFunctionContext) -> Path | None:
+    configured = str(ctx.run.get("validation_script") or "").strip()
+    candidates: list[str] = []
+    if configured:
+        candidates.append(configured)
+    step_config = ctx.run.get("_current_step_config") if isinstance(ctx.run, dict) else {}
+    fallback = step_config.get("fallbackValidationScripts") if isinstance(step_config, dict) else []
+    if isinstance(fallback, str):
+        candidates.extend(item.strip() for item in fallback.split(",") if item.strip())
+    elif isinstance(fallback, list):
+        candidates.extend(str(item).strip() for item in fallback if str(item).strip())
+    for value in candidates:
+        raw = Path(value).expanduser()
+        path = raw.resolve() if raw.is_absolute() else (ctx.project_dir / raw).resolve()
+        if path.is_file() and path.suffix.lower() == ".py":
+            return path
+    return None
+
+
+async def _run_validation_script(ctx: WorkflowFunctionContext, script: Path, artifact: str) -> None:
+    command = [
+        sys.executable,
+        str(script),
+        "--project",
+        str(ctx.project_dir),
+        "--workspace",
+        str(Path(ctx.run["workspace"])),
+        "--output",
+        str(ctx.output_dir),
+    ]
+    await ctx.log(ctx.run, f"python_gate: executing validation script `{script}` in {ctx.project_dir}")
+
+    def execute() -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            command,
+            cwd=str(ctx.project_dir),
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            timeout=None,
+        )
+
+    proc = await asyncio.to_thread(execute)
+    if proc.returncode != 0 and _looks_like_script_argument_error(proc.stderr):
+        fallback_command = [sys.executable, str(script)]
+
+        def execute_fallback() -> subprocess.CompletedProcess[str]:
+            return subprocess.run(
+                fallback_command,
+                cwd=str(ctx.project_dir),
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                timeout=None,
+            )
+
+        command = fallback_command
+        proc = await asyncio.to_thread(execute_fallback)
+    status = "PASS" if proc.returncode == 0 else "FAIL"
+    result = "\n".join(
+        [
+            "# Python Gate Result",
+            "",
+            f"Status: {status}",
+            "Mode: validation_script",
+            f"Script: {_display_path(ctx.project_dir, script)}",
+            f"Command: {' '.join(_quote_command_part(part) for part in command)}",
+            f"Exit Code: {proc.returncode}",
+            "",
+            "## Stdout",
+            "```text",
+            (proc.stdout or "").rstrip(),
+            "```",
+            "",
+            "## Stderr",
+            "```text",
+            (proc.stderr or "").rstrip(),
+            "```",
+            "",
+        ]
+    )
+    ctx.write_text(ctx.output_dir / artifact, result)
+    if proc.returncode != 0:
+        summary = summarize_command_failure(proc.stdout, proc.stderr)
+        detail = f": {summary}" if summary else ""
+        raise WorkflowFunctionError(f"Python gate validation script failed with exit code {proc.returncode}{detail}")
+
+
+def _project_has_pytest_files(project_dir: Path) -> bool:
+    tests_dir = project_dir / "tests"
+    if tests_dir.is_dir() and any(tests_dir.rglob("test_*.py")):
+        return True
+    return any(project_dir.glob("test_*.py"))
+
+
+def _looks_like_script_argument_error(stderr: str) -> bool:
+    lowered = (stderr or "").lower()
+    return any(marker in lowered for marker in ("unrecognized arguments", "unknown option", "no such option", "usage:"))
+
+
+def _display_path(root: Path, path: Path) -> str:
+    try:
+        return path.relative_to(root).as_posix()
+    except ValueError:
+        return str(path)
+
+
+def _quote_command_part(value: str) -> str:
+    return f'"{value}"' if any(ch.isspace() for ch in value) else value
+
+
 def _contains_status_pass(text: str) -> bool:
     lowered = (text or "").lower()
     return "status: pass" in lowered or "exitcode: 0" in lowered or "exit code: 0" in lowered

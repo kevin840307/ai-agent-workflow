@@ -81,7 +81,7 @@ class AiWorkflowAssetsUiTests(unittest.TestCase):
 
         self.assertNotIn('id="validationScript"', html)
         self.assertIn('validationScript: "validationScript"', dom)
-        self.assertIn("validation_script: validationScript", runs)
+        self.assertIn("payload.validation_script = validationScript", runs)
         self.assertIn("requiresValidationScript(workflow)", workflows)
         self.assertIn('id="validationScript"', workflows)
         self.assertIn("workflow-step-validation", workflows)
