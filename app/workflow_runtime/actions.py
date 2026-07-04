@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import re
 from pathlib import Path
 from typing import Any, Awaitable, Callable
 
+from app.auto_workflow import orchestrator
 from app.runtime_modules.errors import UserInputRequired, ValidationError, WorkflowError
 from app.runtime_modules.files import (
     apply_build_files,
@@ -248,13 +250,20 @@ class WorkflowActions:
     def _task_owner(self, todo: str, task_id: str) -> str:
         title = self._task_title(todo, task_id)
         section = self._task_section(todo, task_id)
-        text = f"{title}\n{section}".lower()
-        has_change_verb = re.search(r"\b(implement|create|modify|update|write|add|generate|produce|build)\b", text)
-        if re.search(r"\b(generate|create|write|add)\s+(focused\s+)?(automated\s+)?tests?\b", text) or "test files only" in text:
+        header = title.lower()
+        goal_match = re.search(r"(?im)^\s*-\s*goal:\s*(.+)$", section or "")
+        goal = goal_match.group(1).lower() if goal_match else ""
+        primary = f"{header}\n{goal}"
+        text = f"{primary}\n{section}".lower()
+        change_pattern = r"\b(implement|create|modify|update|write|add|generate|produce|build)\b"
+        if re.search(change_pattern, primary) or re.search(r"(實作|新增|建立|修改|產生|製作)", primary):
+            if not re.search(r"\btests?\b", primary) and "測試" not in primary:
+                return "build"
+        if re.search(r"\b(generate|create|write|add)\s+(focused\s+)?(automated\s+)?tests?\b", primary) or "test files only" in text:
             return "generate_tests"
-        if "external validation" in text and not re.search(r"\b(implement|create|modify|update|write|add)\b", text):
+        if "external validation" in primary and not re.search(r"\b(implement|create|modify|update|write|add|build)\b", primary):
             return "run_external_validation"
-        if re.search(r"\b(review|analyze|analyse|inspect|scan|understand|plan)\b", text) and not has_change_verb:
+        if re.search(r"\b(review|analyze|analyse|inspect|scan|understand|plan)\b", primary) and not re.search(change_pattern, primary):
             return "planning"
         return "build"
 
@@ -565,6 +574,20 @@ class WorkflowActions:
         task_manifest = self._render_task_manifest(todo)
         write_text(output_dir / "task-manifest.md", task_manifest)
         task_todo_files = self._write_task_todo_files(output_dir, todo, task_manifest)
+        project_dir = Path(run.get("project_path") or ROOT)
+        requirement = read_text(Path(run["workspace"]) / "requirement.md")
+        instructions = orchestrator.extract_user_instructions(requirement, project_dir)
+        task_manifest_json = orchestrator.task_manifest_from_todo(todo, project_dir=project_dir, instructions=instructions)
+        task_manifest_findings = orchestrator.validate_task_manifest(task_manifest_json, project_dir)
+        workflow_instance = orchestrator.compile_workflow_instance(task_manifest_json, run_profile=str(run.get("run_profile") or "normal"))
+        workflow_findings = orchestrator.validate_workflow_instance(workflow_instance, task_manifest_json)
+        write_text(output_dir / "task-manifest.json", json.dumps(task_manifest_json, indent=2, ensure_ascii=False))
+        write_text(output_dir / "generated-workflow-instance.json", json.dumps(workflow_instance, indent=2, ensure_ascii=False))
+        write_text(output_dir / "workflow-instance-validation.md", orchestrator.render_validation_markdown(task_manifest_findings, workflow_findings))
+        write_text(output_dir / "workflow-run-trace.md", orchestrator.render_run_trace(workflow_instance))
+        if task_manifest_findings or workflow_findings:
+            findings.extend(task_manifest_findings)
+            findings.extend(workflow_findings)
 
         text = "\n".join(
             [
@@ -577,6 +600,8 @@ class WorkflowActions:
                 "- Todo is concrete enough for automated Build.",
                 "- Tasks include acceptance criteria.",
                 "- task-manifest.md was generated from todo.md to stabilize small-task order and assembly.",
+                "- task-manifest.json and generated-workflow-instance.json were compiled by Python from todo.md.",
+                "- workflow-instance-validation.md and workflow-run-trace.md were generated as deterministic evidence.",
                 "- output/todos/TASK-xxx.md files were generated so Build/Generate Tests can consume one small TODO at a time.",
                 "- Acceptance and stop conditions are present.",
                 "- Mandatory test and external validation stages are present.",
@@ -768,7 +793,12 @@ class WorkflowActions:
         architecture_path = project_dir / "architecture.md"
         artifact = normalize_artifact_name(artifact)
         output_dir = Path(run["workspace"]) / "output"
-        write_text(output_dir / "project-index.md", render_project_index_markdown(project_dir))
+        project_index = render_project_index_markdown(project_dir)
+        write_text(output_dir / "project-index.md", project_index)
+        requirement = read_text(Path(run["workspace"]) / "requirement.md")
+        instructions = orchestrator.extract_user_instructions(requirement, project_dir)
+        architecture_contract = orchestrator.build_architecture_contract(project_dir, project_index, instructions)
+        write_text(output_dir / "architecture-contract.json", json.dumps(architecture_contract, indent=2, ensure_ascii=False))
         await self.refresh_artifacts(run["id"])
         if not project_has_user_files(project_dir) and not architecture_path.exists():
             await self.log(run, f"prepare_project: working directory appears empty, skipping architecture discovery for {project_dir}")

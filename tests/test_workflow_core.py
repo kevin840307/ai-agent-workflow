@@ -110,6 +110,24 @@ class WorkflowCoreTests(unittest.TestCase):
             (output_dir / "test-result.md").write_text("AssertionError: wrong result", encoding="utf-8")
             self.assertEqual(retry_target_for_failure(run, steps[2], steps, 2, output_dir), "build")
 
+    def test_task_owner_uses_task_goal_before_downstream_validation_text(self) -> None:
+        actions = WorkflowActions(agent_runner=None, functions=None, log=None, refresh_artifacts=None)
+        todo = """# Todo
+
+Status: READY
+
+## Tasks
+
+### TASK-001: Implement production change
+- Goal: Implement the requested feature.
+- Acceptance Criteria:
+  - AC-001: The feature works.
+- Validation:
+  - Covered by Generate Tests, Run Test, and External Validation.
+"""
+
+        self.assertEqual(actions._task_owner(todo, "TASK-001"), "build")
+
     def test_file_blocks_cannot_escape_project_path(self) -> None:
         files = extract_build_files("FILE: ../escape.py\nCONTENT:\nprint('bad')\nEND_FILE\n")
         with tempfile.TemporaryDirectory() as tmp:

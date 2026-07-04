@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -9,6 +10,7 @@ from app.runtime_modules.files import failure_feedback_for_step, project_overvie
 from app.core.paths import DEFAULT_SKILL_PATH, ROOT, SYSTEM_WORKFLOW_ID, WORKFLOW_BUNDLES_DIR, read_text, write_text
 from app.runtime_modules.skills import load_skill_context
 from app.services.workflow_asset_service import GLOBAL_ASSET_ROOT, PROJECT_ASSET_DIR
+from app.auto_workflow import orchestrator
 
 from .questions import interaction_instruction
 from .step_utils import bool_config
@@ -197,11 +199,18 @@ class PromptBuilder:
             "architecture": architecture,
             "project_profile": profile,
             "project_index": read_text(output_dir / "project-index.md"),
+            "request_intent": self._request_intent(run, requirement, project_dir),
+            "user_instructions": self._user_instructions(requirement, project_dir),
+            "architecture_contract": self._architecture_contract(run, requirement, project_dir, output_dir),
             "project_overview": project_overview(project_dir),
             "spec": read_text(output_dir / "spec.md"),
             "spec_review": read_text(output_dir / "spec-review.md"),
             "todo": read_text(output_dir / "todo.md"),
             "task_manifest": read_text(output_dir / "task-manifest.md"),
+            "task_manifest_json": read_text(output_dir / "task-manifest.json"),
+            "workflow_instance": read_text(output_dir / "generated-workflow-instance.json"),
+            "workflow_instance_validation": read_text(output_dir / "workflow-instance-validation.md"),
+            "workflow_run_trace": read_text(output_dir / "workflow-run-trace.md"),
             "current_task": current_task_block,
             "current_task_todo": current_task_todo,
             "current_task_id": str(current_task.get("id") or ""),
@@ -237,6 +246,27 @@ class PromptBuilder:
             "validation_script_content": self._validation_script_content(run, project_dir),
             "fallback_validation_scripts": self._fallback_validation_scripts(run),
         }
+
+    def _request_intent(self, run: dict[str, Any], requirement: str, project_dir: Path) -> str:
+        intent = orchestrator.route_request(
+            requirement,
+            validation_script=str(run.get("validation_script") or ""),
+            project_has_files=project_dir.exists() and any(project_dir.iterdir()),
+        )
+        return json.dumps(intent, indent=2, ensure_ascii=False)
+
+    def _user_instructions(self, requirement: str, project_dir: Path) -> str:
+        instructions = orchestrator.extract_user_instructions(requirement, project_dir)
+        return json.dumps(instructions, indent=2, ensure_ascii=False)
+
+    def _architecture_contract(self, run: dict[str, Any], requirement: str, project_dir: Path, output_dir: Path) -> str:
+        instructions = orchestrator.extract_user_instructions(requirement, project_dir)
+        project_index = read_text(output_dir / "project-index.md")
+        contract = orchestrator.build_architecture_contract(project_dir, project_index, instructions)
+        contract_path = output_dir / "architecture-contract.json"
+        if not contract_path.exists():
+            write_text(contract_path, json.dumps(contract, indent=2, ensure_ascii=False))
+        return json.dumps(contract, indent=2, ensure_ascii=False)
 
     def _render_template(self, template: str, values: dict[str, str]) -> str:
         rendered = template

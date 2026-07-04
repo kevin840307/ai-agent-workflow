@@ -60,6 +60,9 @@ Rules:
 - The validation script path above is reserved for verification. Read it as acceptance criteria if useful, but never output a FILE block for that path.
 - Use the validation script content above to understand how success will be checked. Implement production code that satisfies it; do not rewrite the validation script.
 - If the project already contains a validation script, create a separate production tool/source file with a task-appropriate name instead of reusing the validator filename.
+- Do not copy validation assertions, pytest test functions, demo snippets, example usage, top-level `assert`, or top-level `print` calls into production files to make a validator pass. Fix the reusable implementation instead.
+- Production Python files must be import-safe: importing the module must not execute examples, assertions, validation checks, or test code. Only define functions/classes/constants unless the user explicitly requested a CLI entry point.
+- If failure feedback mentions side effects, mutation, idempotence, determinism, formatting, paths, or exact output, change the implementation behavior to satisfy that contract; do not weaken, bypass, duplicate, or embed the validation logic.
 - Do not output explanations outside FILE blocks.
 - Do not create or modify test files in this Build step.
 - Implement only the current small task TODO file shown above. Earlier completed task outputs may be preserved as dependencies; do not implement future task TODO files in this Build call.
