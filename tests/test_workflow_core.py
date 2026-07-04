@@ -56,7 +56,9 @@ class WorkflowCoreTests(unittest.TestCase):
 
             asyncio.run(actions.prepare_project_step({"id": "run-1", "workspace": str(workspace), "project_path": str(project), "steps": [{"key": "run_external_validation", "config": {"fallbackValidationScripts": ["validation.py"]}}]}))
 
-            self.assertIn("Primary language: YAML", (project / "architecture.md").read_text(encoding="utf-8"))
+            architecture = (project / "architecture.md").read_text(encoding="utf-8")
+            self.assertIn("Dominant source extensions: .yaml (1)", architecture)
+            self.assertIn("config\\users.yaml", architecture)
 
     def test_catalog_function_ids_are_executable_or_runtime_special_cases(self) -> None:
         function_ids = {item["id"] for item in workflow_asset_service.function_catalog()["functions"]}
@@ -190,28 +192,34 @@ Status: READY
             (workspace / "requirement.md").write_text("Create a config output", encoding="utf-8")
             actions = WorkflowActions(agent_runner=FakeAgentRunner(), functions=None, log=log, refresh_artifacts=refresh)
 
-            with self.assertRaisesRegex(WorkflowError, "production FILE/CONTENT/END_FILE"):
+            with self.assertRaisesRegex(WorkflowError, "directly create or modify production files"):
                 asyncio.run(actions.build_step({"id": "run-1", "workspace": str(workspace), "project_path": str(project), "steps": [{"key": "run_external_validation", "config": {"fallbackValidationScripts": ["validation.py"]}}]}))
 
 
-    def test_generate_tests_retry_removes_stale_workflow_generated_tests(self) -> None:
+    def test_generate_tests_requires_direct_test_file_edits(self) -> None:
+        class FakeAgentRunner:
+            async def run(self, run, step_key, prompt_name, artifact, **_kwargs):
+                output = Path(run["workspace"]) / "output"
+                output.mkdir(parents=True, exist_ok=True)
+                text = "Status: PASS\n\nNo direct test file edits.\n"
+                (output / artifact).write_text(text, encoding="utf-8")
+                return text
+
+        async def log(_run, _message):
+            return None
+
+        async def refresh(_run_id):
+            return None
+
         with tempfile.TemporaryDirectory() as tmp:
-            project = Path(tmp)
-            tests_dir = project / "tests"
-            tests_dir.mkdir()
-            stale = tests_dir / "test_old.py"
-            keep = tests_dir / "test_keep.py"
-            stale.write_text("def test_old(): pass\n", encoding="utf-8")
-            keep.write_text("def test_keep(): pass\n", encoding="utf-8")
+            project = Path(tmp) / "project"
+            workspace = Path(tmp) / "workspace"
+            project.mkdir()
+            (workspace / "output").mkdir(parents=True)
+            actions = WorkflowActions(agent_runner=FakeAgentRunner(), functions=None, log=log, refresh_artifacts=refresh)
 
-            WorkflowActions._remove_stale_generated_tests(
-                project,
-                [("tests/test_old.py", ""), ("tests/test_keep.py", "")],
-                [("tests/test_keep.py", "")],
-            )
-
-            self.assertFalse(stale.exists())
-            self.assertTrue(keep.exists())
+            with self.assertRaisesRegex(WorkflowError, "directly create or modify pytest files"):
+                asyncio.run(actions.generate_tests_step({"id": "run-1", "workspace": str(workspace), "project_path": str(project)}))
 
     def test_workflow_bundle_paths_are_normalized_inside_asset_dirs(self) -> None:
         self.assertEqual(

@@ -72,7 +72,7 @@ class GeneralAutoDevelopmentWorkflowTests(unittest.TestCase):
 
         build = next(step for step in workflow["steps"] if step["key"] == "build")
         self.assertEqual(build["type"], "ai")
-        self.assertLessEqual(build["maxRetries"], 8)
+        self.assertEqual(build["maxRetries"], 99)
 
         implementation_review = next(step for step in workflow["steps"] if step["key"] == "implementation_review")
         self.assertEqual(implementation_review["type"], "python")
@@ -89,7 +89,7 @@ class GeneralAutoDevelopmentWorkflowTests(unittest.TestCase):
         self.assertEqual(validation["retryFromStepKey"], "build")
         self.assertEqual(validation["failAction"], "selected_step")
         self.assertTrue(validation["requiresValidationScript"])
-        self.assertLessEqual(validation["maxRetries"], 5)
+        self.assertEqual(validation["maxRetries"], 99)
 
         diff_review = next(step for step in workflow["steps"] if step["key"] == "diff_review")
         self.assertEqual(diff_review["type"], "ai")

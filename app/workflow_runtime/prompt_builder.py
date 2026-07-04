@@ -437,9 +437,13 @@ class PromptBuilder:
         if not path.exists() or not path.is_file():
             return f"Validation script not found at: {raw_path}"
         text = read_text(path)
+        header = (
+            "READ-ONLY EXTERNAL VALIDATION SCRIPT. This file is outside the product scope unless the user explicitly asks to edit the validator.\n"
+            "Use it only to understand acceptance behavior. Do not modify it, copy it into production, or treat it as the requested deliverable.\n\n"
+        )
         if len(text) > 12000:
-            return text[:12000] + "\n\n[validation script truncated]"
-        return text
+            return header + text[:12000] + "\n\n[validation script truncated]"
+        return header + text
 
     def _artifact_dependency_context(
         self,
@@ -597,13 +601,16 @@ class PromptBuilder:
         if agent_name == "qwen":
             skill_header = (
                 "Reference instruction files have been loaded as background methodology only. "
-                "Do not call tools, do not call functions, and do not output JSON unless the task explicitly asks for JSON.\n\n"
+                "Use them for method and constraints, not as write targets or user requirements. "
+                "When the workflow step asks for direct project edits, use the agent's file edit/write tools. "
+                "Do not output JSON unless the task explicitly asks for JSON.\n\n"
                 f"Reference files:\n{selected_skills}\n\n"
             )
         else:
             skill_header = (
                 f"Reference instruction files have been loaded for the {agent_name} agent as background methodology only. "
-                "Do not call external tools unless the workflow step explicitly requires it. "
+                "Use them for method and constraints, not as write targets or user requirements. "
+                "When the workflow step asks for direct project edits, use the agent's file edit/write tools. "
                 "Do not output JSON unless the task explicitly asks for JSON.\n\n"
                 f"Reference files:\n{selected_skills}\n\n"
             )

@@ -10,12 +10,12 @@ agent: qwen
 outputs:
 - test-plan.md
 function: ''
-retry: 5
+retry: 99
 failAction: same_step
 retryFromStepKey: generate_tests
 keepSameSession: false
 injectFailureFeedback: true
-stopAfterFailures: 5
+stopAfterFailures: 99
 allowInteraction: false
 thinking: false
 approvalRequired: false

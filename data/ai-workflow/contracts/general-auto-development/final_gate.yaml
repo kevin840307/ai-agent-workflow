@@ -14,7 +14,7 @@ failAction: selected_step
 retryFromStepKey: final_review
 keepSameSession: true
 injectFailureFeedback: true
-stopAfterFailures: 3
+stopAfterFailures: 99
 allowInteraction: false
 requiresValidationScript: false
 thinking: false

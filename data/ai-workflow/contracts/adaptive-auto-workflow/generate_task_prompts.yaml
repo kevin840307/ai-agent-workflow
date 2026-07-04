@@ -14,13 +14,13 @@ outputs:
 - workflow-instance-validation.md
 - workflow-run-trace.md
 function: ''
-retry: 0
-maxRetries: 0
-failAction: stop
+retry: 99
+maxRetries: 99
+failAction: same_step
 retryFromStepKey: generate_task_prompts
 keepSameSession: true
 injectFailureFeedback: false
-stopAfterFailures: 1
+stopAfterFailures: 99
 allowInteraction: false
 thinking: false
 approvalRequired: false

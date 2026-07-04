@@ -283,6 +283,10 @@ class WorkflowExecutor:
                     step["ended_at"] = utc_now()
 
         cancelled_run = await self.update_run(run_id, cancel)
+        if not cancelled_run:
+            fallback_run = dict(run)
+            cancel(fallback_run)
+            cancelled_run = fallback_run
         write_text(run_dir / ".workflow" / "state.json", json.dumps(cancelled_run, indent=2, ensure_ascii=False))
         write_run_trace_artifacts(cancelled_run, run_dir)
         await self.refresh_artifacts(run_id)

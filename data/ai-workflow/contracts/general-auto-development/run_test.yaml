@@ -9,12 +9,12 @@ command: ''
 agent: qwen
 outputs:
 - test-result.md
-retry: 5
+retry: 99
 failAction: selected_step
 retryFromStepKey: build
 keepSameSession: true
 injectFailureFeedback: true
-stopAfterFailures: 5
+stopAfterFailures: 99
 allowInteraction: false
 requiresValidationScript: false
 thinking: false
