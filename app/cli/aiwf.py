@@ -213,6 +213,16 @@ def _read_requirement(args: argparse.Namespace) -> str:
 
 
 async def _wait_for_run(run_id: str) -> dict:
+    task = runtime.running_tasks.get(run_id)
+    if task:
+        try:
+            await task
+        except Exception:
+            run = await workflow_service.get_run(run_id)
+            if run.get("status") in {"done", "passed", "failed", "cancelled", "waiting_input"}:
+                return run
+            raise
+        return await workflow_service.get_run(run_id)
     while True:
         run = await workflow_service.get_run(run_id)
         if run.get("status") in {"done", "passed", "failed", "cancelled", "waiting_input"}:

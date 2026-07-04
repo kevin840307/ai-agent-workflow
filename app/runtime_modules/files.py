@@ -4,7 +4,7 @@ import json
 import re
 from pathlib import Path, PureWindowsPath
 from urllib.parse import unquote
-from typing import Callable, Iterable
+from typing import Any, Callable, Iterable
 
 from app.runtime_modules.errors import ValidationError, WorkflowError
 from app.core.paths import read_text, write_text
@@ -21,6 +21,8 @@ def unsafe_relative_path_reason(raw_path: str) -> str | None:
     normalized = str(raw_path or "").strip().strip("`").replace("\\", "/").lower()
     if normalized in {"relative/path.ext", "relative_path.ext"} or normalized.startswith(("relative/path/", "relative_path/")):
         return "placeholder relative/path output is not a real project file"
+    if normalized.startswith("path_to_") or normalized.startswith("example."):
+        return "placeholder output path is not a real project file"
     return guarded_unsafe_relative_path_reason(raw_path, reserved_dirs=RESERVED_AGENT_WRITE_DIRS)
 
 
@@ -143,6 +145,8 @@ def spec_input_questions(requirement: str, project_dir: Path, supplemental_input
 def classify_test_retry_target(project_dir: Path, test_result: str) -> str:
     text = test_result or ""
     lower = text.lower()
+    if _mentions_project_production_python_file(project_dir, text):
+        return "build"
     test_collection_or_import_problem = any(
         marker in lower
         for marker in [
@@ -160,6 +164,22 @@ def classify_test_retry_target(project_dir: Path, test_result: str) -> str:
     if generated_test_runtime_problem:
         return "generate_tests"
     return "build"
+
+
+def _mentions_project_production_python_file(project_dir: Path, text: str) -> bool:
+    project_root = project_dir.expanduser().resolve()
+    for raw_path in re.findall(r'File "([^"]+?\.py)"', text or ""):
+        try:
+            path = Path(raw_path).expanduser().resolve()
+        except OSError:
+            continue
+        try:
+            rel = path.relative_to(project_root).as_posix().lower()
+        except ValueError:
+            continue
+        if rel and not rel.startswith("tests/"):
+            return True
+    return False
 
 
 def failure_feedback_for_step(all_feedback: str, step_key: str) -> str:
@@ -427,7 +447,7 @@ def snapshot_changed(before: dict[str, tuple[int, int]], after: dict[str, tuple[
 def extract_build_files(build_result: str) -> list[tuple[str, str]]:
     files: list[tuple[str, str]] = []
     pattern = re.compile(
-        r"^FILE:\s*(?P<path>.+?)\s*\r?\nCONTENT:\r?\n(?P<content>.*?)(?=^FILE:\s*|^END_FILE\s*$|\Z)",
+        r"^FILE:\s*(?P<path>.+?)\s*\r?\n(?:CONTENT:\r?\n)?(?P<content>.*?)(?=^FILE:\s*|^END_FILE\s*$|\Z)",
         re.DOTALL | re.MULTILINE,
     )
     for match in pattern.finditer(build_result):
@@ -437,7 +457,48 @@ def extract_build_files(build_result: str) -> list[tuple[str, str]]:
         content = re.sub(r"\r?\n$", "", content)
         content = strip_wrapping_code_fence(rel_path, content)
         files.append((rel_path, content + "\n"))
+    if files:
+        return files
+    files.extend(_extract_json_file_blocks(build_result))
     return files
+
+
+def _extract_json_file_blocks(text: str) -> list[tuple[str, str]]:
+    parsed_items: list[Any] = []
+    stripped = text.strip()
+    if not stripped:
+        return []
+    candidates = [stripped]
+    fence_pattern = re.compile(r"```(?:json)?\s*\r?\n(?P<body>.*?)\r?\n```", re.DOTALL | re.IGNORECASE)
+    candidates.extend(match.group("body").strip() for match in fence_pattern.finditer(text))
+    for candidate in candidates:
+        try:
+            parsed_items.append(json.loads(candidate))
+        except json.JSONDecodeError:
+            continue
+
+    files: list[tuple[str, str]] = []
+    for item in parsed_items:
+        for rel_path, content in _json_file_entries(item):
+            rel_path = str(rel_path).strip().strip("`").replace("\\", "/")
+            content_text = str(content)
+            content_text = strip_wrapping_code_fence(rel_path, content_text)
+            files.append((rel_path, content_text.rstrip("\n") + "\n"))
+    return files
+
+
+def _json_file_entries(item: Any) -> list[tuple[str, str]]:
+    if isinstance(item, dict):
+        if "FILE" in item and "CONTENT" in item:
+            return [(str(item["FILE"]), str(item["CONTENT"]))]
+        if "file" in item and "content" in item:
+            return [(str(item["file"]), str(item["content"]))]
+        entries = item.get("files")
+        if isinstance(entries, list):
+            return [entry for child in entries for entry in _json_file_entries(child)]
+    if isinstance(item, list):
+        return [entry for child in item for entry in _json_file_entries(child)]
+    return []
 
 
 def strip_wrapping_code_fence(rel_path: str, content: str) -> str:
@@ -447,8 +508,19 @@ def strip_wrapping_code_fence(rel_path: str, content: str) -> str:
     stripped = content.strip()
     match = re.fullmatch(r"```[\w.+-]*\s*\r?\n(?P<body>.*)\r?\n```", stripped, re.DOTALL)
     if not match:
-        return content
+        return strip_edge_code_fence_lines(content)
     return match.group("body")
+
+
+def strip_edge_code_fence_lines(content: str) -> str:
+    lines = content.splitlines()
+    while lines and re.fullmatch(r"\s*```[\w.+-]*\s*", lines[0]):
+        lines.pop(0)
+    while lines and re.fullmatch(r"\s*```\s*", lines[-1]):
+        lines.pop()
+    if not lines:
+        return ""
+    return "\n".join(lines)
 
 
 def apply_extracted_files(project_dir: Path, files: list[tuple[str, str]], *, output_label: str = "build output") -> list[Path]:

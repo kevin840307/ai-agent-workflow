@@ -56,6 +56,36 @@ class PromptBuilderTests(unittest.TestCase):
             self.assertIn("Detected project profile", result.prompt)
             self.assertTrue((workspace / "prompts" / "build.md").exists())
 
+    def test_prompt_can_include_validation_script_content(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            workspace = root / "run"
+            project = root / "project"
+            workflow = root / "workflow"
+            (workspace / "input").mkdir(parents=True)
+            (workspace / "output").mkdir(parents=True)
+            (workspace / "prompts").mkdir(parents=True)
+            project.mkdir()
+            (workflow / "prompts").mkdir(parents=True)
+
+            (workspace / "requirement.md").write_text("Build a tool", encoding="utf-8")
+            (project / "validation.py").write_text("assert True\n", encoding="utf-8")
+            (workflow / "prompts" / "build.md").write_text("Validator:\n{{validation_script_content}}", encoding="utf-8")
+
+            run = {
+                "id": "run-1",
+                "workspace": str(workspace),
+                "project_path": str(project),
+                "workflow_folder": "workflow",
+                "validation_script": "validation.py",
+                "steps": [{"key": "build", "allow_interaction": False, "config": {"templatePath": "prompts/build.md"}}],
+            }
+
+            with patch("app.workflow_runtime.prompt_builder.WORKFLOW_BUNDLES_DIR", root):
+                result = PromptBuilder().build(run, "build", "prompts/build.md", allow_interaction=False)
+
+            self.assertIn("assert True", result.prompt)
+
 
 if __name__ == "__main__":
     unittest.main()

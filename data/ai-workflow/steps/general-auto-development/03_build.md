@@ -1,5 +1,13 @@
 Implement the approved task plan.
 
+Critical output contract:
+- Your first non-empty line must be `FILE: <actual relative project path>`.
+- Use one or more FILE/CONTENT/END_FILE blocks only.
+- Do not output JSON, Markdown fences around the whole answer, explanations, tool-call objects, summaries, or placeholder paths.
+- Replace `<actual relative project path>` with a real concrete file path under the Project path.
+- Never output `relative/path.ext`, `relative_path.ext`, `path_to_*`, `example.*`, or a template-only placeholder.
+- Every FILE block must contain complete runnable project content for that file.
+
 Requirement:
 {{requirement}}
 
@@ -21,6 +29,9 @@ Latest test result:
 Implementation review:
 {{step_output}}
 
+Project overview:
+{{project_overview}}
+
 Project index:
 {{project_index}}
 
@@ -30,6 +41,12 @@ Project profile:
 Failure feedback from previous retries:
 {{failure_feedback}}
 
+Validation script for this run:
+{{validation_script}}
+
+Validation script content (read-only acceptance criteria):
+{{validation_script_content}}
+
 Fallback validation scripts configured by this workflow:
 {{fallback_validation_scripts}}
 
@@ -37,6 +54,9 @@ Rules:
 - Do not run `git commit`, `git push`, or any command that changes repository history or remote state. The user will inspect git diff manually.
 - Output Build-owned FILE/CONTENT/END_FILE blocks only: production code, project config, data files, or other requested project artifacts.
 - Existing validation scripts configured by the workflow or provided for this run are protected acceptance tools. Do not output FILE blocks for them unless the user explicitly asked to implement or modify the validator itself.
+- The validation script path above is reserved for verification. Read it as acceptance criteria if useful, but never output a FILE block for that path.
+- Use the validation script content above to understand how success will be checked. Implement production code that satisfies it; do not rewrite the validation script.
+- If the project already contains a validation script, create a separate production tool/source file with a task-appropriate name instead of reusing the validator filename.
 - Do not output explanations outside FILE blocks.
 - Do not create or modify test files in this Build step.
 - Implement the small tasks in the Task Manifest order, then assemble them into one coherent project state before returning FILE blocks.
@@ -50,6 +70,7 @@ Rules:
 - If the requirement asks only to produce a file/artifact and does not ask for a reusable tool or script, write the requested artifact only instead of inventing helper code.
 - If the requirement asks for a tool, script, CLI, or utility, implement an actually executable tool, not a simulated class, placeholder, README, file list, or design note.
 - If the requirement says the tool reads user-provided config, scans a directory, or modifies/generated files, implement real file I/O using the requested config path, directory path, and output path semantics.
+- Treat data, config, and document paths as files, not importable source modules. Do not import `.yaml`, `.yml`, `.json`, `.toml`, `.txt`, or generated data paths as Python modules; read and write them through file I/O from the project root.
 - The implemented tool must be invokable from the project root with a simple command and must not require editing source code to provide input paths.
 - If the project has `.qwen/settings.json` or `opencode.json`, treat them as project-local agent settings only.
 - Before changing files on retry, read the failure feedback and identify the failed owner: Build, Generate Tests, Run Test, External Validation, or Final Review.
@@ -68,7 +89,7 @@ Path rules:
 
 Output format:
 
-FILE: relative/path.ext
+FILE: src/tool.py
 CONTENT:
 ...
 END_FILE

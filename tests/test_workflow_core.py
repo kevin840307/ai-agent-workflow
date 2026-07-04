@@ -98,6 +98,15 @@ class WorkflowCoreTests(unittest.TestCase):
             )
             self.assertEqual(retry_target_for_failure(run, steps[2], steps, 2, output_dir), "generate_tests")
 
+            production_file = Path(tmp) / "src" / "tool.py"
+            production_file.parent.mkdir()
+            production_file.write_text("def main(): pass\n", encoding="utf-8")
+            (output_dir / "test-result.md").write_text(
+                f"NameError: name 'yaml' is not defined\n  File \"{production_file}\", line 6, in update_users",
+                encoding="utf-8",
+            )
+            self.assertEqual(retry_target_for_failure(run, steps[2], steps, 2, output_dir), "build")
+
             (output_dir / "test-result.md").write_text("AssertionError: wrong result", encoding="utf-8")
             self.assertEqual(retry_target_for_failure(run, steps[2], steps, 2, output_dir), "build")
 
@@ -111,6 +120,12 @@ class WorkflowCoreTests(unittest.TestCase):
         files = extract_build_files("FILE: relative/path.ext\nCONTENT:\nplaceholder\nEND_FILE\n")
         with tempfile.TemporaryDirectory() as tmp:
             with self.assertRaisesRegex(WorkflowError, "placeholder relative/path"):
+                apply_extracted_files(Path(tmp), files)
+
+    def test_file_blocks_cannot_use_common_placeholder_paths(self) -> None:
+        files = extract_build_files("FILE: path_to_output.py\nCONTENT:\nplaceholder\nEND_FILE\n")
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaisesRegex(WorkflowError, "placeholder output path"):
                 apply_extracted_files(Path(tmp), files)
 
     def test_build_cannot_overwrite_existing_validation_script(self) -> None:

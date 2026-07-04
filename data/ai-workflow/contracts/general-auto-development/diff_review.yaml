@@ -21,8 +21,8 @@ thinking: true
 approvalRequired: false
 pauseAfterStep: false
 approvalMessage: ''
-timeoutEnabled: false
-timeoutMinutes: 0.0
+timeoutEnabled: true
+timeoutMinutes: 3.0
 reviewMode: none
 confidenceThreshold: 0.75
 passKeywords: ''

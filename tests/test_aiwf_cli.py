@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import tempfile
 import unittest
 from contextlib import redirect_stdout
@@ -208,6 +209,28 @@ class AiWorkflowCliTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(body.skill, "/build")
         self.assertEqual(body.config, "build.yaml")
         self.assertEqual(body.requirement, "implement config crud")
+
+    async def test_wait_for_run_awaits_local_workflow_task(self) -> None:
+        observed: list[str] = []
+
+        async def complete_task() -> None:
+            observed.append("task")
+
+        task = asyncio.create_task(complete_task())
+        aiwf.runtime.running_tasks["run-local-task"] = task
+        try:
+            with patch.object(
+                aiwf.workflow_service,
+                "get_run",
+                new=AsyncMock(return_value={"id": "run-local-task", "status": "done"}),
+            ) as get_run:
+                run = await aiwf._wait_for_run("run-local-task")
+        finally:
+            aiwf.runtime.running_tasks.pop("run-local-task", None)
+
+        self.assertEqual(run["status"], "done")
+        self.assertEqual(observed, ["task"])
+        get_run.assert_awaited_once_with("run-local-task")
 
 
 if __name__ == "__main__":

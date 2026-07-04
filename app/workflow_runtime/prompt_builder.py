@@ -227,6 +227,7 @@ class PromptBuilder:
             "project_path": str(run.get("project_path", "")),
             "workspace_path": str(run.get("workspace", "")),
             "validation_script": str(run.get("validation_script") or ""),
+            "validation_script_content": self._validation_script_content(run, project_dir),
             "fallback_validation_scripts": self._fallback_validation_scripts(run),
         }
 
@@ -269,6 +270,20 @@ class PromptBuilder:
                 items = []
             return "\n".join(f"- `{item}`" for item in items) if items else "- None configured."
         return "- None configured."
+
+    def _validation_script_content(self, run: dict[str, Any], project_dir: Path) -> str:
+        raw_path = str(run.get("validation_script") or "").strip()
+        if not raw_path:
+            return "No validation script was provided for this run."
+        path = Path(raw_path).expanduser()
+        if not path.is_absolute():
+            path = project_dir / path
+        if not path.exists() or not path.is_file():
+            return f"Validation script not found at: {raw_path}"
+        text = read_text(path)
+        if len(text) > 12000:
+            return text[:12000] + "\n\n[validation script truncated]"
+        return text
 
     def _artifact_dependency_context(
         self,

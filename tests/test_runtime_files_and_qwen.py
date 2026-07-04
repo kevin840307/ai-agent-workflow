@@ -78,6 +78,34 @@ END_FILE
         files = extract_build_files(text)
         self.assertEqual(files, [("a.py", "print(\"a\")\n"), ("b.py", "print(\"b\")\n")])
 
+    def test_extract_build_files_accepts_explicit_json_file_content_shape(self) -> None:
+        text = '''```json
+{"FILE": "src/tool.py", "CONTENT": "print(\\"ok\\")\\n"}
+```'''
+        self.assertEqual(extract_build_files(text), [("src/tool.py", "print(\"ok\")\n")])
+
+    def test_extract_build_files_accepts_file_block_without_content_marker(self) -> None:
+        text = """FILE: src/tool.py
+```python
+print("ok")
+```
+END_FILE
+"""
+        self.assertEqual(extract_build_files(text), [("src/tool.py", "print(\"ok\")\n")])
+
+    def test_extract_build_files_strips_trailing_fence_line_for_code_files(self) -> None:
+        text = """FILE: src/tool.py
+CONTENT:
+print("ok")
+```
+END_FILE
+"""
+        self.assertEqual(extract_build_files(text), [("src/tool.py", "print(\"ok\")\n")])
+
+    def test_extract_build_files_ignores_non_file_tool_call_json(self) -> None:
+        text = '{"name": "ask_user_question", "arguments": {"question": "Need input?"}}'
+        self.assertEqual(extract_build_files(text), [])
+
     def test_validate_generated_test_files_rejects_python_syntax_errors(self) -> None:
         with self.assertRaisesRegex(WorkflowError, "invalid Python syntax"):
             validate_generated_test_files([("tests/test_bad.py", "def test_bad(:\n    pass\n")])
