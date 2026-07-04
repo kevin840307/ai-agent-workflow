@@ -10,7 +10,7 @@ from typing import Any
 FUNCTION_META = {
     "id": "run_external_validation",
     "label": "Run External Validation",
-    "description": "Run an optional or required project-provided Python validation script and write output/external-validation-result.md.",
+    "description": "Run an optional user-provided Python validation script and write output/external-validation-result.md.",
     "ui": {"tabs": ["basic", "retry", "advanced"]},
 }
 

@@ -502,19 +502,13 @@ This is the simplified automatic loop version:
 
 ```text
 User requirement
-→ Auto Create Todo
-→ Compile Todo Files
-→ Do Task
-→ N Sub-Agent Review
-→ retry Do Task when reviewers report concrete problems
-→ Generate Tests
-→ Run Test
-→ Run External Validation
-→ Evidence Verifier
-→ Final Gate
+→ Auto Generation
+→ AI Review
+→ Run External Validation optional
+→ retry Auto Generation when review or validation reports concrete problems
 ```
 
-Use it when the user wants a very simple automatic loop that can handle different task types without designing a custom workflow each time.
-The `N Sub-Agent Review` step is configured as a multi-agent review with three reviewers by default. If reviewers return `Status: FAIL`, the workflow writes failure feedback and retries from `build`.
+Use it when the user wants a short automatic loop that can handle different task types without designing a custom workflow each time.
+The external validation step uses the shared `run_external_validation` function. If the user does not provide a validation script, the step records skipped `Status: PASS`. If a Python validation script is provided and fails, the workflow writes the stdout/stderr evidence and retries from `auto_generation`.
 
-`General Auto Development` remains the more explicit engineering workflow. `Adaptive Auto Workflow` is the simpler loop-oriented workflow.
+`General Auto Development` remains the more explicit engineering workflow. `Adaptive Auto Workflow` is the simpler three-step loop-oriented workflow.

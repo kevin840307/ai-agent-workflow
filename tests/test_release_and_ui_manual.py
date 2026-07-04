@@ -19,7 +19,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 class TestingDocumentationContractTests(unittest.TestCase):
     def test_testing_documentation_lists_daily_and_manual_commands(self) -> None:
-        text = (ROOT / "TESTING.md").read_text(encoding="utf-8")
+        text = (ROOT / "doc/TESTING.md").read_text(encoding="utf-8")
         required = [
             "python -m unittest discover -s tests -v",
             "RUN_REAL_QWEN=1",

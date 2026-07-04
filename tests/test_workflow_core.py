@@ -451,19 +451,20 @@ Status: READY
             [
                 "auto_generation",
                 "ai_review",
-                "python_gate",
+                "run_external_validation",
             ],
         )
         generation = next(step for step in workflow["steps"] if step["key"] == "auto_generation")
         review = next(step for step in workflow["steps"] if step["key"] == "ai_review")
-        gate = next(step for step in workflow["steps"] if step["key"] == "python_gate")
+        validation = next(step for step in workflow["steps"] if step["key"] == "run_external_validation")
         self.assertEqual(generation["type"], "ai")
         self.assertGreaterEqual(generation["maxRetries"], 20)
         self.assertEqual(review["type"], "review")
         self.assertEqual(review["reviewMode"], "new_agent")
         self.assertEqual(review["retryFromStepKey"], "auto_generation")
-        self.assertEqual(gate["function"], "adaptive_python_gate")
-        self.assertEqual(gate["retryFromStepKey"], "auto_generation")
+        self.assertEqual(validation["function"], "run_external_validation")
+        self.assertEqual(validation["retryFromStepKey"], "auto_generation")
+        self.assertFalse(validation["requiresValidationScript"])
 
     def test_adaptive_generation_can_materialize_code_and_tests_together(self) -> None:
         class FakeAgentRunner:
@@ -515,7 +516,7 @@ Status: READY
             self.assertTrue((project / "src" / "tool.py").is_file())
             self.assertTrue((project / "tests" / "test_tool.py").is_file())
 
-    def test_adaptive_python_gate_skips_when_no_python_gate_exists(self) -> None:
+    def test_adaptive_external_validation_skips_when_no_script_is_provided(self) -> None:
         async def log(_run, _message):
             return None
 
@@ -536,11 +537,11 @@ Status: READY
                 "_current_step_config": {"fallbackValidationScripts": ["validation.py"]},
             }
 
-            asyncio.run(functions.call_python_function(run, "adaptive_python_gate", output, "python-gate-result.md"))
+            asyncio.run(functions.call_python_function(run, "run_external_validation", output, "external-validation-result.md"))
 
-            result = (output / "python-gate-result.md").read_text(encoding="utf-8")
+            result = (output / "external-validation-result.md").read_text(encoding="utf-8")
             self.assertIn("Status: PASS", result)
-            self.assertIn("Mode: skipped", result)
+            self.assertIn("external validation skipped", result)
 
 
 if __name__ == "__main__":

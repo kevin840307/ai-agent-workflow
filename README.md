@@ -1,8 +1,51 @@
 # Qwen Workflow Web
 
-FastAPI + static frontend workflow runner. It provides a ChatGPT-like project UI, but workflow steps are controlled by Python and executed by agent adapters such as Qwen.
+這是一個 **AI Agent Workflow Runner**。目標不是只做一般聊天，而是讓使用者在 Web UI 輸入需求後，由 Python Runner 控制固定流程，並呼叫 Qwen / OpenCode 等 Agent 逐步產出、驗證、失敗重試與修復。
 
-## Run
+核心概念：
+
+- **Agent 負責產出**：例如產生 spec、todo、程式碼、測試、文件。
+- **Python Runner 負責控制**：流程順序、retry、validation、狀態、log、artifact。
+- **Workflow Asset 可編輯**：workflow、step prompt、contract、python function 分離管理。
+- **Project 隔離**：每個專案有自己的 session / workspace / output artifacts。
+
+## 主要功能
+
+| 功能 | 說明 |
+|---|---|
+| Chat UI | 類 ChatGPT 的專案對話介面 |
+| Workflow Runner | 選擇 workflow 後，依照步驟自動執行 |
+| Workflow Designer | 編輯 workflow step、prompt、retry、review、validation 設定 |
+| AI Workflow Assets | CRUD 管理 prompt / contract / Python function |
+| Qwen / OpenCode Provider | 可使用 Qwen CLI 或 OpenCode CLI 作為 Agent Worker |
+| Retry / Repair Loop | Step 失敗時可把錯誤訊息回灌到指定 step 修復 |
+| External Validation | 可輸入 Python validation script；未輸入則跳過並視為 PASS |
+| Artifacts | 每次 run 會保留 output 檔案、log、結果報告 |
+
+## 目前內建 Workflow
+
+### Adaptive Auto Workflow
+
+簡化版全自動開發流程：
+
+```text
+User Requirement
+  -> Step 1: Auto Generation
+  -> Step 2: AI Review
+  -> Step 3: Run External Validation optional
+```
+
+第三步使用共用的 `run_external_validation` Python Function：
+
+- 沒有輸入 Validation Script：直接產生 PASS，代表跳過外部驗證。
+- 有輸入 Python Script：執行該 script。
+- Script 失敗：把 stdout / stderr / exit code 寫入 artifact，並回到 `auto_generation` 修復。
+
+### General Auto Development
+
+較完整的工程流程，適合需要 Spec / Todo / Build / Test / Review / Validation / Final Gate 的任務。
+
+## 快速啟動
 
 ```powershell
 python -m venv .venv
@@ -10,169 +53,108 @@ python -m venv .venv
 .\.venv\Scripts\python -m uvicorn app.main:app --reload --port 8000
 ```
 
-Open http://127.0.0.1:8000.
-
-Run this MVP as a single process. Do not start uvicorn with more than one worker; the runtime keeps in-process chat, workflow, and cancellation locks for local single-machine use. `WEB_CONCURRENCY` or `UVICORN_WORKERS` must be unset or set to `1`.
-
-## Modes
-
-- Workflow mode runs a selected workflow against one project path.
-- Chat mode sends normal chat prompts to the selected project session.
-- Workflow Designer is available at http://127.0.0.1:8000/workflow-designer.
-
-## Qwen Runtime
-
-By default the app uses the Qwen CLI path, because it matches normal `qwen -p "..."` behavior and avoids starting a background server unexpectedly. OpenCode is also supported as an agent provider.
+開啟：
 
 ```text
-qwen <session/options> <prompt via stdin>
+http://127.0.0.1:8000
 ```
 
-`qwen serve` is opt-in. Set `QWEN_USE_SERVE=1` when you want the app to call the serve API:
+建議單機 MVP 使用單一 process，不要開多個 uvicorn worker。此專案目前的 run lock、chat lock、cancel lock 都是以本機單程序為主。
+
+## 基本使用方式
+
+1. 在 UI 建立或選擇 Project。
+2. 設定 Project Path。
+3. 選擇 Workflow，例如 `Adaptive Auto Workflow`。
+4. 在輸入框寫需求。
+5. 需要外部驗證時，填入 Validation Script，例如：
 
 ```text
-POST qwen serve /session/<session>/prompt
+tools/validate_config.py
 ```
 
-When serve mode is enabled and no matching server is running, the app can start one for the project workspace. Session behavior:
+6. 按下 Run，系統會依 workflow 自動執行並產生 artifacts。
 
-- Normal workflow/chat calls reuse the project `qwen_session_id`.
-- Consensus agent steps can request fresh internal Qwen sessions with `freshSessionPerAgent`.
-- Reset Project creates a new Qwen session id without creating a new project.
+Validation Script 可選擇支援下列參數：
 
-Useful environment variables:
+```text
+--project <project_path> --workspace <run_workspace> --output <output_dir>
+```
 
-- `QWEN_BIN`: Qwen executable. Default is `qwen.cmd` on Windows, `qwen` elsewhere.
-- `QWEN_USE_SERVE`: set `1` to enable Qwen serve API. Default: `0`.
-- `QWEN_SERVE`: set `0` to prevent auto-starting `qwen serve`.
-- `QWEN_SERVE_FALLBACK_CLI`: set `1` to use CLI when serve fails.
-- `QWEN_TIMEOUT_SEC`: agent timeout seconds. Default `1200`.
-- `QWEN_MOCK`: set `1` for mock output during local UI testing.
-- `WORKFLOW_TEST_COMMAND`: command used by the Run Test step. Default `python -m pytest`.
+如果 script 不支援這些參數，runner 會自動改用：
 
-If `qwen -p "hello world"` works in cmd, keep Auth blank/none in the UI so the app uses your existing Qwen settings.
+```text
+python <script>
+```
 
-## OpenCode
+## Agent 設定
 
-OpenCode can be selected from the settings menu as the default agent, or per workflow step by setting Agent Provider to `opencode`.
+常用環境變數：
 
-On Windows the app prefers `opencode.cmd` to avoid PowerShell `.ps1` execution-policy errors. Supported OpenCode modes:
+| 變數 | 說明 |
+|---|---|
+| `QWEN_BIN` | Qwen CLI 路徑，Windows 預設 `qwen.cmd` |
+| `QWEN_USE_SERVE` | 設為 `1` 時使用 qwen serve API，預設走 CLI |
+| `QWEN_TIMEOUT_SEC` | Qwen timeout 秒數，預設 1200 |
+| `QWEN_MOCK` | 設為 `1` 可用 mock agent 做本機測試 |
+| `OPENCODE_BIN` | OpenCode CLI 路徑，Windows 預設 `opencode.cmd` |
+| `OPENCODE_TIMEOUT_SEC` | OpenCode timeout 秒數，預設 1200 |
+| `WORKFLOW_TEST_COMMAND` | Run Test step 使用的測試命令，預設 `python -m pytest` |
 
-- `run`: invokes `opencode run --session <project-session> <prompt>`
-- `prompt_flag`: invokes `opencode --prompt <prompt> --session <project-session>`
-
-The default agent is stored under `agents.default` in `data/settings.json`. Provider settings are stored under `agents.providers`.
-Project sessions store provider ids in `agent_session_ids`, so Qwen and OpenCode can both reuse the selected project session. The runner Settings `Reuse` switch is shared by Qwen and OpenCode.
-In Chat mode, reused agent sessions receive only the latest user message; workflow prompts and prior chat history are not re-sent because the CLI session owns that context.
-OpenCode supports the same baseline runtime controls as Qwen where the CLI allows it: session reuse, timeout, mock mode for local tests, command preview, health status, model, and agent.
-If an OpenCode reused session is no longer known by the CLI, the adapter retries once without `--session` and clears that provider session id for the project.
-On Windows, if the active FastAPI event loop cannot create asyncio subprocesses, the agent runner automatically falls back to a threaded subprocess call instead of returning a 500.
-
-Useful OpenCode environment variables:
-
-- `OPENCODE_BIN`: OpenCode executable. Default is `opencode.cmd` on Windows, `opencode` elsewhere.
-- `OPENCODE_REUSE_SESSION`: set `0` to disable `--session`.
-- `OPENCODE_TIMEOUT_SEC`: agent timeout seconds. Default `1200`.
-- `OPENCODE_MOCK`: set `1` for mock output during local UI testing.
-- `OPENCODE_MODEL`: optional model override.
-- `OPENCODE_AGENT`: optional agent override.
-
-## Workflows
-
-Workflow assets live under one canonical root: `data/ai-workflow/`.
+## Workflow Asset 目錄
 
 ```text
 data/ai-workflow/
-  workflows/*.workflow        # workflow order/include manifest
+  workflows/*.workflow        # workflow 順序 / include manifest
+  contracts/**/*.yaml         # step metadata，例如 retry、function、review mode
   steps/**/*.md               # skill / prompt markdown
-  contracts/**/*.yaml         # step metadata
-  functions/**/*.py           # Python functions
+  functions/**/*.py           # Python function assets
 ```
 
-The built-in workflow is `data/ai-workflow/workflows/system-controlled-qwen.workflow` and is read-only in the UI. Custom workflows use the same separated asset format and can edit:
+專案也可以放自己的 asset：
 
-- step type, prompt template, expected files, function, retry target, retry count, timeout
-- interaction mode
-- review strategy
-- consensus agent settings such as `agentCount`, `agentMaxRetries`, and `freshSessionPerAgent`
+```text
+<project>/.ai-workflow/
+  workflows/
+  contracts/
+  steps/
+  functions/
+```
 
-Python steps do not need to call an agent. Their `function` field selects a Python Function from `/api/workflows/functions`, discovered from `data/ai-workflow/functions/**/*.py` and project `.ai-workflow/functions/**/*.py`.
+## 測試
 
-Runtime safety:
-
-- The JSON store, settings, prompt templates, workflow configs, and workflow artifacts are written atomically with temp-file replace.
-- One chat request can generate in a session at a time. Duplicate chat sends can pass `clientRequestId` for idempotency.
-- One workflow run can be active for a project path at a time, even after refresh.
-- Startup marks interrupted runs when the previous app process exited mid-run.
-- Run logs are rotated in place to keep the latest entries.
-
-Operational endpoints:
-
-- `GET /health`: process liveness.
-- `GET /ready`: store/workspace/static readiness checks.
-- `GET /metrics`: lightweight in-process counters, timings, and active run count.
-- `POST /api/maintenance/cleanup?keep_per_project=20`: removes old inactive run workspaces beyond the retention count.
-
-## Security Scan
-
-The security scan workflow uses a compact consensus design:
-
-1. collect security manifest
-2. run a generic consensus agent step internally
-3. combine findings
-4. generate report
-5. validate report
-6. finalize report
-
-The visible workflow stays short, while `consensus_agent` can run multiple internal Qwen sessions with per-agent validation and retry.
-
-## Test
-
-Daily checks:
+日常檢查：
 
 ```powershell
 python -m compileall app tests
 python -m unittest discover -s tests -v
 ```
 
-Manual opt-in checks are documented in `TESTING.md`, including:
-
-- `RUN_REAL_QWEN=1` minimal real Qwen CLI smoke
-- `RUN_REAL_QWEN_FULL=1` full real Qwen system workflow smoke
-- `RUN_REAL_QWEN_STABILITY=1` same-prompt stability check
-- `RUN_CLEAN_REPO_SMOKE=1` clean repo smoke
-- `RUN_PLAYWRIGHT_UI=1` Playwright UI E2E
-
-Optional frontend syntax check:
-
-```powershell
-Get-Content -Raw static\js\main.js | node --input-type=module --check
-Get-Content -Raw static\js\pages\workflow-runner.js | node --input-type=module --check
-Get-Content -Raw static\js\pages\workflow-designer.js | node --input-type=module --check
-Get-Content -Raw static\js\pages\workflow-designer\controller.js | node --input-type=module --check
-Get-Content -Raw static\js\pages\workflow-designer\layout-renderer.js | node --input-type=module --check
-Get-Content -Raw static\js\pages\workflow-designer\step-settings-renderer.js | node --input-type=module --check
-Get-Content -Raw static\js\pages\workflow-designer\template-editor.js | node --input-type=module --check
-```
-
-## Architecture
-
-See `ARCHITECTURE.md` for module responsibilities and extension points.
-
-
-## Python Function Assets
-
-新版 Python validator / tool 已合併為單一 Python Function。
+更多手動測試與 opt-in 測試請看：
 
 ```text
-data/ai-workflow/functions/**/*.py
-<project>/.ai-workflow/functions/**/*.py
+doc/TESTING.md
 ```
 
-metadata 使用：
+## 文件
 
-```yaml
-function: validate_spec
-```
+詳細文件已集中放在 `doc/`：
 
-詳細請看 `PYTHON_FUNCTION_ASSET_GUIDE.md`。
+| 文件 | 說明 |
+|---|---|
+| `doc/ARCHITECTURE.md` | 後端架構與模組責任 |
+| `doc/SYSTEM_ARCHITECTURE.md` | 系統設計細節 |
+| `doc/GENERAL_AUTO_DEVELOPMENT_WORKFLOW_USAGE.md` | General Auto Development 使用說明 |
+| `doc/PYTHON_FUNCTION_ASSET_GUIDE.md` | Python Function Asset 寫法 |
+| `doc/WORKFLOW_PYTHON_FUNCTION_GUIDE.md` | Workflow Python function 補充說明 |
+| `doc/FRONTEND_STRUCTURE.md` | 前端 static/js 拆分結構 |
+| `doc/TESTING.md` | 測試與手動驗證指令 |
+| `doc/TODO.md` | 後續待辦 |
+
+## 適合拿來做什麼
+
+- 公司內部 AI Agent Web UI
+- 可控的 Spec → Todo → Build → Test → Review 流程
+- Regression Test Framework 產檔與驗證流程
+- 讓較小模型透過固定 workflow、retry、validation 補足穩定性
+- Qwen / OpenCode CLI 的 Web 化與流程化包裝

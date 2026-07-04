@@ -98,7 +98,7 @@ class StaticArchitectureContractTests(unittest.TestCase):
         self.assertIn('key: "current_task"', source)
 
     def test_static_structure_document_mentions_designer_modules(self):
-        source = (ROOT / "static/FRONTEND_STRUCTURE.md").read_text(encoding="utf-8")
+        source = (ROOT / "doc/FRONTEND_STRUCTURE.md").read_text(encoding="utf-8")
         for text in [
             "workflow-designer.js             # thin page entry",
             "workflow-designer/",

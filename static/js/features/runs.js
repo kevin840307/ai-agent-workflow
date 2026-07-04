@@ -376,8 +376,10 @@ export function createRuns(ctx) {
         ui.byKey("runWorkflow").disabled = true;
         ui.byKey("logs").textContent = "Starting workflow...\n";
         ui.byKey("qwenLive").textContent = `Waiting for ${state.defaultAgent || "agent"} process...\n`;
-        const needsValidationScript = ctx.features.workflows?.requiresValidationScriptForSelected?.() || false;
-        const validationScript = needsValidationScript
+        const acceptsValidationScript = ctx.features.workflows?.acceptsValidationScriptForSelected?.()
+          || ctx.features.workflows?.requiresValidationScriptForSelected?.()
+          || false;
+        const validationScript = acceptsValidationScript
           ? (ui.byKey("validationScript")?.value?.trim() || state.validationScript?.trim() || null)
           : null;
         const payload = { workflow_id: state.selectedWorkflowId };

@@ -319,7 +319,7 @@ The runtime passes the current `TASK-xxx.md` into the Build and Generate Tests p
 `adaptive-auto-workflow` is the simplified loop-oriented workflow:
 
 ```text
-User requirement -> auto TODO -> do task -> N sub-agent review -> retry build on review failure -> tests -> external validation -> evidence verifier -> final gate
+User requirement -> auto generation -> isolated AI review -> optional external validation -> retry generation on review/validation failure
 ```
 
-It reuses the existing safe Build, Generate Tests, Python validation, retry feedback, and final verifier behavior, but replaces the separate diff review with a direct multi-agent task review step that loops back to Build when concrete problems are found.
+It uses one generation step for task planning, file changes, tests, and documentation, then an isolated AI review step, then the shared `run_external_validation` Python function. The validation step is optional: an empty validation script path records skipped `Status: PASS`; a provided Python script is executed and failures loop back to `auto_generation` with concrete repair feedback.

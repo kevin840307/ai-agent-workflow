@@ -32,6 +32,10 @@ export function createWorkflows(ctx) {
     return (workflow?.steps || []).filter((step) => step.enabled !== false);
   }
 
+  function acceptsValidationScript(workflow) {
+    return enabledSteps(workflow).some((step) => step.requiresValidationScript || step.function === "run_external_validation");
+  }
+
   function requiresValidationScript(workflow) {
     return enabledSteps(workflow).some((step) => step.requiresValidationScript);
   }
@@ -178,13 +182,13 @@ export function createWorkflows(ctx) {
             `).join("")}
           </div>`;
       const validationValue = state.validationScript || "";
-      const validationHtml = !compact && requiresValidationScript(workflow) ? `
+      const validationHtml = !compact && acceptsValidationScript(workflow) ? `
           <div class="workflow-validation-note workflow-step-validation">
-            <label class="validation-script-field workflow-step-validation-script" id="validationScriptField" title="Run-specific Python validation script path for steps marked Requires Validation Script">
+            <label class="validation-script-field workflow-step-validation-script" id="validationScriptField" title="Optional run-specific Python validation script path">
               <span>Validation Script</span>
               <input id="validationScript" type="text" value="${ui.escapeHtml(validationValue)}" placeholder="Optional: tools/check_config.py or C:\path\validate.py" autocomplete="off" />
             </label>
-            <small>Shown because this workflow has a step with Requires Validation Script enabled.</small>
+            <small>Optional. Leave empty to skip external validation with PASS.</small>
           </div>` : "";
       preview.innerHTML = `
         <div class="workflow-preview-card${compact ? " locked compact" : ""}">
@@ -204,6 +208,10 @@ export function createWorkflows(ctx) {
           ${validationHtml}
         </div>
       `;
+    },
+
+    acceptsValidationScriptForSelected() {
+      return acceptsValidationScript(selectedWorkflow());
     },
 
     requiresValidationScriptForSelected() {

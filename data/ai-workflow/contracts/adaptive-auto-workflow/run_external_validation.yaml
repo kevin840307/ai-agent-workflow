@@ -1,28 +1,24 @@
 id: run_external_validation
 key: run_external_validation
 name: Run External Validation
-description: Run the project validation script when configured or present. If no
-  validation script is required or found, record a skipped PASS result.
+description: Run an optional user-provided Python validation script. If no validation
+  script path is provided, record a skipped PASS result.
 enabled: true
 type: python
-skill: steps/adaptive-auto-workflow/04_run_external_validation.md
+skill: steps/adaptive-auto-workflow/02_run_external_validation.md
 command: ''
 agent: qwen
 outputs:
 - external-validation-result.md
 retry: 99
 failAction: selected_step
-retryFromStepKey: build
+retryFromStepKey: auto_generation
 keepSameSession: true
 injectFailureFeedback: true
-stopAfterFailures: 3
+stopAfterFailures: 99
 allowInteraction: false
-requiresValidationScript: true
-fallbackValidationScripts:
-- validation.py
-- validate.py
-- verify.py
-- check.py
+requiresValidationScript: false
+fallbackValidationScripts: []
 thinking: false
 approvalRequired: false
 pauseAfterStep: false
