@@ -142,11 +142,13 @@ doc/TESTING.md
 
 | 文件 | 說明 |
 |---|---|
+| `doc/AGENT_INSTALLATION.md` | Qwen / OpenCode 安裝與環境變數設定 |
 | `doc/ARCHITECTURE.md` | 後端架構與模組責任 |
 | `doc/SYSTEM_ARCHITECTURE.md` | 系統設計細節 |
 | `doc/GENERAL_AUTO_DEVELOPMENT_WORKFLOW_USAGE.md` | General Auto Development 使用說明 |
 | `doc/PYTHON_FUNCTION_ASSET_GUIDE.md` | Python Function Asset 寫法 |
 | `doc/WORKFLOW_PYTHON_FUNCTION_GUIDE.md` | Workflow Python function 補充說明 |
+| `doc/WORKFLOW_METADATA.md` | `.workflow` metadata、system/custom/protected/deletable 行為 |
 | `doc/FRONTEND_STRUCTURE.md` | 前端 static/js 拆分結構 |
 | `doc/TESTING.md` | 測試與手動驗證指令 |
 | `doc/TODO.md` | 後續待辦 |

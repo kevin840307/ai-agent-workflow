@@ -1,4 +1,4 @@
-import { renderMarkdownPreview } from "./markdown-preview.js?v=20260704-designer-layout1";
+import { renderMarkdownPreview } from "./markdown-preview.js?v=20260704-metadata1";
 
 const WORKFLOW_ASSET_API = "/api/workflow-assets";
 const TYPE_DEFAULTS = {

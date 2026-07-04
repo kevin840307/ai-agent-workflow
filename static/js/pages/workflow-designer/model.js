@@ -1,5 +1,5 @@
-import { TemplatePresets } from "../workflow-designer-constants.js?v=20260704-designer-layout1";
-import { clone, makeId } from "./utils.js?v=20260704-designer-layout1";
+import { TemplatePresets } from "../workflow-designer-constants.js?v=20260704-metadata1";
+import { clone, makeId } from "./utils.js?v=20260704-metadata1";
 
 function createStep(overrides = {}) {
   const key = overrides.key || makeId("step");
@@ -68,24 +68,24 @@ function createWorkflow(overrides = {}) {
     promptRoot: overrides.promptRoot || "steps/",
     steps: Array.isArray(overrides.steps) ? overrides.steps.map(normalizeStep) : [],
   };
-  if (!workflow.steps.length) {
-    workflow.steps.push(createStep({ name: "Generate Spec", key: "generate_spec" }));
-  }
+  if (!workflow.steps.length) workflow.steps.push(createStep({ name: "Generate Spec", key: "generate_spec" }));
   return workflow;
 }
 
 function normalizeWorkflow(workflow = {}) {
-  const normalized = {
+  return {
     id: workflow.id || makeId("workflow"),
     kind: workflow.kind || "custom",
     name: workflow.name || "Untitled Workflow",
     description: workflow.description || "Custom workflow draft.",
     active: Boolean(workflow.active),
+    protected: Boolean(workflow.protected),
+    deletable: workflow.deletable ?? !workflow.protected,
+    folderName: workflow.folderName || workflow.id || "",
     skillRoot: workflow.skillRoot || "skills/",
     promptRoot: workflow.promptRoot || "steps/",
     steps: Array.isArray(workflow.steps) ? workflow.steps.map(normalizeStep) : [],
   };
-  return normalized;
 }
 
 function normalizeStep(step = {}) {

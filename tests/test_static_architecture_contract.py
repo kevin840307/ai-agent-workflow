@@ -90,7 +90,7 @@ class StaticArchitectureContractTests(unittest.TestCase):
                 continue
             source = path.read_text(encoding="utf-8")
             versions.update(re.findall(r"\?v=([A-Za-z0-9_-]+)", source))
-        self.assertEqual(versions, {"20260704-designer-layout1"})
+        self.assertEqual(versions, {"20260704-metadata1"})
 
     def test_workflow_designer_knows_runtime_task_prompt_params(self):
         source = (ROOT / "static/js/pages/workflow-designer-constants.js").read_text(encoding="utf-8")

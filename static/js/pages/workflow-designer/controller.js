@@ -4,7 +4,7 @@ import {
   SourceTypes,
   StepTypes,
   TemplatePresets,
-} from "../workflow-designer-constants.js?v=20260704-designer-layout1";
+} from "../workflow-designer-constants.js?v=20260704-metadata1";
 import {
   clone,
   copyTextToClipboard,
@@ -19,7 +19,7 @@ import {
   readInputValue,
   setText,
   toast,
-} from "./utils.js?v=20260704-designer-layout1";
+} from "./utils.js?v=20260704-metadata1";
 import {
   createStep,
   createWorkflow,
@@ -32,7 +32,7 @@ import {
   normalizeFunctionList,
   normalizeStep,
   normalizeWorkflow,
-} from "./model.js?v=20260704-designer-layout1";
+} from "./model.js?v=20260704-metadata1";
 import {
   availablePromptParamsFor,
   functionHelpFor,
@@ -40,16 +40,15 @@ import {
   functionOptionsFor,
   stepUiCapabilitiesFor,
   workflowFunctionCountsFor,
-} from "./function-catalog.js?v=20260704-designer-layout1";
-import { installLayoutRenderer } from "./layout-renderer.js?v=20260704-designer-layout1";
-import { installStepSettingsRenderer } from "./step-settings-renderer.js?v=20260704-designer-layout1";
-import { installTemplateEditor } from "./template-editor.js?v=20260704-designer-layout1";
-import { installImportExportTools } from "./import-export.js?v=20260704-designer-layout1";
-import { installWorkflowAssetTools } from "./asset-tools.js?v=20260704-designer-layout1";
-
+} from "./function-catalog.js?v=20260704-metadata1";
+import { installLayoutRenderer } from "./layout-renderer.js?v=20260704-metadata1";
+import { installStepSettingsRenderer } from "./step-settings-renderer.js?v=20260704-metadata1";
+import { installTemplateEditor } from "./template-editor.js?v=20260704-metadata1";
+import { installImportExportTools } from "./import-export.js?v=20260704-metadata1";
+import { installWorkflowAssetTools } from "./asset-tools.js?v=20260704-metadata1";
+import { allSystemWorkflows as collectSystemWorkflows, findWorkflowById as findWorkflowByIdFromState, isWorkflowReadOnly } from "./workflow-selection.js?v=20260704-metadata1";
 const STORAGE_KEY = "qwenWorkflow.workflowDesigner.ui.v1";
 const WORKFLOW_API = "/api/workflows";
-
 function functionOptions(groupName, fallbackItems, selected) {
   return functionOptionsFor(availableWorkflowFunctions, groupName, fallbackItems, selected);
 }
@@ -129,6 +128,7 @@ async function loadState() {
     systemWorkflow = Object.freeze(normalizeWorkflow(payload.system));
   }
   availableWorkflowFunctions = payload?.functions || availableWorkflowFunctions;
+  state.systemWorkflows = Array.isArray(payload?.systems) ? payload.systems.map(normalizeWorkflow) : [];
   state.workflows = Array.isArray(payload?.custom) ? payload.custom.map(normalizeWorkflow) : [];
   if (!state.workflows.length) {
     state.workflows = [];
@@ -310,9 +310,6 @@ function handleDocumentClick(event) {
     return;
   }
 
-  // Action buttons may also contain data-step-id, so handle actions before
-  // generic step selection. Otherwise Move Up / Duplicate / Delete only selects
-  // the step and never executes the intended action.
   const action = event.target.closest("[data-designer-action]");
   if (action) {
     const name = action.dataset.designerAction;
@@ -548,14 +545,15 @@ function createNewWorkflow() {
   });
 }
 
-function duplicateSystemWorkflow(name = null) {
+function duplicateSystemWorkflow(name = null, sourceWorkflow = getSelectedWorkflow()) {
+  const source = sourceWorkflow || systemWorkflow;
   const copy = createWorkflow({
-    name: uniqueWorkflowName(name || `${systemWorkflow.name} Copy`),
-    description: "Duplicated from system workflow.",
+    name: uniqueWorkflowName(name || `${source.name} Copy`),
+    description: `Duplicated from ${source.name || "system workflow"}.`,
     active: false,
-    skillRoot: systemWorkflow.skillRoot,
-    promptRoot: systemWorkflow.promptRoot,
-    steps: systemWorkflow.steps.map((step) => ({ ...clone(step), id: makeId("step") })),
+    skillRoot: source.skillRoot,
+    promptRoot: source.promptRoot,
+    steps: (source.steps || []).map((step) => ({ ...clone(step), id: makeId("step") })),
   });
   return copy;
 }
@@ -564,7 +562,12 @@ function duplicateCurrentWorkflow() {
   const workflow = getSelectedWorkflow();
   if (!workflow) return;
   if (isReadonly()) {
-    toast("Use Duplicate as Custom for the system workflow.");
+    const copy = duplicateSystemWorkflow(`${workflow.name} Copy`, workflow);
+    state.workflows.unshift(copy);
+    doSelectWorkflow(copy.id, copy.steps[0]?.id);
+    markWorkflowDirty();
+    render();
+    toast("Read-only workflow duplicated as a custom draft. Save Draft to keep it.");
     return;
   }
 
@@ -601,12 +604,12 @@ function addStep() {
 }
 
 function deleteWorkflow(workflowId) {
-  if (workflowId === systemWorkflow.id) {
-    toast("System workflow cannot be deleted.");
+  const workflow = findWorkflowById(workflowId);
+  if (!workflow) return;
+  if (isWorkflowReadOnly(workflow) || workflow.deletable === false) {
+    toast("Protected workflow cannot be deleted.");
     return;
   }
-  const workflow = state.workflows.find((item) => item.id === workflowId);
-  if (!workflow) return;
   openDeleteConfirm({
     title: "Delete workflow?",
     message: `${workflow.name} will be removed from the workflow config API and its workflow folder. This action cannot be undone.`,
@@ -731,7 +734,6 @@ function removeArrayItem(collection, index) {
   renderWorkflowViewOnly();
 }
 
-
 function openDeleteConfirm({ title, message, confirmLabel, action, workflowId = "", stepId = "" }) {
   closeConfirm();
   const box = document.createElement("div");
@@ -757,9 +759,16 @@ function closeConfirm() {
   document.querySelectorAll(".designer-confirm-box").forEach((node) => node.remove());
 }
 
+function allSystemWorkflows() {
+  return collectSystemWorkflows(systemWorkflow, state);
+}
+
+function findWorkflowById(workflowId) {
+  return findWorkflowByIdFromState(systemWorkflow, state, workflowId);
+}
+
 function getSelectedWorkflow() {
-  if (state.selectedWorkflowId === systemWorkflow.id) return clone(systemWorkflow);
-  return state.workflows.find((workflow) => workflow.id === state.selectedWorkflowId) || state.workflows[0] || clone(systemWorkflow);
+  return findWorkflowById(state.selectedWorkflowId) || state.workflows[0] || clone(systemWorkflow);
 }
 
 function getSelectedStep() {
@@ -768,7 +777,7 @@ function getSelectedStep() {
 }
 
 function isReadonly() {
-  return state.selectedWorkflowId === systemWorkflow.id;
+  return isWorkflowReadOnly(getSelectedWorkflow());
 }
 
 async function saveState(options = {}) {
@@ -815,8 +824,7 @@ function saveUiState() {
       stepActionMenuExpanded: state.stepActionMenuExpanded,
     }));
   } catch {
-    // UI state persistence is best effort only.
-  }
+    }
 }
 
 function markWorkflowDirty() {
@@ -845,7 +853,7 @@ function applyJsonEditor() {
   }
   try {
     const parsed = normalizeWorkflow(JSON.parse(editor.value || "{}"));
-    Object.assign(wf, parsed, { id: wf.id, kind: "custom" });
+    Object.assign(wf, parsed, { id: wf.id, kind: "custom", protected: false, deletable: true });
     state.selectedStepId = wf.steps?.[0]?.id || null;
     markWorkflowDirty();
     render();
@@ -1107,7 +1115,6 @@ const assetTools = installWorkflowAssetTools({
   toast,
 });
 
-
 const layoutRenderer = installLayoutRenderer({
   el,
   escapeAttr,
@@ -1118,6 +1125,7 @@ const layoutRenderer = installLayoutRenderer({
   getSelectedStep,
   getSelectedWorkflow,
   getSystemWorkflow: () => systemWorkflow,
+  getSystemWorkflows: allSystemWorkflows,
   isReadonly,
   markWorkflowDirty,
   moveStep,
@@ -1188,6 +1196,5 @@ function syncStepFilterControls() { return layoutRenderer.syncStepFilterControls
 function getVisibleSteps(wf) { return layoutRenderer.getVisibleSteps(wf); }
 function applyStepTypeDefaults(step) { return layoutRenderer.applyStepTypeDefaults(step); }
 function ensureActiveTabForStep(step) { return layoutRenderer.ensureActiveTabForStep(step); }
-
 
 export { initWorkflowDesignerPage };

@@ -239,9 +239,11 @@ def _normalize_workflow(workflow: dict, existing_folder: str | None = None) -> d
         item["deletable"] = False
         item["active"] = True
     elif item.get("kind") == "system":
-        item["kind"] = "custom"
-        item["protected"] = False
-        item["deletable"] = True
+        # Allow repository-maintained .workflow metadata to define additional
+        # read-only system workflows. These are listed in the System section
+        # and protected from UI edits/deletes.
+        item["protected"] = True
+        item["deletable"] = False
     item["folderName"] = existing_folder or item.get("folderName") or item["id"]
     item["folderName"] = slugify(item["folderName"], item["id"])
     item["workflowPath"] = _workflow_asset_rel(item["id"])
@@ -416,18 +418,22 @@ def list_workflow_files() -> list[Path]:
     return sorted(WORKFLOWS_DIR.glob("*.workflow"))
 
 
+def _workflow_kind_from_path(path: Path) -> str:
+    try:
+        workflow = workflow_asset_service.load_workflow_asset(path.stem)
+    except Exception:
+        return "asset"
+    if workflow.get("id") == SYSTEM_WORKFLOW_ID or workflow.get("kind") == "system" or workflow.get("protected"):
+        return "system"
+    return "custom"
+
+
+def list_system_workflow_files() -> list[Path]:
+    return [path for path in list_workflow_files() if _workflow_kind_from_path(path) == "system"]
+
+
 def list_custom_workflow_files() -> list[Path]:
-    paths: list[Path] = []
-    for path in list_workflow_files():
-        try:
-            workflow = workflow_asset_service.load_workflow_asset(path.stem)
-        except Exception:
-            paths.append(path)
-            continue
-        if workflow.get("id") == SYSTEM_WORKFLOW_ID or workflow.get("kind") == "system":
-            continue
-        paths.append(path)
-    return paths
+    return [path for path in list_workflow_files() if _workflow_kind_from_path(path) != "system"]
 
 
 def find_workflow_path(workflow_id: str) -> Path | None:
@@ -546,25 +552,44 @@ def ensure_sample_workflow() -> None:
 
 async def list_workflows(project_path: str | None = None) -> dict:
     ensure_sample_workflow()
+    default_system = system_workflow_with_folder()
+    systems: list[dict[str, Any]] = []
     custom: list[dict[str, Any]] = []
-    for path in list_custom_workflow_files():
+
+    for path in list_workflow_files():
         try:
             workflow = workflow_asset_service.load_workflow_asset(path.stem, project_path=project_path)
             workflow = read_prompt_files(normalize_workflow_steps(workflow), workflow.get("folderName") or workflow.get("id"))
-            custom.append(workflow)
+            if workflow.get("id") == SYSTEM_WORKFLOW_ID:
+                default_system = workflow
+            elif workflow.get("kind") == "system" or workflow.get("protected"):
+                workflow["kind"] = "system"
+                workflow["protected"] = True
+                workflow["deletable"] = False
+                systems.append(workflow)
+            else:
+                custom.append(workflow)
         except Exception as exc:
             custom.append({"id": path.stem, "kind": "asset", "name": path.stem, "workflowPath": f"workflows/{path.name}", "error": str(exc), "steps": []})
 
     # Project-local .ai-workflow/workflows/*.workflow can override global files.
     if project_path:
-        global_ids = {item.get("id") for item in custom}
+        global_ids = {item.get("id") for item in [default_system, *systems, *custom]}
         for workflow in workflow_asset_service.list_workflow_assets(project_path):
             if workflow.get("scope") != "project" or workflow.get("id") in global_ids:
                 continue
-            custom.append(read_prompt_files(normalize_workflow_steps(workflow), workflow.get("folderName") or workflow.get("id")))
+            item = read_prompt_files(normalize_workflow_steps(workflow), workflow.get("folderName") or workflow.get("id"))
+            if item.get("kind") == "system" or item.get("protected"):
+                item["kind"] = "system"
+                item["protected"] = True
+                item["deletable"] = False
+                systems.append(item)
+            else:
+                custom.append(item)
 
+    systems.sort(key=lambda item: (item.get("updated_at") or item.get("name") or ""), reverse=True)
     custom.sort(key=lambda item: (item.get("kind") == "asset", item.get("updated_at") or item.get("name") or ""), reverse=True)
-    return {"system": system_workflow_with_folder(), "custom": custom, "functions": workflow_asset_service.function_catalog(project_path)}
+    return {"system": default_system, "systems": systems, "custom": custom, "functions": workflow_asset_service.function_catalog(project_path)}
 
 
 async def get_workflow(workflow_id: str, project_path: str | None = None) -> dict:
@@ -582,6 +607,10 @@ async def upsert_workflow(workflow: dict) -> dict:
         raise HTTPException(status_code=400, detail="System workflow is read-only")
     existing_path = find_workflow_path(workflow.get("id", ""))
     existing = read_workflow_file(existing_path) if existing_path else None
+    if existing and (existing.get("kind") == "system" or existing.get("protected")):
+        raise HTTPException(status_code=400, detail="Protected workflow is read-only")
+    if workflow.get("kind") == "system" or workflow.get("protected"):
+        raise HTTPException(status_code=400, detail="System/protected workflows must be maintained as repository assets, not saved from the UI")
     item = _normalize_workflow(workflow, workflow.get("folderName") or workflow.get("id"))
     if existing:
         item["created_at"] = existing.get("created_at", item["created_at"])

@@ -1,4 +1,4 @@
-import { LocalStore, StorageKeys } from "../core/storage.js?v=20260704-designer-layout1";
+import { LocalStore, StorageKeys } from "../core/storage.js?v=20260704-metadata1";
 
 function applyActiveNav() {
   const page = document.body?.dataset.page || "";

@@ -69,6 +69,10 @@ class WorkflowConfigServiceTests(unittest.TestCase):
     def test_system_workflow_is_protected_and_custom_delete_removes_folder(self) -> None:
         asyncio.run(self._run_delete_protection_case())
 
+
+    def test_metadata_system_workflow_is_listed_as_system_and_read_only(self) -> None:
+        asyncio.run(self._run_metadata_system_listing_case())
+
     def test_workflow_lint_rejects_bad_targets_paths_and_functions(self) -> None:
         asyncio.run(self._run_lint_rejection_case())
 
@@ -94,6 +98,52 @@ class WorkflowConfigServiceTests(unittest.TestCase):
         payload = response.json()
         self.assertFalse(payload["ok"])
         self.assertTrue(payload["issues"])
+
+
+    async def _run_metadata_system_listing_case(self) -> None:
+        workflow_id = "test-metadata-system"
+        workflow_file = workflow_config_service.workflow_file(workflow_id)
+        step_dir = workflow_config_service.STEPS_DIR / workflow_id
+        contract_dir = workflow_config_service.CONTRACTS_DIR / workflow_id
+        for target in (workflow_file, step_dir, contract_dir):
+            if target.is_file():
+                target.unlink()
+            elif target.exists():
+                shutil.rmtree(target)
+
+        workflow = {
+            "id": workflow_id,
+            "name": "Metadata System",
+            "kind": "system",
+            "protected": True,
+            "deletable": False,
+            "folderName": workflow_id,
+            "steps": [],
+        }
+
+        try:
+            workflow_config_service.write_workflow_assets(workflow)
+            listed = await workflow_config_service.list_workflows()
+            system_ids = {item["id"] for item in listed.get("systems", [])}
+            custom_ids = {item["id"] for item in listed.get("custom", [])}
+            self.assertIn(workflow_id, system_ids)
+            self.assertNotIn(workflow_id, custom_ids)
+
+            loaded = await workflow_config_service.get_workflow(workflow_id)
+            self.assertEqual(loaded["kind"], "system")
+            self.assertTrue(loaded["protected"])
+            self.assertFalse(loaded["deletable"])
+
+            with self.assertRaises(HTTPException):
+                await workflow_config_service.upsert_workflow({**loaded, "description": "try edit"})
+            with self.assertRaises(HTTPException):
+                await workflow_config_service.delete_workflow(workflow_id)
+        finally:
+            for target in (workflow_file, step_dir, contract_dir):
+                if target.is_file():
+                    target.unlink()
+                elif target.exists():
+                    shutil.rmtree(target)
 
     async def _run_lint_rejection_case(self) -> None:
         workflow = {

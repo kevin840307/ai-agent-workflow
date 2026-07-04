@@ -1,4 +1,4 @@
-import { ensureActiveTabForStep as ensureStepTab, tabsForStep } from "./step-tabs.js?v=20260704-designer-layout1";
+import { ensureActiveTabForStep as ensureStepTab, tabsForStep } from "./step-tabs.js?v=20260704-metadata1";
 
 export function installLayoutRenderer(ctx) {
   const {
@@ -11,6 +11,7 @@ export function installLayoutRenderer(ctx) {
     getSelectedStep,
     getSelectedWorkflow,
     getSystemWorkflow,
+    getSystemWorkflows,
     isReadonly,
     markWorkflowDirty,
     moveStep,
@@ -65,11 +66,39 @@ function renderSidebar() {
   const customList = el("designerCustomList");
   if (!customList) return;
 
-  el("designerSystemWorkflow")?.classList.toggle("active", state.selectedWorkflowId === getSystemWorkflow().id);
+  const systems = typeof getSystemWorkflows === "function" ? getSystemWorkflows() : [getSystemWorkflow()];
+  const primaryButton = el("designerSystemWorkflow");
+  if (primaryButton) {
+    const primary = systems[0] || getSystemWorkflow();
+    primaryButton.dataset.workflowId = primary.id;
+    primaryButton.classList.toggle("active", state.selectedWorkflowId === primary.id);
+    primaryButton.innerHTML = `
+      <strong>${escapeHtml(primary.name || "Controlled Agent Workflow")}</strong>
+      <span>${(primary.steps || []).length} steps - System - read only</span>
+    `;
+  }
+
+  let systemList = el("designerSystemList");
+  if (!systemList && primaryButton?.parentElement) {
+    systemList = document.createElement("div");
+    systemList.id = "designerSystemList";
+    systemList.className = "designer-custom-list designer-system-list";
+    primaryButton.insertAdjacentElement("afterend", systemList);
+  }
+  if (systemList) {
+    systemList.innerHTML = systems.slice(1).map((workflow) => `
+      <div class="designer-workflow-pill system ${workflow.id === state.selectedWorkflowId ? "active" : ""}" data-workflow-id="${escapeHtml(workflow.id)}">
+        <strong>${escapeHtml(workflow.name)}</strong>
+        <span>${(workflow.steps || []).length} steps - System - protected</span>
+        <span class="designer-workflow-pill-description">${escapeHtml(workflow.description || "No description.")}</span>
+      </div>
+    `).join("");
+  }
+
   customList.innerHTML = state.workflows.map((workflow) => `
     <div class="designer-workflow-pill ${workflow.id === state.selectedWorkflowId ? "active" : ""}" data-workflow-id="${escapeHtml(workflow.id)}">
       <strong>${escapeHtml(workflow.name)}</strong>
-      <span>${workflow.steps.length} steps - ${workflow.active ? "active" : "draft"}</span>
+      <span>${(workflow.steps || []).length} steps - ${workflow.active ? "active" : "draft"}</span>
       <span class="designer-workflow-pill-description">${escapeHtml(workflow.description || "No description.")}</span>
     </div>
   `).join("");
@@ -84,7 +113,7 @@ function renderWorkflowLabels() {
   setText(
     "designerActiveWorkflowMeta",
     readonly
-      ? "System - read only - runner default"
+      ? `${wf.kind === "system" ? "System" : "Protected"} - read only - ${wf.folderName || wf.id}`
       : `${wf.steps.length} steps - editable API workflow - ${wf.folderName || "new folder"} - available in runner`
   );
   setText("designerEditableBadge", readonly ? "READ ONLY" : "EDITABLE");
@@ -105,8 +134,8 @@ function renderWorkflowLabels() {
 
   if (el("designerSaveDraft")) el("designerSaveDraft").disabled = readonly;
   if (el("designerResetDraft")) el("designerResetDraft").disabled = readonly;
-  if (el("designerDuplicateCustomWorkflow")) el("designerDuplicateCustomWorkflow").disabled = readonly;
-  if (el("designerDeleteWorkflow")) el("designerDeleteWorkflow").disabled = readonly;
+  if (el("designerDuplicateCustomWorkflow")) el("designerDuplicateCustomWorkflow").disabled = false;
+  if (el("designerDeleteWorkflow")) el("designerDeleteWorkflow").disabled = readonly || wf.deletable === false;
   renderCliCommands(wf);
   renderSidebar();
 }
@@ -123,7 +152,7 @@ function renderCliCommands(wf) {
 }
 
 function workflowRequiresValidationScript(workflow = {}) {
-  return (workflow.steps || []).some((step) => step.enabled !== false && step.requiresValidationScript);
+  return (workflow.steps || []).some((step) => step.enabled !== false && (step.requiresValidationScript || step.function === "run_external_validation"));
 }
 
 function renderStepFloatingActions(wf) {

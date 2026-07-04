@@ -1,4 +1,4 @@
-import { LocalStore, StorageKeys } from "../core/storage.js?v=20260704-designer-layout1";
+import { LocalStore, StorageKeys } from "../core/storage.js?v=20260704-metadata1";
 
 export function createWorkflows(ctx) {
   const { api, state, ui } = ctx;
@@ -6,6 +6,7 @@ export function createWorkflows(ctx) {
   function flattenWorkflows(payload) {
     const items = [];
     if (payload?.system) items.push(payload.system);
+    if (Array.isArray(payload?.systems)) items.push(...payload.systems);
     if (Array.isArray(payload?.custom)) items.push(...payload.custom);
     return items;
   }
