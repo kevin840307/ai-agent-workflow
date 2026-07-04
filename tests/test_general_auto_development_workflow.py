@@ -114,7 +114,7 @@ CONTENT:
 - Rule: agent read access may use project settings, but generated edits must remain inside the selected Project path.
 
 ## Detected Stack
-- Primary language: Python
+- Dominant source extensions: .py (1)
 - Framework/runtime: Python
 - Test framework: pytest
 - Package/build command: python -m pytest
@@ -281,7 +281,7 @@ CONTENT:
 - Rule: agent read access may use project settings, but generated edits must remain inside the selected Project path.
 
 ## Detected Stack
-- Primary language: Python
+- Dominant source extensions: .py (1)
 - Framework/runtime: Python
 - Test framework: pytest
 - Package/build command: python -m pytest

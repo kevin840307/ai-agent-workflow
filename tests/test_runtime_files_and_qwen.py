@@ -109,9 +109,11 @@ END_FILE
             existing_project.mkdir()
             (existing_project / "main.py").write_text("def main(): pass\n", encoding="utf-8")
 
-            self.assertFalse(requirement_has_actionable_signal("asdf qwer zxcv"))
-            self.assertTrue(should_ask_for_spec_input("asdf qwer zxcv", existing_project))
-            self.assertIn("concrete task", spec_input_questions("asdf qwer zxcv", existing_project))
+            self.assertFalse(requirement_has_actionable_signal("??"))
+            self.assertTrue(should_ask_for_spec_input("??", existing_project))
+            self.assertIn("concrete task", spec_input_questions("??", existing_project))
+            self.assertTrue(requirement_has_actionable_signal("asdf qwer zxcv"))
+            self.assertFalse(should_ask_for_spec_input("asdf qwer zxcv", existing_project))
 
             self.assertTrue(requirement_has_actionable_signal("Add quick sort"))
             self.assertFalse(should_ask_for_spec_input("Add quick sort", existing_project))

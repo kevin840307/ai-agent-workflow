@@ -258,7 +258,8 @@ class PromptBuilder:
         for step in run.get("steps") or []:
             if step.get("key") != "run_external_validation":
                 continue
-            config = step.get("config") if isinstance(step.get("config"), dict) else {}
+            nested = step.get("config") if isinstance(step.get("config"), dict) else {}
+            config = {**step, **nested}
             value = config.get("fallbackValidationScripts") or config.get("fallback_validation_scripts") or []
             if isinstance(value, str):
                 items = [item.strip() for item in value.split(",") if item.strip()]

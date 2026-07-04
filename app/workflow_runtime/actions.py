@@ -259,7 +259,7 @@ class WorkflowActions:
         for step in run.get("steps") or []:
             if step.get("key") != "run_external_validation":
                 continue
-            config = step_config(step)
+            config = {**step, **step_config(step)}
             value = config.get("fallbackValidationScripts") or config.get("fallback_validation_scripts") or []
             if isinstance(value, str):
                 return [item.strip() for item in value.split(",") if item.strip()]
@@ -785,11 +785,40 @@ class WorkflowActions:
                         + ", ".join(rel_path for rel_path, _ in invalid_files),
                     )
                 if not test_files:
-                    raise WorkflowError(
-                        f"generate_tests task {task_id} did not create test FILE/CONTENT/END_FILE blocks. "
-                        "Generate Tests must cover this task or return a valid test file."
+                    fallback_tests = build_validation_script_pytest_wrapper(
+                        project_dir,
+                        run.get("validation_script"),
+                        self._fallback_validation_scripts(run),
                     )
-                validate_generated_test_files(test_files)
+                    if not fallback_tests:
+                        raise WorkflowError(
+                            f"generate_tests task {task_id} did not create test FILE/CONTENT/END_FILE blocks. "
+                            "Generate Tests must cover this task or return a valid test file."
+                        )
+                    test_files = fallback_tests
+                    task_text = self._render_test_fallback_blocks(
+                        fallback_tests,
+                        f"Generate Tests did not return valid test file blocks for {task_id}; using the configured validation script as a pytest gate.",
+                    )
+                    write_text(output_dir / task_artifact, task_text)
+                    await self.log(run, f"generate_tests/{task_id}: created validation-script pytest because agent returned no test file blocks")
+                try:
+                    validate_generated_test_files(test_files)
+                except WorkflowError as exc:
+                    fallback_tests = build_validation_script_pytest_wrapper(
+                        project_dir,
+                        run.get("validation_script"),
+                        self._fallback_validation_scripts(run),
+                    )
+                    if not fallback_tests:
+                        raise
+                    test_files = fallback_tests
+                    task_text = self._render_test_fallback_blocks(
+                        fallback_tests,
+                        f"Generate Tests returned invalid tests for {task_id} ({exc}); using the configured validation script as a pytest gate.",
+                    )
+                    write_text(output_dir / task_artifact, task_text)
+                    await self.log(run, f"generate_tests/{task_id}: created validation-script pytest after invalid agent tests")
                 task_artifacts.append((task_id, task_title, task_text))
             aggregate = self._render_aggregated_task_outputs("Generated Tests Result", task_artifacts)
             write_text(output_dir / artifact, aggregate)
@@ -873,6 +902,18 @@ class WorkflowActions:
         else:
             await self.log(run, f"generate_tests: no FILE/CONTENT/END_FILE test files found in output/{artifact}")
             raise WorkflowError("generate_tests did not create any test files. Agent test output must include FILE/CONTENT/END_FILE blocks.")
+
+    @staticmethod
+    def _render_test_fallback_blocks(files: list[tuple[str, str]], reason: str) -> str:
+        return (
+            "# Generated Tests Fallback\n\n"
+            f"{reason}\n\n"
+            + "\n".join(
+                f"FILE: {rel_path}\nCONTENT:\n{content.rstrip()}\nEND_FILE"
+                for rel_path, content in files
+            )
+            + "\n"
+        )
 
     @staticmethod
     def _remove_stale_generated_tests(project_dir: Path, previous_files: list[tuple[str, str]], next_files: list[tuple[str, str]]) -> None:
@@ -1241,5 +1282,5 @@ class WorkflowActions:
     def _run_with_step_context(run: dict[str, Any], step_record: dict[str, Any]) -> dict[str, Any]:
         scoped = dict(run)
         scoped["_current_step"] = step_record
-        scoped["_current_step_config"] = step_record.get("config") or {}
+        scoped["_current_step_config"] = {**step_record, **step_config(step_record)}
         return scoped

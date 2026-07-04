@@ -236,8 +236,8 @@ PROMPT_PARAMS = [
     {"id": "workspace_path", "label": "Workspace Path", "description": "Workflow run workspace path.", "sample": "runs/workflow-001"},
     {"id": "validation_script", "label": "Validation Script", "description": "Optional run-specific Python validation script path.", "sample": "tools/check_config.py"},
     {"id": "project_overview", "label": "Project Overview", "description": "Auto-generated overview of project files and folders.", "sample": "Project files:\n- app/main.py"},
-    {"id": "project_profile", "label": "Project Profile", "description": "Detected language, test framework, source files, and test files from the selected project path.", "sample": "Primary language: Python\nTest framework: pytest"},
-    {"id": "project_index", "label": "Project Index", "description": "Deterministic Python-generated project index with profile, likely test commands, isolation rules, and visible files.", "sample": "# Project Index\nStatus: READY\n\n## Deterministic Profile\nPrimary language: Python"},
+    {"id": "project_profile", "label": "Project Profile", "description": "Detected file extensions, test framework, source files, and test files from the selected project path.", "sample": "Dominant source extensions: .py (3)\nTest framework: pytest"},
+    {"id": "project_index", "label": "Project Index", "description": "Deterministic Python-generated project index with profile, likely test commands, isolation rules, and visible files.", "sample": "# Project Index\nStatus: READY\n\n## Deterministic Profile\nDominant source extensions: .py (3)"},
     {"id": "architecture", "label": "Architecture", "description": "Content of architecture.md from the selected project path.", "sample": "# Architecture\nFastAPI backend with static frontend."},
     {"id": "spec", "label": "Spec", "description": "Content of output/spec.md.", "sample": "## Goal\nBuild the requested workflow feature."},
     {"id": "spec_review", "label": "Spec Review", "description": "Content of output/spec-review.md.", "sample": "Status: PASS"},
@@ -430,6 +430,7 @@ def normalize_contract(contract: dict[str, Any], *, fallback_id: str = "contract
         "stop_after_failures": "stopAfterFailures",
         "allow_interaction": "allowInteraction",
         "requires_validation_script": "requiresValidationScript",
+        "fallback_validation_scripts": "fallbackValidationScripts",
         "approval_required": "approvalRequired",
         "pause_after_step": "pauseAfterStep",
         "approval_message": "approvalMessage",
@@ -628,6 +629,14 @@ def apply_contract_to_step(step: dict[str, Any], contract: dict[str, Any]) -> di
         item["sources"] = deepcopy(metadata["sources"])
     if isinstance(metadata.get("agentOptions"), dict):
         item["agentOptions"] = deepcopy(metadata["agentOptions"])
+    if isinstance(metadata.get("fallbackValidationScripts"), list):
+        item["fallbackValidationScripts"] = [str(value) for value in metadata["fallbackValidationScripts"]]
+    elif isinstance(metadata.get("fallbackValidationScripts"), str):
+        item["fallbackValidationScripts"] = [
+            value.strip()
+            for value in metadata["fallbackValidationScripts"].split(",")
+            if value.strip()
+        ]
     return item
 
 
