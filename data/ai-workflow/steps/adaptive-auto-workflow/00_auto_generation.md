@@ -5,8 +5,8 @@ Critical execution contract:
 - Keep edits inside the selected Project Path only.
 - Do not edit `.qwen/**`, `opencode.json`, `.ai-workflow/**`, `.qwen-workflow/**`, or `.git/**`.
 - Build owns production/project artifacts only. Do not create or modify tests in this step.
-- If your CLI environment cannot use file edit/write tools, fall back to direct file edits.
-- When falling back to direct-edit outputs, every direct-edit output must contain complete runnable project content for that file.
+- If your CLI environment cannot use file edit/write tools, output complete project file blocks using `FILE: path`, `CONTENT:`, and `END_FILE`.
+- When falling back to file blocks, every file block must contain complete runnable project content for that file.
 
 You are running Adaptive Auto Workflow task execution.
 
@@ -68,8 +68,8 @@ Rules:
 Completion response:
 - Output artifact content only.
 - Include a short Markdown summary first.
-- Then output every created or modified file as direct file edits.
-- At least one direct-edit output is required.
+- If direct edit/write tools were unavailable, then output every created or modified file as complete `FILE/CONTENT/END_FILE` blocks.
+- At least one direct project edit or file block is required.
 
 Required artifact shape:
 

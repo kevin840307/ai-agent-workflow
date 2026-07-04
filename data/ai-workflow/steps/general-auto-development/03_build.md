@@ -2,9 +2,8 @@ Implement the approved task plan for the current task only.
 
 Critical execution contract:
 - Use Qwen/OpenCode built-in file edit/write tools to modify project files directly.
-- Do not return source code for the platform to materialize.
-- Do not output full file contents.
-- The platform will only inspect the project diff after you finish.
+- If the CLI environment does not expose file edit/write tools, output complete project file blocks using `FILE: path`, `CONTENT:`, and `END_FILE`.
+- The platform will inspect the project diff after you finish or safely materialize explicit FILE blocks when direct tools are unavailable.
 - Keep edits inside the selected Project Path only.
 - Do not edit `.qwen/**`, `opencode.json`, `.ai-workflow/**`, `.qwen-workflow/**`, or `.git/**`.
 - Build owns production/project artifacts only. Do not create or modify tests in this step.
@@ -50,5 +49,12 @@ Rules:
 - Do not run `git commit`, `git push`, or commands that change repository history or remote state.
 
 Completion response:
-- After editing files directly, respond with a brief Markdown summary only.
-- Do not include full file contents.
+- Do not summarize, restate, or explain the prompt, architecture, rules, or retry feedback.
+- Do not respond with only a plan or status.
+- If you used direct edit/write tools successfully, respond with a brief Markdown summary that names the changed production files.
+- If direct edit/write tools are unavailable or uncertain, output only complete `FILE/CONTENT/END_FILE` blocks for every created or modified production file.
+- A FILE block must use this exact shape:
+  `FILE: relative/path.ext`
+  `CONTENT:`
+  full file content
+  `END_FILE`

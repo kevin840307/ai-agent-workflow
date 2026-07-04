@@ -93,7 +93,7 @@ def retry_recovery_notes(source_key: str, target_key: str, error: str) -> list[s
     elif source_key == "build":
         notes.extend([
             "Build did not produce acceptable production changes or file blocks.",
-            "Use Qwen/OpenCode direct edits inside the selected Project Path; do not return file blocks.",
+            "Use Qwen/OpenCode direct edits inside the selected Project Path, or return complete FILE/CONTENT/END_FILE blocks.",
         ])
     else:
         notes.append("Retry the target step using the concrete error message and previously approved artifacts as the source of truth.")
@@ -256,7 +256,13 @@ class RunState:
                     return step["retry_count"]
             return 0
 
-        result = await self.store.mutate(lambda data: apply(next(run for run in data["runs"] if run["id"] == run_id)))
+        def mutate(data):
+            run = next((item for item in data["runs"] if item["id"] == run_id), None)
+            if not run:
+                return 0
+            return apply(run)
+
+        result = await self.store.mutate(mutate)
         run = await self.get_run_record(run_id)
         await self.bus.publish(run_id, {"type": "run", "run": run})
         return int(result or 0)

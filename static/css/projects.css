@@ -164,7 +164,7 @@ body.projects-collapsed .project-nav-link strong {
 }
 
 .brand::before {
-  content: "Q";
+  content: "A";
   display: inline-grid;
   place-items: center;
   flex: 0 0 auto;

@@ -93,6 +93,49 @@ END_FILE
 """
         self.assertEqual(extract_build_files(text), [("src/tool.py", "print(\"ok\")\n")])
 
+    def test_extract_build_files_accepts_markdown_file_headings(self) -> None:
+        text = """# Adaptive Generation Result
+
+### FILE/bubble_sort.py BEGIN_FILE
+```python
+def bubble_sort(values):
+    return sorted(values)
+```
+
+### FILE/tests/test_bubble_sort.py BEGIN_FILE
+```python
+from bubble_sort import bubble_sort
+
+def test_bubble_sort():
+    assert bubble_sort([2, 1]) == [1, 2]
+```
+
+### END_FILE
+"""
+        files = dict(extract_build_files(text))
+        self.assertEqual(files["bubble_sort.py"], "def bubble_sort(values):\n    return sorted(values)\n")
+        self.assertIn("def test_bubble_sort", files["tests/test_bubble_sort.py"])
+
+    def test_extract_build_files_accepts_start_end_file_blocks(self) -> None:
+        text = """FILE/CONTENT/START_FILE sorting_sorting.py
+```python
+def selection_sort(values):
+    return sorted(values)
+```
+
+FILE/CONTENT/END_FILE sorting_sorting.py
+"""
+        self.assertEqual(extract_build_files(text), [("sorting_sorting.py", "def selection_sort(values):\n    return sorted(values)\n")])
+
+    def test_extract_build_files_strips_end_file_from_heading_path(self) -> None:
+        text = """### FILE/calculate_bubble_sort.py/END_FILE
+```python
+def bubble_sort(values):
+    return values
+```
+"""
+        self.assertEqual(extract_build_files(text), [("calculate_bubble_sort.py", "def bubble_sort(values):\n    return values\n")])
+
     def test_extract_build_files_strips_trailing_fence_line_for_code_files(self) -> None:
         text = """FILE: src/tool.py
 CONTENT:
@@ -101,6 +144,25 @@ print("ok")
 END_FILE
 """
         self.assertEqual(extract_build_files(text), [("src/tool.py", "print(\"ok\")\n")])
+
+    def test_extract_build_files_accepts_fenced_code_with_filename_comments(self) -> None:
+        text = """# Result
+
+```python
+# src/tool.py
+def run():
+    return "ok"
+
+# tests/test_tool.py
+from src.tool import run
+
+def test_run():
+    assert run() == "ok"
+```
+"""
+        files = dict(extract_build_files(text))
+        self.assertEqual(files["src/tool.py"], "def run():\n    return \"ok\"\n")
+        self.assertIn("def test_run", files["tests/test_tool.py"])
 
     def test_extract_build_files_ignores_non_file_tool_call_json(self) -> None:
         text = '{"name": "ask_user_question", "arguments": {"question": "Need input?"}}'

@@ -1,7 +1,11 @@
 from __future__ import annotations
 
 import importlib
+import os
 from pathlib import Path
+import subprocess
+import sys
+import tempfile
 import unittest
 
 
@@ -63,6 +67,22 @@ class RuntimeRefactorContractTests(unittest.TestCase):
         self.assertEqual(Path(paths.ROOT), Path(__file__).resolve().parents[1])
         self.assertEqual(paths.WORKSPACES_DIR, paths.ROOT / "workspaces")
         self.assertEqual(paths.STORE_FILE, paths.ROOT / "data" / "store.json")
+
+    def test_runtime_api_allows_store_file_override_for_cli_instances(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            store_path = Path(tmp) / "isolated-store.json"
+            env = os.environ.copy()
+            env["AIWF_STORE_FILE"] = str(store_path)
+            completed = subprocess.run(
+                [sys.executable, "-c", "from app.runtime_modules import api; print(api.store.path)"],
+                cwd=Path(__file__).resolve().parents[1],
+                env=env,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=True,
+            )
+            self.assertEqual(Path(completed.stdout.strip()), store_path)
 
     def test_compatibility_facades_point_to_new_core_modules(self) -> None:
         checks = [

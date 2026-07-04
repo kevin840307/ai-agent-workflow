@@ -84,7 +84,9 @@ class PromptBuilderTests(unittest.TestCase):
             with patch("app.workflow_runtime.prompt_builder.WORKFLOW_BUNDLES_DIR", root):
                 result = PromptBuilder().build(run, "build", "prompts/build.md", allow_interaction=False)
 
-            self.assertIn("assert True", result.prompt)
+            self.assertIn("read-only external validation script", result.prompt)
+            self.assertIn("validation.py", result.prompt)
+            self.assertNotIn("assert True", result.prompt)
 
     def test_current_task_feedback_is_scoped_and_full_feedback_not_appended(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -167,6 +169,47 @@ class PromptBuilderTests(unittest.TestCase):
             self.assertIn("### sort.py", result.prompt)
             self.assertIn("def bubble_sort", result.prompt)
             self.assertIn("preserve existing behavior", result.prompt)
+
+    def test_global_step_skill_path_loads_from_asset_root(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            workspace = root / "run"
+            project = root / "project"
+            assets = root / "ai-workflow"
+            (workspace / "input").mkdir(parents=True)
+            (workspace / "output").mkdir(parents=True)
+            (workspace / "prompts").mkdir(parents=True)
+            (project).mkdir()
+            (assets / "steps" / "general-auto-development").mkdir(parents=True)
+            (assets / "steps" / "general-auto-development" / "03_build.md").write_text(
+                "Loaded global build skill.",
+                encoding="utf-8",
+            )
+
+            (workspace / "requirement.md").write_text("Build something", encoding="utf-8")
+            run = {
+                "id": "run-1",
+                "workspace": str(workspace),
+                "project_path": str(project),
+                "workflow_folder": "general-auto-development",
+                "skill_root": ".ai-workflow",
+                "steps": [
+                    {
+                        "key": "build",
+                        "allow_interaction": False,
+                        "config": {
+                            "templatePath": "steps/general-auto-development/03_build.md",
+                            "skillPath": "steps/general-auto-development/03_build.md",
+                        },
+                    }
+                ],
+            }
+
+            with patch("app.workflow_runtime.prompt_builder.AI_WORKFLOW_DIR", assets):
+                result = PromptBuilder().build(run, "build", "steps/general-auto-development/03_build.md", allow_interaction=False)
+
+            self.assertIn("Loaded global build skill.", result.prompt)
+            self.assertIn("Loaded global build skill.", (workspace / "prompts" / "skill-context.md").read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":

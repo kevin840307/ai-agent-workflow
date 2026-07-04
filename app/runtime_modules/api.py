@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 from pathlib import Path
 from typing import Any
 
@@ -51,7 +52,7 @@ from app.workflow_runtime.step_utils import format_exception, step_artifact_name
 
 
 store = Store(
-    STORE_FILE,
+    Path(os.environ.get("AIWF_STORE_FILE") or STORE_FILE),
     default_project_path=lambda: load_settings()["qwen"].get("project_path") or str(ROOT),
     default_steps=lambda: [],
 )

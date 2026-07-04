@@ -11,6 +11,7 @@ from fastapi import HTTPException
 
 from app.services import artifact_service, workflow_service
 from app.core.paths import atomic_write_text
+from app.persistence.json_store import Store
 from app.workflow_runtime.builtin_functions.security_candidates import _security_heuristic_candidates_from_context
 from app.workflow_runtime.step_config import initial_steps
 from app.security.agent_project_config import ensure_agent_project_configs
@@ -112,6 +113,18 @@ Status: DONE
             self.assertEqual(path.read_text(encoding="utf-8"), '{"ok": true}')
             self.assertEqual(calls["count"], 3)
             self.assertFalse(list(Path(tmp).glob("*.tmp")))
+
+    def test_store_process_lock_reclaims_dead_pid_lock(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            store_path = Path(tmp) / "state" / "store.json"
+            store = Store(store_path, default_project_path=lambda: str(Path(tmp)), default_steps=lambda: [])
+            store._lock_path.parent.mkdir(parents=True, exist_ok=True)
+            store._lock_path.write_text("999999999", encoding="ascii")
+
+            with store._process_lock(timeout_sec=1):
+                self.assertTrue(store._lock_path.exists())
+
+            self.assertFalse(store._lock_path.exists())
 
     def test_project_agent_configs_restrict_writes_but_allow_reads(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

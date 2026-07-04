@@ -1,6 +1,6 @@
 # Documentation Index
 
-This directory contains the English documentation for Qwen Workflow Web.
+This directory contains the English documentation for Agent Workflow Web.
 
 ## Recommended reading order
 

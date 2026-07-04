@@ -1,6 +1,6 @@
 # 文件索引
 
-這個目錄是 Qwen Workflow Web 的繁體中文文件。
+這個目錄是 Agent Workflow Web 的繁體中文文件。
 
 ## 建議閱讀順序
 

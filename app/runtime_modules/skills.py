@@ -20,7 +20,7 @@ def discover_skill_files(skill_path: str | None) -> list[Path]:
     root = resolve_skill_file(skill_path)
     if not root or not root.exists():
         return []
-    if root.is_file() and root.name.upper() == "SKILL.MD":
+    if root.is_file() and root.suffix.lower() == ".md":
         return [root]
     files = []
     for path in root.rglob("SKILL.md"):

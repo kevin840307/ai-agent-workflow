@@ -8,7 +8,7 @@ from typing import Any
 
 from app.runtime_modules.errors import WorkflowError
 from app.runtime_modules.files import failure_feedback_for_step, project_overview, project_profile, render_project_index_markdown
-from app.core.paths import DEFAULT_SKILL_PATH, ROOT, SYSTEM_WORKFLOW_ID, WORKFLOW_BUNDLES_DIR, read_text, write_text
+from app.core.paths import AI_WORKFLOW_DIR, DEFAULT_SKILL_PATH, ROOT, SYSTEM_WORKFLOW_ID, WORKFLOW_BUNDLES_DIR, read_text, write_text
 from app.runtime_modules.skills import load_skill_context
 from app.services.workflow_asset_service import GLOBAL_ASSET_ROOT, PROJECT_ASSET_DIR
 from app.auto_workflow import orchestrator
@@ -98,7 +98,19 @@ class PromptBuilder:
         skill_root = step_config.get("skillRoot") or run.get("skill_root") or str(DEFAULT_SKILL_PATH)
         skill_context, skill_files = load_skill_context(self._configured_skill_paths(step_config, str(skill_root), project_dir, run))
 
-        values = self._template_values(run, output_dir, project_dir, requirement, architecture, profile, answers, guidance, failure_feedback, step_config)
+        values = self._template_values(
+            run,
+            output_dir,
+            project_dir,
+            requirement,
+            architecture,
+            profile,
+            answers,
+            guidance,
+            failure_feedback,
+            step_config,
+            step_key=step_key,
+        )
         inline_template = str(step_config.get("templateContent") or "")
         if inline_template.strip():
             prompt_template = inline_template
@@ -150,7 +162,7 @@ class PromptBuilder:
 
         if skill_context.strip():
             selected = "\n".join(f"- {path}" for path in skill_files) if skill_files else f"- {skill_root}"
-            prompt = self._wrap_with_agent_profile(prompt, selected, agent_name)
+            prompt = self._wrap_with_agent_profile(prompt, f"{selected}\n\n{skill_context.strip()}", agent_name)
             write_text(Path(run["workspace"]) / "prompts" / "skill-context.md", skill_context)
 
         relative_prompt_path = f"prompts/{step_key}.md"
@@ -175,6 +187,7 @@ class PromptBuilder:
         guidance: str,
         failure_feedback: str,
         step_config: dict[str, Any] | None = None,
+        step_key: str = "",
     ) -> dict[str, str]:
         step_output_artifact = ""
         if step_config:
@@ -259,7 +272,7 @@ class PromptBuilder:
             "project_path": str(run.get("project_path", "")),
             "workspace_path": str(run.get("workspace", "")),
             "validation_script": str(run.get("validation_script") or ""),
-            "validation_script_content": self._validation_script_content(run, project_dir),
+            "validation_script_content": self._validation_script_content(run, project_dir, include_content=step_key in {"run_external_validation", "python_gate"}),
             "fallback_validation_scripts": self._fallback_validation_scripts(run),
         }
 
@@ -427,7 +440,7 @@ class PromptBuilder:
             return "\n".join(f"- `{item}`" for item in items) if items else "- None configured."
         return "- None configured."
 
-    def _validation_script_content(self, run: dict[str, Any], project_dir: Path) -> str:
+    def _validation_script_content(self, run: dict[str, Any], project_dir: Path, *, include_content: bool = False) -> str:
         raw_path = str(run.get("validation_script") or "").strip()
         if not raw_path:
             return "No validation script was provided for this run."
@@ -436,6 +449,14 @@ class PromptBuilder:
             path = project_dir / path
         if not path.exists() or not path.is_file():
             return f"Validation script not found at: {raw_path}"
+        if not include_content:
+            return (
+                "A read-only external validation script is configured for this run.\n"
+                f"- Script path: {path}\n"
+                "- Treat it only as an external acceptance gate.\n"
+                "- Do not modify it, copy it into production, or treat it as the requested deliverable.\n"
+                "- If the gate fails, the workflow will pass stdout/stderr back as retry feedback."
+            )
         text = read_text(path)
         header = (
             "READ-ONLY EXTERNAL VALIDATION SCRIPT. This file is outside the product scope unless the user explicitly asks to edit the validator.\n"
@@ -568,6 +589,11 @@ class PromptBuilder:
             candidate = Path(value).expanduser()
             if candidate.is_absolute() or value.startswith("~/"):
                 paths.append(str(candidate))
+                continue
+            if value.split("/", 1)[0] in {"steps", "contracts", "functions", "workflows"}:
+                paths.append(str(AI_WORKFLOW_DIR / value))
+                paths.append(str(project_dir / ".ai-workflow" / value))
+                paths.append(str(project_dir / value))
                 continue
             root = Path(skill_root).expanduser()
             if root.is_absolute() or skill_root.startswith("~/"):

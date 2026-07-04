@@ -163,26 +163,21 @@ class WorkflowActions:
             validate_build_files_are_not_tests(files)
         return files
 
-    def _mock_file_blocks_allowed_as_direct_edits(self) -> bool:
-        # Unit tests and explicit mock mode cannot invoke real Qwen/OpenCode
-        # edit tools.  In mock mode or with a test double AgentRunner only,
-        # simulate direct edits by applying mock file-block output, then re-read
-        # the project diff.  Real CLI runs use the production AgentStepRunner and
-        # never use this path.
-        if os.environ.get("QWEN_MOCK", "0").lower() in {"1", "true", "yes", "on"}:
-            return True
-        return not isinstance(self.agent_runner, AgentStepRunner)
+    def _file_blocks_allowed_as_direct_edits(self) -> bool:
+        return True
 
-    def _apply_mock_file_blocks_for_direct_edit(
+    def _apply_file_blocks_for_direct_edit(
         self,
         project_dir: Path,
         output_text: str,
         *,
         require_test_files: bool = False,
         forbid_test_files: bool = False,
-        output_label: str = "mock direct edit output",
+        validation_script: str | None = None,
+        fallback_scripts: list[str] | None = None,
+        output_label: str = "agent file block direct edit output",
     ) -> list[tuple[str, str]]:
-        if not self._mock_file_blocks_allowed_as_direct_edits():
+        if not self._file_blocks_allowed_as_direct_edits():
             return []
         files = extract_build_files(output_text)
         if not files:
@@ -191,6 +186,12 @@ class WorkflowActions:
             validate_generated_test_files(files)
         if forbid_test_files:
             validate_build_files_are_not_tests(files)
+        validate_build_files_do_not_overwrite_validation_scripts(
+            project_dir,
+            files,
+            validation_script=validation_script,
+            fallback_scripts=fallback_scripts,
+        )
         adjusted: list[tuple[str, str]] = []
         for rel_path, content in files:
             normalized = rel_path.strip().strip("`").replace("\\", "/")
@@ -463,6 +464,8 @@ class WorkflowActions:
                 continue
             seen.add(key)
             units.append(unit)
+        if len(units) >= 4 and all(len(unit) <= 40 for unit in units):
+            return ["all requested deliverables: " + ", ".join(units)]
         return units[:20]
 
     def _build_task_ids(self, todo: str) -> list[str]:
@@ -473,7 +476,8 @@ class WorkflowActions:
         if len(units) < 3:
             return [], units
         build_task_ids = self._build_task_ids(todo)
-        expected = min(len(units), 12)
+        grouped = len(units) == 1 and units[0].startswith("all requested deliverables: ")
+        expected = 1 if grouped else min(len(units), 12)
         task_texts = [f"{self._task_title(todo, task_id)}\n{self._task_section(todo, task_id)}".lower() for task_id in build_task_ids]
         covered_units = 0
         for unit in units:
@@ -1133,11 +1137,13 @@ class WorkflowActions:
             require_test_files=True,
         )
         if not direct_files:
-            direct_files = self._apply_mock_file_blocks_for_direct_edit(
+            direct_files = self._apply_file_blocks_for_direct_edit(
                 project_dir,
                 read_text(output_dir / artifact),
                 require_test_files=True,
-                output_label="mock generate_tests direct edit",
+                validation_script=run.get("validation_script"),
+                fallback_scripts=self._fallback_validation_scripts(run),
+                output_label="agent generate_tests file block direct edit",
             )
         if not direct_files:
             raise WorkflowError(
@@ -1534,7 +1540,7 @@ class WorkflowActions:
                     and not task_has_feedback
                     and (
                         self._task_direct_state_is_satisfied(output_dir, project_dir, task_id, "build")
-                        or (self._mock_file_blocks_allowed_as_direct_edits() and self._task_artifact_is_satisfied(project_dir, task_artifact_path))
+                        or (self._file_blocks_allowed_as_direct_edits() and self._task_artifact_is_satisfied(project_dir, task_artifact_path))
                     )
                 ):
                     task_result = read_text(task_artifact_path)
@@ -1557,17 +1563,18 @@ class WorkflowActions:
                     forbid_test_files=True,
                 )
                 if not direct_files:
-                    direct_files = self._apply_mock_file_blocks_for_direct_edit(
+                    direct_files = self._apply_file_blocks_for_direct_edit(
                         project_dir,
                         read_text(task_artifact_path),
                         forbid_test_files=True,
-                        output_label=f"mock build task {task_id} direct edit",
+                        validation_script=run.get("validation_script"),
+                        fallback_scripts=self._fallback_validation_scripts(run),
+                        output_label=f"agent build task {task_id} file block direct edit",
                     )
                 if not direct_files:
                     raise WorkflowError(
                         f"build task {task_id} did not directly create or modify production files under Project Path: {project_dir}. "
-                        "Use Qwen/OpenCode file edit/write tools to change project files directly. "
-                        "The platform no longer materializes FILE blocks for real agent runs; it only checks the project diff."
+                        "Use Qwen/OpenCode file edit/write tools, or output complete FILE/CONTENT/END_FILE blocks for each production file."
                     )
 
                 validate_build_files_are_not_tests(direct_files)
@@ -1590,6 +1597,8 @@ class WorkflowActions:
                 task_artifacts.append((task_id, task_title, task_result))
                 any_task_changed = True
                 await self.log(run, f"build/{task_id}: accepted direct agent production edit(s): " + ", ".join(rel_path for rel_path, _ in direct_files))
+                if await self._external_validation_passes_now(run, output_dir):
+                    break
 
             aggregate = self._render_aggregated_task_outputs("Build Result", task_artifacts)
             write_text(output_dir / artifact, aggregate)
@@ -1598,7 +1607,7 @@ class WorkflowActions:
             if not snapshot_changed(before, after) and not task_artifacts and not any_task_changed:
                 raise WorkflowError(
                     f"build did not directly create or modify production files under Project Path: {project_dir}. "
-                    "Use Qwen/OpenCode file edit/write tools. FILE block materialization is disabled for real agent runs."
+                    "Use Qwen/OpenCode file edit/write tools, or output complete FILE/CONTENT/END_FILE blocks."
                 )
             return
 
@@ -1614,16 +1623,18 @@ class WorkflowActions:
             forbid_test_files=True,
         )
         if not direct_files:
-            direct_files = self._apply_mock_file_blocks_for_direct_edit(
+            direct_files = self._apply_file_blocks_for_direct_edit(
                 project_dir,
                 read_text(output_dir / artifact),
                 forbid_test_files=True,
-                output_label="mock build direct edit",
+                validation_script=run.get("validation_script"),
+                fallback_scripts=self._fallback_validation_scripts(run),
+                output_label="agent build file block direct edit",
             )
         if not direct_files:
             raise WorkflowError(
                 f"build did not directly create or modify production files under Project Path: {project_dir}. "
-                "Use Qwen/OpenCode file edit/write tools. The platform no longer materializes FILE blocks for real agent runs."
+                "Use Qwen/OpenCode file edit/write tools, or output complete FILE/CONTENT/END_FILE blocks."
             )
         validate_build_files_are_not_tests(direct_files)
         validate_build_files_do_not_overwrite_validation_scripts(
@@ -1646,6 +1657,18 @@ class WorkflowActions:
         manifest = generator.generate(run, output_dir=output_dir, project_dir=project_dir)
         await self.refresh_artifacts(run["id"])
         await self.log(run, f"generate_task_prompts: generated {len(manifest.get('tasks') or [])} adaptive task prompt(s)")
+
+    async def _external_validation_passes_now(self, run: dict[str, Any], output_dir: Path) -> bool:
+        if not str(run.get("validation_script") or "").strip():
+            return False
+        try:
+            await self.functions.call_python_function(run, "run_external_validation", output_dir, "external-validation-result.md")
+            await self.refresh_artifacts(run["id"])
+            await self.log(run, "external_validation: passed early; remaining task loop items can be skipped")
+            return True
+        except Exception as exc:
+            await self.log(run, f"external_validation: not passing yet after current task: {str(exc)[:500]}")
+            return False
 
     async def adaptive_generation_step(
         self,
@@ -1690,7 +1713,7 @@ class WorkflowActions:
                     and not task_has_feedback
                     and (
                         self._task_direct_state_is_satisfied(output_dir, project_dir, task_id, "auto_generation")
-                        or (self._mock_file_blocks_allowed_as_direct_edits() and self._task_artifact_is_satisfied(project_dir, task_artifact_path))
+                        or (self._file_blocks_allowed_as_direct_edits() and self._task_artifact_is_satisfied(project_dir, task_artifact_path))
                     )
                 ):
                     task_result = read_text(task_artifact_path)
@@ -1712,15 +1735,17 @@ class WorkflowActions:
                     project_file_snapshot(project_dir),
                 )
                 if not direct_files:
-                    direct_files = self._apply_mock_file_blocks_for_direct_edit(
+                    direct_files = self._apply_file_blocks_for_direct_edit(
                         project_dir,
                         read_text(task_artifact_path),
-                        output_label=f"mock adaptive task {task_id} direct edit",
+                        validation_script=run.get("validation_script"),
+                        fallback_scripts=self._fallback_validation_scripts(run),
+                        output_label=f"agent adaptive task {task_id} file block direct edit",
                     )
                 if not direct_files:
                     raise WorkflowError(
                         f"auto_generation task {task_id} did not directly create or modify files under Project Path: {project_dir}. "
-                        "Use Qwen/OpenCode file edit/write tools. The platform no longer materializes FILE blocks for real agent runs."
+                        "Use Qwen/OpenCode file edit/write tools, or output complete FILE/CONTENT/END_FILE blocks."
                     )
                 validate_build_files_do_not_overwrite_validation_scripts(
                     project_dir,
@@ -1740,6 +1765,8 @@ class WorkflowActions:
                 write_text(task_artifact_path, task_result)
                 task_artifacts.append((task_id, task_title, task_result))
                 await self.log(run, f"auto_generation/{task_id}: accepted direct agent edit(s): " + ", ".join(rel_path for rel_path, _ in direct_files))
+                if await self._external_validation_passes_now(run, output_dir):
+                    break
 
             write_text(output_dir / artifact, self._render_aggregated_task_outputs("Adaptive Generation Result", task_artifacts))
             await self.refresh_artifacts(run["id"])
@@ -1747,7 +1774,7 @@ class WorkflowActions:
             if not snapshot_changed(before, after) and not task_artifacts:
                 raise WorkflowError(
                     f"auto_generation did not directly create or modify files under Project Path: {project_dir}. "
-                    "Use Qwen/OpenCode file edit/write tools. FILE block materialization is disabled for real agent runs."
+                    "Use Qwen/OpenCode file edit/write tools, or output complete FILE/CONTENT/END_FILE blocks."
                 )
             return
 
@@ -1761,15 +1788,17 @@ class WorkflowActions:
             project_file_snapshot(project_dir),
         )
         if not direct_files:
-            direct_files = self._apply_mock_file_blocks_for_direct_edit(
+            direct_files = self._apply_file_blocks_for_direct_edit(
                 project_dir,
                 read_text(output_dir / artifact),
-                output_label="mock adaptive direct edit",
+                validation_script=run.get("validation_script"),
+                fallback_scripts=self._fallback_validation_scripts(run),
+                output_label="agent adaptive file block direct edit",
             )
         if not direct_files:
             raise WorkflowError(
                 f"auto_generation did not directly create or modify files under Project Path: {project_dir}. "
-                "Use Qwen/OpenCode file edit/write tools. The platform no longer materializes FILE blocks for real agent runs."
+                "Use Qwen/OpenCode file edit/write tools, or output complete FILE/CONTENT/END_FILE blocks."
             )
         validate_build_files_do_not_overwrite_validation_scripts(
             project_dir,

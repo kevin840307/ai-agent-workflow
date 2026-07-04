@@ -2,8 +2,11 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 from pathlib import Path
-from typing import Any, Callable
+import time
+from contextlib import contextmanager
+from typing import Any, Callable, Iterator
 
 from app.core.paths import atomic_write_text, ensure_dirs
 
@@ -19,6 +22,74 @@ class Store:
         self._lock = asyncio.Lock()
         self._default_project_path = default_project_path
         self._default_steps = default_steps
+        self._lock_path = path.with_suffix(path.suffix + ".lock")
+
+    @contextmanager
+    def _process_lock(self, timeout_sec: float = 120.0) -> Iterator[None]:
+        ensure_dirs()
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        deadline = time.monotonic() + timeout_sec
+        fd: int | None = None
+        while fd is None:
+            try:
+                fd = os.open(str(self._lock_path), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+                os.write(fd, str(os.getpid()).encode("ascii", errors="ignore"))
+            except FileExistsError:
+                if self._lock_can_be_reclaimed():
+                    try:
+                        self._lock_path.unlink()
+                    except OSError:
+                        pass
+                    continue
+                if time.monotonic() >= deadline:
+                    raise TimeoutError(f"Timed out waiting for store lock: {self._lock_path}")
+                time.sleep(0.05)
+        try:
+            yield
+        finally:
+            if fd is not None:
+                try:
+                    os.close(fd)
+                except OSError:
+                    pass
+            try:
+                self._lock_path.unlink()
+            except OSError:
+                pass
+
+    def _lock_can_be_reclaimed(self) -> bool:
+        try:
+            age_sec = time.time() - self._lock_path.stat().st_mtime
+        except OSError:
+            return False
+        holder = self._lock_holder_pid()
+        if holder is not None and not self._pid_is_alive(holder):
+            return True
+        return holder is None and age_sec > 120
+
+    def _lock_holder_pid(self) -> int | None:
+        try:
+            raw = self._lock_path.read_text(encoding="ascii", errors="ignore").strip()
+        except OSError:
+            return None
+        try:
+            pid = int(raw)
+        except ValueError:
+            return None
+        return pid if pid > 0 else None
+
+    def _pid_is_alive(self, pid: int) -> bool:
+        if pid == os.getpid():
+            return True
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            return False
+        except PermissionError:
+            return True
+        except OSError:
+            return False
+        return True
 
     def _empty(self) -> dict[str, Any]:
         return {"sessions": [], "messages": [], "runs": [], "workflow_configs": []}
@@ -129,11 +200,13 @@ class Store:
 
     async def mutate(self, fn):
         async with self._lock:
-            data = self.load_sync()
-            result = fn(data)
-            self.save_sync(data)
+            with self._process_lock():
+                data = self.load_sync()
+                result = fn(data)
+                self.save_sync(data)
             return result
 
     async def read(self) -> dict[str, Any]:
         async with self._lock:
-            return self.load_sync()
+            with self._process_lock():
+                return self.load_sync()

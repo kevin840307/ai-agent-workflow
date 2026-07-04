@@ -487,7 +487,7 @@ def extract_build_files(build_result: str) -> list[tuple[str, str]]:
         re.DOTALL | re.MULTILINE,
     )
     for match in pattern.finditer(build_result):
-        rel_path = match.group("path").strip().strip("`").replace("\\", "/")
+        rel_path = _normalize_extracted_rel_path(match.group("path"))
         content = match.group("content")
         content = re.sub(r"\r?\nEND_FILE\s*$", "", content)
         content = re.sub(r"\r?\n$", "", content)
@@ -495,8 +495,115 @@ def extract_build_files(build_result: str) -> list[tuple[str, str]]:
         files.append((rel_path, content + "\n"))
     if files:
         return files
+    files.extend(_extract_markdown_file_blocks(build_result))
+    if files:
+        return files
+    files.extend(_extract_start_end_file_blocks(build_result))
+    if files:
+        return files
+    files.extend(_extract_fenced_code_with_filename_comments(build_result))
+    if files:
+        return files
     files.extend(_extract_json_file_blocks(build_result))
     return files
+
+
+def _extract_start_end_file_blocks(text: str) -> list[tuple[str, str]]:
+    files: list[tuple[str, str]] = []
+    pattern = re.compile(
+        r"^FILE/CONTENT/START_FILE\s+(?P<path>.+?)\s*\r?\n(?P<content>.*?)(?=^FILE/CONTENT/END_FILE\s+.+?$|\Z)",
+        re.DOTALL | re.MULTILINE | re.IGNORECASE,
+    )
+    for match in pattern.finditer(text or ""):
+        rel_path = _normalize_extracted_rel_path(match.group("path"))
+        content = strip_wrapping_code_fence(rel_path, match.group("content"))
+        files.append((rel_path, content.rstrip("\n") + "\n"))
+    return files
+
+
+def _extract_markdown_file_blocks(text: str) -> list[tuple[str, str]]:
+    files: list[tuple[str, str]] = []
+    pattern = re.compile(
+        r"^#{1,6}\s*FILE[:/]\s*(?P<path>.+?)\s*(?:BEGIN_FILE)?\s*\r?\n(?P<content>.*?)(?=^#{1,6}\s*FILE[:/]|^#{1,6}\s*END_FILE\s*$|\Z)",
+        re.DOTALL | re.MULTILINE | re.IGNORECASE,
+    )
+    for match in pattern.finditer(text or ""):
+        rel_path = _normalize_extracted_rel_path(match.group("path"))
+        content = match.group("content")
+        content = re.sub(r"\r?\n#{1,6}\s*END_FILE\s*$", "", content, flags=re.IGNORECASE)
+        content = strip_wrapping_code_fence(rel_path, content)
+        files.append((rel_path, content.rstrip("\n") + "\n"))
+    return files
+
+
+def _extract_fenced_code_with_filename_comments(text: str) -> list[tuple[str, str]]:
+    """Extract common agent output that groups files in one fenced code block.
+
+    Some CLIs cannot edit files directly and do not always follow the preferred
+    FILE/CONTENT/END_FILE contract. A frequent fallback shape is one code fence
+    with sections introduced by comment-only filename lines, for example:
+
+    ````text
+    ```python
+    # src/tool.py
+    ...
+    # tests/test_tool.py
+    ...
+    ```
+    ````
+
+    The parser stays domain-neutral: it only recognizes plausible relative file
+    paths with extensions and leaves safety checks to the normal write guard.
+    """
+    fence_pattern = re.compile(r"```[\w.+-]*\s*\r?\n(?P<body>.*?)\r?\n```", re.DOTALL)
+    files: list[tuple[str, str]] = []
+    for match in fence_pattern.finditer(text or ""):
+        segments = _split_comment_named_file_segments(match.group("body"))
+        if len(segments) >= 2 or (segments and _first_nonblank_line_is_filename_comment(match.group("body"))):
+            files.extend(segments)
+    return files
+
+
+def _split_comment_named_file_segments(body: str) -> list[tuple[str, str]]:
+    segments: list[tuple[str, str]] = []
+    current_path: str | None = None
+    current_lines: list[str] = []
+    for line in body.splitlines():
+        path = _filename_from_comment_line(line)
+        if path:
+            if current_path is not None:
+                segments.append((current_path, "\n".join(current_lines).rstrip("\n") + "\n"))
+            current_path = path
+            current_lines = []
+            continue
+        if current_path is not None:
+            current_lines.append(line)
+    if current_path is not None:
+        segments.append((current_path, "\n".join(current_lines).rstrip("\n") + "\n"))
+    return [(path, content) for path, content in segments if content.strip()]
+
+
+def _first_nonblank_line_is_filename_comment(body: str) -> bool:
+    for line in body.splitlines():
+        if not line.strip():
+            continue
+        return _filename_from_comment_line(line) is not None
+    return False
+
+
+def _filename_from_comment_line(line: str) -> str | None:
+    stripped = line.strip()
+    match = re.fullmatch(r"(?:#|//|--|;)\s*(?P<path>[A-Za-z0-9_./\\ -]+\.[A-Za-z0-9]+)\s*", stripped)
+    if not match:
+        match = re.fullmatch(r"<!--\s*(?P<path>[A-Za-z0-9_./\\ -]+\.[A-Za-z0-9]+)\s*-->", stripped)
+    if not match:
+        return None
+    rel_path = _normalize_extracted_rel_path(match.group("path"))
+    if not rel_path or rel_path.startswith(("/", ".")) or "://" in rel_path:
+        return None
+    if unsafe_relative_path_reason(rel_path):
+        return None
+    return rel_path
 
 
 def _extract_json_file_blocks(text: str) -> list[tuple[str, str]]:
@@ -516,7 +623,7 @@ def _extract_json_file_blocks(text: str) -> list[tuple[str, str]]:
     files: list[tuple[str, str]] = []
     for item in parsed_items:
         for rel_path, content in _json_file_entries(item):
-            rel_path = str(rel_path).strip().strip("`").replace("\\", "/")
+            rel_path = _normalize_extracted_rel_path(str(rel_path))
             content_text = str(content)
             content_text = strip_wrapping_code_fence(rel_path, content_text)
             files.append((rel_path, content_text.rstrip("\n") + "\n"))
@@ -535,6 +642,13 @@ def _json_file_entries(item: Any) -> list[tuple[str, str]]:
     if isinstance(item, list):
         return [entry for child in item for entry in _json_file_entries(child)]
     return []
+
+
+def _normalize_extracted_rel_path(value: str) -> str:
+    normalized = str(value).strip().strip("`").replace("\\", "/")
+    normalized = re.sub(r"\s+BEGIN_FILE\s*$", "", normalized, flags=re.IGNORECASE).strip()
+    normalized = re.sub(r"/?END_FILE\s*$", "", normalized, flags=re.IGNORECASE).strip()
+    return normalized.strip("/")
 
 
 def strip_wrapping_code_fence(rel_path: str, content: str) -> str:

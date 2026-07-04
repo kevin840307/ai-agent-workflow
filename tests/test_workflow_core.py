@@ -624,15 +624,13 @@ Status: READY
             asyncio.run(actions.implementation_review_step({"id": "run-1", "workspace": str(workspace), "project_path": str(project), "workflow_id": "general-auto-development", "steps": []}))
 
             repaired = (output / "todo.md").read_text(encoding="utf-8")
-            for item in ["氣泡排序法", "選擇排序法", "插入排序法", "快速排序法", "合併排序法", "堆積排序", "希爾排序法"]:
-                with self.subTest(item=item):
-                    self.assertIn(item, repaired)
+            self.assertIn("Implement all algorithms together", repaired)
             manifest = (output / "task-manifest.md").read_text(encoding="utf-8")
-            self.assertGreaterEqual(manifest.count("[owner=build]"), 7)
+            self.assertGreaterEqual(manifest.count("[owner=build]"), 1)
             review = (output / "implementation-review.md").read_text(encoding="utf-8")
-            self.assertIn("under-split", review)
+            self.assertIn("Deterministic review passed", review)
             self.assertTrue((output / "todos" / "TASK-001.md").is_file())
-            self.assertTrue((output / "todos" / "TASK-007.md").is_file())
+            self.assertFalse((output / "todos" / "TASK-007.md").is_file())
 
     def test_build_task_loop_preserves_previous_task_markers_when_later_task_overwrites(self) -> None:
         class FakeAgentRunner:

@@ -1,6 +1,6 @@
 # Qwen Workflow Web
 
-Qwen Workflow Web is a local **AI Agent Workflow Runner**. It is not only a chat UI: the user enters a requirement in the browser, while a Python/FastAPI runner controls a fixed workflow and delegates generation work to external agent CLIs such as Qwen Code or OpenCode.
+Agent Workflow Web is a local **AI Agent Workflow Runner**. It is not only a chat UI: the user enters a requirement in the browser, while a Python/FastAPI runner controls a fixed workflow and delegates generation work to external agent CLIs such as Qwen Code or OpenCode.
 
 The core idea is:
 

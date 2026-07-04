@@ -245,6 +245,9 @@ class WorkflowExecutor:
             r["updated_at"] = utc_now()
 
         final_run = await self.update_run(run_id, finish)
+        if not final_run:
+            final_run = dict(run)
+            finish(final_run)
         write_text(run_dir / ".workflow" / "state.json", json.dumps(final_run, indent=2, ensure_ascii=False))
         write_run_trace_artifacts(final_run, run_dir)
         await self.refresh_artifacts(run_id)
@@ -262,6 +265,9 @@ class WorkflowExecutor:
             r["updated_at"] = utc_now()
 
         waiting_run = await self.update_run(run_id, wait)
+        if not waiting_run:
+            waiting_run = dict(run)
+            wait(waiting_run)
         write_text(run_dir / ".workflow" / "state.json", json.dumps(waiting_run, indent=2, ensure_ascii=False))
         write_run_trace_artifacts(waiting_run, run_dir)
         await self.refresh_artifacts(run_id)
@@ -305,6 +311,9 @@ class WorkflowExecutor:
             r["updated_at"] = utc_now()
 
         failed_run = await self.update_run(run_id, fail)
+        if not failed_run:
+            failed_run = dict(run)
+            fail(failed_run)
         write_text(run_dir / ".workflow" / "state.json", json.dumps(failed_run, indent=2, ensure_ascii=False))
         write_run_trace_artifacts(failed_run, run_dir)
         await self.refresh_artifacts(run_id)
