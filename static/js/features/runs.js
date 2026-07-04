@@ -376,17 +376,15 @@ export function createRuns(ctx) {
         ui.byKey("runWorkflow").disabled = true;
         ui.byKey("logs").textContent = "Starting workflow...\n";
         ui.byKey("qwenLive").textContent = `Waiting for ${state.defaultAgent || "agent"} process...\n`;
-        const workflow = state.workflows.find((item) => item.id === state.selectedWorkflowId);
-        const needsValidationScript = (workflow?.steps || []).some((step) => step.enabled !== false && step.requiresValidationScript);
+        const needsValidationScript = ctx.features.workflows?.requiresValidationScriptForSelected?.() || false;
         const validationScript = needsValidationScript
           ? (ui.byKey("validationScript")?.value?.trim() || state.validationScript?.trim() || null)
           : null;
+        const payload = { workflow_id: state.selectedWorkflowId };
+        if (validationScript) payload.validation_script = validationScript;
         const run = await api.request(`/api/sessions/${state.activeSessionId}/workflow-runs`, {
           method: "POST",
-          body: JSON.stringify({
-            workflow_id: state.selectedWorkflowId,
-            validation_script: validationScript,
-          }),
+          body: JSON.stringify(payload),
         });
         if (["queued", "running", "waiting_input"].includes(run.status)) {
           ui.byKey("logs").textContent += `Attached to run ${run.id}\n`;

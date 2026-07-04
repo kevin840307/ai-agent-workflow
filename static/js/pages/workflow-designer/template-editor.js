@@ -364,13 +364,16 @@ function openTemplateEditor() {
         </div>
         <button data-designer-action="close-template-editor" aria-label="Close">x</button>
       </div>
-      <div class="designer-template-modal-meta">
-        <label class="designer-form-row">
+      <div class="designer-template-modal-meta designer-template-modal-meta-inline">
+        <label class="designer-form-row designer-template-meta-field">
           <span class="designer-label">Template File Name</span>
           <input class="designer-input" value="${escapeAttr(templateFileNameFromPath(templateEditorDraft.templatePath))}" placeholder="my-step.md" data-template-draft-field="templateName" ${disabled} />
-          <span class="designer-form-hint">Saved as a workflow step asset under steps/. Subfolders are managed by the backend.</span>
         </label>
-        <label class="designer-form-row">
+        <label class="designer-form-row designer-template-meta-field">
+          <span class="designer-label">Output File Name</span>
+          <input class="designer-input" value="${escapeAttr(templateEditorDraft.filename)}" placeholder="spec.md" data-template-draft-field="filename" ${disabled} />
+        </label>
+        <label class="designer-form-row designer-template-meta-field designer-template-preset-field">
           <span class="designer-label">Load Preset</span>
           <div class="designer-template-picker-row">
             <select class="designer-select" data-template-preset-path ${disabled}>
@@ -379,10 +382,7 @@ function openTemplateEditor() {
             <button type="button" data-designer-action="load-template-preset" ${disabled}>Load</button>
           </div>
         </label>
-        <label class="designer-form-row">
-          <span class="designer-label">Output File Name</span>
-          <input class="designer-input" value="${escapeAttr(templateEditorDraft.filename)}" placeholder="spec.md" data-template-draft-field="filename" ${disabled} />
-        </label>
+        <div class="designer-form-hint designer-template-modal-meta-hint">Template files are saved as workflow step assets under steps/. Subfolders are managed by the backend.</div>
       </div>
       <div class="designer-template-modal-grid">
         <label class="designer-form-row designer-template-editor-wrap">

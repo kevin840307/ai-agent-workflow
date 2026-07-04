@@ -1,4 +1,4 @@
-import { LocalStore, StorageKeys } from "./storage.js?v=20260703-agent-stream1";
+import { LocalStore, StorageKeys } from "./storage.js?v=20260704-designer-layout1";
 
 export const AppState = {
   sessions: [],

@@ -1,4 +1,4 @@
-import { tabsForStep } from "./step-tabs.js?v=20260703-agent-stream1";
+import { tabsForStep } from "./step-tabs.js?v=20260704-designer-layout1";
 
 export function installStepSettingsRenderer(ctx) {
   const {

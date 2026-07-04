@@ -1,4 +1,4 @@
-import { LocalStore, StorageKeys } from "../core/storage.js?v=20260703-agent-stream1";
+import { LocalStore, StorageKeys } from "../core/storage.js?v=20260704-designer-layout1";
 
 export function createWorkflows(ctx) {
   const { api, state, ui } = ctx;
@@ -177,11 +177,15 @@ export function createWorkflows(ctx) {
               </div>
             `).join("")}
           </div>`;
+      const validationValue = state.validationScript || "";
       const validationHtml = !compact && requiresValidationScript(workflow) ? `
-          <label class="validation-script-field workflow-step-validation" id="validationScriptField" title="Optional Python validation script for this run">
-            <span>Validation Script</span>
-            <input id="validationScript" type="text" value="${ui.escapeHtml(state.validationScript || "")}" placeholder="tools/check_config.py or C:\\path\\validate.py" />
-          </label>` : "";
+          <div class="workflow-validation-note workflow-step-validation">
+            <label class="validation-script-field workflow-step-validation-script" id="validationScriptField" title="Run-specific Python validation script path for steps marked Requires Validation Script">
+              <span>Validation Script</span>
+              <input id="validationScript" type="text" value="${ui.escapeHtml(validationValue)}" placeholder="Optional: tools/check_config.py or C:\path\validate.py" autocomplete="off" />
+            </label>
+            <small>Shown because this workflow has a step with Requires Validation Script enabled.</small>
+          </div>` : "";
       preview.innerHTML = `
         <div class="workflow-preview-card${compact ? " locked compact" : ""}">
           <div class="workflow-preview-head">
@@ -200,6 +204,10 @@ export function createWorkflows(ctx) {
           ${validationHtml}
         </div>
       `;
+    },
+
+    requiresValidationScriptForSelected() {
+      return requiresValidationScript(selectedWorkflow());
     },
 
     select(workflowId) {

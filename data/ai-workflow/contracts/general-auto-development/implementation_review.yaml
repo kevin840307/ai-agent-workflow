@@ -10,6 +10,10 @@ agent: qwen
 outputs:
 - implementation-review.md
 - task-manifest.md
+- task-manifest.json
+- generated-workflow-instance.json
+- workflow-instance-validation.md
+- workflow-run-trace.md
 function: 
 retry: 0
 failAction: selected_step

@@ -1,7 +1,7 @@
 This step is executed by deterministic Python final review.
 
 Expected behavior:
-- Read `output/task-manifest.md`.
+- Read `output/task-manifest.md`, `output/task-manifest.json`, `output/generated-workflow-instance.json`, and `output/workflow-instance-validation.md`.
 - Read `output/test-result.md`.
 - Read `output/external-validation-result.md`.
 - Write `output/final-review.md`.

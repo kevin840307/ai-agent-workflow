@@ -90,7 +90,12 @@ class StaticArchitectureContractTests(unittest.TestCase):
                 continue
             source = path.read_text(encoding="utf-8")
             versions.update(re.findall(r"\?v=([A-Za-z0-9_-]+)", source))
-        self.assertEqual(versions, {"20260703-agent-stream1"})
+        self.assertEqual(versions, {"20260704-designer-layout1"})
+
+    def test_workflow_designer_knows_runtime_task_prompt_params(self):
+        source = (ROOT / "static/js/pages/workflow-designer-constants.js").read_text(encoding="utf-8")
+        self.assertIn('key: "task_manifest"', source)
+        self.assertIn('key: "current_task"', source)
 
     def test_static_structure_document_mentions_designer_modules(self):
         source = (ROOT / "static/FRONTEND_STRUCTURE.md").read_text(encoding="utf-8")

@@ -298,3 +298,28 @@ Important constraints:
 - `diff_review` is advisory only; it can warn about risks but cannot override the verifier.
 - Retry feedback is classified so small/local models can repair with a new strategy without stopping too early.
 
+
+
+## Adaptive Auto Workflow Orchestrator
+
+The project now has a run-local auto workflow layer for acceptance-driven development. It keeps the visible workflow simple while compiling the user's request into deterministic artifacts that the Python runtime can verify.
+
+```text
+User Request
+→ Request Intent (`input/request-intent.json`)
+→ Normalized User Instructions (`input/user-instructions.normalized.json`)
+→ Project Index (`output/project-index.md`)
+→ Architecture Contract (`output/architecture-contract.json`)
+→ AI Todo (`output/todo.md`)
+→ Python Task Manifest (`output/task-manifest.json`)
+→ Python Workflow Instance (`output/generated-workflow-instance.json`)
+→ Workflow Instance Validation (`output/workflow-instance-validation.md`)
+→ Per-task Build / Generate Tests loops
+→ Assembly Test / External Validation
+→ Evidence Verifier (`output/verifier-report.json`)
+→ Diff Review / Final Gate
+```
+
+The AI is allowed to propose task plans. It is not allowed to invent executable workflow step types. Python validates `task-manifest.json`, compiles `generated-workflow-instance.json`, runs only allowlisted step behavior, and decides final PASS / FAIL from evidence.
+
+Use `adaptive-auto-workflow` for the explicit auto workflow path. `general-auto-development` also benefits from the same task manifest and verifier artifacts for backward compatibility.

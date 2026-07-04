@@ -88,7 +88,7 @@ class GeneralAutoDevelopmentWorkflowTests(unittest.TestCase):
         self.assertEqual(validation["function"], "run_external_validation")
         self.assertEqual(validation["retryFromStepKey"], "build")
         self.assertEqual(validation["failAction"], "selected_step")
-        self.assertFalse(validation["requiresValidationScript"])
+        self.assertTrue(validation["requiresValidationScript"])
         self.assertGreaterEqual(validation["maxRetries"], 10)
 
         diff_review = next(step for step in workflow["steps"] if step["key"] == "diff_review")

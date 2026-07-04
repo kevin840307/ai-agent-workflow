@@ -6,6 +6,12 @@ Requirement:
 Task Manifest:
 {{task_manifest}}
 
+Task Manifest JSON:
+{{task_manifest_json}}
+
+Workflow Instance:
+{{workflow_instance}}
+
 Verifier Report JSON:
 {{verifier_report}}
 

@@ -12,6 +12,15 @@ Project index:
 Project profile:
 {{project_profile}}
 
+Request intent:
+{{request_intent}}
+
+Normalized user instructions and optional workflow-md constraints:
+{{user_instructions}}
+
+Architecture contract:
+{{architecture_contract}}
+
 Validation script for this run:
 {{validation_script}}
 
@@ -29,7 +38,7 @@ Planning rules:
 - User instructions and provided config files are the source of truth. Follow explicit user-provided steps, file paths, formats, and validation expectations before applying defaults.
 - If the user restricts allowed tools, libraries, commands, languages, or frameworks, preserve those restrictions in the plan and do not substitute alternatives.
 - Use reasonable defaults only for minor missing details and record them in the plan.
-- Split the work into small tasks, but do not over-split. Prefer 3 to 8 tasks, and never more than 12 unless the request is truly large.
+- Split the work into small tasks, but do not over-split. Prefer 3 to 8 tasks, and never more than 12 unless the request is truly large. If the user gave numbered steps, preserve that high-level order while splitting each step into smaller tasks when needed.
 - Think in layers: small task -> assembled feature -> final completed request.
 - Every task must have clear acceptance criteria and an integration/assembly expectation.
 - Define explicit stop conditions: the workflow is done only when Build produced project changes, automated tests pass, external validation passes or is intentionally skipped, and final review is PASS.
@@ -43,7 +52,7 @@ Planning rules:
 - Include validation coverage for the user-provided validation script when one is provided.
 - Keep TODO content concise and actionable.
 - If multiple TODO files would help, list the recommended file names, but keep this step output in `todo.md`.
-- Do not invent a new architecture when the project already has one.
+- Do not invent a new architecture when the project already has one. Follow the Architecture Contract and workflow-md constraints when present.
 
 Output only Markdown with this exact structure:
 

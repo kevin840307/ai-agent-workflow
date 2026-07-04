@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import re
 from pathlib import Path
 from typing import Any, Awaitable, Callable
@@ -34,6 +35,7 @@ from app.core.paths import ROOT, read_text, write_text
 from app.security.workspace_guard import resolve_project_relative_write
 from app.workflow_runtime.builtin_functions.registry import PYTHON_FUNCTIONS
 from app.workflow_runtime.builtin_functions.base import WorkflowFunctionError
+from app.auto_workflow import orchestrator as auto_workflow
 
 from .agent_step_runner import AgentStepRunner
 from .functions import WorkflowFunctionService
@@ -73,6 +75,31 @@ class WorkflowActions:
         self.functions = functions
         self.log = log
         self.refresh_artifacts = refresh_artifacts
+
+    @staticmethod
+    def _is_auto_development_workflow(run: dict[str, Any]) -> bool:
+        return str(run.get("workflow_id") or "") in {"general-auto-development", "adaptive-auto-workflow"}
+
+    async def _write_auto_workflow_request_artifacts(self, run: dict[str, Any], project_dir: Path) -> None:
+        workspace = Path(run["workspace"])
+        output_dir = workspace / "output"
+        input_dir = workspace / "input"
+        requirement = read_text(workspace / "requirement.md")
+        project_index = read_text(output_dir / "project-index.md")
+        if not project_index.strip():
+            project_index = render_project_index_markdown(project_dir)
+            write_text(output_dir / "project-index.md", project_index)
+        intent = auto_workflow.route_request(
+            requirement,
+            validation_script=run.get("validation_script"),
+            project_has_files=project_has_user_files(project_dir),
+        )
+        instructions = auto_workflow.extract_user_instructions(requirement, project_dir)
+        architecture_contract = auto_workflow.build_architecture_contract(project_dir, project_index, instructions)
+        write_text(input_dir / "request-intent.json", auto_workflow.dumps(intent))
+        write_text(input_dir / "user-instructions.normalized.json", auto_workflow.dumps(instructions))
+        write_text(output_dir / "architecture-contract.json", auto_workflow.dumps(architecture_contract))
+        await self.refresh_artifacts(run["id"])
 
     async def run_agent_step(
         self,
@@ -341,6 +368,26 @@ class WorkflowActions:
     @staticmethod
     def _task_entries_from_manifest(manifest: str, *, owner: str | None = None) -> list[dict[str, Any]]:
         entries: list[dict[str, Any]] = []
+        raw = (manifest or "").strip()
+        if raw.startswith("{"):
+            try:
+                data = json.loads(raw)
+            except Exception:
+                data = {}
+            for item in data.get("tasks") or []:
+                if not isinstance(item, dict):
+                    continue
+                task_owner = str(item.get("owner") or "build").strip()
+                if owner and task_owner != owner:
+                    continue
+                entries.append({
+                    "id": str(item.get("id") or "TASK-001"),
+                    "owner": task_owner,
+                    "title": str(item.get("title") or item.get("id") or "Task"),
+                    "acceptance": item.get("acceptance") or [],
+                    "depends_on": item.get("depends_on") or [],
+                })
+            return entries
         pattern = re.compile(r"^\s*\d+\.\s+(TASK-\d{3})(?:\s+\[owner=([^\]]+)\])?:\s*(.+?)\s*$", re.MULTILINE)
         for match in pattern.finditer(manifest or ""):
             task_owner = (match.group(2) or "build").strip()
@@ -479,6 +526,22 @@ class WorkflowActions:
         task_manifest = self._render_task_manifest(todo)
         write_text(output_dir / "task-manifest.md", task_manifest)
 
+        instructions = {}
+        try:
+            instructions = json.loads(read_text(Path(run["workspace"]) / "input" / "user-instructions.normalized.json") or "{}")
+        except Exception:
+            instructions = {}
+        task_manifest_json = auto_workflow.task_manifest_from_todo(todo, project_dir=Path(run.get("project_path") or ROOT), instructions=instructions)
+        task_findings = auto_workflow.validate_task_manifest(task_manifest_json, Path(run.get("project_path") or ROOT))
+        workflow_instance = auto_workflow.compile_workflow_instance(task_manifest_json, run_profile=str(run.get("run_profile") or "normal"))
+        workflow_findings = auto_workflow.validate_workflow_instance(workflow_instance, task_manifest_json)
+        write_text(output_dir / "task-manifest.json", auto_workflow.dumps(task_manifest_json))
+        write_text(output_dir / "generated-workflow-instance.json", auto_workflow.dumps(workflow_instance))
+        write_text(output_dir / "workflow-instance-validation.md", auto_workflow.render_validation_markdown(task_findings, workflow_findings))
+        write_text(output_dir / "workflow-run-trace.md", auto_workflow.render_run_trace(workflow_instance))
+        if task_findings or workflow_findings:
+            raise WorkflowError("Auto workflow instance validation failed: " + "; ".join(task_findings + workflow_findings))
+
         text = "\n".join(
             [
                 "# Implementation Review",
@@ -489,7 +552,7 @@ class WorkflowActions:
                 "## Checks",
                 "- Todo is concrete enough for automated Build.",
                 "- Tasks include acceptance criteria.",
-                "- task-manifest.md was generated from todo.md to stabilize small-task order and assembly.",
+                "- task-manifest.md and task-manifest.json were generated from todo.md to stabilize small-task order and assembly.",
                 "- Acceptance and stop conditions are present.",
                 "- Mandatory test and external validation stages are present.",
                 "- Edits are constrained to the selected Project path.",
@@ -681,7 +744,10 @@ class WorkflowActions:
         artifact = normalize_artifact_name(artifact)
         output_dir = Path(run["workspace"]) / "output"
         write_text(output_dir / "project-index.md", render_project_index_markdown(project_dir))
-        await self.refresh_artifacts(run["id"])
+        if self._is_auto_development_workflow(run):
+            await self._write_auto_workflow_request_artifacts(run, project_dir)
+        else:
+            await self.refresh_artifacts(run["id"])
         if not project_has_user_files(project_dir) and not architecture_path.exists():
             await self.log(run, f"prepare_project: working directory appears empty, skipping architecture discovery for {project_dir}")
             write_text(Path(run["workspace"]) / "output" / artifact, "Status: SKIPPED\n\nProject appears empty.\n")
@@ -760,8 +826,8 @@ class WorkflowActions:
         artifact = normalize_artifact_name(artifact)
         project_dir = Path(run.get("project_path") or ROOT)
         previous_test_files = only_test_files(extract_build_files(read_text(output_dir / artifact)))
-        if run.get("workflow_id") == "general-auto-development":
-            manifest = read_text(output_dir / "task-manifest.md")
+        if self._is_auto_development_workflow(run):
+            manifest = read_text(output_dir / "task-manifest.json") or read_text(output_dir / "task-manifest.md")
             tasks = self._task_entries_from_manifest(manifest, owner="build") or self._task_entries_from_manifest(manifest)
             if not tasks:
                 tasks = [{"id": "TASK-001", "owner": "build", "title": "Full requested behavior"}]
@@ -935,8 +1001,8 @@ class WorkflowActions:
         artifact = normalize_artifact_name(artifact)
         before = project_file_snapshot(project_dir)
 
-        if run.get("workflow_id") == "general-auto-development":
-            manifest = read_text(output_dir / "task-manifest.md")
+        if self._is_auto_development_workflow(run):
+            manifest = read_text(output_dir / "task-manifest.json") or read_text(output_dir / "task-manifest.md")
             tasks = self._task_entries_from_manifest(manifest, owner="build")
             if not tasks:
                 tasks = [{"id": "TASK-001", "owner": "build", "title": "Full requested production change"}]
@@ -1181,7 +1247,7 @@ class WorkflowActions:
             ),
             "implementation_review": lambda: (
                 self.implementation_review_step(run, step_artifact_name(step_record, "implementation-review.md"))
-                if run.get("workflow_id") == "general-auto-development"
+                if self._is_auto_development_workflow(run)
                 else self.review_step(
                     run,
                     key,
@@ -1222,7 +1288,7 @@ class WorkflowActions:
             ),
             "final_review": lambda: (
                 self.final_review_step(run, step_artifact_name(step_record, "final-review.md"))
-                if run.get("workflow_id") == "general-auto-development"
+                if self._is_auto_development_workflow(run)
                 else self.review_step(
                     run,
                     key,

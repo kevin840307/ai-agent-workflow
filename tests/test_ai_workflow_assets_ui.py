@@ -87,6 +87,12 @@ class AiWorkflowAssetsUiTests(unittest.TestCase):
         self.assertIn("workflow-step-validation", workflows)
         self.assertIn("body.chat-mode .validation-script-field", css)
 
+    def test_general_auto_development_requires_step_validation_script(self) -> None:
+        contract = (ROOT / "data/ai-workflow/contracts/general-auto-development/run_external_validation.yaml").read_text(encoding="utf-8")
+
+        self.assertIn("requiresValidationScript: true", contract)
+        self.assertIn("fallbackValidationScripts:", contract)
+
     def test_workflow_designer_shows_copyable_cli_commands_without_ok_lint_copy(self) -> None:
         html = (ROOT / "static/workflow-designer.html").read_text(encoding="utf-8")
         controller = (ROOT / "static/js/pages/workflow-designer/controller.js").read_text(encoding="utf-8")

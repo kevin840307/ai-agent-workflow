@@ -1177,8 +1177,22 @@ button.designer-param-chip:hover:not(:disabled) {
 .designer-template-modal-meta {
   min-width: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(180px, 240px);
+  grid-template-columns: minmax(180px, 0.9fr) minmax(160px, 0.65fr) minmax(260px, 1.2fr);
   gap: 10px;
+  align-items: end;
+}
+
+.designer-template-meta-field {
+  min-width: 0;
+}
+
+.designer-template-meta-field .designer-label {
+  margin-bottom: 4px;
+}
+
+.designer-template-modal-meta-hint {
+  grid-column: 1 / -1;
+  margin-top: -4px;
 }
 
 .designer-template-modal-grid {

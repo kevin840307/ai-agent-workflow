@@ -44,6 +44,8 @@ export const BuiltInPromptParams = [
   { key: "spec", label: "Spec", description: "Rendered content from output/spec.md.", sample: "## Goal\nBuild the requested workflow feature." },
   { key: "spec_review", label: "Spec Review", description: "Rendered content from output/spec-review.md.", sample: "Status: PASS" },
   { key: "todo", label: "Todo", description: "Rendered content from output/todo.md.", sample: "## Todo List\n- TODO-001 Implement UI." },
+  { key: "task_manifest", label: "Task Manifest", description: "Deterministic task order generated from todo.md for build/test loops.", sample: "## Small Task Order\n1. TASK-001 [owner=build]: Implement feature." },
+  { key: "current_task", label: "Current Task", description: "Current per-task loop context when a workflow step is running one task at a time.", sample: "Task ID: TASK-001\nTask Title: Implement feature\nTask Phase: build" },
   { key: "todo_review", label: "Todo Review", description: "Rendered content from output/todo-review.md.", sample: "Status: PASS" },
   { key: "test_plan", label: "Test Plan", description: "Rendered content from output/test-plan.md.", sample: "## Test Plan\n- TEST-001 Verify build output." },
   { key: "test_result", label: "Test Result", description: "Rendered content from output/test-result.md.", sample: "Status: FAIL\nAssertionError: expected file missing." },

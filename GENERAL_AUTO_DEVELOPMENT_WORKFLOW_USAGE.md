@@ -80,12 +80,22 @@ Not allowed:
 
 ## Web UI
 
+`General Auto Development` supports a run-specific validation script through the step-side field.
+The field is shown because the workflow's `Run External Validation` step has `Requires Validation Script` enabled.
+
 1. Open the runner page.
 2. Select a project.
 3. Select `General Auto Development`.
 4. Enter the user requirement.
-5. Optional: fill `Validation Script` with a Python validation script path.
-6. Press `Run`.
+5. In the workflow step preview, find `Run External Validation`.
+6. Fill the step-side `Validation Script` field with a Python validation script path, for example `tools/check_config.py`.
+7. Press `Run`.
+
+Designer setup note:
+
+- The field appears only when at least one enabled step has `Requires Validation Script` checked.
+- For `General Auto Development`, this should be checked on the `Run External Validation` step.
+- Do not add a global composer-level validation field; keep the field tied to the step requirement.
 
 Validation script examples:
 

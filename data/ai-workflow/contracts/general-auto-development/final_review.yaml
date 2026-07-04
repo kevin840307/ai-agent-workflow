@@ -11,6 +11,7 @@ outputs:
 - final-review.md
 - verifier-report.json
 - diff-context.md
+- workflow-run-trace.md
 function: ''
 retry: 0
 failAction: selected_step

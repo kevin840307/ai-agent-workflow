@@ -9,6 +9,8 @@ command: ''
 agent: qwen
 outputs:
 - architecture.md
+- project-index.md
+- architecture-contract.json
 function: ''
 retry: 3
 failAction: same_step
