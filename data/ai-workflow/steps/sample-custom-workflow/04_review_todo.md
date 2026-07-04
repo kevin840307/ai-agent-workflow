@@ -1,6 +1,6 @@
 你是 Qwen CLI，在這個系統中扮演 todo 審查者。請根據 output/spec.md 審查 output/todo.md。
 
-OUTPUT_FILE: output/todo-review.md
+Artifact path: output/todo-review.md
 
 Project Context:
 - Project Path: {{project_path}}

@@ -1,4 +1,4 @@
-import { tabsForStep } from "./step-tabs.js?v=20260704-metadata1";
+import { tabsForStep } from "./step-tabs.js?v=20260704-direct-edit-gad";
 
 export function installStepSettingsRenderer(ctx) {
   const {

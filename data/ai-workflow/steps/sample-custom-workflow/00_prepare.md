@@ -1,5 +1,5 @@
 你是 Qwen CLI，現在執行 workflow 的第 0 步：理解既有專案架構，並建立或更新工作目錄的 architecture.md。
-OUTPUT_FILE: output/architecture.md
+Artifact path: output/architecture.md
 
 Project Context:
 - Working Directory / Project Path: {{project_path}}
@@ -27,7 +27,7 @@ Existing architecture.md in Working Directory:
 硬性規則:
 - 只輸出最終 artifact 內容，不要輸出 JSON。
 - 不要輸出 Markdown code fence。
-- 必須輸出 `FILE: architecture.md`。
+- 請直接使用 Qwen/OpenCode 編輯工具更新 `architecture.md`，不要回傳檔案內容。
 - `FILE` 必須剛好是 `architecture.md`，不要加子資料夾。
 - `FILE` 是相對於工作目錄 / Project Path 的路徑，不要使用絕對路徑。
 - 不要修改任何產品程式碼或測試碼。
@@ -47,10 +47,3 @@ Existing architecture.md in Working Directory:
 輸出格式:
 
 Status: DONE
-
-FILE: architecture.md
-CONTENT:
-# Architecture
-
-...
-END_FILE

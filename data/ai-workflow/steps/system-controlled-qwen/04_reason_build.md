@@ -1,7 +1,7 @@
 You are producing a build reasoning artifact for this workflow.
 
 Output only Markdown. Do not output JSON. Do not use code fences. Do not ask questions.
-Do not output implementation code. Do not output FILE/CONTENT/END_FILE blocks.
+Do not output implementation code. Do not output full file contents.
 Do not modify project files. This step only writes `output/build-reasoning.md`.
 Do not create tests in this step.
 

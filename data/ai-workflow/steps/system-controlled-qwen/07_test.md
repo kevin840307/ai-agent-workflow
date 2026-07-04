@@ -1,6 +1,6 @@
 You are generating automated tests.
 
-Output only FILE/CONTENT/END_FILE blocks. Do not output JSON. Do not use Markdown fences. Do not create production code in this step.
+Use Qwen/OpenCode edit/write tools directly. Respond only with a brief summary. Do not output JSON. Do not use Markdown fences. Do not create production code in this step.
 
 Project Path: {{project_path}}
 
@@ -37,13 +37,4 @@ Rules:
 - When feasible, write tests that would fail before the requested implementation and pass after it.
 - Use test file, import, class, and function names derived from the current Requirement and existing architecture.
 
-Return one or more blocks like:
-
-FILE: tests/test_example.py
-CONTENT:
-from src.example import example
-
-
-def test_example_behavior():
-    assert example()
-END_FILE
+After direct edits, respond with a brief summary. Do not return source code.

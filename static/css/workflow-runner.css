@@ -2027,3 +2027,103 @@ body.run-waiting .workflow-preview-meta::after {
   text-transform: uppercase;
   white-space: nowrap;
 }
+
+/* Live workflow activity in the chat timeline */
+.message.workflow-activity {
+  max-width: 760px;
+  border-color: color-mix(in srgb, var(--accent) 24%, var(--line));
+  background: linear-gradient(180deg, #ffffff, color-mix(in srgb, var(--accent-soft) 32%, #ffffff));
+}
+
+.message.workflow-activity::before {
+  content: "Agent";
+}
+
+.workflow-live-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 850;
+}
+
+.workflow-live-spinner {
+  display: inline-block;
+  font-size: 10px;
+  color: var(--accent);
+  animation: workflow-live-pulse 1.2s ease-in-out infinite;
+}
+
+.workflow-live-meta,
+.workflow-live-note {
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  white-space: normal;
+}
+
+
+.workflow-live-work {
+  margin-top: 9px;
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--line));
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--accent-soft) 34%, #ffffff);
+  white-space: normal;
+}
+
+.workflow-live-work > span {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.workflow-live-work ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.workflow-live-work li {
+  margin: 3px 0;
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.workflow-live-thinking,
+.workflow-live-diagnostics {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+
+.workflow-live-thinking > span,
+.workflow-live-diagnostics > span {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.workflow-live-thinking pre,
+.workflow-live-diagnostics pre {
+  max-height: 180px;
+  margin: 0;
+  overflow: auto;
+  white-space: pre-wrap;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+@keyframes workflow-live-pulse {
+  0%, 100% { opacity: 0.32; transform: scale(0.85); }
+  50% { opacity: 1; transform: scale(1); }
+}

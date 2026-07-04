@@ -1,7 +1,7 @@
 You are generating the final security vulnerability report from Python-combined multi-agent findings.
 
 Output only Markdown. Do not output JSON. Do not use code fences. Do not ask questions.
-Do not modify project files. Do not output FILE/CONTENT/END_FILE blocks.
+Do not modify project files. Do not output full file contents.
 Do not provide exploit instructions, weaponized payloads, or steps to attack real systems.
 
 Important report rules:

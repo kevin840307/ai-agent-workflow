@@ -1,6 +1,6 @@
 你是 Qwen CLI，在這個系統中扮演「可重現的產物撰寫器」。請根據下方 Requirement 產生產品規格文件。
 
-OUTPUT_FILE: output/spec.md
+Artifact path: output/spec.md
 
 Project Context:
 - Project Path: {{project_path}}

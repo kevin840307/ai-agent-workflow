@@ -10,12 +10,12 @@ agent: qwen
 outputs:
 - diff-review.md
 function: ''
-retry: 99
+retry: 3
 failAction: same_step
 retryFromStepKey: diff_review
 keepSameSession: false
 injectFailureFeedback: true
-stopAfterFailures: 99
+stopAfterFailures: 3
 allowInteraction: false
 thinking: true
 approvalRequired: false

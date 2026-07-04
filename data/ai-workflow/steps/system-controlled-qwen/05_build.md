@@ -1,6 +1,6 @@
 You are implementing production code in the selected Project Path.
 
-Output only FILE/CONTENT/END_FILE blocks. Do not output JSON. Do not use Markdown fences. Do not create tests in this step.
+Use Qwen/OpenCode edit/write tools directly. Respond only with a brief summary. Do not output JSON. Do not use Markdown fences. Do not create tests in this step.
 
 Project Path: {{project_path}}
 
@@ -41,16 +41,10 @@ Rules:
 - If Project Profile lists existing source files, choose target production files that fit the dominant Source roots by usage. Do not create a new `src/` directory unless `src` is the dominant source root or Architecture explicitly says to use it.
 - Do not switch languages unless the Requirement or Spec explicitly asks for a language migration.
 - Create or modify production files only. Prefer the Target Production Files listed in Build Reasoning when present.
-- Do not write files under tests/. Do not copy FILE/CONTENT/END_FILE blocks from Test Plan into Build output.
+- Do not write files under tests/. Do not copy test contents into Build output.
 - If the project is empty, create a minimal structure that matches the requested language or the language implied by the requirement.
 - If the requirement asks to add a new capability, create or modify production files that clearly implement that capability; do not make unrelated edits that only satisfy existing tests.
 - Use clear file, class, and function names derived from the current Requirement and existing architecture.
 - Keep code small and readable.
 
-Return one or more blocks like:
-
-FILE: src/example.py
-CONTENT:
-def example():
-    ...
-END_FILE
+After direct edits, respond with a brief summary. Do not return source code.

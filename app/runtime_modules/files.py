@@ -23,6 +23,8 @@ def unsafe_relative_path_reason(raw_path: str) -> str | None:
         return "placeholder relative/path output is not a real project file"
     if normalized.startswith("path_to_") or normalized.startswith("example."):
         return "placeholder output path is not a real project file"
+    if normalized == "opencode.json":
+        return "managed agent guard config: opencode.json"
     return guarded_unsafe_relative_path_reason(raw_path, reserved_dirs=RESERVED_AGENT_WRITE_DIRS)
 
 
@@ -104,7 +106,7 @@ def render_generic_spec_from_requirement(requirement: str) -> str:
         "- Separate automated tests for the behavior.\n\n"
         "## Rules\n"
         "- Tests must be stored separately from production code.\n"
-        "- Build output must use FILE/CONTENT/END_FILE blocks when creating or modifying files.\n"
+        "- Build steps must use Qwen/OpenCode direct file edit/write tools; the platform checks the project diff.\n"
         "- Prefer simple standard-library code unless the project already uses a framework.\n\n"
         "## Acceptance Criteria\n"
         f"- AC-001: The project implements the requested behavior: {clean_requirement}\n"
@@ -198,10 +200,14 @@ def project_file_snapshot(project_dir: Path) -> dict[str, tuple[int, int]]:
     if not project_dir.exists():
         return snapshot
     ignored_dirs = {".git", ".vs", ".qwen", LEGACY_WORKFLOW_DIR, PROJECT_WORKFLOW_DIR, "__pycache__", ".pytest_cache", ".mypy_cache", "node_modules", ".venv", "venv", "workspaces", "dist", "build", ".next", "coverage"}
+    ignored_files = {"opencode.json"}
     for path in project_dir.rglob("*"):
         if not path.is_file():
             continue
-        if any(part in ignored_dirs for part in path.relative_to(project_dir).parts):
+        rel_parts = path.relative_to(project_dir).parts
+        if any(part in ignored_dirs for part in rel_parts):
+            continue
+        if path.name in ignored_files:
             continue
         try:
             stat = path.stat()
@@ -444,6 +450,36 @@ def snapshot_changed(before: dict[str, tuple[int, int]], after: dict[str, tuple[
     return before != after
 
 
+def changed_snapshot_paths(before: dict[str, tuple[int, int]], after: dict[str, tuple[int, int]]) -> list[str]:
+    """Return added, modified, or deleted project-relative paths."""
+    keys = sorted(set(before) | set(after))
+    return [key for key in keys if before.get(key) != after.get(key)]
+
+
+def files_from_changed_snapshot(project_dir: Path, changed_paths: list[str]) -> list[tuple[str, str]]:
+    """Read changed project files back into FILE-block-compatible tuples."""
+    files: list[tuple[str, str]] = []
+    project_root = project_dir.expanduser().resolve()
+    for rel_path in changed_paths:
+        normalized = str(rel_path).replace("\\", "/")
+        reason = unsafe_relative_path_reason(normalized)
+        if reason:
+            raise WorkflowError(f"Agent changed unsafe project path ({reason}): {normalized}")
+        target = (project_root / normalized).resolve()
+        if not target.is_file():
+            continue
+        try:
+            content = target.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            content = target.read_bytes().decode("utf-8", errors="replace")
+        files.append((normalized, content.rstrip("\n") + "\n"))
+    return files
+
+
+def render_file_blocks(files: list[tuple[str, str]]) -> str:
+    return "".join(f"FILE: {rel_path}\nCONTENT:\n{content.rstrip()}\nEND_FILE\n" for rel_path, content in files)
+
+
 def extract_build_files(build_result: str) -> list[tuple[str, str]]:
     files: list[tuple[str, str]] = []
     pattern = re.compile(
@@ -556,7 +592,7 @@ def is_test_file_path(rel_path: str) -> bool:
 
 def validate_generated_test_files(files: list[tuple[str, str]]) -> None:
     if not files:
-        raise WorkflowError("generate_tests did not create any test files. Agent test output must include FILE/CONTENT/END_FILE blocks.")
+        raise WorkflowError("generate_tests did not directly create any test files under tests/. Use Qwen/OpenCode edit/write tools; the platform checks the project diff.")
     invalid = [rel_path for rel_path, _ in files if not is_test_file_path(rel_path)]
     if invalid:
         raise WorkflowError(

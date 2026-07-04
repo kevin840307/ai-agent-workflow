@@ -120,11 +120,18 @@ aiwf run "build a config validation tool" --project C:\my-project --workflow gen
 Qwen/OpenCode slash-command template shown in Workflow Designer:
 
 ```text
-/wf --engine qwen --workflow general-auto-development --user "requirement"
+/wf general-auto-development "requirement"
+/wstep steps/general-auto-development/03_build.md contracts/general-auto-development/build.yaml "requirement"
 ```
 
-Those slash-command forms are templates for agent-side command integrations.
+These slash-command forms require installing this project's command templates first:
+
+```bash
+python scripts/install_agent_commands.py --target all --scope project
+```
+
 The backend workflow path is still the same: project path, workflow id, user requirement, and optional validation script.
+See `AGENT_SLASH_COMMANDS.md` for details.
 
 ## API
 

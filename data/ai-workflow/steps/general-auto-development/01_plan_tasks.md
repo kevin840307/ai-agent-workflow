@@ -30,7 +30,10 @@ Planning rules:
 - If the user restricts allowed tools, libraries, commands, languages, or frameworks, preserve those restrictions in the plan and do not substitute alternatives.
 - Use reasonable defaults only for minor missing details and record them in the plan.
 - Split the work into small tasks, but do not over-split. Prefer 3 to 8 tasks, and never more than 12 unless the request is truly large.
-- Think in layers: small task -> assembled feature -> final completed request.
+- When the requirement contains multiple named deliverables, independent features, algorithms, file types, modules, commands, API endpoints, reports, or UI areas, create one build-owned task for each independently verifiable item before the assembly task. Do not collapse them into one generic implementation task.
+- If the requirement lists items with separators such as bullets, numbers, commas, `+`, `/`, `、`, `與`, `和`, or `and`, treat those items as candidate task boundaries unless they are merely aliases of the same thing.
+- Group items only when there are more than 12 candidate items or when two items cannot be implemented or accepted independently; record the grouping reason in the task Assembly field.
+- Think in layers: independent item task -> integration/assembly task -> tests and external validation -> final completed request.
 - Every task must have clear acceptance criteria and an integration/assembly expectation.
 - Define explicit stop conditions: the workflow is done only when Build produced project changes, automated tests pass, external validation passes or is intentionally skipped, and final review is PASS.
 - Build production changes before Generate Tests so the model does not mix test blocks into Build.
@@ -57,7 +60,8 @@ Status: READY
 ## Task Index
 | ID | Task | Acceptance Criteria | Depends On |
 | --- | --- | --- | --- |
-| TASK-001 | ... | AC-001 | None |
+| TASK-001 | Implement one independently verifiable item | AC-001 | None |
+| TASK-002 | Implement the next independently verifiable item when the requirement lists one | AC-002 | TASK-001 |
 
 ## Task Assembly Plan
 - Build order:
@@ -70,7 +74,7 @@ Status: READY
 - Goal:
 - Files:
 - Acceptance Criteria:
-  - AC-001:
+  - AC-001: Must verify this task's own deliverable, not only the final combined result.
 - Depends On:
   - None
 - Assembly:

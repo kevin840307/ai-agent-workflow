@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -88,7 +89,7 @@ class PromptBuilder:
         answers = read_text(input_dir / "answers.md")
         guidance = read_text(input_dir / "guidance.md")
         failure_feedback = failure_feedback_for_step(read_text(input_dir / "failure-feedback.md"), step_key)
-        architecture = read_text(project_dir / "architecture.md")
+        architecture = read_text(project_dir / "architecture.md") or read_text(output_dir / "architecture.md")
         profile = project_profile(project_dir)
         project_index_path = output_dir / "project-index.md"
         if not project_index_path.exists():
@@ -128,7 +129,12 @@ class PromptBuilder:
         if guidance.strip() and "{{guidance}}" not in prompt_template:
             prompt = f"{prompt}\n\nUser step guidance added during the workflow:\n\n{guidance.strip()}\n"
         if bool_config(step_config, "injectFailureFeedback", True):
-            if failure_feedback.strip() and "{{last_error}}" not in prompt_template and "{{failure_feedback}}" not in prompt_template:
+            if (
+                failure_feedback.strip()
+                and "{{last_error}}" not in prompt_template
+                and "{{failure_feedback}}" not in prompt_template
+                and "{{current_task_failure_feedback}}" not in prompt_template
+            ):
                 prompt = (
                     f"{prompt}\n\n"
                     "Failure feedback from previous retry attempts. Fix these concrete errors before producing this step output:\n\n"
@@ -179,6 +185,8 @@ class PromptBuilder:
             current_task = {}
         current_task_block = ""
         current_task_todo = ""
+        current_task_prompt = ""
+        current_task_failure_feedback = ""
         if current_task:
             current_task_block = "\n".join(
                 [
@@ -194,6 +202,8 @@ class PromptBuilder:
             safe_task_id = "".join(ch if ch.isalnum() or ch in {"_", ".", "-"} else "-" for ch in task_id)
             if safe_task_id:
                 current_task_todo = read_text(output_dir / "todos" / f"{safe_task_id}.md")
+                current_task_prompt = read_text(output_dir / "task-prompts" / f"{safe_task_id}.md")
+                current_task_failure_feedback = self._current_task_failure_feedback(failure_feedback, task_id)
         return {
             "requirement": requirement,
             "architecture": architecture,
@@ -213,6 +223,9 @@ class PromptBuilder:
             "workflow_run_trace": read_text(output_dir / "workflow-run-trace.md"),
             "current_task": current_task_block,
             "current_task_todo": current_task_todo,
+            "current_task_prompt": current_task_prompt,
+            "current_task_failure_feedback": current_task_failure_feedback,
+            "current_task_file_context": self._current_task_file_context(output_dir, project_dir, current_task),
             "current_task_id": str(current_task.get("id") or ""),
             "current_task_title": str(current_task.get("title") or ""),
             "current_task_owner": str(current_task.get("owner") or ""),
@@ -236,6 +249,7 @@ class PromptBuilder:
             "guidance": guidance,
             "last_error": failure_feedback,
             "failure_feedback": failure_feedback,
+            "latest_failure_feedback": self._latest_failure_feedback(failure_feedback),
             "step_output": step_output,
             "security_context": read_text(output_dir / "security-context.md"),
             "security_candidates": self._read_security_candidate_artifacts(output_dir),
@@ -248,6 +262,109 @@ class PromptBuilder:
             "validation_script_content": self._validation_script_content(run, project_dir),
             "fallback_validation_scripts": self._fallback_validation_scripts(run),
         }
+
+    def _current_task_file_context(self, output_dir: Path, project_dir: Path, current_task: dict[str, Any]) -> str:
+        task_id = str(current_task.get("id") or "").strip()
+        try:
+            current_index = int(current_task.get("index") or 0)
+        except (TypeError, ValueError):
+            current_index = 0
+        if not task_id:
+            return "No task-scoped project file context."
+        task_output_root = output_dir / "tasks"
+        if not task_output_root.exists():
+            return "No previous task output files to preserve yet."
+
+        candidate_paths: list[str] = []
+        for task_dir in sorted(path for path in task_output_root.iterdir() if path.is_dir()):
+            match = re.fullmatch(r"TASK-(\d{3})", task_dir.name)
+            if not match:
+                continue
+            task_number = int(match.group(1))
+            include_task = bool(current_index and task_number < current_index) or task_dir.name == task_id
+            if not include_task:
+                continue
+            for artifact_name in ("build-result.md", "adaptive-generation-result.md"):
+                artifact_path = task_dir / artifact_name
+                for rel_path, _ in self._extract_file_blocks_for_context(read_text(artifact_path)):
+                    if rel_path not in candidate_paths:
+                        candidate_paths.append(rel_path)
+
+        if not candidate_paths:
+            return "No previous task output files to preserve yet."
+
+        sections: list[str] = [
+            "The following files already exist from completed or retried task outputs.",
+            "When editing any of these paths, return the complete file content and preserve existing behavior unless the current task explicitly requires changing it.",
+        ]
+        shown = 0
+        for rel_path in candidate_paths[:8]:
+            safe_rel = rel_path.strip().strip("`").replace("\\", "/")
+            if not safe_rel or safe_rel.startswith("/") or ".." in safe_rel.split("/"):
+                continue
+            path = project_dir / safe_rel
+            if not path.is_file():
+                continue
+            try:
+                content = path.read_text(encoding="utf-8")
+            except UnicodeDecodeError:
+                continue
+            except OSError:
+                continue
+            if len(content) > 12000:
+                content = content[:12000].rstrip() + "\n... <truncated>\n"
+            sections.extend(["", f"### {safe_rel}", "```", content.rstrip(), "```"])
+            shown += 1
+        if shown == 0:
+            return "No readable previous task output file content is available."
+        if len(candidate_paths) > shown:
+            sections.append(f"\nAdditional preserved files omitted from prompt: {len(candidate_paths) - shown}")
+        return "\n".join(sections).strip()
+
+    @staticmethod
+    def _extract_file_blocks_for_context(text: str) -> list[tuple[str, str]]:
+        files: list[tuple[str, str]] = []
+        pattern = re.compile(
+            r"^FILE:\s*(?P<path>.+?)\s*\r?\n(?:CONTENT:\r?\n)?(?P<content>.*?)(?=^FILE:\s*|^END_FILE\s*$|\Z)",
+            re.DOTALL | re.MULTILINE,
+        )
+        for match in pattern.finditer(text or ""):
+            rel_path = match.group("path").strip().strip("`").replace("\\", "/")
+            content = match.group("content")
+            files.append((rel_path, content))
+        return files
+
+    def _current_task_failure_feedback(self, feedback: str, task_id: str) -> str:
+        if not feedback.strip() or not task_id.strip():
+            return "No failure feedback for this task yet."
+        blocks = re.findall(
+            r"^## Retry Feedback for .*?(?=^## Retry Feedback for |\Z)",
+            feedback,
+            flags=re.MULTILINE | re.DOTALL,
+        )
+        matches = []
+        for block in blocks:
+            if task_id in block or re.search(rf"\btask\s+{re.escape(task_id)}\b", block, flags=re.I):
+                matches.append(block.strip())
+        if not matches:
+            return "No failure feedback for this task yet."
+        # Keep only recent, task-scoped feedback.  Full run feedback can become
+        # very large and may pull small/local models toward repairing the
+        # workflow itself instead of implementing the current user task.
+        joined = "\n\n".join(matches[-3:])
+        return joined[-6000:]
+
+    @staticmethod
+    def _latest_failure_feedback(feedback: str) -> str:
+        if not feedback.strip():
+            return "No failure feedback yet."
+        blocks = re.findall(
+            r"^## Retry Feedback for .*?(?=^## Retry Feedback for |\Z)",
+            feedback,
+            flags=re.MULTILINE | re.DOTALL,
+        )
+        text = (blocks[-1] if blocks else feedback).strip()
+        return text[-6000:] if len(text) > 6000 else text
 
     def _request_intent(self, run: dict[str, Any], requirement: str, project_dir: Path) -> str:
         intent = orchestrator.route_request(

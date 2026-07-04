@@ -10,12 +10,12 @@ agent: qwen
 outputs:
 - todo.md
 function: ''
-retry: 99
+retry: 5
 failAction: same_step
 retryFromStepKey: plan_tasks
 keepSameSession: true
 injectFailureFeedback: true
-stopAfterFailures: 99
+stopAfterFailures: 5
 allowInteraction: false
 thinking: false
 approvalRequired: false

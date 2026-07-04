@@ -90,7 +90,96 @@ class StaticArchitectureContractTests(unittest.TestCase):
                 continue
             source = path.read_text(encoding="utf-8")
             versions.update(re.findall(r"\?v=([A-Za-z0-9_-]+)", source))
-        self.assertEqual(versions, {"20260704-metadata1"})
+        self.assertEqual(versions, {"20260704-direct-edit-gad"})
+
+
+    def test_workflow_designer_sidebar_uses_shared_workflow_scroll(self):
+        html = (ROOT / "static/workflow-designer.html").read_text(encoding="utf-8")
+        css = (ROOT / "static/css/workflow-designer.css").read_text(encoding="utf-8")
+        self.assertIn('class="designer-workflow-list-scroll"', html)
+        self.assertIn('.designer-workflow-list-scroll', css)
+        self.assertRegex(css, r"\.designer-workflow-list-scroll\s*\{[^}]*overflow-y:\s*auto")
+        self.assertRegex(css, r"\.designer-workflow-list-scroll\s*\{[^}]*overflow-x:\s*hidden")
+        self.assertRegex(css, r"\.designer-sidebar\s*\{[^}]*display:\s*flex")
+        self.assertRegex(css, r"\.designer-sidebar\s*\{[^}]*flex-direction:\s*column")
+        self.assertIn("flex: 1 1 0", css)
+        self.assertRegex(css, r"\.designer-workflow-list-scroll\s*\{[^}]*display:\s*block")
+        self.assertRegex(css, r"\.designer-custom-list,\s*\nbody\[data-page=\"workflow-designer\"\] \.designer-system-list\s*\{[^}]*overflow:\s*visible")
+
+    def test_workflow_designer_sidebar_workflow_items_show_name_only(self):
+        source = (ROOT / "static/js/pages/workflow-designer/layout-renderer.js").read_text(encoding="utf-8")
+        sidebar_renderer = source[source.index("function renderSidebar") : source.index("function renderWorkflowLabels")]
+        self.assertNotIn('designer-workflow-pill-description', sidebar_renderer)
+        self.assertNotIn('steps -', sidebar_renderer)
+        self.assertNotIn('${(workflow.steps || []).length}', sidebar_renderer)
+        self.assertIn('<strong>${escapeHtml(workflow.name)}</strong>', sidebar_renderer)
+
+
+    def test_workflow_designer_sidebar_names_use_ellipsis_without_horizontal_scroll(self):
+        css = (ROOT / "static/css/workflow-designer.css").read_text(encoding="utf-8")
+        self.assertIn("text-overflow: ellipsis", css)
+        self.assertIn("white-space: nowrap", css)
+        self.assertIn("overflow-x: hidden", css)
+
+    def test_workflow_designer_assets_action_is_part_of_group(self):
+        html = (ROOT / "static/workflow-designer.html").read_text(encoding="utf-8")
+        css = (ROOT / "static/css/workflow-designer.css").read_text(encoding="utf-8")
+        self.assertIn('<div class="designer-action-group" aria-label="Workflow actions">', html)
+        self.assertIn('<a class="designer-button-link" href="/ai-workflow-assets">Assets</a>', html)
+        self.assertIn('.designer-topbar-actions .designer-action-group .designer-button-link', css)
+        self.assertIn('box-shadow: inset 0 0 0 1px var(--line)', css)
+
+    def test_bilingual_documentation_entrypoints_exist(self):
+        expected = [
+            "README.md",
+            "AGENT_INSTALLATION.md",
+            "ADAPTIVE_AUTO_WORKFLOW.md",
+            "WORKFLOW_METADATA.md",
+            "FRONTEND_STRUCTURE.md",
+            "TESTING.md",
+        ]
+        for rel in expected:
+            with self.subTest(rel=rel):
+                self.assertTrue((ROOT / "doc" / "en" / rel).exists())
+                self.assertTrue((ROOT / "doc" / "zh-TW" / rel).exists())
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        self.assertLess(readme.index("# Qwen Workflow Web"), readme.index("# 中文簡介"))
+
+
+    def test_workflow_designer_floating_panel_uses_icon_only_actions(self):
+        source = (ROOT / "static/js/pages/workflow-designer/layout-renderer.js").read_text(encoding="utf-8")
+        floating_renderer = source[source.index("function renderStepFloatingActions") : source.index("function openStepContextMenu")]
+        self.assertIn('class="designer-action-icon"', floating_renderer)
+        for label in [">Edit<", ">Up<", ">Down<", ">Copy<", ">Del<"]:
+            with self.subTest(label=label):
+                self.assertNotIn(label, floating_renderer)
+        for icon in ["✎", "↑", "↓", "⧉", "×"]:
+            with self.subTest(icon=icon):
+                self.assertIn(icon, floating_renderer)
+
+    def test_workflow_runner_routes_agent_stream_to_chat_not_raw_console(self):
+        event_stream = (ROOT / "static/js/features/event-stream.js").read_text(encoding="utf-8")
+        messages = (ROOT / "static/js/features/messages.js").read_text(encoding="utf-8")
+        console = (ROOT / "static/js/features/console.js").read_text(encoding="utf-8")
+        css = (ROOT / "static/css/workflow-runner.css").read_text(encoding="utf-8")
+        runner = (ROOT / "app/workflow_runtime/agent_step_runner.py").read_text(encoding="utf-8")
+
+        self.assertIn("updateWorkflowActivity", event_stream)
+        self.assertIn("finishWorkflowActivity", event_stream)
+        self.assertIn("resetWorkflowActivity", event_stream)
+        self.assertNotIn("ctx.features.console.append(\"qwenLive\", `[${agent}:${event.step}:${event.stream}] ${event.text}`)", event_stream)
+        self.assertIn("qwen_output is a legacy duplicate", event_stream)
+        self.assertIn("workflow-activity", messages)
+        self.assertIn("generatedChars", messages)
+        self.assertIn("extractActivityMarkers", messages)
+        self.assertIn("workflow-live-work", messages)
+        self.assertIn("What it is doing", messages)
+        self.assertIn("setLiveStatus", console)
+        self.assertIn("trimConsoleText", console)
+        self.assertIn(".message.workflow-activity", css)
+        self.assertIn(".workflow-live-work", css)
+        self.assertIn("_running_status", runner)
+        self.assertIn("QWEN_WORKFLOW_EMIT_LEGACY_QWEN_OUTPUT", runner)
 
     def test_workflow_designer_knows_runtime_task_prompt_params(self):
         source = (ROOT / "static/js/pages/workflow-designer-constants.js").read_text(encoding="utf-8")

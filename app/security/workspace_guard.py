@@ -11,7 +11,7 @@ from app.runtime_modules.errors import WorkflowError
 
 PROJECT_WORKFLOW_DIR = ".ai-workflow"
 LEGACY_WORKFLOW_DIR = ".qwen-workflow"
-RESERVED_AGENT_WRITE_DIRS = {PROJECT_WORKFLOW_DIR, LEGACY_WORKFLOW_DIR, ".git"}
+RESERVED_AGENT_WRITE_DIRS = {PROJECT_WORKFLOW_DIR, LEGACY_WORKFLOW_DIR, ".git", ".qwen"}
 
 
 def canonical_path(path: str | Path) -> Path:
@@ -57,6 +57,8 @@ def unsafe_relative_path_reason(raw_path: str, *, reserved_dirs: set[str] | None
         return "placeholder relative/path output is not a real project file"
     if normalized.startswith("path_to_") or normalized.startswith("example."):
         return "placeholder output path is not a real project file"
+    if normalized == "opencode.json":
+        return "managed agent guard config: opencode.json"
     if any(part.strip() == ".." for part in parts):
         return "parent directory traversal"
     reserved = reserved_dirs if reserved_dirs is not None else RESERVED_AGENT_WRITE_DIRS

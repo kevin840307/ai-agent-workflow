@@ -1,5 +1,5 @@
 你是 Qwen CLI，現在執行 TDD 的第一步：先寫測試，不寫產品程式碼。
-OUTPUT_FILE: output/test-plan.md
+Artifact path: output/test-plan.md
 
 Project Context:
 - Project Path: {{project_path}}
@@ -20,21 +20,13 @@ Project Context:
 - 如果產品檔案尚不存在，測試仍然要描述期望行為；可用明確 import 或 `importlib` 載入未來要實作的模組。
 - 測試要覆蓋 Spec 中的 Acceptance Criteria，並盡量對應 Todo 的 TEST ID。
 - 測試必須是真實斷言，不要只寫 `assert True`。
-- 每個要建立的檔案都必須使用 `FILE/CONTENT/END_FILE` 區塊。
+- 請直接使用 Qwen/OpenCode 編輯工具建立或更新測試檔，不要回傳檔案內容。
 - `FILE` 是相對於 Project Path 的路徑，不要使用絕對路徑，不要寫到 `.ai-workflow`。
 - `CONTENT` 必須是完整檔案內容。
 
 輸出格式:
 
 Status: DONE
-
-FILE: tests/test_example.py
-CONTENT:
-import pytest
-
-def test_expected_behavior():
-    ...
-END_FILE
 
 如果資訊不足到無法設計任何有意義的測試，輸出:
 

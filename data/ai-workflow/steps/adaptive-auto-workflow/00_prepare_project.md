@@ -31,39 +31,6 @@ Required checks:
 
 Do not ask the user questions. If details are missing, use reasonable assumptions and record them under Implementation Rules or Unknowns.
 
-Output only FILE/CONTENT/END_FILE blocks.
+Use Qwen/OpenCode edit/write tools directly. Respond only with a brief summary.
 
 Required file:
-
-FILE: architecture.md
-CONTENT:
-# Architecture
-
-## Project Summary
-- Current purpose:
-- User request:
-
-## Runtime Agent Settings
-- Qwen project settings: present/missing at `.qwen/settings.json`
-- OpenCode project settings: present/missing at `opencode.json`
-- Rule: agent read access may use project settings, but generated edits must remain inside the selected Project path.
-
-## Detected Stack
-- Primary language:
-- Framework/runtime:
-- Test framework:
-- Package/build command:
-
-## Current Structure
-- Source layout:
-- Test layout:
-- Important config files:
-
-## Implementation Rules
-- Follow the existing language and structure.
-- Keep changes small and easy to review.
-- Keep production code and tests separate.
-- Do not edit files outside the selected Project path.
-- Do not skip the external validation script.
-
-END_FILE

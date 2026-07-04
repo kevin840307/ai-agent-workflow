@@ -1,4 +1,4 @@
-import { ensureActiveTabForStep as ensureStepTab, tabsForStep } from "./step-tabs.js?v=20260704-metadata1";
+import { ensureActiveTabForStep as ensureStepTab, tabsForStep } from "./step-tabs.js?v=20260704-direct-edit-gad";
 
 export function installLayoutRenderer(ctx) {
   const {
@@ -72,9 +72,9 @@ function renderSidebar() {
     const primary = systems[0] || getSystemWorkflow();
     primaryButton.dataset.workflowId = primary.id;
     primaryButton.classList.toggle("active", state.selectedWorkflowId === primary.id);
+    primaryButton.title = primary.name || "Controlled Agent Workflow";
     primaryButton.innerHTML = `
       <strong>${escapeHtml(primary.name || "Controlled Agent Workflow")}</strong>
-      <span>${(primary.steps || []).length} steps - System - read only</span>
     `;
   }
 
@@ -87,19 +87,15 @@ function renderSidebar() {
   }
   if (systemList) {
     systemList.innerHTML = systems.slice(1).map((workflow) => `
-      <div class="designer-workflow-pill system ${workflow.id === state.selectedWorkflowId ? "active" : ""}" data-workflow-id="${escapeHtml(workflow.id)}">
+      <div class="designer-workflow-pill system ${workflow.id === state.selectedWorkflowId ? "active" : ""}" data-workflow-id="${escapeHtml(workflow.id)}" title="${escapeAttr(workflow.name)}">
         <strong>${escapeHtml(workflow.name)}</strong>
-        <span>${(workflow.steps || []).length} steps - System - protected</span>
-        <span class="designer-workflow-pill-description">${escapeHtml(workflow.description || "No description.")}</span>
       </div>
     `).join("");
   }
 
   customList.innerHTML = state.workflows.map((workflow) => `
-    <div class="designer-workflow-pill ${workflow.id === state.selectedWorkflowId ? "active" : ""}" data-workflow-id="${escapeHtml(workflow.id)}">
+    <div class="designer-workflow-pill ${workflow.id === state.selectedWorkflowId ? "active" : ""}" data-workflow-id="${escapeHtml(workflow.id)}" title="${escapeAttr(workflow.name)}">
       <strong>${escapeHtml(workflow.name)}</strong>
-      <span>${(workflow.steps || []).length} steps - ${workflow.active ? "active" : "draft"}</span>
-      <span class="designer-workflow-pill-description">${escapeHtml(workflow.description || "No description.")}</span>
     </div>
   `).join("");
 }
@@ -166,11 +162,12 @@ function renderStepFloatingActions(wf) {
   const moveDownDisabled = readonly || index >= wf.steps.length - 1 ? "disabled" : "";
   const expanded = state.stepActionMenuExpanded;
   const editLabel = readonly ? "View step" : "Edit step";
+  const editIcon = readonly ? "◇" : "✎";
   const expandLabel = expanded ? "Collapse step actions" : "Expand step actions";
   return `
     <aside class="designer-step-floating-actions ${expanded ? "expanded" : "collapsed"}" aria-label="Selected step actions">
       <button type="button" class="designer-action-fab designer-action-toggle" data-designer-action="toggle-step-actions" aria-expanded="${expanded ? "true" : "false"}" title="${expandLabel}" aria-label="${expandLabel}">
-        <span aria-hidden="true">${expanded ? "-" : "+"}</span>
+        <span class="designer-action-icon" aria-hidden="true">${expanded ? "−" : "+"}</span>
       </button>
       <div class="designer-floating-panel" aria-hidden="${expanded ? "false" : "true"}">
         <span class="designer-floating-step-context" title="${escapeAttr(step.name || "Selected step")}">
@@ -178,11 +175,11 @@ function renderStepFloatingActions(wf) {
           <span>${escapeHtml(step.name || "Selected step")}</span>
         </span>
         <span class="designer-floating-action-buttons">
-          <button type="button" class="designer-action-fab designer-floating-primary" data-designer-action="open-step-editor" data-step-id="${escapeHtml(step.id)}" title="${editLabel}" aria-label="${editLabel}"><span aria-hidden="true">Edit</span></button>
-          <button type="button" class="designer-action-fab" data-designer-action="move-step-up" data-step-id="${escapeHtml(step.id)}" title="Move up" aria-label="Move up" ${moveUpDisabled}><span aria-hidden="true">Up</span></button>
-          <button type="button" class="designer-action-fab" data-designer-action="move-step-down" data-step-id="${escapeHtml(step.id)}" title="Move down" aria-label="Move down" ${moveDownDisabled}><span aria-hidden="true">Down</span></button>
-          <button type="button" class="designer-action-fab" data-designer-action="duplicate-step" data-step-id="${escapeHtml(step.id)}" title="Duplicate" aria-label="Duplicate" ${disabled}><span aria-hidden="true">Copy</span></button>
-          <button type="button" class="designer-action-fab designer-danger" data-designer-action="delete-step" data-step-id="${escapeHtml(step.id)}" title="Delete" aria-label="Delete" ${disabled}><span aria-hidden="true">Del</span></button>
+          <button type="button" class="designer-action-fab designer-floating-primary" data-designer-action="open-step-editor" data-step-id="${escapeHtml(step.id)}" title="${editLabel}" aria-label="${editLabel}"><span class="designer-action-icon" aria-hidden="true">${editIcon}</span></button>
+          <button type="button" class="designer-action-fab" data-designer-action="move-step-up" data-step-id="${escapeHtml(step.id)}" title="Move up" aria-label="Move up" ${moveUpDisabled}><span class="designer-action-icon" aria-hidden="true">↑</span></button>
+          <button type="button" class="designer-action-fab" data-designer-action="move-step-down" data-step-id="${escapeHtml(step.id)}" title="Move down" aria-label="Move down" ${moveDownDisabled}><span class="designer-action-icon" aria-hidden="true">↓</span></button>
+          <button type="button" class="designer-action-fab" data-designer-action="duplicate-step" data-step-id="${escapeHtml(step.id)}" title="Duplicate" aria-label="Duplicate" ${disabled}><span class="designer-action-icon" aria-hidden="true">⧉</span></button>
+          <button type="button" class="designer-action-fab designer-danger" data-designer-action="delete-step" data-step-id="${escapeHtml(step.id)}" title="Delete" aria-label="Delete" ${disabled}><span class="designer-action-icon" aria-hidden="true">×</span></button>
         </span>
       </div>
     </aside>

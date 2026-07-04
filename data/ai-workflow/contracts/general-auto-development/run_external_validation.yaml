@@ -10,12 +10,12 @@ command: ''
 agent: qwen
 outputs:
 - external-validation-result.md
-retry: 99
+retry: 5
 failAction: selected_step
 retryFromStepKey: build
 keepSameSession: true
 injectFailureFeedback: true
-stopAfterFailures: 99
+stopAfterFailures: 5
 allowInteraction: false
 requiresValidationScript: true
 fallbackValidationScripts:

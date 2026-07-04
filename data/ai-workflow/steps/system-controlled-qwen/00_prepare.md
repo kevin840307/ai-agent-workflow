@@ -1,6 +1,6 @@
 You are preparing project architecture context.
 
-Output only FILE/CONTENT/END_FILE blocks or direct Markdown with `Status: DONE`. Do not output JSON. Do not use code fences. Do not ask questions.
+Use Qwen/OpenCode edit/write tools directly when project files must change; otherwise output direct Markdown with `Status: DONE`. Do not output JSON. Do not use code fences. Do not ask questions.
 
 Project Path: {{project_path}}
 Workflow Workspace: {{workspace_path}}
@@ -26,24 +26,3 @@ Rules:
 - Only create or update `architecture.md`.
 
 Return this exact file block:
-
-FILE: architecture.md
-CONTENT:
-# Architecture
-
-## Overview
-
-## Project Structure
-
-## Runtime And Entry Points
-
-## Data Flow
-
-## Testing Strategy
-
-## Conventions
-
-## Unknowns
-
-## Update Notes
-END_FILE

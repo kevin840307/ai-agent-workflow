@@ -1,12 +1,14 @@
 Implement the approved task plan.
 
-Critical output contract:
-- Your first non-empty line must be `FILE: <actual relative project path>`.
-- Use one or more FILE/CONTENT/END_FILE blocks only.
-- Do not output JSON, Markdown fences around the whole answer, explanations, tool-call objects, summaries, or placeholder paths.
-- Replace `<actual relative project path>` with a real concrete file path under the Project path.
-- Never output `relative/path.ext`, `relative_path.ext`, `path_to_*`, `example.*`, or a template-only placeholder.
-- Every FILE block must contain complete runnable project content for that file.
+Implement the approved task plan for the current task only.
+
+Critical execution contract:
+- Prefer the Qwen/OpenCode built-in file edit/write tools to modify project files directly.
+- Keep edits inside the selected Project Path only.
+- Do not edit `.qwen/**`, `opencode.json`, `.ai-workflow/**`, `.qwen-workflow/**`, or `.git/**`.
+- Build owns production/project artifacts only. Do not create or modify tests in this step.
+- If your CLI environment cannot use file edit/write tools, fall back to direct file edits.
+- When falling back to direct-edit outputs, every direct-edit output must contain complete runnable project content for that file.
 
 Requirement:
 {{requirement}}
@@ -55,12 +57,12 @@ Fallback validation scripts configured by this workflow:
 
 Rules:
 - Do not run `git commit`, `git push`, or any command that changes repository history or remote state. The user will inspect git diff manually.
-- Output Build-owned FILE/CONTENT/END_FILE blocks only: production code, project config, data files, or other requested project artifacts.
-- Existing validation scripts configured by the workflow or provided for this run are protected acceptance tools. Do not output FILE blocks for them unless the user explicitly asked to implement or modify the validator itself.
-- The validation script path above is reserved for verification. Read it as acceptance criteria if useful, but never output a FILE block for that path.
+- Output Build-owned direct file edits only: production code, project config, data files, or other requested project artifacts.
+- Existing validation scripts configured by the workflow or provided for this run are protected acceptance tools. Do not output direct-edit outputs for them unless the user explicitly asked to implement or modify the validator itself.
+- The validation script path above is reserved for verification. Read it as acceptance criteria if useful, but never output a direct-edit output for that path.
 - Use the validation script content above to understand how success will be checked. Implement production code that satisfies it; do not rewrite the validation script.
 - If the project already contains a validation script, create a separate production tool/source file with a task-appropriate name instead of reusing the validator filename.
-- Do not output explanations outside FILE blocks.
+- Do not output explanations outside direct-edit outputs.
 - Do not create or modify test files in this Build step.
 - Implement only the current small task TODO file shown above. Earlier completed task outputs may be preserved as dependencies; do not implement future task TODO files in this Build call.
 - Do not skip earlier task dependencies when implementing a later task; however, do not proactively implement later tasks.
@@ -81,18 +83,4 @@ Rules:
 - Do not wait for generated tests; implement the production code now based on Requirement, Architecture, Todo, and feedback.
 - Do not mark the workflow complete; automated tests and external validation handling will decide pass/fail.
 
-Path rules:
-- FILE paths must be relative to Project path.
-- Do not use absolute paths.
-- Do not use `..`.
-- Do not write into `.ai-workflow`.
-- Do not write into `.qwen-workflow`.
-- Do not write into `tests/`.
-- Do not write files named `test_*.py`.
-
-Output format:
-
-FILE: src/tool.py
-CONTENT:
-...
-END_FILE
+Fallback direct-edit output format, only when direct file edits are unavailable:

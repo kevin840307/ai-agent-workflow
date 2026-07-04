@@ -1,3 +1,3 @@
-import { initWorkflowDesignerPage } from "./workflow-designer/controller.js?v=20260704-metadata1";
+import { initWorkflowDesignerPage } from "./workflow-designer/controller.js?v=20260704-direct-edit-gad";
 
 export { initWorkflowDesignerPage };

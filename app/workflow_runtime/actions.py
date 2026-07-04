@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import re
 from pathlib import Path
 from typing import Any, Awaitable, Callable
@@ -10,9 +11,13 @@ from app.auto_workflow import orchestrator
 from app.runtime_modules.errors import UserInputRequired, ValidationError, WorkflowError
 from app.runtime_modules.files import (
     apply_build_files,
+    failure_feedback_for_step,
     apply_extracted_files,
     extract_build_files,
     project_file_snapshot,
+    changed_snapshot_paths,
+    files_from_changed_snapshot,
+    render_file_blocks,
     project_has_user_files,
     project_overview,
     project_profile,
@@ -34,8 +39,10 @@ from app.runtime_modules.files import (
 )
 from app.core.paths import ROOT, read_text, write_text
 from app.security.workspace_guard import resolve_project_relative_write
+from app.security.agent_project_config import ensure_agent_project_configs
 from app.workflow_runtime.builtin_functions.registry import PYTHON_FUNCTIONS
 from app.workflow_runtime.builtin_functions.base import WorkflowFunctionError
+from app.workflow_runtime.task_prompt_generator import TaskPromptGenerator
 
 from .agent_step_runner import AgentStepRunner
 from .functions import WorkflowFunctionService
@@ -80,6 +87,14 @@ class WorkflowActions:
     def _is_auto_development_workflow(run: dict[str, Any]) -> bool:
         return str(run.get("workflow_id") or "") in {"general-auto-development", "adaptive-auto-workflow"}
 
+    @staticmethod
+    def _is_general_auto_development_workflow(run: dict[str, Any]) -> bool:
+        return str(run.get("workflow_id") or "") == "general-auto-development"
+
+    @staticmethod
+    def _is_adaptive_workflow(run: dict[str, Any]) -> bool:
+        return str(run.get("workflow_id") or "") == "adaptive-auto-workflow"
+
     async def run_agent_step(
         self,
         run: dict[str, Any],
@@ -111,6 +126,89 @@ class WorkflowActions:
         allow_interaction: bool | None = None,
     ) -> None:
         await self.run_agent_step(run, step_key, prompt_name, artifact, allow_interaction=allow_interaction, agent_name="qwen")
+
+    async def _ensure_project_agent_configs(self, run: dict[str, Any], project_dir: Path) -> None:
+        written = ensure_agent_project_configs(project_dir)
+        rels = []
+        for path in written:
+            try:
+                rels.append(path.relative_to(project_dir).as_posix())
+            except ValueError:
+                rels.append(str(path))
+        await self.log(
+            run,
+            "agent_guard: project cwd/write root is "
+            + str(project_dir.expanduser().resolve())
+            + "; read policy=unrestricted; write policy=project_only; dangerous operations=denied"
+        )
+        if rels:
+            await self.log(run, "agent_guard: wrote project-local CLI guard config: " + ", ".join(rels))
+
+    def _direct_edit_files_from_snapshot(
+        self,
+        project_dir: Path,
+        before: dict[str, tuple[int, int]],
+        after: dict[str, tuple[int, int]],
+        *,
+        require_test_files: bool = False,
+        forbid_test_files: bool = False,
+    ) -> list[tuple[str, str]]:
+        changed = changed_snapshot_paths(before, after)
+        if not changed:
+            return []
+        files = files_from_changed_snapshot(project_dir, changed)
+        if require_test_files:
+            validate_generated_test_files(files)
+        if forbid_test_files:
+            validate_build_files_are_not_tests(files)
+        return files
+
+    def _mock_file_blocks_allowed_as_direct_edits(self) -> bool:
+        # Unit tests and explicit mock mode cannot invoke real Qwen/OpenCode
+        # edit tools.  In mock mode or with a test double AgentRunner only,
+        # simulate direct edits by applying mock file-block output, then re-read
+        # the project diff.  Real CLI runs use the production AgentStepRunner and
+        # never use this path.
+        if os.environ.get("QWEN_MOCK", "0").lower() in {"1", "true", "yes", "on"}:
+            return True
+        return not isinstance(self.agent_runner, AgentStepRunner)
+
+    def _apply_mock_file_blocks_for_direct_edit(
+        self,
+        project_dir: Path,
+        output_text: str,
+        *,
+        require_test_files: bool = False,
+        forbid_test_files: bool = False,
+        output_label: str = "mock direct edit output",
+    ) -> list[tuple[str, str]]:
+        if not self._mock_file_blocks_allowed_as_direct_edits():
+            return []
+        files = extract_build_files(output_text)
+        if not files:
+            return []
+        if require_test_files:
+            validate_generated_test_files(files)
+        if forbid_test_files:
+            validate_build_files_are_not_tests(files)
+        adjusted: list[tuple[str, str]] = []
+        for rel_path, content in files:
+            normalized = rel_path.strip().strip("`").replace("\\", "/")
+            target = project_dir / normalized
+            if target.is_file():
+                try:
+                    existing = target.read_text(encoding="utf-8")
+                except (UnicodeDecodeError, OSError):
+                    existing = ""
+                existing_markers = self._content_markers(existing)
+                new_markers = self._content_markers(content)
+                missing_existing = [marker for marker in existing_markers if marker not in content]
+                has_new = any(marker not in existing for marker in new_markers)
+                if existing.strip() and missing_existing and has_new:
+                    content = existing.rstrip() + "\n\n" + content.lstrip().rstrip() + "\n"
+            adjusted.append((rel_path, content))
+        apply_extracted_files(project_dir, adjusted, output_label=output_label)
+        return adjusted
 
     async def validate_or_repair_spec(self, run: dict[str, Any], output_dir: Path) -> None:
         self.functions.validate_spec(output_dir)
@@ -165,6 +263,17 @@ class WorkflowActions:
         agent_name: str | None = None,
     ) -> None:
         output_dir = Path(run["workspace"]) / "output"
+        artifact = normalize_artifact_name(artifact)
+
+        if self._is_general_auto_development_workflow(run):
+            requirement = read_text(Path(run["workspace"]) / "requirement.md")
+            units = self._requirement_deliverable_units(requirement)
+            todo = self._render_fallback_todo(requirement, units)
+            write_text(output_dir / artifact, todo)
+            await self.refresh_artifacts(run["id"])
+            await self.log(run, "plan_tasks: wrote deterministic task plan without agent call")
+            return
+
         try:
             await self.run_agent_step(run, "generate_todo", prompt_name, artifact, allow_interaction=allow_interaction, agent_name=agent_name)
             self.functions.validate_todo(output_dir)
@@ -172,7 +281,7 @@ class WorkflowActions:
             raise
         except (WorkflowError, ValidationError) as exc:
             await self.log(run, f"generate_todo: agent output was not valid, writing deterministic fallback: {exc}")
-            write_text(output_dir / normalize_artifact_name(artifact), render_generic_todo_from_spec(output_dir))
+            write_text(output_dir / artifact, render_generic_todo_from_spec(output_dir))
             await self.refresh_artifacts(run["id"])
             self.functions.validate_todo(output_dir)
 
@@ -302,6 +411,189 @@ class WorkflowActions:
             if re.search(rf"(?im)(^|\s|`)(?:{escaped_display}|{escaped_name})(`|\s|$)", task_context):
                 found.append(display)
         return found
+
+
+    @staticmethod
+    def _normalize_deliverable_unit(value: str) -> str:
+        text = re.sub(r"\s+", " ", str(value or "")).strip(" -:：。.;；,，、+/\t")
+        if not text:
+            return ""
+        # Remove request framing from the first extracted unit without assuming a domain.
+        prefixes = [
+            r"^(?:請|麻煩|幫我|協助)(?:你)?\s*",
+            r"^用[^,，、+;；]{1,40}?(?:幫我)?(?:建立|製作|產生|實作|新增|寫|撰寫|create|build|implement|write|generate)\s*",
+            r"^(?:建立|製作|產生|實作|新增|寫|撰寫)\s*",
+            r"^(?:create|build|implement|write|generate|add)\s+(?:a|an|the)?\s*",
+        ]
+        changed = True
+        while changed:
+            changed = False
+            for pattern in prefixes:
+                next_text = re.sub(pattern, "", text, flags=re.I).strip()
+                if next_text != text:
+                    text = next_text
+                    changed = True
+        text = re.sub(r"(?:等等|等)$", "", text).strip(" -:：。.;；,，、+/\t")
+        return text[:120]
+
+    @classmethod
+    def _requirement_deliverable_units(cls, requirement: str) -> list[str]:
+        text = str(requirement or "").strip()
+        if not text:
+            return []
+        candidates: list[str] = []
+        for line in text.splitlines():
+            match = re.match(r"^\s*(?:[-*]|\d+[\.、\)])\s+(.{2,})$", line)
+            if match:
+                candidates.append(match.group(1))
+        if len(candidates) < 2:
+            # Split only on explicit list separators. This keeps ordinary prose intact
+            # while handling requirements that enumerate independent deliverables.
+            raw_parts = re.split(r"\s*(?:\+|、|，|,|；|;|/|和|與|及|\band\b)\s*", text, flags=re.I)
+            if len(raw_parts) >= 3:
+                candidates = raw_parts
+        units: list[str] = []
+        seen: set[str] = set()
+        for item in candidates:
+            unit = cls._normalize_deliverable_unit(item)
+            if len(unit) < 2:
+                continue
+            key = unit.lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            units.append(unit)
+        return units[:20]
+
+    def _build_task_ids(self, todo: str) -> list[str]:
+        return [task_id for task_id in self._ordered_task_ids(todo) if self._task_owner(todo, task_id) == "build"]
+
+    def _under_split_findings(self, requirement: str, todo: str) -> tuple[list[str], list[str]]:
+        units = self._requirement_deliverable_units(requirement)
+        if len(units) < 3:
+            return [], units
+        build_task_ids = self._build_task_ids(todo)
+        expected = min(len(units), 12)
+        task_texts = [f"{self._task_title(todo, task_id)}\n{self._task_section(todo, task_id)}".lower() for task_id in build_task_ids]
+        covered_units = 0
+        for unit in units:
+            unit_key = unit.lower()
+            if any(unit_key in task_text for task_text in task_texts):
+                covered_units += 1
+        findings: list[str] = []
+        if len(build_task_ids) < expected or covered_units < expected:
+            findings.append(
+                "Todo appears under-split: requirement lists "
+                f"{len(units)} independently verifiable item(s), but the plan has "
+                f"{len(build_task_ids)} build-owned task(s) and explicitly covers {covered_units}. "
+                "Create one build task per item or document a grouping reason when grouping is necessary."
+            )
+        return findings, units
+
+    def _render_fallback_todo(self, requirement: str, deliverable_units: list[str]) -> str:
+        units = deliverable_units[:12]
+        if not units:
+            units = ["production change"]
+        multiple = len(units) > 1
+        lines = [
+            "# Todo",
+            "",
+            "Status: READY",
+            "",
+            "## Requirement",
+            f"- {requirement or 'Complete the requested change.'}",
+            "",
+            "## Task Index",
+            "| ID | Task | Acceptance Criteria | Depends On |",
+            "| --- | --- | --- | --- |",
+        ]
+        previous = "None"
+        for index, unit in enumerate(units, start=1):
+            task_id = f"TASK-{index:03d}"
+            ac_id = f"AC-{index:03d}"
+            title = f"Implement {unit}" if unit != "production change" else "Implement production change"
+            lines.append(f"| {task_id} | {title} | {ac_id} | {previous} |")
+            previous = task_id
+        assembly_id = f"TASK-{len(units) + 1:03d}" if multiple else ""
+        if multiple:
+            lines.append(f"| {assembly_id} | Assemble and expose the complete requested behavior | AC-{len(units) + 1:03d} | {previous} |")
+        lines.extend([
+            "",
+            "## Task Assembly Plan",
+            "- Build order: implement each independently verifiable item first, then assemble them into the final requested behavior.",
+            "- Integration point: shared project source files under the selected Project path.",
+            "- Assembled behavior that proves the larger request is complete: all item-level capabilities are available together and are covered by tests and external validation when configured.",
+            "",
+            "## Tasks",
+            "",
+        ])
+        for index, unit in enumerate(units, start=1):
+            task_id = f"TASK-{index:03d}"
+            ac_id = f"AC-{index:03d}"
+            title = f"Implement {unit}" if unit != "production change" else "Implement production change"
+            dep = "None" if index == 1 else f"TASK-{index - 1:03d}"
+            lines.extend([
+                f"### {task_id}: {title}",
+                f"- Goal: Implement the independently verifiable deliverable `{unit}` using the detected project architecture.",
+                "- Files: production/project files under Project path only.",
+                "- Acceptance Criteria:",
+                f"  - {ac_id}: `{unit}` is implemented and can be verified independently before final assembly.",
+                "- Depends On:",
+                f"  - {dep}",
+                "- Assembly:",
+                "  - This task contributes one item-level capability to the final requested behavior.",
+                "- Validation:",
+                "  - Covered by generated tests for this item and external validation when configured or present.",
+                "",
+            ])
+        if multiple:
+            ac_id = f"AC-{len(units) + 1:03d}"
+            lines.extend([
+                f"### {assembly_id}: Assemble and expose the complete requested behavior",
+                "- Goal: Integrate the item-level deliverables into one coherent project result.",
+                "- Files: production/project files under Project path only.",
+                "- Acceptance Criteria:",
+                f"  - {ac_id}: The project exposes the full requested behavior with all item-level deliverables working together.",
+                "- Depends On:",
+                f"  - {previous}",
+                "- Assembly:",
+                "  - Confirms the independent item tasks are connected through the final interface, module, command, or artifact requested by the user.",
+                "- Validation:",
+                "  - Covered by generated integration tests and external validation when configured or present.",
+                "",
+            ])
+        lines.extend([
+            "## Execution SOP",
+            "- Step 1: Build production code only, one small task at a time.",
+            "- Step 2: Generate tests only under the project test folder, using the task manifest as coverage input.",
+            "- Step 3: Run automated tests.",
+            "- Step 4: Run external validation when configured or present.",
+            "- Step 5: Retry the failed owner step using concrete recovery analysis and error classification.",
+            "",
+            "## Acceptance & Stop Conditions",
+            "- Build must create or modify at least one production/project artifact under Project path.",
+            "- Small tasks must be implemented in order and assembled into one coherent project state.",
+            "- Generated tests must cover item-level acceptance criteria and the assembled behavior.",
+            "- Automated tests must pass.",
+            "- External validation must pass when configured or present; otherwise it must record a skipped PASS.",
+            "- Final Review, verifier-report.json, Diff Review, and Final Gate must complete.",
+            "- Stop retrying when the configured max retry count is reached.",
+            "",
+            "## External Validation",
+            "- If a validation script path is provided, that exact script is mandatory.",
+            "- Otherwise use only the fallback validation script names configured by this workflow.",
+            "- If no validation script is configured or found, external validation is skipped with a PASS result.",
+            "",
+            "## Assumptions",
+            "- Use detected project language and structure.",
+            "- Use reasonable defaults for unspecified minor details.",
+            "",
+            "## Suggested Todo Files",
+        ])
+        for index in range(1, len(units) + (2 if multiple else 1)):
+            lines.append(f"- output/todos/TASK-{index:03d}.md")
+        lines.append("")
+        return "\n".join(lines)
 
     def _render_task_manifest(self, todo: str) -> str:
         task_ids = self._ordered_task_ids(todo)
@@ -445,6 +737,11 @@ class WorkflowActions:
 
     def _task_run(self, run: dict[str, Any], task: dict[str, Any], *, index: int, total: int, phase: str) -> dict[str, Any]:
         scoped = dict(run)
+        # Per-task prompts must not inherit a long conversational memory from
+        # earlier attempts/tasks.  The runner still receives deterministic task
+        # context through prompt variables, but Qwen/OpenCode should solve only
+        # the current small task.
+        scoped["_force_fresh_qwen_session"] = True
         task_id = str(task.get("id") or "TASK-001")
         scoped["_current_task"] = {
             "id": task_id,
@@ -466,6 +763,31 @@ class WorkflowActions:
         lines = [f"# {title}", "", "Status: READY", "", "## Per-Task Outputs"]
         for task_id, task_title, content in task_artifacts:
             lines.extend(["", f"### {task_id}: {task_title}", "", content.strip(), ""])
+        return "\n".join(lines).rstrip() + "\n"
+
+    @staticmethod
+    def _render_direct_edit_summary(title: str, task_id: str, task_title: str, files: list[tuple[str, str]]) -> str:
+        lines = [
+            f"# {title}",
+            "",
+            "Status: READY",
+            "",
+            f"## Task",
+            f"- ID: {task_id}",
+            f"- Title: {task_title}",
+            "",
+            "## Direct Agent Edits",
+        ]
+        for rel_path, content in files:
+            markers = WorkflowActions._content_markers(content)
+            marker_text = ", ".join(markers[:8]) if markers else "none detected"
+            normalized_rel_path = str(rel_path).replace(chr(92), "/")
+            lines.extend([
+                f"- `{normalized_rel_path}`",
+                f"  - Size: {len(content)} chars",
+                f"  - Markers: {marker_text}",
+            ])
+        lines.extend(["", "The agent modified the project files directly. The platform recorded this summary from the before/after project snapshot and did not materialize FILE blocks."])
         return "\n".join(lines).rstrip() + "\n"
 
     async def implementation_review_step(self, run: dict[str, Any], artifact: str = "implementation-review.md") -> None:
@@ -501,75 +823,17 @@ class WorkflowActions:
                 + ". Validation scripts are external acceptance tools."
             )
 
+        requirement = read_text(Path(run["workspace"]) / "requirement.md").strip() or "Complete the requested change."
+        split_findings, deliverable_units = self._under_split_findings(requirement, todo)
+        findings.extend(split_findings)
+
         remediated = False
         if findings:
             remediated = True
-            requirement = read_text(Path(run["workspace"]) / "requirement.md").strip() or "Complete the requested change."
-            fallback_todo = "\n".join(
-                [
-                    "# Todo",
-                    "",
-                    "Status: READY",
-                    "",
-                    "## Requirement",
-                    f"- {requirement}",
-                    "",
-                    "## Task Index",
-                    "| ID | Task | Acceptance Criteria | Depends On |",
-                    "| --- | --- | --- | --- |",
-                    "| TASK-001 | Implement the requested production change | AC-001 | None |",
-                    "",
-                    "## Task Assembly Plan",
-                    "- Build order: TASK-001 first; if the AI plan was invalid, keep the fallback intentionally small.",
-                    "- Integration point: project production files under the selected Project path.",
-                    "- Assembled behavior that proves the larger request is complete: generated tests and optional external validation pass after TASK-001 is materialized.",
-                    "",
-                    "## Tasks",
-                    "",
-                    "### TASK-001: Implement production change",
-                    "- Goal: Implement the current requirement using the detected project architecture.",
-                    "- Files: production files under Project path only.",
-                    "- Acceptance Criteria:",
-                    "  - AC-001: Production code or requested project artifact satisfies the user requirement.",
-                    "- Depends On:",
-                    "  - None",
-                    "- Assembly:",
-                    "  - This task is the production change; Generate Tests, Run Test, and External Validation verify it afterward.",
-                    "- Validation:",
-                    "  - Covered by generated tests and external validation when configured or present.",
-                    "",
-                    "## Execution SOP",
-                    "- Step 1: Build production code only, one small task at a time.",
-                    "- Step 2: Generate tests only under the project test folder, using the task manifest as coverage input.",
-                    "- Step 3: Run automated tests.",
-                    "- Step 4: Run external validation when configured or present.",
-                    "- Step 5: Retry the failed owner step using concrete recovery analysis and error classification.",
-                    "",
-                    "## Acceptance & Stop Conditions",
-                    "- Build must create or modify at least one production/project artifact under Project path.",
-                    "- Small tasks must be implemented in order and assembled into one coherent project state.",
-                    "- Generated tests must exist and automated tests must pass.",
-                    "- External validation must pass when configured or present; otherwise it must record a skipped PASS.",
-                    "- Final Review, verifier-report.json, Diff Review, and Final Gate must complete.",
-                    "- Stop retrying when the configured max retry count is reached.",
-                    "",
-                    "## External Validation",
-                    "- If a validation script path is provided, that exact script is mandatory.",
-                    "- Otherwise use only the fallback validation script names configured by this workflow.",
-                    "- If no validation script is configured or found, external validation is skipped with a PASS result.",
-                    "",
-                    "## Assumptions",
-                    "- Use detected project language and structure.",
-                    "- Use reasonable defaults for unspecified minor details.",
-                    "",
-                    "## Suggested Todo Files",
-                    "- None.",
-                    "",
-                ]
-            )
+            fallback_todo = self._render_fallback_todo(requirement, deliverable_units)
             write_text(output_dir / "todo.md", fallback_todo)
             todo = fallback_todo
-            await self.log(run, "implementation_review: repaired invalid todo.md with deterministic fallback")
+            await self.log(run, "implementation_review: repaired invalid or under-split todo.md with deterministic fallback")
 
         task_manifest = self._render_task_manifest(todo)
         write_text(output_dir / "task-manifest.md", task_manifest)
@@ -599,6 +863,7 @@ class WorkflowActions:
                 "## Checks",
                 "- Todo is concrete enough for automated Build.",
                 "- Tasks include acceptance criteria.",
+                "- Task granularity was checked against independent deliverables in the requirement.",
                 "- task-manifest.md was generated from todo.md to stabilize small-task order and assembly.",
                 "- task-manifest.json and generated-workflow-instance.json were compiled by Python from todo.md.",
                 "- workflow-instance-validation.md and workflow-run-trace.md were generated as deterministic evidence.",
@@ -608,7 +873,7 @@ class WorkflowActions:
                 "- Edits are constrained to the selected Project path.",
                 "",
                 "## Findings",
-                *( ["- Invalid AI Todo format was repaired deterministically: " + "; ".join(findings)] if remediated else ["- Deterministic review passed. AI keyword review was intentionally skipped for stability."] ),
+                *( ["- Invalid, unsafe, or under-split AI Todo was repaired deterministically: " + "; ".join(findings)] if remediated else ["- Deterministic review passed, including task granularity and validation ownership checks."] ),
                 "",
             ]
         )
@@ -799,45 +1064,21 @@ class WorkflowActions:
         instructions = orchestrator.extract_user_instructions(requirement, project_dir)
         architecture_contract = orchestrator.build_architecture_contract(project_dir, project_index, instructions)
         write_text(output_dir / "architecture-contract.json", json.dumps(architecture_contract, indent=2, ensure_ascii=False))
-        await self.refresh_artifacts(run["id"])
-        if not project_has_user_files(project_dir) and not architecture_path.exists():
-            await self.log(run, f"prepare_project: working directory appears empty, skipping architecture discovery for {project_dir}")
-            write_text(Path(run["workspace"]) / "output" / artifact, "Status: SKIPPED\n\nProject appears empty.\n")
-            await self.refresh_artifacts(run["id"])
-            return
+        await self._ensure_project_agent_configs(run, project_dir)
 
+        # Prepare Project is deterministic for every workflow.  It writes only
+        # architecture context and guard metadata; Qwen/OpenCode are reserved for
+        # real Build / Auto Generation / Generate Tests direct edits.  This keeps
+        # Step 1 fast and removes the old file-block materialization path.
+        rendered = self.render_project_architecture_markdown(run, project_dir)
         before = read_text(architecture_path)
-        try:
-            await self.run_agent_step(run, "prepare_project", prompt_name, artifact, agent_name=agent_name)
-        except WorkflowError as exc:
-            fallback = self.render_project_architecture_markdown(run, project_dir)
-            write_text(architecture_path, fallback)
-            write_text(Path(run["workspace"]) / "output" / artifact, fallback)
-            await self.refresh_artifacts(run["id"])
-            await self.log(run, f"prepare_project: rendered architecture.md after agent failure: {exc}")
-            return
-        result = read_text(Path(run["workspace"]) / "output" / artifact)
-        for rel_path, _ in extract_build_files(result):
-            if rel_path.strip().replace("\\", "/") != "architecture.md":
-                raise WorkflowError(f"prepare_project can only write architecture.md, got: {rel_path}")
-        written = apply_build_files(project_dir, result)
-        architecture_written = [path for path in written if path.resolve() == architecture_path.resolve()]
-        if not architecture_written:
-            direct_markdown = result.lstrip().startswith("# Architecture") and "## Detected Stack" in result
-            if result.strip() and "FILE:" not in result and ("Status: DONE" in result or direct_markdown):
-                write_text(architecture_path, result)
-                await self.log(run, "prepare_project: wrote architecture.md from direct Markdown output")
-            else:
-                fallback = self.render_project_architecture_markdown(run, project_dir)
-                write_text(architecture_path, fallback)
-                write_text(Path(run["workspace"]) / "output" / artifact, fallback)
-                await self.refresh_artifacts(run["id"])
-                await self.log(run, "prepare_project: rendered architecture.md from project profile after unusable agent output")
-        after = read_text(architecture_path)
-        if after != before:
-            await self.log(run, "prepare_project: architecture.md updated")
+        write_text(output_dir / artifact, rendered)
+        write_text(architecture_path, rendered)
+        await self.refresh_artifacts(run["id"])
+        if rendered != before:
+            await self.log(run, "prepare_project: rendered deterministic architecture context")
         else:
-            await self.log(run, "prepare_project: architecture.md already up to date")
+            await self.log(run, "prepare_project: deterministic architecture context already up to date")
 
     @staticmethod
     def render_project_architecture_markdown(run: dict[str, Any], project_dir: Path) -> str:
@@ -877,180 +1118,398 @@ class WorkflowActions:
         output_dir = Path(run["workspace"]) / "output"
         artifact = normalize_artifact_name(artifact)
         project_dir = Path(run.get("project_path") or ROOT)
-        previous_test_files = only_test_files(extract_build_files(read_text(output_dir / artifact)))
-        if self._is_auto_development_workflow(run):
-            manifest = read_text(output_dir / "task-manifest.md")
-            tasks = self._task_entries_from_manifest(manifest, owner="build") or self._task_entries_from_manifest(manifest)
-            if not tasks:
-                tasks = [{"id": "TASK-001", "owner": "build", "title": "Full requested behavior"}]
-            task_artifacts: list[tuple[str, str, str]] = []
-            total = len(tasks)
-            for index, task in enumerate(tasks, start=1):
-                task_id = str(task.get("id") or f"TASK-{index:03d}")
-                task_title = str(task.get("title") or task_id)
-                task_artifact = self._task_output_artifact(task_id, "test-plan.md")
-                scoped_run = self._task_run(run, task, index=index, total=total, phase="generate_tests")
-                await self.log(run, f"generate_tests: task loop {index}/{total} {task_id} - {task_title}")
-                await self.run_agent_step(scoped_run, "generate_tests", prompt_name, task_artifact, agent_name=agent_name)
-                task_text = read_text(output_dir / task_artifact)
-                files = extract_build_files(task_text)
-                test_files = only_test_files(files)
-                invalid_files = non_test_files(files)
-                if invalid_files and test_files:
-                    await self.log(
-                        run,
-                        f"generate_tests/{task_id}: ignored non-test file block(s) owned by Build: "
-                        + ", ".join(rel_path for rel_path, _ in invalid_files),
-                    )
-                if not test_files:
-                    fallback_tests = build_validation_script_pytest_wrapper(
-                        project_dir,
-                        run.get("validation_script"),
-                        self._fallback_validation_scripts(run),
-                    )
-                    if not fallback_tests:
-                        raise WorkflowError(
-                            f"generate_tests task {task_id} did not create test FILE/CONTENT/END_FILE blocks. "
-                            "Generate Tests must cover this task or return a valid test file."
-                        )
-                    test_files = fallback_tests
-                    task_text = self._render_test_fallback_blocks(
-                        fallback_tests,
-                        f"Generate Tests did not return valid test file blocks for {task_id}; using the configured validation script as a pytest gate.",
-                    )
-                    write_text(output_dir / task_artifact, task_text)
-                    await self.log(run, f"generate_tests/{task_id}: created validation-script pytest because agent returned no test file blocks")
-                try:
-                    validate_generated_test_files(test_files)
-                except WorkflowError as exc:
-                    fallback_tests = build_validation_script_pytest_wrapper(
-                        project_dir,
-                        run.get("validation_script"),
-                        self._fallback_validation_scripts(run),
-                    )
-                    if not fallback_tests:
-                        raise
-                    test_files = fallback_tests
-                    task_text = self._render_test_fallback_blocks(
-                        fallback_tests,
-                        f"Generate Tests returned invalid tests for {task_id} ({exc}); using the configured validation script as a pytest gate.",
-                    )
-                    write_text(output_dir / task_artifact, task_text)
-                    await self.log(run, f"generate_tests/{task_id}: created validation-script pytest after invalid agent tests")
-                task_artifacts.append((task_id, task_title, task_text))
-            aggregate = self._render_aggregated_task_outputs("Generated Tests Result", task_artifacts)
-            write_text(output_dir / artifact, aggregate)
-            test_files = only_test_files(extract_build_files(aggregate))
-            self._remove_stale_generated_tests(project_dir, previous_test_files, test_files)
-            written = apply_extracted_files(project_dir, test_files, output_label="generate_tests per-task output")
-            if written:
-                await self.log(run, "generate_tests: materialized per-task test files: " + ", ".join(str(path.relative_to(project_dir)) for path in written))
-            else:
-                raise WorkflowError("generate_tests per-task loop did not materialize any test files.")
-            await self.refresh_artifacts(run["id"])
-            return
+        await self._ensure_project_agent_configs(run, project_dir)
 
+        before = project_file_snapshot(project_dir)
         try:
-            await self.run_agent_step(run, "generate_tests", prompt_name, artifact, agent_name=agent_name)
+            await self.run_agent_step(run, "generate_tests", prompt_name, artifact, agent_name=agent_name, fresh_session=True)
         except UserInputRequired:
             raise
-        test_plan = read_text(output_dir / artifact)
-        files = extract_build_files(test_plan)
-        test_files = only_test_files(files)
-        invalid_files = non_test_files(files)
-        if invalid_files and test_files:
-            await self.log(
-                run,
-                "generate_tests: ignored non-test file block(s) owned by Build: "
-                + ", ".join(rel_path for rel_path, _ in invalid_files),
-            )
-        if not test_files:
-            fallback_scripts = self._fallback_validation_scripts(run)
-            protected_validation = existing_validation_scripts(project_dir, run.get("validation_script"), fallback_scripts)
-            fallback_tests = build_validation_script_pytest_wrapper(project_dir, run.get("validation_script"), fallback_scripts)
-            if not fallback_tests:
-                fallback_tests = build_generic_python_import_smoke_test(
-                    project_dir,
-                    read_text(Path(run["workspace"]) / "requirement.md"),
-                    excluded_paths=protected_validation,
-                )
-            if fallback_tests:
-                test_files = fallback_tests
-                write_text(
-                    output_dir / artifact,
-                    "# Generated Tests Fallback\n\n"
-                    "The agent did not return valid test file blocks, so the workflow created a generic pytest smoke test.\n\n"
-                    + "\n".join(
-                        f"FILE: {rel_path}\nCONTENT:\n{content.rstrip()}\nEND_FILE"
-                        for rel_path, content in fallback_tests
-                    )
-                    + "\n",
-                )
-                await self.refresh_artifacts(run["id"])
-                await self.log(run, "generate_tests: created generic pytest smoke test from production Python files")
-            else:
-                validate_generated_test_files(files)
-        try:
-            validate_generated_test_files(test_files)
-        except WorkflowError as exc:
-            fallback_tests = build_validation_script_pytest_wrapper(
-                project_dir,
-                run.get("validation_script"),
-                self._fallback_validation_scripts(run),
-            )
-            if not fallback_tests:
-                raise
-            test_files = fallback_tests
-            write_text(
-                output_dir / artifact,
-                "# Generated Tests Fallback\n\n"
-                f"The agent returned invalid generated tests ({exc}), so the workflow created a validation-script pytest.\n\n"
-                + "\n".join(
-                    f"FILE: {rel_path}\nCONTENT:\n{content.rstrip()}\nEND_FILE"
-                    for rel_path, content in fallback_tests
-                )
-                + "\n",
-            )
-            await self.refresh_artifacts(run["id"])
-            await self.log(run, "generate_tests: created validation-script pytest after invalid agent tests")
-        self._remove_stale_generated_tests(project_dir, previous_test_files, test_files)
-        written = apply_extracted_files(project_dir, test_files, output_label="generate_tests output")
-        if written:
-            await self.log(run, "generate_tests: materialized test files: " + ", ".join(str(path.relative_to(project_dir)) for path in written))
-        else:
-            await self.log(run, f"generate_tests: no FILE/CONTENT/END_FILE test files found in output/{artifact}")
-            raise WorkflowError("generate_tests did not create any test files. Agent test output must include FILE/CONTENT/END_FILE blocks.")
 
-    @staticmethod
-    def _render_test_fallback_blocks(files: list[tuple[str, str]], reason: str) -> str:
-        return (
-            "# Generated Tests Fallback\n\n"
-            f"{reason}\n\n"
-            + "\n".join(
-                f"FILE: {rel_path}\nCONTENT:\n{content.rstrip()}\nEND_FILE"
-                for rel_path, content in files
-            )
-            + "\n"
+        direct_files = self._direct_edit_files_from_snapshot(
+            project_dir,
+            before,
+            project_file_snapshot(project_dir),
+            require_test_files=True,
         )
+        if not direct_files:
+            direct_files = self._apply_mock_file_blocks_for_direct_edit(
+                project_dir,
+                read_text(output_dir / artifact),
+                require_test_files=True,
+                output_label="mock generate_tests direct edit",
+            )
+        if not direct_files:
+            raise WorkflowError(
+                f"generate_tests did not directly create or modify pytest files under {project_dir / 'tests'}. "
+                "Use Qwen/OpenCode file edit/write tools to create project-specific tests. "
+                "The platform no longer materializes FILE blocks for real agent runs; it only checks the project diff."
+            )
+
+        validate_generated_test_files(direct_files)
+        summary = self._render_direct_edit_summary(
+            "Generated Tests Direct Edit Result",
+            "GENERATE-TESTS",
+            "Create focused automated tests",
+            direct_files,
+        )
+        write_text(output_dir / artifact, summary)
+        self._write_task_direct_state(output_dir, project_dir, "GENERATE-TESTS", "generate_tests", direct_files)
+        await self.log(run, "generate_tests: accepted direct agent test edit(s): " + ", ".join(rel_path for rel_path, _ in direct_files))
+        await self.refresh_artifacts(run["id"])
+
+    def _build_step_feedback(self, run: dict[str, Any]) -> str:
+        input_dir = Path(run["workspace"]) / "input"
+        return failure_feedback_for_step(read_text(input_dir / "failure-feedback.md"), "build")
 
     @staticmethod
-    def _remove_stale_generated_tests(project_dir: Path, previous_files: list[tuple[str, str]], next_files: list[tuple[str, str]]) -> None:
-        next_paths = {rel_path.replace("\\", "/") for rel_path, _ in next_files}
-        for rel_path, _ in previous_files:
-            normalized = rel_path.replace("\\", "/")
-            if normalized in next_paths:
+    def _feedback_mentions_task(feedback: str, task_id: str) -> bool:
+        if not feedback.strip() or not task_id.strip():
+            return False
+        return task_id in feedback or bool(re.search(rf"\btask\s+{re.escape(task_id)}\b", feedback, flags=re.I))
+
+    @staticmethod
+    def _retry_feedback_blocks(feedback: str) -> list[str]:
+        if not feedback.strip():
+            return []
+        return [
+            match.group(0).strip()
+            for match in re.finditer(
+                r"^## Retry Feedback for .*?(?=^## Retry Feedback for |\Z)",
+                feedback,
+                flags=re.MULTILINE | re.DOTALL,
+            )
+        ]
+
+    @classmethod
+    def _latest_retry_feedback_block(cls, feedback: str) -> str:
+        blocks = cls._retry_feedback_blocks(feedback)
+        return blocks[-1] if blocks else ""
+
+    @classmethod
+    def _latest_feedback_task_id(cls, feedback: str) -> str:
+        block = cls._latest_retry_feedback_block(feedback)
+        if not block:
+            return ""
+        match = re.search(r"\bTASK-\d{3}\b", block)
+        return match.group(0) if match else ""
+
+    @classmethod
+    def _latest_feedback_mentions_task(cls, feedback: str, task_id: str) -> bool:
+        block = cls._latest_retry_feedback_block(feedback)
+        return cls._feedback_mentions_task(block, task_id)
+
+    @staticmethod
+    def _feedback_is_generic_for_task_loop(feedback: str) -> bool:
+        block = WorkflowActions._latest_retry_feedback_block(feedback)
+        return bool(block.strip()) and not bool(re.search(r"\bTASK-\d{3}\b", block))
+
+    @staticmethod
+    def _content_markers(content: str) -> list[str]:
+        markers: list[str] = []
+        patterns = [
+            r"^\s*(?:async\s+)?def\s+([A-Za-z_]\w*)\s*\(",
+            r"^\s*class\s+([A-Za-z_]\w*)\b",
+            r"^\s*(?:export\s+)?(?:async\s+)?function\s+([A-Za-z_$][\w$]*)\s*\(",
+            r"^\s*(?:export\s+)?(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=",
+            r"^\s*#{1,6}\s+(.+?)\s*$",
+        ]
+        for pattern in patterns:
+            for match in re.finditer(pattern, content or "", flags=re.MULTILINE):
+                marker = str(match.group(1)).strip()
+                if marker and marker not in markers:
+                    markers.append(marker)
+        return markers[:40]
+
+    @staticmethod
+    def _task_state_path(output_dir: Path, task_id: str, phase: str) -> Path:
+        safe_task_id = "".join(ch if ch.isalnum() or ch in {"_", ".", "-"} else "-" for ch in str(task_id or "TASK-000"))
+        return output_dir / "tasks" / safe_task_id / f"{phase}-state.json"
+
+    def _write_task_direct_state(self, output_dir: Path, project_dir: Path, task_id: str, phase: str, files: list[tuple[str, str]]) -> None:
+        state_files: list[dict[str, Any]] = []
+        for rel_path, content in files:
+            markers = self._content_markers(content)
+            state_files.append({"path": rel_path.replace("\\", "/"), "markers": markers})
+        path = self._task_state_path(output_dir, task_id, phase)
+        write_text(path, json.dumps({"task_id": task_id, "phase": phase, "files": state_files}, indent=2, ensure_ascii=False))
+
+    def _task_direct_state_is_satisfied(self, output_dir: Path, project_dir: Path, task_id: str, phase: str) -> bool:
+        path = self._task_state_path(output_dir, task_id, phase)
+        if not path.is_file():
+            return False
+        try:
+            state = json.loads(read_text(path))
+        except json.JSONDecodeError:
+            return False
+        files = state.get("files") if isinstance(state, dict) else []
+        if not isinstance(files, list) or not files:
+            return False
+        for item in files:
+            if not isinstance(item, dict):
+                return False
+            rel_path = str(item.get("path") or "").strip().replace("\\", "/")
+            markers = [str(marker) for marker in item.get("markers") or [] if str(marker).strip()]
+            if not rel_path:
+                return False
+            target = project_dir / rel_path
+            if not target.is_file():
+                return False
+            try:
+                actual = target.read_text(encoding="utf-8")
+            except (UnicodeDecodeError, OSError):
+                return False
+            if any(marker not in actual for marker in markers):
+                return False
+        return True
+
+    def _validate_previous_direct_task_states_preserved(
+        self,
+        output_dir: Path,
+        project_dir: Path,
+        *,
+        current_index: int,
+        current_task_id: str,
+        phase: str,
+    ) -> None:
+        missing: list[str] = []
+        for task_dir in sorted(path for path in (output_dir / "tasks").glob("TASK-*") if path.is_dir()):
+            match = re.fullmatch(r"TASK-(\d{3})", task_dir.name)
+            if not match:
+                continue
+            task_number = int(match.group(1))
+            if not current_index or task_number >= current_index:
+                continue
+            state_path = task_dir / f"{phase}-state.json"
+            if not state_path.is_file():
                 continue
             try:
-                target = resolve_project_relative_write(project_dir, normalized, label="remove stale generate_tests output")
-            except WorkflowError:
+                state = json.loads(read_text(state_path))
+            except json.JSONDecodeError:
                 continue
-            if target.is_file():
-                target.unlink()
+            for item in state.get("files") or []:
+                if not isinstance(item, dict):
+                    continue
+                rel_path = str(item.get("path") or "").strip().replace("\\", "/")
+                markers = [str(marker) for marker in item.get("markers") or [] if str(marker).strip()]
+                if not rel_path or not markers:
+                    continue
+                target = project_dir / rel_path
+                if not target.is_file():
+                    missing.append(f"{current_task_id} removed previous task file {rel_path} from {task_dir.name}")
+                    continue
+                try:
+                    actual = target.read_text(encoding="utf-8")
+                except (UnicodeDecodeError, OSError):
+                    continue
+                lost = [marker for marker in markers if marker not in actual]
+                if lost:
+                    missing.append(
+                        f"{current_task_id} changed {rel_path} and lost previous marker(s) from {task_dir.name}: {', '.join(lost[:8])}"
+                    )
+        if missing:
+            raise WorkflowError(
+                "A direct agent edit removed previously completed task behavior. "
+                "Retry the current task and preserve earlier task results. " + "; ".join(missing)
+            )
+
+    def _task_artifact_is_satisfied(self, project_dir: Path, artifact_path: Path) -> bool:
+        files = extract_build_files(read_text(artifact_path))
+        if not files:
+            return False
+        for rel_path, expected in files:
+            target = project_dir / rel_path.strip().strip("`").replace("\\", "/")
+            if not target.is_file():
+                return False
+            try:
+                actual = target.read_text(encoding="utf-8")
+            except (UnicodeDecodeError, OSError):
+                return False
+            markers = self._content_markers(expected)
+            if markers:
+                if any(marker not in actual for marker in markers):
+                    return False
+            elif actual != expected:
+                return False
+        return True
+
+    def _previous_task_artifacts(self, output_dir: Path, current_index: int, filename: str) -> list[tuple[str, Path]]:
+        artifacts: list[tuple[str, Path]] = []
+        task_root = output_dir / "tasks"
+        if not task_root.exists():
+            return artifacts
+        for task_dir in sorted(path for path in task_root.iterdir() if path.is_dir()):
+            match = re.fullmatch(r"TASK-(\d{3})", task_dir.name)
+            if not match:
+                continue
+            if int(match.group(1)) >= current_index:
+                continue
+            artifact_path = task_dir / filename
+            if artifact_path.is_file():
+                artifacts.append((task_dir.name, artifact_path))
+        return artifacts
+
+    def _validate_previous_task_markers_preserved(
+        self,
+        project_dir: Path,
+        output_dir: Path,
+        *,
+        current_task_id: str,
+        current_index: int,
+        current_files: list[tuple[str, str]],
+        filename: str,
+    ) -> None:
+        changed_paths = {rel_path.strip().strip("`").replace("\\", "/") for rel_path, _ in current_files}
+        if not changed_paths:
+            return
+        missing: list[str] = []
+        for previous_task_id, artifact_path in self._previous_task_artifacts(output_dir, current_index, filename):
+            for rel_path, previous_content in extract_build_files(read_text(artifact_path)):
+                normalized = rel_path.strip().strip("`").replace("\\", "/")
+                if normalized not in changed_paths:
+                    continue
+                markers = self._content_markers(previous_content)
+                if not markers:
+                    continue
+                target = project_dir / normalized
+                try:
+                    actual = target.read_text(encoding="utf-8")
+                except (UnicodeDecodeError, OSError):
+                    actual = ""
+                lost = [marker for marker in markers if marker not in actual]
+                if lost:
+                    missing.append(
+                        f"{current_task_id} overwrote previous task output from {previous_task_id} in {normalized}; "
+                        f"missing preserved marker(s): {', '.join(lost[:8])}"
+                    )
+        if missing:
+            raise WorkflowError(
+                "Task output appears to have overwritten already completed task behavior. "
+                "When editing a shared file, output the complete file and preserve previous task results. "
+                + "; ".join(missing)
+            )
+
+    @staticmethod
+    def _loose_code_from_agent_output(output: str) -> str:
+        text = (output or "").strip()
+        if not text or "FILE:" in text:
+            return ""
+        fences = list(re.finditer(r"```(?P<lang>[A-Za-z0-9_.+-]*)\s*\r?\n(?P<body>.*?)\r?\n```", text, flags=re.DOTALL))
+        if fences:
+            # Prefer an explicit source-code fence.  Ignore prose-only markdown fences.
+            for match in reversed(fences):
+                lang = (match.group("lang") or "").lower()
+                body = match.group("body").strip()
+                if lang in {"python", "py", "javascript", "js", "typescript", "ts", "java", "csharp", "cs", "go", "rust", "rs"}:
+                    return body.rstrip() + "\n"
+            if len(fences) == 1:
+                body = fences[0].group("body").strip()
+                if re.search(r"(?m)^\s*(?:def|class|import|from)\s+", body):
+                    return body.rstrip() + "\n"
+            return ""
+        if re.search(r"(?m)^\s*(?:def|class|import|from)\s+", text):
+            return text.rstrip() + "\n"
+        return ""
+
+    @staticmethod
+    def _is_python_like_code(content: str) -> bool:
+        return bool(re.search(r"(?m)^\s*(?:def|class|import|from)\s+", content or ""))
+
+    @staticmethod
+    def _sanitized_module_name(name: str) -> str:
+        cleaned = re.sub(r"[^A-Za-z0-9_]+", "_", (name or "main").strip().lower()).strip("_")
+        return cleaned or "main"
+
+    def _preferred_loose_output_path(self, project_dir: Path, output_dir: Path, current_index: int, filename: str, content: str) -> str:
+        # A model that omits FILE blocks usually emitted a fragment for the same
+        # shared file used by earlier tasks.  Prefer the most recent earlier
+        # production path so the task loop converges instead of restarting from
+        # TASK-001.
+        previous = self._previous_task_artifacts(output_dir, current_index, filename)
+        for _task_id, artifact_path in reversed(previous):
+            paths = [rel_path.strip().strip("`").replace("\\", "/") for rel_path, _ in extract_build_files(read_text(artifact_path))]
+            for rel_path in reversed(paths):
+                if rel_path and not rel_path.startswith("tests/"):
+                    return rel_path
+        snapshot = project_file_snapshot(project_dir)
+        source_paths = [path.replace("\\", "/") for path in sorted(snapshot) if not path.replace("\\", "/").startswith("tests/") and Path(path).suffix.lower() in {".py", ".js", ".ts", ".java", ".cs", ".go", ".rs"}]
+        if len(source_paths) == 1:
+            return source_paths[0]
+        if self._is_python_like_code(content):
+            return f"src/{self._sanitized_module_name(project_dir.name)}.py"
+        return "src/main.txt"
+
+    def _coerce_loose_task_output_to_files(
+        self,
+        project_dir: Path,
+        output_dir: Path,
+        *,
+        current_index: int,
+        filename: str,
+        output: str,
+    ) -> list[tuple[str, str]]:
+        code = self._loose_code_from_agent_output(output)
+        if not code:
+            return []
+        rel_path = self._preferred_loose_output_path(project_dir, output_dir, current_index, filename, code)
+        target = project_dir / rel_path
+        content = code.rstrip() + "\n"
+        if target.is_file():
+            try:
+                existing = target.read_text(encoding="utf-8")
+            except (UnicodeDecodeError, OSError):
+                existing = ""
+            existing_markers = self._content_markers(existing)
+            new_markers = self._content_markers(content)
+            if existing.strip() and existing_markers and new_markers:
+                missing_existing = [marker for marker in existing_markers if marker not in content]
+                novel_new = [marker for marker in new_markers if marker not in existing]
+                if missing_existing and novel_new:
+                    content = existing.rstrip() + "\n\n" + content.lstrip()
+        return [(rel_path, content)]
+
+    def _merge_candidate_with_existing_if_needed(
+        self,
+        project_dir: Path,
+        output_dir: Path,
+        *,
+        current_index: int,
+        files: list[tuple[str, str]],
+        filename: str,
+    ) -> tuple[list[tuple[str, str]], list[str]]:
+        adjusted: list[tuple[str, str]] = []
+        notes: list[str] = []
+        for rel_path, content in files:
+            normalized = rel_path.strip().strip("`").replace("\\", "/")
+            expected_markers: list[str] = []
+            for _previous_task_id, artifact_path in self._previous_task_artifacts(output_dir, current_index, filename):
+                for previous_rel, previous_content in extract_build_files(read_text(artifact_path)):
+                    if previous_rel.strip().strip("`").replace("\\", "/") != normalized:
+                        continue
+                    for marker in self._content_markers(previous_content):
+                        if marker not in expected_markers:
+                            expected_markers.append(marker)
+            missing = [marker for marker in expected_markers if marker not in content]
+            target = project_dir / normalized
+            if missing and target.is_file():
+                try:
+                    existing = target.read_text(encoding="utf-8")
+                except (UnicodeDecodeError, OSError):
+                    existing = ""
+                new_markers = [marker for marker in self._content_markers(content) if marker not in existing]
+                if existing.strip() and new_markers:
+                    merged = existing.rstrip() + "\n\n" + content.lstrip().rstrip() + "\n"
+                    adjusted.append((rel_path, merged))
+                    notes.append(f"{normalized} preserved previous marker(s): {', '.join(missing[:6])}")
+                    continue
+            adjusted.append((rel_path, content))
+        return adjusted, notes
 
     async def build_step(self, run: dict[str, Any], prompt_name: str = "05_build.md", artifact: str = "build-result.md", *, agent_name: str | None = None) -> None:
         project_dir = Path(run.get("project_path") or ROOT)
         output_dir = Path(run["workspace"]) / "output"
         artifact = normalize_artifact_name(artifact)
+        await self._ensure_project_agent_configs(run, project_dir)
         before = project_file_snapshot(project_dir)
 
         if self._is_auto_development_workflow(run):
@@ -1058,107 +1517,135 @@ class WorkflowActions:
             tasks = self._task_entries_from_manifest(manifest, owner="build")
             if not tasks:
                 tasks = [{"id": "TASK-001", "owner": "build", "title": "Full requested production change"}]
-            task_artifacts: list[tuple[str, str, str]] = []
             total = len(tasks)
+            build_feedback = self._build_step_feedback(run)
+            task_artifacts: list[tuple[str, str, str]] = []
+            any_task_changed = False
+
             for index, task in enumerate(tasks, start=1):
                 task_id = str(task.get("id") or f"TASK-{index:03d}")
                 task_title = str(task.get("title") or task_id)
                 task_artifact = self._task_output_artifact(task_id, "build-result.md")
+                task_artifact_path = output_dir / task_artifact
+                task_artifact_path.parent.mkdir(parents=True, exist_ok=True)
+                task_has_feedback = self._latest_feedback_mentions_task(build_feedback, task_id)
+                if (
+                    task_artifact_path.is_file()
+                    and not task_has_feedback
+                    and (
+                        self._task_direct_state_is_satisfied(output_dir, project_dir, task_id, "build")
+                        or (self._mock_file_blocks_allowed_as_direct_edits() and self._task_artifact_is_satisfied(project_dir, task_artifact_path))
+                    )
+                ):
+                    task_result = read_text(task_artifact_path)
+                    task_artifacts.append((task_id, task_title, task_result))
+                    await self.log(run, f"build/{task_id}: skipped because direct edits from this task are already present and preserved")
+                    continue
+
                 scoped_run = self._task_run(run, task, index=index, total=total, phase="build")
                 task_before = project_file_snapshot(project_dir)
                 await self.log(run, f"build: task loop {index}/{total} {task_id} - {task_title}")
                 try:
-                    await self.run_agent_step(scoped_run, "build", prompt_name, task_artifact, agent_name=agent_name)
+                    await self.run_agent_step(scoped_run, "build", prompt_name, task_artifact, agent_name=agent_name, fresh_session=True)
                 except UserInputRequired:
                     raise
-                task_result = read_text(output_dir / task_artifact)
-                build_files = extract_build_files(task_result)
-                production_files, ignored_test_files = split_build_files(build_files)
-                if not production_files:
-                    if ignored_test_files:
-                        ignored = ", ".join(rel_path for rel_path, _ in ignored_test_files)
-                        raise WorkflowError(
-                            f"build task {task_id} output only contained test file blocks. Build must output production files only. "
-                            f"Invalid build file(s): {ignored}"
-                        )
-                    raise WorkflowError(
-                        f"build task {task_id} did not return any production FILE/CONTENT/END_FILE blocks. "
-                        "Build must materialize this small task inside the selected Project Path."
+
+                direct_files = self._direct_edit_files_from_snapshot(
+                    project_dir,
+                    task_before,
+                    project_file_snapshot(project_dir),
+                    forbid_test_files=True,
+                )
+                if not direct_files:
+                    direct_files = self._apply_mock_file_blocks_for_direct_edit(
+                        project_dir,
+                        read_text(task_artifact_path),
+                        forbid_test_files=True,
+                        output_label=f"mock build task {task_id} direct edit",
                     )
-                if ignored_test_files:
-                    ignored = ", ".join(rel_path for rel_path, _ in ignored_test_files)
-                    await self.log(run, f"build/{task_id}: ignored test file block(s) owned by generate_tests: {ignored}")
-                validate_build_files_are_not_tests(production_files)
+                if not direct_files:
+                    raise WorkflowError(
+                        f"build task {task_id} did not directly create or modify production files under Project Path: {project_dir}. "
+                        "Use Qwen/OpenCode file edit/write tools to change project files directly. "
+                        "The platform no longer materializes FILE blocks for real agent runs; it only checks the project diff."
+                    )
+
+                validate_build_files_are_not_tests(direct_files)
                 validate_build_files_do_not_overwrite_validation_scripts(
                     project_dir,
-                    production_files,
+                    direct_files,
                     validation_script=run.get("validation_script"),
                     fallback_scripts=self._fallback_validation_scripts(run),
                 )
-                written = apply_extracted_files(project_dir, production_files, output_label=f"build task {task_id} output")
-                if written:
-                    await self.log(run, f"build/{task_id}: materialized files: " + ", ".join(str(path.relative_to(project_dir)) for path in written))
-                task_after = project_file_snapshot(project_dir)
-                if not snapshot_changed(task_before, task_after):
-                    raise WorkflowError(
-                        f"build task {task_id} did not create or modify production files under Project Path: {project_dir}."
-                    )
+                self._write_task_direct_state(output_dir, project_dir, task_id, "build", direct_files)
+                self._validate_previous_direct_task_states_preserved(
+                    output_dir,
+                    project_dir,
+                    current_index=index,
+                    current_task_id=task_id,
+                    phase="build",
+                )
+                task_result = self._render_direct_edit_summary("Build Direct Edit Result", task_id, task_title, direct_files)
+                write_text(task_artifact_path, task_result)
                 task_artifacts.append((task_id, task_title, task_result))
+                any_task_changed = True
+                await self.log(run, f"build/{task_id}: accepted direct agent production edit(s): " + ", ".join(rel_path for rel_path, _ in direct_files))
+
             aggregate = self._render_aggregated_task_outputs("Build Result", task_artifacts)
             write_text(output_dir / artifact, aggregate)
             await self.refresh_artifacts(run["id"])
             after = project_file_snapshot(project_dir)
-            if not snapshot_changed(before, after):
+            if not snapshot_changed(before, after) and not task_artifacts and not any_task_changed:
                 raise WorkflowError(
-                    f"build did not create or modify production files under Project Path: {project_dir}. "
-                    "Agent build output must include non-test FILE/CONTENT/END_FILE blocks."
+                    f"build did not directly create or modify production files under Project Path: {project_dir}. "
+                    "Use Qwen/OpenCode file edit/write tools. FILE block materialization is disabled for real agent runs."
                 )
             return
 
         try:
-            await self.run_agent_step(run, "build", prompt_name, artifact, agent_name=agent_name)
+            await self.run_agent_step(run, "build", prompt_name, artifact, agent_name=agent_name, fresh_session=True)
         except UserInputRequired:
             raise
-        build_result = read_text(output_dir / artifact)
-        build_files = extract_build_files(build_result)
-        production_files, ignored_test_files = split_build_files(build_files)
-        if not production_files:
-            if ignored_test_files:
-                ignored = ", ".join(rel_path for rel_path, _ in ignored_test_files)
-                raise WorkflowError(
-                    "build output only contained test file blocks. Build must output production files only. "
-                    f"Invalid build file(s): {ignored}"
-                )
-            raise WorkflowError(
-                "build did not return any production FILE/CONTENT/END_FILE blocks. "
-                "Build must materialize the requested production changes inside the selected Project Path; "
-                "the workflow will retry Build with this concrete failure feedback."
+
+        direct_files = self._direct_edit_files_from_snapshot(
+            project_dir,
+            before,
+            project_file_snapshot(project_dir),
+            forbid_test_files=True,
+        )
+        if not direct_files:
+            direct_files = self._apply_mock_file_blocks_for_direct_edit(
+                project_dir,
+                read_text(output_dir / artifact),
+                forbid_test_files=True,
+                output_label="mock build direct edit",
             )
-        if ignored_test_files:
-            ignored = ", ".join(rel_path for rel_path, _ in ignored_test_files)
-            if production_files:
-                await self.log(run, f"build: ignored test file block(s) owned by generate_tests: {ignored}")
-            else:
-                raise WorkflowError(
-                    "build output only contained test file blocks. Build must output production files only. "
-                    f"Invalid build file(s): {ignored}"
-                )
-        validate_build_files_are_not_tests(production_files)
+        if not direct_files:
+            raise WorkflowError(
+                f"build did not directly create or modify production files under Project Path: {project_dir}. "
+                "Use Qwen/OpenCode file edit/write tools. The platform no longer materializes FILE blocks for real agent runs."
+            )
+        validate_build_files_are_not_tests(direct_files)
         validate_build_files_do_not_overwrite_validation_scripts(
             project_dir,
-            production_files,
+            direct_files,
             validation_script=run.get("validation_script"),
             fallback_scripts=self._fallback_validation_scripts(run),
         )
-        written = apply_extracted_files(project_dir, production_files, output_label="build output")
-        if written:
-            await self.log(run, "build: materialized files: " + ", ".join(str(path.relative_to(project_dir)) for path in written))
-        after = project_file_snapshot(project_dir)
-        if not snapshot_changed(before, after):
-            raise WorkflowError(
-                f"build did not create or modify production files under Project Path: {project_dir}. "
-                "Agent build output must include non-test FILE/CONTENT/END_FILE blocks."
-            )
+        summary = self._render_direct_edit_summary("Build Direct Edit Result", "BUILD", "Production changes", direct_files)
+        write_text(output_dir / artifact, summary)
+        self._write_task_direct_state(output_dir, project_dir, "BUILD", "build", direct_files)
+        await self.log(run, "build: accepted direct agent production edit(s): " + ", ".join(rel_path for rel_path, _ in direct_files))
+        await self.refresh_artifacts(run["id"])
+
+    async def generate_task_prompts_step(self, run: dict[str, Any], artifact: str = "task-manifest.md") -> None:
+        """Generate Adaptive task manifest and per-task prompts as a visible step."""
+        project_dir = Path(run.get("project_path") or ROOT)
+        output_dir = Path(run["workspace"]) / "output"
+        generator = TaskPromptGenerator()
+        manifest = generator.generate(run, output_dir=output_dir, project_dir=project_dir)
+        await self.refresh_artifacts(run["id"])
+        await self.log(run, f"generate_task_prompts: generated {len(manifest.get('tasks') or [])} adaptive task prompt(s)")
 
     async def adaptive_generation_step(
         self,
@@ -1168,45 +1655,133 @@ class WorkflowActions:
         *,
         agent_name: str | None = None,
     ) -> None:
-        """Materialize a whole adaptive task from one agent step.
-
-        Unlike the General Auto Development build/test split, Adaptive Auto
-        Workflow intentionally lets the agent plan internal subtasks and output
-        any project files needed for this one request. Deterministic guards still
-        enforce project isolation, FILE blocks, protected validation scripts, and
-        actual project changes.
-        """
         project_dir = Path(run.get("project_path") or ROOT)
         output_dir = Path(run["workspace"]) / "output"
         artifact = normalize_artifact_name(artifact)
+        await self._ensure_project_agent_configs(run, project_dir)
         before = project_file_snapshot(project_dir)
 
+        if self._is_adaptive_workflow(run):
+            manifest_path = output_dir / "task-manifest.json"
+            tasks: list[dict[str, Any]] = []
+            if manifest_path.is_file():
+                try:
+                    parsed = json.loads(read_text(manifest_path))
+                    raw_tasks = parsed.get("tasks") if isinstance(parsed, dict) else []
+                    if isinstance(raw_tasks, list):
+                        tasks = [task for task in raw_tasks if isinstance(task, dict)]
+                except json.JSONDecodeError:
+                    tasks = []
+            if not tasks:
+                tasks = [{"id": "TASK-001", "title": "Complete requested adaptive task"}]
+
+            task_artifacts: list[tuple[str, str, str]] = []
+            total = len(tasks)
+            generation_feedback = failure_feedback_for_step(read_text(Path(run["workspace"]) / "input" / "failure-feedback.md"), "auto_generation")
+            for index, task in enumerate(tasks, start=1):
+                task_id = str(task.get("id") or f"TASK-{index:03d}")
+                task_title = str(task.get("title") or task_id)
+                task_artifact = self._task_output_artifact(task_id, "adaptive-generation-result.md")
+                task_artifact_path = output_dir / task_artifact
+                task_artifact_path.parent.mkdir(parents=True, exist_ok=True)
+                task_has_feedback = self._latest_feedback_mentions_task(generation_feedback, task_id)
+                if (
+                    task_artifact_path.is_file()
+                    and not task_has_feedback
+                    and (
+                        self._task_direct_state_is_satisfied(output_dir, project_dir, task_id, "auto_generation")
+                        or (self._mock_file_blocks_allowed_as_direct_edits() and self._task_artifact_is_satisfied(project_dir, task_artifact_path))
+                    )
+                ):
+                    task_result = read_text(task_artifact_path)
+                    task_artifacts.append((task_id, task_title, task_result))
+                    await self.log(run, f"auto_generation/{task_id}: skipped because direct edits from this task are already present and preserved")
+                    continue
+
+                scoped_run = self._task_run(run, task, index=index, total=total, phase="adaptive_generation")
+                task_before = project_file_snapshot(project_dir)
+                await self.log(run, f"auto_generation: adaptive task loop {index}/{total} {task_id} - {task_title}")
+                try:
+                    await self.run_agent_step(scoped_run, "auto_generation", prompt_name, task_artifact, agent_name=agent_name, fresh_session=True)
+                except UserInputRequired:
+                    raise
+
+                direct_files = self._direct_edit_files_from_snapshot(
+                    project_dir,
+                    task_before,
+                    project_file_snapshot(project_dir),
+                )
+                if not direct_files:
+                    direct_files = self._apply_mock_file_blocks_for_direct_edit(
+                        project_dir,
+                        read_text(task_artifact_path),
+                        output_label=f"mock adaptive task {task_id} direct edit",
+                    )
+                if not direct_files:
+                    raise WorkflowError(
+                        f"auto_generation task {task_id} did not directly create or modify files under Project Path: {project_dir}. "
+                        "Use Qwen/OpenCode file edit/write tools. The platform no longer materializes FILE blocks for real agent runs."
+                    )
+                validate_build_files_do_not_overwrite_validation_scripts(
+                    project_dir,
+                    direct_files,
+                    validation_script=run.get("validation_script"),
+                    fallback_scripts=self._fallback_validation_scripts(run),
+                )
+                self._write_task_direct_state(output_dir, project_dir, task_id, "auto_generation", direct_files)
+                self._validate_previous_direct_task_states_preserved(
+                    output_dir,
+                    project_dir,
+                    current_index=index,
+                    current_task_id=task_id,
+                    phase="auto_generation",
+                )
+                task_result = self._render_direct_edit_summary("Adaptive Generation Direct Edit Result", task_id, task_title, direct_files)
+                write_text(task_artifact_path, task_result)
+                task_artifacts.append((task_id, task_title, task_result))
+                await self.log(run, f"auto_generation/{task_id}: accepted direct agent edit(s): " + ", ".join(rel_path for rel_path, _ in direct_files))
+
+            write_text(output_dir / artifact, self._render_aggregated_task_outputs("Adaptive Generation Result", task_artifacts))
+            await self.refresh_artifacts(run["id"])
+            after = project_file_snapshot(project_dir)
+            if not snapshot_changed(before, after) and not task_artifacts:
+                raise WorkflowError(
+                    f"auto_generation did not directly create or modify files under Project Path: {project_dir}. "
+                    "Use Qwen/OpenCode file edit/write tools. FILE block materialization is disabled for real agent runs."
+                )
+            return
+
         try:
-            await self.run_agent_step(run, "auto_generation", prompt_name, artifact, agent_name=agent_name)
+            await self.run_agent_step(run, "auto_generation", prompt_name, artifact, agent_name=agent_name, fresh_session=True)
         except UserInputRequired:
             raise
-        result = read_text(output_dir / artifact)
-        files = extract_build_files(result)
-        if not files:
+        direct_files = self._direct_edit_files_from_snapshot(
+            project_dir,
+            before,
+            project_file_snapshot(project_dir),
+        )
+        if not direct_files:
+            direct_files = self._apply_mock_file_blocks_for_direct_edit(
+                project_dir,
+                read_text(output_dir / artifact),
+                output_label="mock adaptive direct edit",
+            )
+        if not direct_files:
             raise WorkflowError(
-                "auto_generation did not return any FILE/CONTENT/END_FILE blocks. "
-                "Adaptive Auto Workflow must materialize the requested project changes inside the selected Project Path."
+                f"auto_generation did not directly create or modify files under Project Path: {project_dir}. "
+                "Use Qwen/OpenCode file edit/write tools. The platform no longer materializes FILE blocks for real agent runs."
             )
         validate_build_files_do_not_overwrite_validation_scripts(
             project_dir,
-            files,
+            direct_files,
             validation_script=run.get("validation_script"),
             fallback_scripts=self._fallback_validation_scripts(run),
         )
-        written = apply_extracted_files(project_dir, files, output_label="adaptive auto generation output")
-        if written:
-            await self.log(run, "auto_generation: materialized files: " + ", ".join(str(path.relative_to(project_dir)) for path in written))
-        after = project_file_snapshot(project_dir)
-        if not snapshot_changed(before, after):
-            raise WorkflowError(
-                f"auto_generation did not create or modify files under Project Path: {project_dir}. "
-                "Agent output must include project FILE/CONTENT/END_FILE blocks."
-            )
+        summary = self._render_direct_edit_summary("Adaptive Generation Direct Edit Result", "AUTO-GENERATION", "Adaptive generation", direct_files)
+        write_text(output_dir / artifact, summary)
+        self._write_task_direct_state(output_dir, project_dir, "AUTO-GENERATION", "auto_generation", direct_files)
+        await self.log(run, "auto_generation: accepted direct agent edit(s): " + ", ".join(rel_path for rel_path, _ in direct_files))
+        await self.refresh_artifacts(run["id"])
 
     async def consensus_agent_step(
         self,
@@ -1369,6 +1944,10 @@ class WorkflowActions:
                 step_prompt_name(step_record, "05_build.md"),
                 step_artifact_name(step_record, "build-result.md"),
                 agent_name=agent_name,
+            ),
+            "generate_task_prompts": lambda: self.generate_task_prompts_step(
+                run,
+                step_artifact_name(step_record, "task-manifest.md"),
             ),
             "auto_generation": lambda: self.adaptive_generation_step(
                 run,

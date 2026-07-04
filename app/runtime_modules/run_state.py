@@ -48,8 +48,8 @@ def repair_strategy_for_class(error_class: str) -> str:
     return {
         "PATH_VIOLATION": "Rewrite only relative FILE paths inside Project Path; do not retry unsafe path tricks.",
         "TIMEOUT": "Reduce scope, simplify implementation, and avoid long-running commands.",
-        "NO_FILE_OUTPUT": "Return concrete FILE/CONTENT/END_FILE blocks for the owner step.",
-        "NO_TEST_GENERATED": "Return focused test FILE blocks only under tests/.",
+        "NO_FILE_OUTPUT": "Use Qwen/OpenCode direct edits for the owner step; do not return file blocks.",
+        "NO_TEST_GENERATED": "Return focused test platform file blocks only under tests/.",
         "NO_PRODUCTION_CHANGE": "Modify or create the intended production/project artifact instead of restating the plan.",
         "SYNTAX_ERROR": "Fix the exact syntax/import error and keep the patch minimal.",
         "TEST_FAILED": "Use failing assertions/stdout/stderr to repair production code first; change tests only when they are clearly invalid.",
@@ -93,7 +93,7 @@ def retry_recovery_notes(source_key: str, target_key: str, error: str) -> list[s
     elif source_key == "build":
         notes.extend([
             "Build did not produce acceptable production changes or file blocks.",
-            "Return production FILE/CONTENT/END_FILE blocks only, with relative paths inside the selected Project Path.",
+            "Use Qwen/OpenCode direct edits inside the selected Project Path; do not return file blocks.",
         ])
     else:
         notes.append("Retry the target step using the concrete error message and previously approved artifacts as the source of truth.")

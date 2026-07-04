@@ -1,7 +1,7 @@
 id: generate_tests
 key: generate_tests
 name: Generate Tests
-description: Create focused automated tests for the current requirement before implementation.
+description: Create focused automated tests once after production Build using direct agent edits.
 enabled: true
 type: ai
 skill: steps/general-auto-development/03_generate_tests.md
@@ -10,12 +10,12 @@ agent: qwen
 outputs:
 - test-plan.md
 function: ''
-retry: 99
+retry: 5
 failAction: same_step
 retryFromStepKey: generate_tests
-keepSameSession: true
+keepSameSession: false
 injectFailureFeedback: true
-stopAfterFailures: 99
+stopAfterFailures: 5
 allowInteraction: false
 thinking: false
 approvalRequired: false

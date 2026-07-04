@@ -1,6 +1,6 @@
-import { Api } from "./api.js?v=20260704-metadata1";
-import { UI } from "./dom.js?v=20260704-metadata1";
-import { AppState } from "./state.js?v=20260704-metadata1";
+import { Api } from "./api.js?v=20260704-direct-edit-gad";
+import { UI } from "./dom.js?v=20260704-direct-edit-gad";
+import { AppState } from "./state.js?v=20260704-direct-edit-gad";
 
 export function createAppContext() {
   return {

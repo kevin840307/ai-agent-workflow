@@ -13,6 +13,10 @@ from app.services import artifact_service, workflow_service
 from app.core.paths import atomic_write_text
 from app.workflow_runtime.builtin_functions.security_candidates import _security_heuristic_candidates_from_context
 from app.workflow_runtime.step_config import initial_steps
+from app.security.agent_project_config import ensure_agent_project_configs
+from app.runtime_modules.files import apply_extracted_files
+from app.runtime_modules.errors import WorkflowError
+import json
 
 
 class RuntimeSafetyTests(unittest.TestCase):
@@ -108,6 +112,38 @@ Status: DONE
             self.assertEqual(path.read_text(encoding="utf-8"), '{"ok": true}')
             self.assertEqual(calls["count"], 3)
             self.assertFalse(list(Path(tmp).glob("*.tmp")))
+
+    def test_project_agent_configs_restrict_writes_but_allow_reads(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp) / "project"
+            project.mkdir()
+
+            written = ensure_agent_project_configs(project)
+
+            self.assertTrue((project / ".qwen" / "settings.json").is_file())
+            self.assertTrue((project / ".qwen" / "QWEN.md").is_file())
+            self.assertTrue((project / "opencode.json").is_file())
+            self.assertTrue(written)
+
+            qwen = json.loads((project / ".qwen" / "settings.json").read_text(encoding="utf-8"))
+            self.assertEqual(qwen["tools"]["approvalMode"], "auto-edit")
+            self.assertEqual(qwen["aiWorkflowGuard"]["writePolicy"], "project_only")
+            self.assertEqual(qwen["aiWorkflowGuard"]["readPolicy"], "unrestricted")
+
+            opencode = json.loads((project / "opencode.json").read_text(encoding="utf-8"))
+            self.assertEqual(opencode["permission"]["external_directory"]["*"], "allow")
+            self.assertEqual(opencode["permission"]["edit"][".qwen/**"], "deny")
+            self.assertEqual(opencode["permission"]["edit"]["opencode.json"], "deny")
+            self.assertEqual(opencode["permission"]["bash"]["*"], "deny")
+
+    def test_agent_file_blocks_cannot_edit_managed_agent_config(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp) / "project"
+            project.mkdir()
+            with self.assertRaisesRegex(WorkflowError, "managed agent guard config"):
+                apply_extracted_files(project, [("opencode.json", "{}\n")])
+            with self.assertRaisesRegex(WorkflowError, "reserved directory"):
+                apply_extracted_files(project, [(".qwen/settings.json", "{}\n")])
 
 
 if __name__ == "__main__":

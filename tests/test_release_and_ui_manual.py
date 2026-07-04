@@ -37,6 +37,62 @@ class TestingDocumentationContractTests(unittest.TestCase):
             with self.subTest(marker=marker):
                 self.assertIn(marker, text)
 
+class AgentSlashCommandDocumentationTests(unittest.TestCase):
+    def test_agent_slash_command_docs_and_templates_exist(self) -> None:
+        required_paths = [
+            ROOT / "doc/en/AGENT_SLASH_COMMANDS.md",
+            ROOT / "doc/zh-TW/AGENT_SLASH_COMMANDS.md",
+            ROOT / "data/agent-commands/qwen/commands/wf.md",
+            ROOT / "data/agent-commands/qwen/commands/wstep.md",
+            ROOT / "data/agent-commands/opencode/commands/wf.md",
+            ROOT / "data/agent-commands/opencode/commands/wstep.md",
+            ROOT / "scripts/install_agent_commands.py",
+        ]
+        for path in required_paths:
+            with self.subTest(path=path.relative_to(ROOT).as_posix()):
+                self.assertTrue(path.exists())
+                self.assertGreater(path.stat().st_size, 0)
+
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        self.assertIn("AGENT_SLASH_COMMANDS.md", readme)
+        self.assertIn("python scripts/install_agent_commands.py --target all --scope project", readme)
+
+    def test_agent_command_templates_call_aiwf_shortcuts(self) -> None:
+        qwen_wf = (ROOT / "data/agent-commands/qwen/commands/wf.md").read_text(encoding="utf-8")
+        qwen_wstep = (ROOT / "data/agent-commands/qwen/commands/wstep.md").read_text(encoding="utf-8")
+        opencode_wf = (ROOT / "data/agent-commands/opencode/commands/wf.md").read_text(encoding="utf-8")
+        opencode_wstep = (ROOT / "data/agent-commands/opencode/commands/wstep.md").read_text(encoding="utf-8")
+
+        self.assertIn("!{python -m app.cli.aiwf /wf {{args}} --wait}", qwen_wf)
+        self.assertIn("!{python -m app.cli.aiwf /wstep {{args}} --wait}", qwen_wstep)
+        self.assertIn("!`python -m app.cli.aiwf /wf $ARGUMENTS --wait`", opencode_wf)
+        self.assertIn("!`python -m app.cli.aiwf /wstep $ARGUMENTS --wait`", opencode_wstep)
+
+    def test_install_agent_commands_supports_project_scope(self) -> None:
+        import importlib.util
+
+        module_path = ROOT / "scripts/install_agent_commands.py"
+        spec = importlib.util.spec_from_file_location("install_agent_commands", module_path)
+        self.assertIsNotNone(spec)
+        self.assertIsNotNone(spec.loader)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp)
+            installed = module.install_commands(target="all", scope="project", project=project)
+            installed_rel = sorted(path.relative_to(project).as_posix() for path in installed)
+
+        self.assertEqual(
+            installed_rel,
+            [
+                ".opencode/commands/wf.md",
+                ".opencode/commands/wstep.md",
+                ".qwen/commands/wf.md",
+                ".qwen/commands/wstep.md",
+            ],
+        )
+
 
 class CleanRepoPatchApplyManualTests(unittest.TestCase):
     def test_clean_repo_smoke_is_opt_in(self) -> None:

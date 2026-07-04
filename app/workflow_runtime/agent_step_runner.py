@@ -6,6 +6,7 @@ from typing import Any, Awaitable, Callable
 
 from app.runtime_modules.errors import UserInputRequired, WorkflowError
 from app.core.paths import read_text, write_text
+from app.security.agent_project_config import ensure_agent_project_configs
 
 from .agents import AgentManager, AgentRequest
 from .error_codes import is_recoverable_session_error
@@ -61,6 +62,7 @@ class AgentStepRunner:
         )
         prompt_text = self._harden_prompt_for_step(step_key, prompt_result.prompt)
         cwd = Path(run.get("project_path") or run["workspace"]).expanduser().resolve()
+        ensure_agent_project_configs(cwd)
         workspace_path = Path(run["workspace"]).expanduser().resolve()
         base_session_id = self._session_id_for_agent(run, agent_name)
         # Qwen serve normally keeps one Qwen session per project/app session.
@@ -71,6 +73,7 @@ class AgentStepRunner:
             config.get("forceFreshQwenSession")
             or config.get("isolatedQwenSession")
             or config.get("freshSessionPerAgent")
+            or run.get("_force_fresh_qwen_session")
         )
         if agent_name == "qwen":
             session_id = None if fresh_session and force_fresh_qwen else base_session_id
@@ -97,7 +100,7 @@ class AgentStepRunner:
             await self.log(run, f"{step_key}: selected skills: {', '.join(path.parent.name for path in prompt_result.skill_files)}")
         await self.log(run, f"{step_key}: prompt saved to {prompt_result.relative_prompt_path}")
         await self.refresh_artifacts(run["id"])
-        await self._publish_status(run["id"], agent_name, step_key, f"{agent_name} is running...")
+        await self._publish_status(run["id"], agent_name, step_key, self._running_status(run, step_config, agent_name, step_key, artifact))
 
         async def publish_agent_output(stream: str, text: str) -> None:
             if not text:
@@ -105,11 +108,12 @@ class AgentStepRunner:
             if stream == "stdout" and not self._show_agent_stdout():
                 # Agent stdout is the artifact body.  It is still captured and
                 # written to output/*.md, but hiding it from the live console keeps
-                # large FILE/CONTENT blocks and token streams from flooding logs.
+                # large direct-edit summaries and token streams from flooding logs.
                 return
             await self.bus.publish(run["id"], {"type": "agent_output", "agent": agent_name, "step": step_key, "stream": stream, "text": text})
-            # Legacy UI compatibility while migrating frontend event names.
-            if agent_name == "qwen":
+            # Legacy qwen_output events double every token in the modern UI, so
+            # keep them opt-in only for older external dashboards.
+            if agent_name == "qwen" and self._emit_legacy_qwen_output():
                 await self.bus.publish(run["id"], {"type": "qwen_output", "step": step_key, "stream": stream, "text": text})
 
         try:
@@ -156,15 +160,51 @@ class AgentStepRunner:
         if "No specification found" in output:
             raise WorkflowError(f"{step_key}: {agent_name} did not treat the prompt file as the task.")
         write_text(output_dir / artifact, output + "\n")
-        await self._publish_status(run["id"], agent_name, step_key, f"Wrote output/{artifact}")
+        await self._publish_status(run["id"], agent_name, step_key, f"Finished writing output/{artifact}.")
         await self.log(run, f"{step_key}: wrote output/{artifact}")
         await self.refresh_artifacts(run["id"])
         return output
 
 
     @staticmethod
+    def _running_status(run: dict[str, Any], step_record: dict[str, Any], agent_name: str, step_key: str, artifact: str) -> str:
+        current_task = run.get("_current_task") or {}
+        task_bits: list[str] = []
+        if current_task:
+            task_id = str(current_task.get("id") or "").strip()
+            title = str(current_task.get("title") or "").strip()
+            index = current_task.get("index")
+            total = current_task.get("total")
+            if task_id:
+                task_bits.append(task_id)
+            if index and total:
+                task_bits.append(f"{index}/{total}")
+            if title:
+                task_bits.append(title)
+            task_text = " · ".join(task_bits)
+            return f"Working on {task_text}. The agent is producing output/{artifact}."
+
+        name = str(step_record.get("name") or step_key).strip()
+        description = str(step_record.get("description") or "").strip()
+        outputs = step_record.get("outputs") or step_record.get("expectedFiles") or []
+        if isinstance(outputs, str):
+            output_text = outputs
+        elif isinstance(outputs, list) and outputs:
+            output_text = ", ".join(str(item) for item in outputs[:3])
+            if len(outputs) > 3:
+                output_text += f", +{len(outputs) - 3} more"
+        else:
+            output_text = artifact
+        parts = [f"{name}: {description}" if description else f"{name} is running", f"Target output: {output_text}"]
+        return ". ".join(part.rstrip(".") for part in parts if part) + "."
+
+    @staticmethod
     def _show_agent_stdout() -> bool:
         return os.environ.get("QWEN_WORKFLOW_SHOW_AGENT_STDOUT", "0").lower() in {"1", "true", "yes", "on"}
+
+    @staticmethod
+    def _emit_legacy_qwen_output() -> bool:
+        return os.environ.get("QWEN_WORKFLOW_EMIT_LEGACY_QWEN_OUTPUT", "0").lower() in {"1", "true", "yes", "on"}
 
     @staticmethod
     def _harden_prompt_for_step(step_key: str, prompt: str) -> str:
@@ -174,18 +214,19 @@ Workspace safety guard:
 - Current working directory is the selected Project Path.
 - You may read files anywhere when needed for context.
 - You must only create, modify, delete, or rename files inside the selected Project Path.
-- Do not write absolute paths, parent-directory paths, `.git`, `.ai-workflow`, or `.qwen-workflow`.
-- Do not run `git commit`, `git push`, or any command that changes repository history or remote state.
-- If you output file edits, use relative FILE paths only.
+- Do not write absolute paths, parent-directory paths, `.git`, `.qwen`, `opencode.json`, `.ai-workflow`, or `.qwen-workflow`.
+- Do not run dangerous commands, `git commit`, `git push`, installs, deletes, or any command that changes repository history, remote state, or files outside the project.
+- Use the CLI file edit/write tools to change files directly when this step creates/modifies project files.
 """
         if step_key == "build":
             step_guard = """
 
 Build output guard:
-- You are in the Build step. Output production code FILE/CONTENT/END_FILE blocks only.
+- You are in the Build step. Use file edit/write tools to create or modify production project files directly.
 - Do not output, copy, rewrite, summarize, or include test file blocks.
 - Do not write paths under tests/ and do not write files named test_*.py.
-- Your final answer must include at least one non-test production file that implements the current Requirement.
+- Do not output platform file blocks for any workflow. Directly edit the project files instead.
+- The project must contain at least one changed non-test production file that implements the current Requirement.
 """
             return prompt.rstrip() + base_guard + step_guard
         if step_key == "auto_generation":
@@ -193,20 +234,21 @@ Build output guard:
 
 Adaptive generation output guard:
 - You are in the Auto Generation Workflow step.
-- Output project FILE/CONTENT/END_FILE blocks that materialize the requested change.
-- Relative paths only. Do not output absolute paths or parent-directory paths.
+- Use file edit/write tools to materialize the requested project change directly.
+- If direct editing is unavailable, stop and explain which edit tool was unavailable; do not return file blocks.
 - You may include production files, tests, and small project documentation when useful.
 - Existing validation scripts are read-only unless the user explicitly asked to modify them.
-- Your final answer must include at least one FILE block.
+- The project must contain at least one changed file for this task.
 """
             return prompt.rstrip() + base_guard + step_guard
         if step_key == "generate_tests":
             step_guard = """
 
 Generate Tests output guard:
-- You are in the Generate Tests step. Output test FILE/CONTENT/END_FILE blocks only.
+- You are in the Generate Tests step. Use file edit/write tools to create or modify test files directly.
 - For Python projects, write only tests/test_*.py or tests/conftest.py.
-- Do not output production files in this step.
+- Do not modify production files in this step.
+- Do not output platform file blocks for any workflow. Directly edit tests under tests/ instead.
 """
             return prompt.rstrip() + base_guard + step_guard
         return prompt.rstrip() + base_guard

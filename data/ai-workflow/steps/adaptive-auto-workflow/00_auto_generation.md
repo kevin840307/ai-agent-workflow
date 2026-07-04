@@ -1,4 +1,14 @@
-You are running Adaptive Auto Workflow.
+Implement the approved task plan for the current task only.
+
+Critical execution contract:
+- Prefer the Qwen/OpenCode built-in file edit/write tools to modify project files directly.
+- Keep edits inside the selected Project Path only.
+- Do not edit `.qwen/**`, `opencode.json`, `.ai-workflow/**`, `.qwen-workflow/**`, or `.git/**`.
+- Build owns production/project artifacts only. Do not create or modify tests in this step.
+- If your CLI environment cannot use file edit/write tools, fall back to direct file edits.
+- When falling back to direct-edit outputs, every direct-edit output must contain complete runnable project content for that file.
+
+You are running Adaptive Auto Workflow task execution.
 
 User request:
 {{requirement}}
@@ -6,55 +16,60 @@ User request:
 Project path:
 {{project_path}}
 
-Validation script, if provided:
-{{validation_script}}
+Current task:
+{{current_task}}
 
-Validation script content, if provided:
-{{validation_script_content}}
+Generated task prompt. Treat this as the active scope for this call:
+{{current_task_prompt}}
+
+Task TODO, if available:
+{{current_task_todo}}
+
+Task-scoped existing file context. Preserve these contents when modifying the same files:
+{{current_task_file_context}}
 
 Project index:
 {{project_index}}
 
-Project profile:
-{{project_profile}}
-
-Current architecture:
+Architecture summary:
 {{architecture}}
 
-Visible project files:
-{{project_overview}}
+Task-scoped failure feedback only:
+{{current_task_failure_feedback}}
 
-Failure feedback from previous attempts:
-{{failure_feedback}}
+Validation script, if provided:
+{{validation_script}}
+
+Validation script content, read-only acceptance criteria:
+{{validation_script_content}}
 
 Guidance from the user:
 {{guidance}}
 
 Your job:
-1. Read the current project shape and infer the language/framework from the request and existing files.
-2. Create a compact internal plan for this specific request. Split work into small tasks only when useful.
-3. Materialize the requested change by outputting FILE/CONTENT/END_FILE blocks.
-4. Include focused automated tests when the project or requested change is testable.
-5. If a validation script is provided or discovered, treat it as read-only acceptance criteria.
+1. Complete only the current generated task prompt.
+2. Output real project direct file edits.
+3. Include focused tests when the task is testable because Adaptive Auto Workflow is an all-in-one task loop.
+4. Keep production code and tests separated.
+5. Preserve completed earlier task work and do not proactively implement future task prompts unless required as a dependency.
 
 Rules:
 - Do not ask the user questions. Make reasonable assumptions and record them in the result.
-- Do not hard-code for examples, validators, or known sample prompts. Implement the requested behavior generally.
+- Do not hard-code sample inputs, validators, or known sample prompts. Implement the requested behavior generally.
+- Do not implement workflow runner logic, repair helper functions, placeholder generators, or simulated task-output helpers unless the user specifically requested those as the product.
 - Do not modify validation scripts unless the user explicitly asks to modify that script.
 - Do not copy assertions from a validation script into production code just to pass the gate.
 - Keep all writes inside the selected Project path.
 - Do not write `.git`, `.ai-workflow`, `.qwen-workflow`, absolute paths, or parent-directory paths.
 - Do not run git commands.
 - If generating Python, production modules must be import-safe: no top-level demo prints, no top-level asserts, and no test code in production files.
-- Keep production code and tests in separate files.
 - If failure feedback mentions side effects, mutation, idempotence, determinism, formatting, paths, imports, or exact output, fix the implementation behavior or test wiring directly; do not weaken, bypass, duplicate, or embed the validation logic.
-- If Python tests fail because generated tests import the wrong module or path, fix the test import/layout while keeping production behavior intact.
 
-Output format:
+Completion response:
 - Output artifact content only.
 - Include a short Markdown summary first.
-- Then output every created or modified file as FILE/CONTENT/END_FILE blocks.
-- At least one FILE block is required.
+- Then output every created or modified file as direct file edits.
+- At least one direct-edit output is required.
 
 Required artifact shape:
 
@@ -62,15 +77,8 @@ Required artifact shape:
 
 Status: READY
 
-## Internal Plan
-- Step 1:
-
-## Assumptions
-- 
+## Current Task
+- Task ID:
+- What changed:
 
 ## Files
-
-FILE: relative/path.ext
-CONTENT:
-...
-END_FILE

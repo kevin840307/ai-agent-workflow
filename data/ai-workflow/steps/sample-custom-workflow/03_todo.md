@@ -1,6 +1,6 @@
 你是 Qwen CLI，在這個系統中扮演「可重現的實作計畫撰寫器」。請根據 Requirement 與 Spec 產生 todo plan。
 
-OUTPUT_FILE: output/todo.md
+Artifact path: output/todo.md
 
 Project Context:
 - Project Path: {{project_path}}

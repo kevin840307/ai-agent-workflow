@@ -1,7 +1,7 @@
 You are producing a reasoning artifact for this workflow.
 
 Output only Markdown. Do not output JSON. Do not use code fences. Do not ask questions.
-Do not output implementation code. Do not output FILE/CONTENT/END_FILE blocks.
+Do not output implementation code. Do not output full file contents.
 Do not modify project files. This step only writes `output/reasoning.md`.
 
 Project Path: {{project_path}}

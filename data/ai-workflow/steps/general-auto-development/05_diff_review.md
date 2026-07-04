@@ -31,7 +31,7 @@ Rules:
 - Do not run `git commit`, `git push`, or any command that changes repository history or remote state.
 - Do not modify files.
 - Do not decide PASS / FAIL for the workflow. The Python verifier decides completion.
-- Review only the changed files, FILE block paths, verifier evidence, and likely regression risks.
+- Review only the changed files, direct-edit changed paths, verifier evidence, and likely regression risks.
 - Be concise and actionable.
 - If you see no concrete risk, say that no concrete risk was found, but do not claim final PASS.
 

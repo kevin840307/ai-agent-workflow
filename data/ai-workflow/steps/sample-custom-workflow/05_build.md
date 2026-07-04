@@ -1,6 +1,6 @@
 You are implementing production code in the selected Project Path.
 
-Output only FILE/CONTENT/END_FILE blocks. Do not output JSON. Do not use Markdown fences. Do not create tests in this step.
+Use Qwen/OpenCode edit/write tools directly. Respond only with a brief summary. Do not output JSON. Do not use Markdown fences. Do not create tests in this step.
 
 Project Path: {{project_path}}
 
@@ -37,9 +37,4 @@ Rules:
 - If the project is empty and the requirement asks for Python, create a simple Python module with a clear function name derived from the requirement.
 - Keep code small and readable.
 
-Return one or more blocks like:
-
-FILE: relative/path.ext
-CONTENT:
-...
-END_FILE
+After direct edits, respond with a brief summary. Do not return source code.

@@ -4,7 +4,7 @@ import {
   SourceTypes,
   StepTypes,
   TemplatePresets,
-} from "../workflow-designer-constants.js?v=20260704-metadata1";
+} from "../workflow-designer-constants.js?v=20260704-direct-edit-gad";
 import {
   clone,
   copyTextToClipboard,
@@ -19,7 +19,7 @@ import {
   readInputValue,
   setText,
   toast,
-} from "./utils.js?v=20260704-metadata1";
+} from "./utils.js?v=20260704-direct-edit-gad";
 import {
   createStep,
   createWorkflow,
@@ -32,7 +32,7 @@ import {
   normalizeFunctionList,
   normalizeStep,
   normalizeWorkflow,
-} from "./model.js?v=20260704-metadata1";
+} from "./model.js?v=20260704-direct-edit-gad";
 import {
   availablePromptParamsFor,
   functionHelpFor,
@@ -40,13 +40,13 @@ import {
   functionOptionsFor,
   stepUiCapabilitiesFor,
   workflowFunctionCountsFor,
-} from "./function-catalog.js?v=20260704-metadata1";
-import { installLayoutRenderer } from "./layout-renderer.js?v=20260704-metadata1";
-import { installStepSettingsRenderer } from "./step-settings-renderer.js?v=20260704-metadata1";
-import { installTemplateEditor } from "./template-editor.js?v=20260704-metadata1";
-import { installImportExportTools } from "./import-export.js?v=20260704-metadata1";
-import { installWorkflowAssetTools } from "./asset-tools.js?v=20260704-metadata1";
-import { allSystemWorkflows as collectSystemWorkflows, findWorkflowById as findWorkflowByIdFromState, isWorkflowReadOnly } from "./workflow-selection.js?v=20260704-metadata1";
+} from "./function-catalog.js?v=20260704-direct-edit-gad";
+import { installLayoutRenderer } from "./layout-renderer.js?v=20260704-direct-edit-gad";
+import { installStepSettingsRenderer } from "./step-settings-renderer.js?v=20260704-direct-edit-gad";
+import { installTemplateEditor } from "./template-editor.js?v=20260704-direct-edit-gad";
+import { installImportExportTools } from "./import-export.js?v=20260704-direct-edit-gad";
+import { installWorkflowAssetTools } from "./asset-tools.js?v=20260704-direct-edit-gad";
+import { allSystemWorkflows as collectSystemWorkflows, findWorkflowById as findWorkflowByIdFromState, isWorkflowReadOnly } from "./workflow-selection.js?v=20260704-direct-edit-gad";
 const STORAGE_KEY = "qwenWorkflow.workflowDesigner.ui.v1";
 const WORKFLOW_API = "/api/workflows";
 function functionOptions(groupName, fallbackItems, selected) {
@@ -146,7 +146,7 @@ async function loadState() {
 }
 
 function bindEvents() {
-  on("designerSystemWorkflow", "click", () => selectWorkflow(systemWorkflow.id));
+  on("designerSystemWorkflow", "click", (event) => selectWorkflow(event.currentTarget?.dataset?.workflowId || systemWorkflow.id));
   on("designerViewSystem", "click", () => selectWorkflow(systemWorkflow.id));
   on("designerDuplicateWorkflow", "click", () => guardedWorkflowAction(() => {
     const copy = duplicateSystemWorkflow("Custom Controlled Workflow");

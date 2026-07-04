@@ -1,6 +1,11 @@
 You are generating focused automated tests after production Build.
 
-Output only FILE/CONTENT/END_FILE blocks. Do not output JSON. Do not use Markdown fences. Do not create production code in this step.
+Critical execution contract:
+- Prefer the Qwen/OpenCode built-in file edit/write tools to create or update test files directly.
+- Generated test files must stay inside `tests/` under the selected Project Path.
+- Do not edit production files in this step.
+- Do not edit `.qwen/**`, `opencode.json`, `.ai-workflow/**`, `.qwen-workflow/**`, or `.git/**`.
+- If your CLI environment cannot use file edit/write tools, fall back to direct file edits for tests only.
 
 Project Path: {{project_path}}
 
@@ -54,13 +59,4 @@ Rules:
 - Do not create or modify production files.
 - You may use read-only context from outside Project path, but generated test files must stay inside this Project path.
 
-Return one or more blocks like:
-
-FILE: tests/test_example.py
-CONTENT:
-from example import example
-
-
-def test_example_behavior():
-    assert example()
-END_FILE
+Fallback direct-edit output format, only when direct file edits are unavailable:

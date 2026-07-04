@@ -181,6 +181,13 @@ class WorkflowExecutor:
 
     def _project_snapshot_if_required(self, run: dict[str, Any], step_record: dict[str, Any]) -> dict[str, tuple[int, int]] | None:
         config = step_config(step_record)
+        key = str(step_record.get("key") or "")
+        # General Auto Development performs its own direct-edit diff validation
+        # inside build/generate_tests.  The outer step-level snapshot can be
+        # misleading on retries where already-satisfied tasks are skipped, so do
+        # not force a second project-diff gate here.
+        if str(run.get("workflow_id") or "") == "general-auto-development" and key in {"build", "generate_tests"}:
+            return None
         require_changes = bool_config(config, "requireProjectChanges", False) or bool_config(config, "projectDiffGate", False)
         if not require_changes:
             return None

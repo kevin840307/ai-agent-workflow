@@ -351,6 +351,23 @@ def _file_block_paths(text: str) -> list[str]:
     return sorted(set(re.findall(r"^FILE:\s*(.+?)\s*$", text or "", flags=re.MULTILINE)))
 
 
+def _direct_state_paths(output_dir: Path, phase: str) -> list[str]:
+    paths: set[str] = set()
+    for state_path in (output_dir / "tasks").glob(f"*/{phase}-state.json"):
+        try:
+            data = json.loads(state_path.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        for item in data.get("files") or []:
+            if isinstance(item, dict) and str(item.get("path") or "").strip():
+                paths.add(str(item.get("path")).replace("\\", "/"))
+    return sorted(paths)
+
+
+def _has_direct_edit_summary(text: str) -> bool:
+    return "Direct Agent Edits" in (text or "") or "directly. The platform recorded this summary" in (text or "")
+
+
 def _git_output(project_dir: Path, args: list[str], *, timeout: float = 5.0) -> str:
     try:
         proc = subprocess.run(
@@ -375,13 +392,15 @@ def _diff_context(ctx: WorkflowFunctionContext, build_result: str, test_plan: st
     git_stat = _git_output(project_dir, ["diff", "--stat"])
     git_diff = _git_output(project_dir, ["diff", "--", "."], timeout=8.0)
     file_block_changed = sorted(set(_file_block_paths(build_result) + _file_block_paths(test_plan)))
-    changed_files = [line.strip() for line in git_changed.splitlines() if line.strip()] or file_block_changed
+    direct_state_changed = sorted(set(_direct_state_paths(ctx.output_dir, "build") + _direct_state_paths(ctx.output_dir, "generate_tests")))
+    changed_files = [line.strip() for line in git_changed.splitlines() if line.strip()] or file_block_changed or direct_state_changed
     diff_context = {
         "changed_files": changed_files,
         "git_diff_available": bool(git_changed or git_stat or git_diff),
         "git_stat": git_stat,
         "git_diff_excerpt": git_diff[:12000],
         "file_block_paths": file_block_changed,
+        "direct_state_paths": direct_state_changed,
     }
     lines = [
         "# Diff Context",
@@ -393,12 +412,12 @@ def _diff_context(ctx: WorkflowFunctionContext, build_result: str, test_plan: st
         "",
         "## Git Diff Stat",
         "```text",
-        git_stat or "No git diff stat available. Using FILE block paths as fallback evidence.",
+        git_stat or "No git diff stat available. Using direct-edit state or FILE block paths as fallback evidence.",
         "```",
         "",
         "## Git Diff Excerpt",
         "```diff",
-        git_diff[:12000] or "No git diff available. The project may not be a git repository, or changes may come from generated FILE block evidence.",
+        git_diff[:12000] or "No git diff available. The project may not be a git repository, or changes may come from direct-edit state / generated FILE block evidence.",
         "```",
         "",
     ]
@@ -447,12 +466,12 @@ def validate_general_auto_final(ctx: WorkflowFunctionContext, artifact: str = "f
             "evidence": "output/workflow-instance-validation.md",
         },
         "build_artifact": {
-            "status": "PASS" if ("FILE:" in build_result and "CONTENT:" in build_result and "END_FILE" in build_result) else "FAIL",
-            "evidence": "output/build-result.md",
+            "status": "PASS" if (_has_direct_edit_summary(build_result) or bool(_direct_state_paths(ctx.output_dir, "build"))) else "FAIL",
+            "evidence": "output/build-result.md or output/tasks/*/build-state.json",
         },
         "generated_tests": {
-            "status": "PASS" if ("FILE:" in test_plan and "tests/" in test_plan and "END_FILE" in test_plan) else "FAIL",
-            "evidence": "output/test-plan.md",
+            "status": "PASS" if (_has_direct_edit_summary(test_plan) or bool(_direct_state_paths(ctx.output_dir, "generate_tests"))) else "FAIL",
+            "evidence": "output/test-plan.md or output/tasks/*/generate_tests-state.json",
         },
         "automated_tests": {
             "status": "PASS" if _contains_status_pass(test_result) else "FAIL",
@@ -464,7 +483,7 @@ def validate_general_auto_final(ctx: WorkflowFunctionContext, artifact: str = "f
         },
         "workspace_isolation": {
             "status": "PASS",
-            "evidence": "FILE path safety checks are enforced before materializing Build and Generate Tests outputs.",
+            "evidence": "Project diff safety checks confirm Qwen/OpenCode direct edits stay inside the selected Project Path.",
         },
     }
     failures = [name for name, item in checks.items() if item["status"] != "PASS"]
@@ -476,6 +495,7 @@ def validate_general_auto_final(ctx: WorkflowFunctionContext, artifact: str = "f
             "changed_files": diff_context.get("changed_files", []),
             "git_diff_available": diff_context.get("git_diff_available", False),
             "file_block_paths": diff_context.get("file_block_paths", []),
+            "direct_state_paths": diff_context.get("direct_state_paths", []),
             "artifacts": [
                 "output/task-manifest.md",
                 "output/task-manifest.json",

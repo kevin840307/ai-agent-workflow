@@ -449,14 +449,18 @@ Status: READY
         self.assertEqual(
             keys,
             [
+                "generate_task_prompts",
                 "auto_generation",
                 "ai_review",
                 "run_external_validation",
             ],
         )
+        generation_prompts = next(step for step in workflow["steps"] if step["key"] == "generate_task_prompts")
         generation = next(step for step in workflow["steps"] if step["key"] == "auto_generation")
         review = next(step for step in workflow["steps"] if step["key"] == "ai_review")
         validation = next(step for step in workflow["steps"] if step["key"] == "run_external_validation")
+        self.assertEqual(generation_prompts["type"], "python")
+        self.assertIn("task-manifest.json", generation_prompts["expectedFiles"])
         self.assertEqual(generation["type"], "ai")
         self.assertGreaterEqual(generation["maxRetries"], 20)
         self.assertEqual(review["type"], "review")
@@ -465,6 +469,31 @@ Status: READY
         self.assertEqual(validation["function"], "run_external_validation")
         self.assertEqual(validation["retryFromStepKey"], "auto_generation")
         self.assertFalse(validation["requiresValidationScript"])
+
+    def test_adaptive_generate_task_prompts_writes_manifest_and_scoped_prompts(self) -> None:
+        async def log(_run, _message):
+            return None
+
+        async def refresh(_run_id):
+            return None
+
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp) / "project"
+            workspace = Path(tmp) / "workspace"
+            output = workspace / "output"
+            project.mkdir()
+            (project / "src").mkdir()
+            output.mkdir(parents=True)
+            (workspace / "requirement.md").write_text("用Python建立A+B+C", encoding="utf-8")
+            actions = WorkflowActions(agent_runner=None, functions=None, log=log, refresh_artifacts=refresh)
+
+            asyncio.run(actions.generate_task_prompts_step({"id": "run-1", "workspace": str(workspace), "project_path": str(project), "workflow_id": "adaptive-auto-workflow", "steps": []}))
+
+            manifest = (output / "task-manifest.json").read_text(encoding="utf-8")
+            self.assertIn('"TASK-001"', manifest)
+            self.assertTrue((output / "task-prompts" / "TASK-001.md").is_file())
+            self.assertTrue((output / "todos" / "TASK-001.md").is_file())
+            self.assertIn("AI produces the task manifest", (output / "workflow-instance-validation.md").read_text(encoding="utf-8"))
 
     def test_adaptive_generation_can_materialize_code_and_tests_together(self) -> None:
         class FakeAgentRunner:
@@ -501,17 +530,16 @@ Status: READY
             project.mkdir()
             (workspace / "output").mkdir(parents=True)
             actions = WorkflowActions(agent_runner=FakeAgentRunner(), functions=None, log=log, refresh_artifacts=refresh)
-
-            asyncio.run(
-                actions.adaptive_generation_step(
-                    {
-                        "id": "run-1",
-                        "workspace": str(workspace),
-                        "project_path": str(project),
-                        "steps": [{"key": "python_gate", "config": {"fallbackValidationScripts": ["validation.py"]}}],
-                    }
-                )
-            )
+            run = {
+                "id": "run-1",
+                "workspace": str(workspace),
+                "project_path": str(project),
+                "workflow_id": "adaptive-auto-workflow",
+                "steps": [{"key": "run_external_validation", "config": {"fallbackValidationScripts": ["validation.py"]}}],
+            }
+            (workspace / "requirement.md").write_text("add", encoding="utf-8")
+            asyncio.run(actions.generate_task_prompts_step(run))
+            asyncio.run(actions.adaptive_generation_step(run))
 
             self.assertTrue((project / "src" / "tool.py").is_file())
             self.assertTrue((project / "tests" / "test_tool.py").is_file())
@@ -542,6 +570,161 @@ Status: READY
             result = (output / "external-validation-result.md").read_text(encoding="utf-8")
             self.assertIn("Status: PASS", result)
             self.assertIn("external validation skipped", result)
+
+
+    def test_implementation_review_repairs_under_split_named_deliverables(self) -> None:
+        async def log(_run, _message):
+            return None
+
+        async def refresh(_run_id):
+            return None
+
+        requirement = "用Python幫我建立氣泡排序法+選擇排序法+插入排序法+快速排序法+合併排序法+堆積排序+希爾排序法"
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp) / "project"
+            workspace = Path(tmp) / "workspace"
+            output = workspace / "output"
+            project.mkdir()
+            output.mkdir(parents=True)
+            (workspace / "requirement.md").write_text(requirement, encoding="utf-8")
+            (output / "todo.md").write_text(
+                "# Todo\n\n"
+                "Status: READY\n\n"
+                "## Requirement\n- Implement several requested Python algorithms.\n\n"
+                "## Task Index\n"
+                "| ID | Task | Acceptance Criteria | Depends On |\n"
+                "| --- | --- | --- | --- |\n"
+                "| TASK-001 | 算法实现与测试 | AC-001 | None |\n"
+                "| TASK-002 | 文件输出与整合 | AC-002 | TASK-001 |\n"
+                "| TASK-003 | 手动校验与外部验证 | AC-003 | TASK-002 |\n\n"
+                "## Task Assembly Plan\n- Build order: TASK-001 then TASK-002.\n\n"
+                "## Tasks\n\n"
+                "### TASK-001: 算法实现与测试\n"
+                "- Goal: Implement all algorithms together.\n"
+                "- Acceptance Criteria:\n  - AC-001: algorithms work.\n\n"
+                "### TASK-002: 文件输出与整合\n"
+                "- Acceptance Criteria:\n  - AC-002: output exists.\n\n"
+                "### TASK-003: 手动校验与外部验证\n"
+                "- Acceptance Criteria:\n  - AC-003: validation passes.\n\n"
+                "## Execution SOP\n- Step 1: Build production code only.\n\n"
+                "## Acceptance & Stop Conditions\n- Stop condition: tests and external validation pass.\n\n"
+                "## External Validation\n- If no validation script is configured or found, skip with PASS.\n",
+                encoding="utf-8",
+            )
+            actions = WorkflowActions(agent_runner=None, functions=None, log=log, refresh_artifacts=refresh)
+
+            asyncio.run(actions.implementation_review_step({"id": "run-1", "workspace": str(workspace), "project_path": str(project), "workflow_id": "general-auto-development", "steps": []}))
+
+            repaired = (output / "todo.md").read_text(encoding="utf-8")
+            for item in ["氣泡排序法", "選擇排序法", "插入排序法", "快速排序法", "合併排序法", "堆積排序", "希爾排序法"]:
+                with self.subTest(item=item):
+                    self.assertIn(item, repaired)
+            manifest = (output / "task-manifest.md").read_text(encoding="utf-8")
+            self.assertGreaterEqual(manifest.count("[owner=build]"), 7)
+            review = (output / "implementation-review.md").read_text(encoding="utf-8")
+            self.assertIn("under-split", review)
+            self.assertTrue((output / "todos" / "TASK-001.md").is_file())
+            self.assertTrue((output / "todos" / "TASK-007.md").is_file())
+
+    def test_build_task_loop_preserves_previous_task_markers_when_later_task_overwrites(self) -> None:
+        class FakeAgentRunner:
+            async def run(self, run, step_key, prompt_name, artifact, **_kwargs):
+                task_id = run.get("_current_task", {}).get("id")
+                if task_id == "TASK-001":
+                    text = "FILE: sort.py\nCONTENT:\ndef bubble_sort(items):\n    return items\nEND_FILE\n"
+                else:
+                    text = "FILE: sort.py\nCONTENT:\ndef selection_sort(items):\n    return items\nEND_FILE\n"
+                output = Path(run["workspace"]) / "output"
+                (output / artifact).parent.mkdir(parents=True, exist_ok=True)
+                (output / artifact).write_text(text, encoding="utf-8")
+                return text
+
+        async def log(_run, _message):
+            return None
+
+        async def refresh(_run_id):
+            return None
+
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp) / "project"
+            workspace = Path(tmp) / "workspace"
+            output = workspace / "output"
+            project.mkdir()
+            (workspace / "input").mkdir(parents=True)
+            output.mkdir(parents=True)
+            (workspace / "requirement.md").write_text("Build two sorting functions", encoding="utf-8")
+            (output / "task-manifest.md").write_text(
+                "# Task Manifest\n\nStatus: READY\n\n## Small Task Order\n"
+                "1. TASK-001 [owner=build]: Add bubble sort\n"
+                "2. TASK-002 [owner=build]: Add selection sort\n",
+                encoding="utf-8",
+            )
+            actions = WorkflowActions(agent_runner=FakeAgentRunner(), functions=None, log=log, refresh_artifacts=refresh)
+
+            asyncio.run(actions.build_step({"id": "run-1", "workspace": str(workspace), "project_path": str(project), "workflow_id": "general-auto-development", "steps": []}))
+
+            materialized = (project / "sort.py").read_text(encoding="utf-8")
+            self.assertIn("def bubble_sort", materialized)
+            self.assertIn("def selection_sort", materialized)
+
+    def test_build_task_loop_skips_satisfied_previous_task_when_later_task_has_feedback(self) -> None:
+        calls: list[str] = []
+
+        class FakeAgentRunner:
+            async def run(self, run, step_key, prompt_name, artifact, **_kwargs):
+                task_id = run.get("_current_task", {}).get("id")
+                calls.append(task_id)
+                text = (
+                    "FILE: sort.py\n"
+                    "CONTENT:\n"
+                    "def bubble_sort(items):\n"
+                    "    return items\n\n"
+                    "def selection_sort(items):\n"
+                    "    return items\n"
+                    "END_FILE\n"
+                )
+                output = Path(run["workspace"]) / "output"
+                (output / artifact).parent.mkdir(parents=True, exist_ok=True)
+                (output / artifact).write_text(text, encoding="utf-8")
+                return text
+
+        async def log(_run, _message):
+            return None
+
+        async def refresh(_run_id):
+            return None
+
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp) / "project"
+            workspace = Path(tmp) / "workspace"
+            output = workspace / "output"
+            project.mkdir()
+            (workspace / "input").mkdir(parents=True)
+            output.mkdir(parents=True)
+            (output / "tasks" / "TASK-001").mkdir(parents=True)
+            (workspace / "requirement.md").write_text("Build two sorting functions", encoding="utf-8")
+            (workspace / "input" / "failure-feedback.md").write_text(
+                "## Retry Feedback for build\n\nError message to fix:\n\nbuild task TASK-001 had an old transient failure.\n\n"
+                "## Retry Feedback for build\n\nError message to fix:\n\nbuild task TASK-002 failed.\n",
+                encoding="utf-8",
+            )
+            (project / "sort.py").write_text("def bubble_sort(items):\n    return items\n", encoding="utf-8")
+            (output / "tasks" / "TASK-001" / "build-result.md").write_text(
+                "FILE: sort.py\nCONTENT:\ndef bubble_sort(items):\n    return items\nEND_FILE\n",
+                encoding="utf-8",
+            )
+            (output / "task-manifest.md").write_text(
+                "# Task Manifest\n\nStatus: READY\n\n## Small Task Order\n"
+                "1. TASK-001 [owner=build]: Add bubble sort\n"
+                "2. TASK-002 [owner=build]: Add selection sort\n",
+                encoding="utf-8",
+            )
+            actions = WorkflowActions(agent_runner=FakeAgentRunner(), functions=None, log=log, refresh_artifacts=refresh)
+
+            asyncio.run(actions.build_step({"id": "run-1", "workspace": str(workspace), "project_path": str(project), "workflow_id": "general-auto-development", "steps": []}))
+
+            self.assertEqual(calls, ["TASK-002"])
+            self.assertIn("selection_sort", (project / "sort.py").read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":

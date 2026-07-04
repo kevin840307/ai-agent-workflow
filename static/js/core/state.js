@@ -1,4 +1,4 @@
-import { LocalStore, StorageKeys } from "./storage.js?v=20260704-metadata1";
+import { LocalStore, StorageKeys } from "./storage.js?v=20260704-direct-edit-gad";
 
 export const AppState = {
   sessions: [],
@@ -20,4 +20,5 @@ export const AppState = {
   workflows: [],
   selectedWorkflowId: LocalStore.getString(StorageKeys.selectedWorkflowId, "system-controlled-qwen") || "system-controlled-qwen",
   validationScript: "",
+  workflowActivity: null,
 };

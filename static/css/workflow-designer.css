@@ -199,15 +199,17 @@ body[data-page="workflow-designer"] {
 
 .designer-action-group {
   display: inline-flex;
-  align-items: center;
+  align-items: stretch;
   gap: 0;
-  border: 1px solid var(--line);
+  border: 0;
   border-radius: var(--radius-md);
   overflow: hidden;
-  background: var(--panel);
+  background: color-mix(in srgb, var(--panel) 88%, var(--accent-soft));
+  box-shadow: inset 0 0 0 1px var(--line);
 }
 
-.designer-topbar-actions .designer-action-group button {
+.designer-topbar-actions .designer-action-group button,
+.designer-topbar-actions .designer-action-group .designer-button-link {
   margin: 0;
   border: 0;
   border-radius: 0;
@@ -215,18 +217,29 @@ body[data-page="workflow-designer"] {
   box-shadow: none;
 }
 
-.designer-topbar-actions .designer-action-group button:first-child {
+.designer-topbar-actions .designer-action-group > :first-child {
   border-top-left-radius: var(--radius-md);
   border-bottom-left-radius: var(--radius-md);
 }
 
-.designer-topbar-actions .designer-action-group button:last-child {
+.designer-topbar-actions .designer-action-group > :last-child {
   border-top-right-radius: var(--radius-md);
   border-bottom-right-radius: var(--radius-md);
 }
 
-.designer-topbar-actions .designer-action-group button + button {
-  border-left: 1px solid var(--line);
+.designer-topbar-actions .designer-action-group > * + * {
+  border-left: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+}
+
+.designer-topbar-actions .designer-action-group .designer-button-link {
+  background: transparent;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.designer-topbar-actions .designer-action-group .designer-button-link:hover {
+  background: color-mix(in srgb, var(--accent-soft) 70%, transparent);
+  color: var(--accent-strong);
 }
 
 .designer-topbar-actions .designer-action-group .primary {
@@ -2627,6 +2640,15 @@ body[data-page="workflow-designer"] .designer-step-card-compact.python-card { bo
   line-height: 1;
 }
 
+.designer-step-floating-actions .designer-action-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 1em;
+  height: 1em;
+  font-size: 17px;
+  line-height: 1;
+}
+
 .designer-step-floating-actions .designer-action-toggle {
   width: 46px;
   height: 46px;
@@ -3894,5 +3916,94 @@ body[data-page="ai-workflow-assets"] .assets-page-manager .designer-asset-editor
   body[data-page="ai-workflow-assets"] .assets-page-manager .designer-asset-list,
   body[data-page="ai-workflow-assets"] .assets-page-manager .designer-asset-editor-surface {
     min-height: 420px;
+  }
+}
+
+
+/* Workflow sidebar: keep System and Custom in one shared vertical scroll area. */
+body[data-page="workflow-designer"] .designer-sidebar {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  min-height: 0;
+  overflow: hidden;
+}
+
+body[data-page="workflow-designer"] .designer-brand-block,
+body[data-page="workflow-designer"] .designer-nav {
+  flex: 0 0 auto;
+}
+
+body[data-page="workflow-designer"] .designer-workflow-list-scroll {
+  flex: 1 1 0;
+  min-height: 0;
+  max-height: none;
+  max-width: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: block;
+  padding-right: 2px;
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
+}
+
+body[data-page="workflow-designer"] .designer-workflow-list-scroll .designer-sidebar-section {
+  margin-top: 0;
+}
+
+body[data-page="workflow-designer"] .designer-workflow-list-scroll .designer-sidebar-section + .designer-sidebar-section {
+  margin-top: 16px;
+  padding-top: 2px;
+}
+
+body[data-page="workflow-designer"] .designer-custom-list,
+body[data-page="workflow-designer"] .designer-system-list {
+  min-height: 0;
+  max-width: 100%;
+  overflow: visible;
+  padding-right: 0;
+}
+
+body[data-page="workflow-designer"] .designer-workflow-pill {
+  display: flex;
+  align-items: center;
+  min-height: 40px;
+  max-width: 100%;
+  min-width: 0;
+  gap: 0;
+  overflow: hidden;
+}
+
+body[data-page="workflow-designer"] .designer-workflow-pill strong {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body[data-page="workflow-designer"] .designer-workflow-pill span,
+body[data-page="workflow-designer"] .designer-workflow-pill .designer-workflow-pill-description {
+  display: none;
+}
+
+body.projects-collapsed .designer-workflow-list-scroll {
+  display: none;
+}
+
+@media (max-width: 920px) {
+  body[data-page="workflow-designer"] .designer-shell {
+    height: auto;
+    min-height: 100vh;
+    grid-template-columns: 1fr;
+  }
+
+  body[data-page="workflow-designer"] .designer-sidebar {
+    height: auto;
+    max-height: min(56vh, 520px);
+  }
+
+  body[data-page="workflow-designer"] .designer-workflow-list-scroll {
+    max-height: calc(min(56vh, 520px) - 130px);
   }
 }
