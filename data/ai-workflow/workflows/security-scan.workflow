@@ -3,10 +3,10 @@ name: Security Vulnerability Scan
 description: Compact multi-agent AI security scan. Python collects a security manifest,
   runs internal consensus Qwen agents with validation/retry in one visible step, combines
   findings, generates and validates the final report, then finalizes artifacts.
-kind: custom
-active: false
-protected: false
-deletable: true
+kind: system
+active: true
+protected: true
+deletable: false
 skillRoot: ~/.qwen/skills
 promptRoot: steps/
 created_at: '2026-06-28T00:00:00+00:00'

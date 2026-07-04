@@ -1,10 +1,10 @@
 id: general-auto-development
 name: General Auto Development
 description: Read the selected project, plan a small task breakdown, build production changes first, generate focused tests, run tests, and run project-provided Python validation before final review.
-kind: custom
-active: false
-protected: false
-deletable: true
+kind: system
+active: true
+protected: true
+deletable: false
 skillRoot: .ai-workflow
 promptRoot: steps/
 created_at: '2026-07-02T00:00:00+08:00'
