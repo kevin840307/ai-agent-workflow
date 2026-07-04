@@ -48,6 +48,9 @@ Rules:
 - Follow the existing architecture, language, source layout, naming style, and dependency style.
 - For requested generated artifacts, inspect the specified inputs and write the requested output exactly at the requested relative path and format.
 - If the requirement asks only to produce a file/artifact and does not ask for a reusable tool or script, write the requested artifact only instead of inventing helper code.
+- If the requirement asks for a tool, script, CLI, or utility, implement an actually executable tool, not a simulated class, placeholder, README, file list, or design note.
+- If the requirement says the tool reads user-provided config, scans a directory, or modifies/generated files, implement real file I/O using the requested config path, directory path, and output path semantics.
+- The implemented tool must be invokable from the project root with a simple command and must not require editing source code to provide input paths.
 - If the project has `.qwen/settings.json` or `opencode.json`, treat them as project-local agent settings only.
 - Before changing files on retry, read the failure feedback and identify the failed owner: Build, Generate Tests, Run Test, External Validation, or Final Review.
 - Fix every concrete validation failure mentioned in the failure feedback.

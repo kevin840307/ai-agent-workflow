@@ -35,6 +35,8 @@ Planning rules:
 - Define explicit stop conditions: the workflow is done only when Build produced project changes, automated tests pass, external validation passes or is intentionally skipped, and final review is PASS.
 - Build production changes before Generate Tests so the model does not mix test blocks into Build.
 - For any requested generated artifact, include the source inputs, output path, expected format, and verification method in the plan.
+- For any requested tool or script, include the executable entry point, supported invocation, input config path(s), scanned directory path(s), and output path(s).
+- If the user says the tool must read user-provided config or scan files, plan real file I/O and a CLI-compatible interface. Do not plan simulated in-memory examples.
 - Treat configured validation scripts as protected acceptance tools when they already exist or are provided for this run.
 - Do not list a validation script under task Files or ask Build to modify it unless the user explicitly asks to create or change that validator itself.
 - Include a focused automated test strategy after Build and before external validation.

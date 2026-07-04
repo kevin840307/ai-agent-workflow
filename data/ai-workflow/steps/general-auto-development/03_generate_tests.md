@@ -46,6 +46,7 @@ Rules:
 - Test files must be named tests/test_*.py or tests/conftest.py.
 - Import production code from actual existing module paths shown in Project Profile / Architecture / Build result.
 - For file-output or generated-artifact tasks, tests should verify the output exists and matches the requested behavior without modifying production or data files.
+- For tool, script, CLI, or utility tasks, tests should invoke the real entry point or function against temporary/project files and verify real output files or side effects.
 - Keep tests separate from production code.
 - Do not create or modify production files.
 - You may use read-only context from outside Project path, but generated test files must stay inside this Project path.

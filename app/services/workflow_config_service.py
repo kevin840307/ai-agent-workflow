@@ -277,6 +277,7 @@ def _contract_from_step(workflow_id: str, step: dict) -> dict[str, Any]:
         "stopAfterFailures": int(item.get("stopAfterFailures") or 3),
         "allowInteraction": bool(item.get("allowInteraction", True)),
         "requiresValidationScript": bool(item.get("requiresValidationScript", False)),
+        "fallbackValidationScripts": item.get("fallbackValidationScripts") or [],
         "thinking": bool(item.get("thinking", False)),
         "approvalRequired": bool(item.get("approvalRequired", False)),
         "pauseAfterStep": bool(item.get("pauseAfterStep", False)),
