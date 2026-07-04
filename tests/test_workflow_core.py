@@ -375,6 +375,79 @@ class WorkflowCoreTests(unittest.TestCase):
             review = (output / "implementation-review.md").read_text(encoding="utf-8")
             self.assertIn("validation scripts", review)
 
+    def test_general_auto_development_compiles_split_task_todo_files(self) -> None:
+        async def log(_run, _message):
+            return None
+
+        async def refresh(_run_id):
+            return None
+
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp) / "project"
+            workspace = Path(tmp) / "workspace"
+            output = workspace / "output"
+            project.mkdir()
+            output.mkdir(parents=True)
+            (workspace / "requirement.md").write_text("Add config helper", encoding="utf-8")
+            (output / "todo.md").write_text(
+                "# Todo\n\n"
+                "Status: READY\n\n"
+                "## Requirement\n- Add config helper.\n\n"
+                "## Task Index\n"
+                "| ID | Task | Acceptance Criteria | Depends On |\n"
+                "| --- | --- | --- | --- |\n"
+                "| TASK-001 | Add loader | AC-001 | None |\n"
+                "| TASK-002 | Add saver | AC-002 | TASK-001 |\n\n"
+                "## Task Assembly Plan\n- Build order: TASK-001 then TASK-002.\n\n"
+                "## Tasks\n\n"
+                "### TASK-001: Add loader\n"
+                "- Goal: Implement load_config.\n"
+                "- Acceptance Criteria:\n  - AC-001: load_config reads JSON.\n\n"
+                "### TASK-002: Add saver\n"
+                "- Goal: Implement save_config.\n"
+                "- Acceptance Criteria:\n  - AC-002: save_config writes JSON.\n\n"
+                "## Execution SOP\n- Step 1: Build production code only.\n\n"
+                "## Acceptance & Stop Conditions\n- Stop condition: tests and external validation pass.\n\n"
+                "## External Validation\n- If no validation script is configured or found, skip with PASS.\n",
+                encoding="utf-8",
+            )
+            actions = WorkflowActions(agent_runner=None, functions=None, log=log, refresh_artifacts=refresh)
+
+            asyncio.run(actions.implementation_review_step({"id": "run-1", "workspace": str(workspace), "project_path": str(project), "workflow_id": "general-auto-development", "steps": []}))
+
+            task1 = output / "todos" / "TASK-001.md"
+            task2 = output / "todos" / "TASK-002.md"
+            self.assertTrue(task1.is_file())
+            self.assertTrue(task2.is_file())
+            self.assertIn("Add loader", task1.read_text(encoding="utf-8"))
+            self.assertIn("Add saver", task2.read_text(encoding="utf-8"))
+            self.assertIn("output/todos/TASK-001.md", (output / "todos" / "INDEX.md").read_text(encoding="utf-8"))
+            self.assertIn("output/todos/TASK-xxx.md", (output / "implementation-review.md").read_text(encoding="utf-8"))
+
+    def test_adaptive_auto_workflow_loads_simple_review_loop(self) -> None:
+        workflow = workflow_asset_service.load_workflow_asset("adaptive-auto-workflow")
+        keys = [step["key"] for step in workflow["steps"]]
+        self.assertEqual(
+            keys,
+            [
+                "prepare_project",
+                "plan_tasks",
+                "implementation_review",
+                "build",
+                "sub_agent_review",
+                "generate_tests",
+                "run_test",
+                "run_external_validation",
+                "final_review",
+                "final_gate",
+            ],
+        )
+        review = next(step for step in workflow["steps"] if step["key"] == "sub_agent_review")
+        self.assertEqual(review["type"], "review")
+        self.assertEqual(review["reviewMode"], "multi_agent")
+        self.assertEqual(review["retryFromStepKey"], "build")
+        self.assertGreaterEqual(len(review.get("reviewers") or []), 3)
+
 
 if __name__ == "__main__":
     unittest.main()

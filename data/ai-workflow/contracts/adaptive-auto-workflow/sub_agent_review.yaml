@@ -1,0 +1,45 @@
+id: sub_agent_review
+key: sub_agent_review
+name: N Sub-Agent Review
+description: Run N reviewer agents after Do Task. If reviewers find concrete problems, retry from Do Task with feedback.
+enabled: true
+type: review
+skill: steps/adaptive-auto-workflow/04_sub_agent_review.md
+command: ''
+agent: qwen
+outputs:
+- sub-agent-review.md
+function: ''
+retry: 3
+failAction: selected_step
+retryFromStepKey: build
+keepSameSession: false
+injectFailureFeedback: true
+stopAfterFailures: 3
+allowInteraction: false
+thinking: true
+approvalRequired: false
+pauseAfterStep: false
+approvalMessage: ''
+timeoutEnabled: true
+timeoutMinutes: 3.0
+reviewMode: multi_agent
+reviewers:
+- agent: qwen
+  prompt: steps/adaptive-auto-workflow/04_sub_agent_review.md
+  weight: 1
+- agent: qwen
+  prompt: steps/adaptive-auto-workflow/04_sub_agent_review.md
+  weight: 1
+- agent: qwen
+  prompt: steps/adaptive-auto-workflow/04_sub_agent_review.md
+  weight: 1
+confidenceThreshold: 0.7
+passKeywords: PASS, APPROVED
+failKeywords: FAIL, BLOCKED, RISK
+aggregatorFunction: majority_vote
+sources:
+- type: skill_path
+  value: code-review
+agentOptions: {}
+path: contracts/adaptive-auto-workflow/sub_agent_review.yaml

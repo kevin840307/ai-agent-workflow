@@ -1,0 +1,39 @@
+id: final_gate
+key: final_gate
+name: Final Gate
+description: 'Require final-review.md to contain Status: PASS.'
+enabled: true
+type: gate
+skill: steps/adaptive-auto-workflow/06_final_gate.md
+command: ''
+agent: qwen
+outputs:
+- final-review.md
+retry: 99
+failAction: selected_step
+retryFromStepKey: final_review
+keepSameSession: true
+injectFailureFeedback: true
+stopAfterFailures: 3
+allowInteraction: false
+requiresValidationScript: false
+thinking: false
+approvalRequired: false
+pauseAfterStep: false
+approvalMessage: ''
+timeoutMinutes: 0.0
+timeoutEnabled: false
+reviewMode: none
+reviewers: []
+confidenceThreshold: 0.75
+passKeywords: PASS, APPROVED
+failKeywords: FAIL, BLOCKED
+aggregatorFunction: ''
+sources: []
+agentOptions: {}
+path: contracts/adaptive-auto-workflow/final_gate.yaml
+function: require_status_pass
+timeout: 0.0
+functions:
+- require_status_pass
+approval: false

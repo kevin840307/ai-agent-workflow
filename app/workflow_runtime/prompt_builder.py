@@ -176,6 +176,7 @@ class PromptBuilder:
         if not isinstance(current_task, dict):
             current_task = {}
         current_task_block = ""
+        current_task_todo = ""
         if current_task:
             current_task_block = "\n".join(
                 [
@@ -184,8 +185,13 @@ class PromptBuilder:
                     f"Task Index: {current_task.get('index', '')}/{current_task.get('total', '')}",
                     f"Task Owner Step: {current_task.get('owner', '')}",
                     f"Task Phase: {current_task.get('phase', '')}",
+                    f"Task TODO File: {current_task.get('todo_path', '')}",
                 ]
             ).strip()
+            task_id = str(current_task.get("id") or "").strip()
+            safe_task_id = "".join(ch if ch.isalnum() or ch in {"_", ".", "-"} else "-" for ch in task_id)
+            if safe_task_id:
+                current_task_todo = read_text(output_dir / "todos" / f"{safe_task_id}.md")
         return {
             "requirement": requirement,
             "architecture": architecture,
@@ -196,14 +202,8 @@ class PromptBuilder:
             "spec_review": read_text(output_dir / "spec-review.md"),
             "todo": read_text(output_dir / "todo.md"),
             "task_manifest": read_text(output_dir / "task-manifest.md"),
-            "task_manifest_json": read_text(output_dir / "task-manifest.json"),
-            "workflow_instance": read_text(output_dir / "generated-workflow-instance.json"),
-            "workflow_instance_validation": read_text(output_dir / "workflow-instance-validation.md"),
-            "workflow_run_trace": read_text(output_dir / "workflow-run-trace.md"),
-            "request_intent": read_text(Path(run["workspace"]) / "input" / "request-intent.json"),
-            "user_instructions": read_text(Path(run["workspace"]) / "input" / "user-instructions.normalized.json"),
-            "architecture_contract": read_text(output_dir / "architecture-contract.json"),
             "current_task": current_task_block,
+            "current_task_todo": current_task_todo,
             "current_task_id": str(current_task.get("id") or ""),
             "current_task_title": str(current_task.get("title") or ""),
             "current_task_owner": str(current_task.get("owner") or ""),

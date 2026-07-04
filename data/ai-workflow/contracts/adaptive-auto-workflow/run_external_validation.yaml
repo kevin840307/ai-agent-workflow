@@ -1,0 +1,45 @@
+id: run_external_validation
+key: run_external_validation
+name: Run External Validation
+description: Run the project validation script when configured or present. If no
+  validation script is required or found, record a skipped PASS result.
+enabled: true
+type: python
+skill: steps/adaptive-auto-workflow/04_run_external_validation.md
+command: ''
+agent: qwen
+outputs:
+- external-validation-result.md
+retry: 99
+failAction: selected_step
+retryFromStepKey: build
+keepSameSession: true
+injectFailureFeedback: true
+stopAfterFailures: 3
+allowInteraction: false
+requiresValidationScript: true
+fallbackValidationScripts:
+- validation.py
+- validate.py
+- verify.py
+- check.py
+thinking: false
+approvalRequired: false
+pauseAfterStep: false
+approvalMessage: ''
+timeoutMinutes: 0.0
+timeoutEnabled: false
+reviewMode: none
+reviewers: []
+confidenceThreshold: 0.75
+passKeywords: PASS, APPROVED
+failKeywords: FAIL, BLOCKED
+aggregatorFunction: ''
+sources: []
+agentOptions: {}
+path: contracts/adaptive-auto-workflow/run_external_validation.yaml
+function: run_external_validation
+timeout: 0.0
+functions:
+- run_external_validation
+approval: false

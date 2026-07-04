@@ -80,22 +80,12 @@ Not allowed:
 
 ## Web UI
 
-`General Auto Development` supports a run-specific validation script through the step-side field.
-The field is shown because the workflow's `Run External Validation` step has `Requires Validation Script` enabled.
-
 1. Open the runner page.
 2. Select a project.
 3. Select `General Auto Development`.
 4. Enter the user requirement.
-5. In the workflow step preview, find `Run External Validation`.
-6. Fill the step-side `Validation Script` field with a Python validation script path, for example `tools/check_config.py`.
-7. Press `Run`.
-
-Designer setup note:
-
-- The field appears only when at least one enabled step has `Requires Validation Script` checked.
-- For `General Auto Development`, this should be checked on the `Run External Validation` step.
-- Do not add a global composer-level validation field; keep the field tied to the step requirement.
+5. In the workflow preview, the `Run External Validation` step shows `Validation Script` because it has `Requires Validation Script` enabled. Fill a Python validation script path when you want a run-specific validator.
+6. Press `Run`.
 
 Validation script examples:
 
@@ -474,3 +464,57 @@ run_test FAIL
 ```
 
 Hard safety failures such as unsafe write paths are still blocked by the workspace guard.
+
+## Split Task TODO Files
+
+`todo.md` is the human-readable plan, but Build does not have to rely on the full file as one large prompt.
+After `implementation_review`, Python compiles the plan into scoped task TODO files:
+
+```text
+output/todos/INDEX.md
+output/todos/TASK-001.md
+output/todos/TASK-002.md
+output/todos/TASK-003.md
+```
+
+Each `TASK-xxx.md` contains only the active small task scope, acceptance criteria, hard rules, and completion evidence for that task.
+During the per-task loop:
+
+```text
+Build TASK-001 -> reads output/todos/TASK-001.md
+Build TASK-002 -> reads output/todos/TASK-002.md
+Generate Tests TASK-001 -> reads output/todos/TASK-001.md
+Generate Tests TASK-002 -> reads output/todos/TASK-002.md
+```
+
+This makes the TODO more enforceable for small/local models because the active Build prompt receives one task TODO at a time instead of the whole plan.
+The hard guarantees still come from Python guards, tests, external validation, and `verifier-report.json`; the task TODO files are scoped execution instructions, not self-approval.
+
+## Adaptive Auto Workflow
+
+Workflow id:
+
+```text
+adaptive-auto-workflow
+```
+
+This is the simplified automatic loop version:
+
+```text
+User requirement
+→ Auto Create Todo
+→ Compile Todo Files
+→ Do Task
+→ N Sub-Agent Review
+→ retry Do Task when reviewers report concrete problems
+→ Generate Tests
+→ Run Test
+→ Run External Validation
+→ Evidence Verifier
+→ Final Gate
+```
+
+Use it when the user wants a very simple automatic loop that can handle different task types without designing a custom workflow each time.
+The `N Sub-Agent Review` step is configured as a multi-agent review with three reviewers by default. If reviewers return `Status: FAIL`, the workflow writes failure feedback and retries from `build`.
+
+`General Auto Development` remains the more explicit engineering workflow. `Adaptive Auto Workflow` is the simpler loop-oriented workflow.

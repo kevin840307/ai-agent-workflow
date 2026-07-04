@@ -299,27 +299,27 @@ Important constraints:
 - Retry feedback is classified so small/local models can repair with a new strategy without stopping too early.
 
 
+## Split Task TODO Execution
 
-## Adaptive Auto Workflow Orchestrator
-
-The project now has a run-local auto workflow layer for acceptance-driven development. It keeps the visible workflow simple while compiling the user's request into deterministic artifacts that the Python runtime can verify.
+General Auto Development and Adaptive Auto Workflow now use a split TODO execution model.
+The planning step writes a human-readable `output/todo.md`. The deterministic Python implementation review then compiles it into:
 
 ```text
-User Request
-→ Request Intent (`input/request-intent.json`)
-→ Normalized User Instructions (`input/user-instructions.normalized.json`)
-→ Project Index (`output/project-index.md`)
-→ Architecture Contract (`output/architecture-contract.json`)
-→ AI Todo (`output/todo.md`)
-→ Python Task Manifest (`output/task-manifest.json`)
-→ Python Workflow Instance (`output/generated-workflow-instance.json`)
-→ Workflow Instance Validation (`output/workflow-instance-validation.md`)
-→ Per-task Build / Generate Tests loops
-→ Assembly Test / External Validation
-→ Evidence Verifier (`output/verifier-report.json`)
-→ Diff Review / Final Gate
+output/task-manifest.md
+output/todos/INDEX.md
+output/todos/TASK-001.md
+output/todos/TASK-002.md
+...
 ```
 
-The AI is allowed to propose task plans. It is not allowed to invent executable workflow step types. Python validates `task-manifest.json`, compiles `generated-workflow-instance.json`, runs only allowlisted step behavior, and decides final PASS / FAIL from evidence.
+The runtime passes the current `TASK-xxx.md` into the Build and Generate Tests prompts as `{{current_task_todo}}`, so each per-task loop focuses on one small task instead of the full plan.
 
-Use `adaptive-auto-workflow` for the explicit auto workflow path. `general-auto-development` also benefits from the same task manifest and verifier artifacts for backward compatibility.
+## Adaptive Auto Workflow
+
+`adaptive-auto-workflow` is the simplified loop-oriented workflow:
+
+```text
+User requirement -> auto TODO -> do task -> N sub-agent review -> retry build on review failure -> tests -> external validation -> evidence verifier -> final gate
+```
+
+It reuses the existing safe Build, Generate Tests, Python validation, retry feedback, and final verifier behavior, but replaces the separate diff review with a direct multi-agent task review step that loops back to Build when concrete problems are found.

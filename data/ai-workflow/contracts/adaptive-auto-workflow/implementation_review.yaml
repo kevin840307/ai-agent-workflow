@@ -1,0 +1,34 @@
+id: implementation_review
+key: implementation_review
+name: Compile Todo Files
+description: Compile todo.md into task-manifest.md and output/todos/TASK-xxx.md files.
+enabled: true
+type: python
+skill: steps/adaptive-auto-workflow/02_implementation_review.md
+command: ''
+agent: qwen
+outputs:
+- implementation-review.md
+- task-manifest.md
+function: 
+retry: 0
+failAction: selected_step
+retryFromStepKey: plan_tasks
+keepSameSession: true
+injectFailureFeedback: true
+stopAfterFailures: 3
+allowInteraction: false
+thinking: false
+approvalRequired: false
+pauseAfterStep: false
+approvalMessage: ''
+timeoutEnabled: false
+timeoutMinutes: 0.0
+reviewMode: none
+confidenceThreshold: 0.75
+passKeywords: PASS, APPROVED
+failKeywords: FAIL, BLOCKED
+aggregatorFunction: ''
+sources: []
+agentOptions: {}
+path: contracts/adaptive-auto-workflow/implementation_review.yaml
