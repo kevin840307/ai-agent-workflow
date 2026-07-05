@@ -11,7 +11,9 @@ from app.runtime_modules.files import (
     apply_extracted_files,
     extract_build_files,
     files_from_changed_snapshot,
+    project_content_snapshot,
     project_profile,
+    restore_project_content_snapshot,
     requirement_has_actionable_signal,
     should_ask_for_spec_input,
     spec_input_questions,
@@ -19,6 +21,7 @@ from app.runtime_modules.files import (
     build_validation_script_pytest_wrapper,
     validate_build_files_are_not_tests,
     validate_build_files_do_not_overwrite_validation_scripts,
+    validate_generated_code_files_are_clean,
     validate_generated_test_files,
     validate_test_code_is_separate,
 )
@@ -48,6 +51,21 @@ END_FILE
             validate_generated_test_files([("app/test_main.py", "def test_x(): pass\n")])
         with self.assertRaises(WorkflowError):
             validate_build_files_are_not_tests([("tests/test_main.py", "def test_x(): pass\n")])
+
+    def test_project_content_snapshot_restores_modified_and_new_files(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp)
+            (project / "src").mkdir()
+            (project / "src" / "tool.py").write_text("VALUE = 1\n", encoding="utf-8")
+
+            snapshot = project_content_snapshot(project)
+            (project / "src" / "tool.py").write_text("VALUE = 2\n", encoding="utf-8")
+            (project / "src" / "bad.py").write_text("BROKEN = True\n", encoding="utf-8")
+
+            restore_project_content_snapshot(project, snapshot)
+
+            self.assertEqual((project / "src" / "tool.py").read_text(encoding="utf-8"), "VALUE = 1\n")
+            self.assertFalse((project / "src" / "bad.py").exists())
 
     def test_extract_build_files_strips_wrapping_code_fences_for_code_files(self) -> None:
         text = """FILE: tests/test_sort.py
@@ -160,6 +178,20 @@ END_FILE
             with self.assertRaisesRegex(WorkflowError, "file block marker leaked into path"):
                 apply_extracted_files(Path(tmp), files)
 
+    def test_project_absolute_file_block_paths_are_normalized_safely(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp) / "project"
+            outside = Path(tmp) / "outside.py"
+            project.mkdir()
+            inside = (project / "src" / "tool.py").resolve()
+
+            written = apply_extracted_files(project, [(str(inside), "def run():\n    return 1\n")])
+
+            self.assertEqual(written, [inside])
+            self.assertTrue((project / "src" / "tool.py").is_file())
+            with self.assertRaisesRegex(WorkflowError, "outside Project Path"):
+                apply_extracted_files(project, [(str(outside.resolve()), "print('bad')\n")])
+
     def test_direct_edit_marker_path_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             project = Path(tmp)
@@ -184,10 +216,25 @@ END_FILE
                     validation_script=str(external_validator),
                 )
 
+            with self.assertRaisesRegex(WorkflowError, "validation scripts"):
+                validate_build_files_do_not_overwrite_validation_scripts(
+                    project,
+                    [("validate_acceptance.py (Treated as read-only acceptance test script provided)", "print('copied validator')\n")],
+                    validation_script=str(external_validator),
+                )
+
     def test_test_code_must_be_separate_from_production_files(self) -> None:
         validate_test_code_is_separate([("tests/test_sorting.py", "def test_sorting():\n    assert True\n")])
+        validate_test_code_is_separate([("project/tests/test_sorting.py", "def test_sorting():\n    assert True\n")])
         with self.assertRaisesRegex(WorkflowError, "test code must be separated"):
             validate_test_code_is_separate([("sorting_algorithms.py", "def test_sorting():\n    assert True\n")])
+
+    def test_generated_python_files_must_be_clean_source(self) -> None:
+        validate_generated_code_files_are_clean([("src/tool.py", "def run():\n    return 1\n")])
+        with self.assertRaisesRegex(WorkflowError, "source code only"):
+            validate_generated_code_files_are_clean([("src/tool.py", "def run():\n    return 1\n\n## Retry Feedback for build\n")])
+        with self.assertRaisesRegex(WorkflowError, "invalid syntax"):
+            validate_generated_code_files_are_clean([("src/tool.py", "def bad(:\n    pass\n")])
 
     def test_extract_build_files_accepts_fenced_code_with_filename_comments(self) -> None:
         text = """# Result
@@ -219,6 +266,8 @@ def test_run():
     def test_validate_generated_test_files_rejects_placeholder_example_tests(self) -> None:
         with self.assertRaisesRegex(WorkflowError, "placeholder example"):
             validate_generated_test_files([("tests/test_example.py", "from example import example\n")])
+        with self.assertRaisesRegex(WorkflowError, "placeholder example"):
+            validate_generated_test_files([("tests/test_sorting.py", "def test_sorting():\n    assert False, 'implementation is incomplete'\n")])
 
     def test_project_profile_detection(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

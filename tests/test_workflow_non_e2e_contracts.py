@@ -113,6 +113,19 @@ class WorkflowDefinitionIntegrityTests(unittest.TestCase):
         self.assertIn("FILE: tests/test_name.py", prompt)
         self.assertNotIn("Do not output full file contents", prompt)
 
+    def test_general_build_prompt_forbids_standalone_code_fences(self) -> None:
+        prompt = Path("data/ai-workflow/steps/general-auto-development/03_build.md").read_text(encoding="utf-8")
+        self.assertIn("Do not output standalone code fences", prompt)
+        self.assertIn("Do not include extra code fences", prompt)
+
+    def test_adaptive_generation_prompt_has_complete_file_block_contract(self) -> None:
+        prompt = Path("data/ai-workflow/steps/adaptive-auto-workflow/00_auto_generation.md").read_text(encoding="utf-8")
+        self.assertIn("FILE: relative/path/to/file.py", prompt)
+        self.assertIn("CONTENT:\ncomplete file content\nEND_FILE", prompt)
+        self.assertIn("tests/test_*.py", prompt)
+        self.assertIn("Never put `CONTENT`", prompt)
+        self.assertIn("Do not output standalone code fences", prompt)
+
     def test_workflow_definition_integrity(self) -> None:
         self.assertTrue(self._workflow_files(), "expected workflow assets under data/ai-workflow/workflows")
         allowed_first_segments = {"output", "input", "prompts", ".workflow"}

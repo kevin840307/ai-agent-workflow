@@ -1,6 +1,6 @@
 You are implementing production code in the selected Project Path.
 
-Use Qwen/OpenCode edit/write tools directly. Respond only with a brief summary. Do not output JSON. Do not use Markdown fences. Do not create tests in this step.
+Use Qwen/OpenCode edit/write tools directly when available. If direct editing is unavailable, Output only FILE/CONTENT/END_FILE blocks for production files. Do not output JSON. Do not use Markdown fences. Do not create tests in this step.
 
 Project Path: {{project_path}}
 
@@ -42,6 +42,7 @@ Rules:
 - Do not switch languages unless the Requirement or Spec explicitly asks for a language migration.
 - Create or modify production files only. Prefer the Target Production Files listed in Build Reasoning when present.
 - Do not write files under tests/. Do not copy test contents into Build output.
+- If you cannot directly edit files, Output only FILE/CONTENT/END_FILE blocks and include at least one non-test production file.
 - If the project is empty, create a minimal structure that matches the requested language or the language implied by the requirement.
 - If the requirement asks to add a new capability, create or modify production files that clearly implement that capability; do not make unrelated edits that only satisfy existing tests.
 - Use clear file, class, and function names derived from the current Requirement and existing architecture.

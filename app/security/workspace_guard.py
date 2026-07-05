@@ -79,10 +79,19 @@ def unsafe_relative_path_reason(raw_path: str, *, reserved_dirs: set[str] | None
 
 
 def resolve_project_relative_write(project_root: str | Path, rel_path: str, *, reserved_dirs: set[str] | None = None, label: str = "write") -> Path:
+    project_path = canonical_path(project_root)
+    raw = str(rel_path or "").strip().strip("`")
+    decoded = unquote(raw).replace("\\", "/")
+    candidate = Path(decoded)
+    win_candidate = PureWindowsPath(decoded)
+    if decoded.startswith("/") or candidate.is_absolute() or win_candidate.is_absolute() or win_candidate.drive or decoded.startswith("//"):
+        target = canonical_path(decoded)
+        if not is_within(project_path, target):
+            raise WorkflowError(f"{label} contains unsafe file path (absolute path outside Project Path): {rel_path}")
+        rel_path = target.relative_to(project_path).as_posix()
     reason = unsafe_relative_path_reason(rel_path, reserved_dirs=reserved_dirs)
     if reason:
         raise WorkflowError(f"{label} contains unsafe file path ({reason}): {rel_path}")
-    project_path = canonical_path(project_root)
     relative = Path(unquote(str(rel_path).strip().strip("`")).replace("\\", "/"))
     target = (project_path / relative).resolve()
     return ensure_within_project(project_path, target, action=label)

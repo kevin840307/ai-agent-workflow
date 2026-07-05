@@ -273,7 +273,7 @@ def _project_has_pytest_files(project_dir: Path) -> bool:
 
 def _looks_like_script_argument_error(stderr: str) -> bool:
     lowered = (stderr or "").lower()
-    return any(marker in lowered for marker in ("unrecognized arguments", "unknown option", "no such option", "usage:"))
+    return any(marker in lowered for marker in ("unrecognized arguments", "unknown option", "no such option"))
 
 
 def _display_path(root: Path, path: Path) -> str:

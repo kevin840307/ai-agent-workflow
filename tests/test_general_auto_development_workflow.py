@@ -14,6 +14,7 @@ from app.main import app
 from app.runtime_modules import api as runtime
 from app.runtime_modules.errors import WorkflowError
 from app.services import workflow_asset_service
+from app.workflow_runtime.builtin_functions.core import _looks_like_script_argument_error
 from app.workflow_runtime.functions import WorkflowFunctionService
 
 
@@ -95,6 +96,10 @@ class GeneralAutoDevelopmentWorkflowTests(unittest.TestCase):
         self.assertEqual(diff_review["type"], "ai")
         self.assertEqual(diff_review["outputFile"], "diff-review.md")
         self.assertEqual(diff_review["retryFromStepKey"], "diff_review")
+
+    def test_validation_script_fallback_does_not_trigger_on_plain_usage_text(self) -> None:
+        self.assertFalse(_looks_like_script_argument_error("usage: validator.py [-h] --project PROJECT\nmissing required value"))
+        self.assertTrue(_looks_like_script_argument_error("error: unrecognized arguments: --project C:/tmp/project"))
 
     def test_general_auto_development_builds_then_generates_tests_before_external_validation(self) -> None:
         def qwen_response(prompt: str) -> str:

@@ -14,6 +14,7 @@ from app.runtime_modules.files import (
     failure_feedback_for_step,
     apply_extracted_files,
     extract_build_files,
+    project_content_snapshot,
     project_file_snapshot,
     changed_snapshot_paths,
     files_from_changed_snapshot,
@@ -26,6 +27,7 @@ from app.runtime_modules.files import (
     non_test_files,
     should_ask_for_spec_input,
     snapshot_changed,
+    restore_project_content_snapshot,
     spec_input_questions,
     split_build_files,
     render_generic_spec_from_requirement,
@@ -35,6 +37,7 @@ from app.runtime_modules.files import (
     existing_validation_scripts,
     validate_build_files_do_not_overwrite_validation_scripts,
     validate_build_files_are_not_tests,
+    validate_generated_code_files_are_clean,
     validate_generated_test_files,
     validate_test_code_is_separate,
 )
@@ -166,6 +169,17 @@ class WorkflowActions:
 
     def _file_blocks_allowed_as_direct_edits(self) -> bool:
         return True
+
+    async def _restore_failed_project_attempt(
+        self,
+        run: dict[str, Any],
+        project_dir: Path,
+        snapshot: dict[str, bytes],
+        label: str,
+        exc: Exception,
+    ) -> None:
+        restore_project_content_snapshot(project_dir, snapshot)
+        await self.log(run, f"{label}: restored project files after failed attempt: {str(exc)[:500]}")
 
     def _apply_file_blocks_for_direct_edit(
         self,
@@ -1126,36 +1140,43 @@ class WorkflowActions:
         await self._ensure_project_agent_configs(run, project_dir)
 
         before = project_file_snapshot(project_dir)
+        attempt_snapshot = project_content_snapshot(project_dir)
         try:
             await self.run_agent_step(run, "generate_tests", prompt_name, artifact, agent_name=agent_name, fresh_session=True)
-        except UserInputRequired:
+        except Exception as exc:
+            await self._restore_failed_project_attempt(run, project_dir, attempt_snapshot, "generate_tests", exc)
             raise
 
-        direct_files = self._direct_edit_files_from_snapshot(
-            project_dir,
-            before,
-            project_file_snapshot(project_dir),
-            require_test_files=True,
-        )
-        if not direct_files:
-            direct_files = self._apply_file_blocks_for_direct_edit(
+        try:
+            direct_files = self._direct_edit_files_from_snapshot(
                 project_dir,
-                read_text(output_dir / artifact),
+                before,
+                project_file_snapshot(project_dir),
                 require_test_files=True,
-                validation_script=run.get("validation_script"),
-                fallback_scripts=self._fallback_validation_scripts(run),
-                output_label="agent generate_tests file block direct edit",
             )
-        if not direct_files:
-            direct_files = self._existing_project_test_files(project_dir)
-        if not direct_files:
-            raise WorkflowError(
-                f"generate_tests did not directly create or modify pytest files under {project_dir / 'tests'}. "
-                "Use Qwen/OpenCode file edit/write tools to create project-specific tests, or output complete "
-                "FILE/CONTENT/END_FILE blocks for test files under tests/."
-            )
+            if not direct_files:
+                direct_files = self._apply_file_blocks_for_direct_edit(
+                    project_dir,
+                    read_text(output_dir / artifact),
+                    require_test_files=True,
+                    validation_script=run.get("validation_script"),
+                    fallback_scripts=self._fallback_validation_scripts(run),
+                    output_label="agent generate_tests file block direct edit",
+                )
+            if not direct_files:
+                direct_files = self._existing_project_test_files(project_dir)
+            if not direct_files:
+                raise WorkflowError(
+                    f"generate_tests did not directly create or modify pytest files under {project_dir / 'tests'}. "
+                    "Use Qwen/OpenCode file edit/write tools to create project-specific tests, or output complete "
+                    "FILE/CONTENT/END_FILE blocks for test files under tests/."
+                )
 
-        validate_generated_test_files(direct_files)
+            validate_generated_test_files(direct_files)
+        except Exception as exc:
+            await self._restore_failed_project_attempt(run, project_dir, attempt_snapshot, "generate_tests", exc)
+            raise
+
         summary = self._render_direct_edit_summary(
             "Generated Tests Direct Edit Result",
             "GENERATE-TESTS",
@@ -1573,48 +1594,53 @@ class WorkflowActions:
 
                 scoped_run = self._task_run(run, task, index=index, total=total, phase="build")
                 task_before = project_file_snapshot(project_dir)
+                attempt_snapshot = project_content_snapshot(project_dir)
                 await self.log(run, f"build: task loop {index}/{total} {task_id} - {task_title}")
                 try:
                     await self.run_agent_step(scoped_run, "build", prompt_name, task_artifact, agent_name=agent_name, fresh_session=True)
-                except UserInputRequired:
-                    raise
 
-                direct_files = self._direct_edit_files_from_snapshot(
-                    project_dir,
-                    task_before,
-                    project_file_snapshot(project_dir),
-                    forbid_test_files=True,
-                )
-                if not direct_files:
-                    direct_files = self._apply_file_blocks_for_direct_edit(
+                    direct_files = self._direct_edit_files_from_snapshot(
                         project_dir,
-                        read_text(task_artifact_path),
+                        task_before,
+                        project_file_snapshot(project_dir),
                         forbid_test_files=True,
+                    )
+                    if not direct_files:
+                        direct_files = self._apply_file_blocks_for_direct_edit(
+                            project_dir,
+                            read_text(task_artifact_path),
+                            forbid_test_files=True,
+                            validation_script=run.get("validation_script"),
+                            fallback_scripts=self._fallback_validation_scripts(run),
+                            output_label=f"agent build task {task_id} file block direct edit",
+                        )
+                    if not direct_files:
+                        raise WorkflowError(
+                            f"build task {task_id} did not directly create or modify production files under Project Path: {project_dir}. "
+                            "Use Qwen/OpenCode file edit/write tools, or output complete FILE/CONTENT/END_FILE blocks for each production file."
+                        )
+
+                    validate_build_files_are_not_tests(direct_files)
+                    validate_build_files_do_not_overwrite_validation_scripts(
+                        project_dir,
+                        direct_files,
                         validation_script=run.get("validation_script"),
                         fallback_scripts=self._fallback_validation_scripts(run),
-                        output_label=f"agent build task {task_id} file block direct edit",
                     )
-                if not direct_files:
-                    raise WorkflowError(
-                        f"build task {task_id} did not directly create or modify production files under Project Path: {project_dir}. "
-                        "Use Qwen/OpenCode file edit/write tools, or output complete FILE/CONTENT/END_FILE blocks for each production file."
+                    validate_generated_code_files_are_clean(direct_files)
+                    self._write_task_direct_state(output_dir, project_dir, task_id, "build", direct_files)
+                    self._validate_previous_direct_task_states_preserved(
+                        output_dir,
+                        project_dir,
+                        current_index=index,
+                        current_task_id=task_id,
+                        phase="build",
                     )
-
-                validate_build_files_are_not_tests(direct_files)
-                validate_build_files_do_not_overwrite_validation_scripts(
-                    project_dir,
-                    direct_files,
-                    validation_script=run.get("validation_script"),
-                    fallback_scripts=self._fallback_validation_scripts(run),
-                )
-                self._write_task_direct_state(output_dir, project_dir, task_id, "build", direct_files)
-                self._validate_previous_direct_task_states_preserved(
-                    output_dir,
-                    project_dir,
-                    current_index=index,
-                    current_task_id=task_id,
-                    phase="build",
-                )
+                except Exception as exc:
+                    await self._restore_failed_project_attempt(run, project_dir, attempt_snapshot, f"build/{task_id}", exc)
+                    if isinstance(exc, UserInputRequired):
+                        raise
+                    raise WorkflowError(f"{task_id}: {exc}") from exc
                 task_result = self._render_direct_edit_summary("Build Direct Edit Result", task_id, task_title, direct_files)
                 write_text(task_artifact_path, task_result)
                 task_artifacts.append((task_id, task_title, task_result))
@@ -1634,38 +1660,41 @@ class WorkflowActions:
                 )
             return
 
+        attempt_snapshot = project_content_snapshot(project_dir)
         try:
             await self.run_agent_step(run, "build", prompt_name, artifact, agent_name=agent_name, fresh_session=True)
-        except UserInputRequired:
-            raise
 
-        direct_files = self._direct_edit_files_from_snapshot(
-            project_dir,
-            before,
-            project_file_snapshot(project_dir),
-            forbid_test_files=True,
-        )
-        if not direct_files:
-            direct_files = self._apply_file_blocks_for_direct_edit(
+            direct_files = self._direct_edit_files_from_snapshot(
                 project_dir,
-                read_text(output_dir / artifact),
+                before,
+                project_file_snapshot(project_dir),
                 forbid_test_files=True,
+            )
+            if not direct_files:
+                direct_files = self._apply_file_blocks_for_direct_edit(
+                    project_dir,
+                    read_text(output_dir / artifact),
+                    forbid_test_files=True,
+                    validation_script=run.get("validation_script"),
+                    fallback_scripts=self._fallback_validation_scripts(run),
+                    output_label="agent build file block direct edit",
+                )
+            if not direct_files:
+                raise WorkflowError(
+                    f"build did not directly create or modify production files under Project Path: {project_dir}. "
+                    "Use Qwen/OpenCode file edit/write tools, or output complete FILE/CONTENT/END_FILE blocks."
+                )
+            validate_build_files_are_not_tests(direct_files)
+            validate_build_files_do_not_overwrite_validation_scripts(
+                project_dir,
+                direct_files,
                 validation_script=run.get("validation_script"),
                 fallback_scripts=self._fallback_validation_scripts(run),
-                output_label="agent build file block direct edit",
             )
-        if not direct_files:
-            raise WorkflowError(
-                f"build did not directly create or modify production files under Project Path: {project_dir}. "
-                "Use Qwen/OpenCode file edit/write tools, or output complete FILE/CONTENT/END_FILE blocks."
-            )
-        validate_build_files_are_not_tests(direct_files)
-        validate_build_files_do_not_overwrite_validation_scripts(
-            project_dir,
-            direct_files,
-            validation_script=run.get("validation_script"),
-            fallback_scripts=self._fallback_validation_scripts(run),
-        )
+            validate_generated_code_files_are_clean(direct_files)
+        except Exception as exc:
+            await self._restore_failed_project_attempt(run, project_dir, attempt_snapshot, "build", exc)
+            raise
         summary = self._render_direct_edit_summary("Build Direct Edit Result", "BUILD", "Production changes", direct_files)
         write_text(output_dir / artifact, summary)
         self._write_task_direct_state(output_dir, project_dir, "BUILD", "build", direct_files)
@@ -1749,45 +1778,50 @@ class WorkflowActions:
 
                 scoped_run = self._task_run(run, task, index=index, total=total, phase="adaptive_generation")
                 task_before = project_file_snapshot(project_dir)
+                attempt_snapshot = project_content_snapshot(project_dir)
                 await self.log(run, f"auto_generation: adaptive task loop {index}/{total} {task_id} - {task_title}")
                 try:
                     await self.run_agent_step(scoped_run, "auto_generation", prompt_name, task_artifact, agent_name=agent_name, fresh_session=True)
-                except UserInputRequired:
-                    raise
 
-                direct_files = self._direct_edit_files_from_snapshot(
-                    project_dir,
-                    task_before,
-                    project_file_snapshot(project_dir),
-                )
-                if not direct_files:
-                    direct_files = self._apply_file_blocks_for_direct_edit(
+                    direct_files = self._direct_edit_files_from_snapshot(
                         project_dir,
-                        read_text(task_artifact_path),
+                        task_before,
+                        project_file_snapshot(project_dir),
+                    )
+                    if not direct_files:
+                        direct_files = self._apply_file_blocks_for_direct_edit(
+                            project_dir,
+                            read_text(task_artifact_path),
+                            validation_script=run.get("validation_script"),
+                            fallback_scripts=self._fallback_validation_scripts(run),
+                            output_label=f"agent adaptive task {task_id} file block direct edit",
+                        )
+                    if not direct_files:
+                        raise WorkflowError(
+                            f"auto_generation task {task_id} did not directly create or modify files under Project Path: {project_dir}. "
+                            "Use Qwen/OpenCode file edit/write tools, or output complete FILE/CONTENT/END_FILE blocks."
+                        )
+                    validate_build_files_do_not_overwrite_validation_scripts(
+                        project_dir,
+                        direct_files,
                         validation_script=run.get("validation_script"),
                         fallback_scripts=self._fallback_validation_scripts(run),
-                        output_label=f"agent adaptive task {task_id} file block direct edit",
                     )
-                if not direct_files:
-                    raise WorkflowError(
-                        f"auto_generation task {task_id} did not directly create or modify files under Project Path: {project_dir}. "
-                        "Use Qwen/OpenCode file edit/write tools, or output complete FILE/CONTENT/END_FILE blocks."
+                    validate_test_code_is_separate(direct_files)
+                    validate_generated_code_files_are_clean(direct_files)
+                    self._write_task_direct_state(output_dir, project_dir, task_id, "auto_generation", direct_files)
+                    self._validate_previous_direct_task_states_preserved(
+                        output_dir,
+                        project_dir,
+                        current_index=index,
+                        current_task_id=task_id,
+                        phase="auto_generation",
                     )
-                validate_build_files_do_not_overwrite_validation_scripts(
-                    project_dir,
-                    direct_files,
-                    validation_script=run.get("validation_script"),
-                    fallback_scripts=self._fallback_validation_scripts(run),
-                )
-                validate_test_code_is_separate(direct_files)
-                self._write_task_direct_state(output_dir, project_dir, task_id, "auto_generation", direct_files)
-                self._validate_previous_direct_task_states_preserved(
-                    output_dir,
-                    project_dir,
-                    current_index=index,
-                    current_task_id=task_id,
-                    phase="auto_generation",
-                )
+                except Exception as exc:
+                    await self._restore_failed_project_attempt(run, project_dir, attempt_snapshot, f"auto_generation/{task_id}", exc)
+                    if isinstance(exc, UserInputRequired):
+                        raise
+                    raise WorkflowError(f"{task_id}: {exc}") from exc
                 task_result = self._render_direct_edit_summary("Adaptive Generation Direct Edit Result", task_id, task_title, direct_files)
                 write_text(task_artifact_path, task_result)
                 task_artifacts.append((task_id, task_title, task_result))
@@ -1805,35 +1839,38 @@ class WorkflowActions:
                 )
             return
 
+        attempt_snapshot = project_content_snapshot(project_dir)
         try:
             await self.run_agent_step(run, "auto_generation", prompt_name, artifact, agent_name=agent_name, fresh_session=True)
-        except UserInputRequired:
-            raise
-        direct_files = self._direct_edit_files_from_snapshot(
-            project_dir,
-            before,
-            project_file_snapshot(project_dir),
-        )
-        if not direct_files:
-            direct_files = self._apply_file_blocks_for_direct_edit(
+            direct_files = self._direct_edit_files_from_snapshot(
                 project_dir,
-                read_text(output_dir / artifact),
+                before,
+                project_file_snapshot(project_dir),
+            )
+            if not direct_files:
+                direct_files = self._apply_file_blocks_for_direct_edit(
+                    project_dir,
+                    read_text(output_dir / artifact),
+                    validation_script=run.get("validation_script"),
+                    fallback_scripts=self._fallback_validation_scripts(run),
+                    output_label="agent adaptive file block direct edit",
+                )
+            if not direct_files:
+                raise WorkflowError(
+                    f"auto_generation did not directly create or modify files under Project Path: {project_dir}. "
+                    "Use Qwen/OpenCode file edit/write tools, or output complete FILE/CONTENT/END_FILE blocks."
+                )
+            validate_build_files_do_not_overwrite_validation_scripts(
+                project_dir,
+                direct_files,
                 validation_script=run.get("validation_script"),
                 fallback_scripts=self._fallback_validation_scripts(run),
-                output_label="agent adaptive file block direct edit",
             )
-        if not direct_files:
-            raise WorkflowError(
-                f"auto_generation did not directly create or modify files under Project Path: {project_dir}. "
-                "Use Qwen/OpenCode file edit/write tools, or output complete FILE/CONTENT/END_FILE blocks."
-            )
-        validate_build_files_do_not_overwrite_validation_scripts(
-            project_dir,
-            direct_files,
-            validation_script=run.get("validation_script"),
-            fallback_scripts=self._fallback_validation_scripts(run),
-        )
-        validate_test_code_is_separate(direct_files)
+            validate_test_code_is_separate(direct_files)
+            validate_generated_code_files_are_clean(direct_files)
+        except Exception as exc:
+            await self._restore_failed_project_attempt(run, project_dir, attempt_snapshot, "auto_generation", exc)
+            raise
         summary = self._render_direct_edit_summary("Adaptive Generation Direct Edit Result", "AUTO-GENERATION", "Adaptive generation", direct_files)
         write_text(output_dir / artifact, summary)
         self._write_task_direct_state(output_dir, project_dir, "AUTO-GENERATION", "auto_generation", direct_files)

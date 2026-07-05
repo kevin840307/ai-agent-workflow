@@ -48,8 +48,6 @@ class TaskPromptGenerator:
         units = self._extract_independent_units(requirement)
         if not units:
             return self._fallback_manifest(requirement, project_dir)
-        if self._should_group_units(units):
-            units = ["all requested deliverables: " + ", ".join(units)]
         tasks: list[dict[str, Any]] = []
         previous: str | None = None
         for index, unit in enumerate(units, start=1):
@@ -247,6 +245,8 @@ Visible files:
 ## Work Rules
 - Complete only this task and already-required dependencies; do not proactively implement future task prompts.
 - Use Qwen/OpenCode file edit/write tools to modify files directly. If file tools are unavailable, output complete project files as `FILE: path`, `CONTENT:`, `END_FILE` blocks.
+- Do not output standalone code fences. Every created or modified file must be represented by a direct edit or by a `FILE/CONTENT/END_FILE` block.
+- In file block fallback, `FILE:` must contain only a relative file path, not prose, comments, code, `CONTENT`, or placeholders.
 - Do not return explanations, placeholders, simulated workflow code, or repair helper functions instead of project files.
 - Include focused tests or test files when this task is testable.
 - Keep production code and tests separate.
@@ -320,9 +320,7 @@ Status: READY
 
     @staticmethod
     def _should_group_units(units: list[str]) -> bool:
-        if len(units) < 4:
-            return False
-        return all(len(unit) <= 40 for unit in units)
+        return False
 
     def _allowed_write_paths(self, project_dir: Path) -> list[str]:
         roots = []

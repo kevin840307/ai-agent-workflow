@@ -32,6 +32,7 @@ Latest retry feedback only:
 
 Rules:
 - Generate project-specific tests for the final assembled behavior, not one repeated placeholder test per task.
+- Do not generate placeholder tests such as `assert False`, "implementation is incomplete", TODO-only tests, or tests that intentionally fail.
 - The current Requirement is the source of truth. Do not reuse stale tests from a previous run.
 - Keep tests small and targeted; avoid broad snapshot or implementation-detail tests.
 - Match the existing project test framework when it is clear from Project Profile / Project Index.

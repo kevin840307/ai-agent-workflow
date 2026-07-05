@@ -531,18 +531,21 @@ Status: READY
             project.mkdir()
             (project / "src").mkdir()
             output.mkdir(parents=True)
-            (workspace / "requirement.md").write_text("用Python建立A+B+C", encoding="utf-8")
+            (workspace / "requirement.md").write_text("Create A+B+C", encoding="utf-8")
             actions = WorkflowActions(agent_runner=None, functions=None, log=log, refresh_artifacts=refresh)
 
             asyncio.run(actions.generate_task_prompts_step({"id": "run-1", "workspace": str(workspace), "project_path": str(project), "workflow_id": "adaptive-auto-workflow", "steps": []}))
 
             manifest = (output / "task-manifest.json").read_text(encoding="utf-8")
             self.assertIn('"TASK-001"', manifest)
+            self.assertIn('"TASK-002"', manifest)
+            self.assertIn('"TASK-003"', manifest)
             self.assertTrue((output / "task-prompts" / "TASK-001.md").is_file())
             self.assertTrue((output / "todos" / "TASK-001.md").is_file())
             task_prompt = (output / "task-prompts" / "TASK-001.md").read_text(encoding="utf-8")
             self.assertIn("## Review Gate For This Task", task_prompt)
             self.assertIn("Review confidence:", task_prompt)
+            self.assertIn("Do not output standalone code fences", task_prompt)
             self.assertIn("AI produces the task manifest", (output / "workflow-instance-validation.md").read_text(encoding="utf-8"))
 
     def test_adaptive_generation_can_materialize_code_and_tests_together(self) -> None:
@@ -593,6 +596,51 @@ Status: READY
 
             self.assertTrue((project / "src" / "tool.py").is_file())
             self.assertTrue((project / "tests" / "test_tool.py").is_file())
+
+    def test_adaptive_generation_rolls_back_failed_task_attempt(self) -> None:
+        class FakeAgentRunner:
+            async def run(self, run, step_key, prompt_name, artifact, **_kwargs):
+                project = Path(run["project_path"])
+                (project / "bad.py").write_text(
+                    "def test_embedded_in_production():\n"
+                    "    assert True\n",
+                    encoding="utf-8",
+                )
+                output = Path(run["workspace"]) / "output"
+                output.mkdir(parents=True, exist_ok=True)
+                (output / artifact).write_text("# agent wrote directly\n", encoding="utf-8")
+                return "# agent wrote directly\n"
+
+        async def log(_run, _message):
+            return None
+
+        async def refresh(_run_id):
+            return None
+
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp) / "project"
+            workspace = Path(tmp) / "workspace"
+            output = workspace / "output"
+            project.mkdir()
+            output.mkdir(parents=True)
+            (output / "task-manifest.json").write_text(
+                '{"tasks":[{"id":"TASK-001","title":"Create one file"}]}',
+                encoding="utf-8",
+            )
+            actions = WorkflowActions(agent_runner=FakeAgentRunner(), functions=None, log=log, refresh_artifacts=refresh)
+            run = {
+                "id": "run-1",
+                "workspace": str(workspace),
+                "project_path": str(project),
+                "workflow_id": "adaptive-auto-workflow",
+                "steps": [],
+            }
+
+            with self.assertRaises(WorkflowError) as raised:
+                asyncio.run(actions.adaptive_generation_step(run))
+
+            self.assertIn("TASK-001", str(raised.exception))
+            self.assertFalse((project / "bad.py").exists())
 
     def test_adaptive_external_validation_skips_when_no_script_is_provided(self) -> None:
         async def log(_run, _message):

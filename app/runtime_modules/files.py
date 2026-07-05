@@ -217,6 +217,79 @@ def project_file_snapshot(project_dir: Path) -> dict[str, tuple[int, int]]:
     return snapshot
 
 
+def project_content_snapshot(project_dir: Path) -> dict[str, bytes]:
+    """Capture project file bytes for restoring a failed agent attempt.
+
+    This uses the same visible-file boundary as project_file_snapshot so agent
+    guard files, workflow run artifacts, virtual environments, and dependency
+    folders are not copied or restored.
+    """
+    snapshot: dict[str, bytes] = {}
+    for rel_path in project_file_snapshot(project_dir):
+        target = project_dir / rel_path
+        try:
+            snapshot[rel_path] = target.read_bytes()
+        except OSError:
+            continue
+    return snapshot
+
+
+def restore_project_content_snapshot(project_dir: Path, snapshot: dict[str, bytes]) -> None:
+    """Restore project files to a previous content snapshot.
+
+    Files created after the snapshot are removed; files present in the snapshot
+    are rewritten with their original bytes. Empty directories left behind by
+    removed files are pruned inside the project root.
+    """
+    project_root = project_dir.expanduser().resolve()
+    current_paths = set(project_file_snapshot(project_dir))
+    snapshot_paths = set(snapshot)
+
+    for rel_path in sorted(current_paths - snapshot_paths, key=lambda value: value.count("/"), reverse=True):
+        target = (project_root / rel_path).resolve()
+        try:
+            target.relative_to(project_root)
+        except ValueError:
+            continue
+        try:
+            if target.is_file():
+                target.unlink()
+        except OSError:
+            continue
+
+    for rel_path, content in snapshot.items():
+        target = (project_root / rel_path).resolve()
+        try:
+            target.relative_to(project_root)
+        except ValueError:
+            continue
+        target.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            target.write_bytes(content)
+        except OSError:
+            continue
+
+    _prune_empty_project_dirs(project_root)
+
+
+def _prune_empty_project_dirs(project_root: Path) -> None:
+    ignored = {".git", ".vs", ".qwen", LEGACY_WORKFLOW_DIR, PROJECT_WORKFLOW_DIR, "node_modules", ".venv", "venv"}
+    if not project_root.is_dir():
+        return
+    dirs = [path for path in project_root.rglob("*") if path.is_dir()]
+    for path in sorted(dirs, key=lambda item: len(item.parts), reverse=True):
+        try:
+            rel_parts = path.relative_to(project_root).parts
+        except ValueError:
+            continue
+        if any(part in ignored for part in rel_parts):
+            continue
+        try:
+            path.rmdir()
+        except OSError:
+            continue
+
+
 def project_has_user_files(project_dir: Path) -> bool:
     return bool(project_file_snapshot(project_dir))
 
@@ -698,7 +771,7 @@ def is_test_file_path(rel_path: str) -> bool:
     parts = path.parts
     if not parts:
         return False
-    if parts[0] != "tests":
+    if "tests" not in parts:
         return False
     name = path.name
     return name == "conftest.py" or (name.startswith("test_") and name.endswith(".py"))
@@ -728,6 +801,8 @@ def validate_generated_test_files(files: list[tuple[str, str]]) -> None:
         for rel_path, content in files
         if Path(rel_path).name == "test_example.py"
         or re.search(r"^\s*(from\s+example\s+import|import\s+example\b)", content, re.MULTILINE)
+        or re.search(r"(?m)^\s*assert\s+False\b", content)
+        or re.search(r"implementation\s+is\s+incomplete|TODO-only|placeholder", content, re.IGNORECASE)
     ]
     if placeholder_tests:
         raise WorkflowError("generate_tests produced placeholder example tests instead of project-specific tests: " + ", ".join(placeholder_tests))
@@ -814,7 +889,7 @@ def validate_build_files_do_not_overwrite_validation_scripts(
     invalid: list[str] = []
     for rel_path, _content in files:
         target = resolve_project_relative_write(project_root, rel_path, label="build output")
-        if target.resolve() in protected_scripts or target.name.lower() in protected_names:
+        if target.resolve() in protected_scripts or _matches_protected_validation_name(target.name, protected_names):
             invalid.append(rel_path)
     if invalid:
         raise WorkflowError(
@@ -822,6 +897,37 @@ def validate_build_files_do_not_overwrite_validation_scripts(
             "Validation scripts are user-provided acceptance tools, not Build-owned artifacts. "
             f"Invalid build file(s): {', '.join(invalid)}"
         )
+
+
+def _matches_protected_validation_name(file_name: str, protected_names: set[str]) -> bool:
+    normalized = file_name.strip().lower()
+    return any(name and (normalized == name or name in normalized) for name in protected_names)
+
+
+def validate_generated_code_files_are_clean(files: list[tuple[str, str]]) -> None:
+    invalid_markers: list[str] = []
+    syntax_errors: list[str] = []
+    marker_pattern = re.compile(
+        r"(?m)^(?:## Retry Feedback for |FILE:\s|CONTENT:\s*$|END_FILE\s*$|```)"
+    )
+    for rel_path, content in files:
+        suffix = Path(rel_path).suffix.lower()
+        if suffix not in {".py"}:
+            continue
+        if marker_pattern.search(content or ""):
+            invalid_markers.append(rel_path)
+            continue
+        try:
+            compile(content or "", rel_path, "exec")
+        except SyntaxError as exc:
+            syntax_errors.append(f"{rel_path}: {exc.msg} at line {exc.lineno}")
+    if invalid_markers:
+        raise WorkflowError(
+            "generated Python files must contain source code only, not workflow feedback, markdown fences, "
+            "or FILE/CONTENT/END_FILE markers. Invalid file(s): " + ", ".join(invalid_markers)
+        )
+    if syntax_errors:
+        raise WorkflowError("generated Python files contain invalid syntax. " + "; ".join(syntax_errors))
 
 
 def validate_test_code_is_separate(files: list[tuple[str, str]]) -> None:
@@ -841,7 +947,7 @@ def validate_test_code_is_separate(files: list[tuple[str, str]]) -> None:
     if invalid:
         raise WorkflowError(
             "test code must be separated from production files. "
-            "Put tests under tests/ or test-named files instead of embedding them in production artifacts. "
+            "Put pytest tests under tests/ instead of embedding them in production artifacts or project-root files. "
             f"Invalid file(s): {', '.join(invalid)}"
         )
 

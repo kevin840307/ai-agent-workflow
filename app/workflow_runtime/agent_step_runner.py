@@ -225,8 +225,8 @@ Build output guard:
 - You are in the Build step. Use file edit/write tools to create or modify production project files directly.
 - Do not output, copy, rewrite, summarize, or include test file blocks.
 - Do not write paths under tests/ and do not write files named test_*.py.
-- Do not output platform file blocks for any workflow. Directly edit the project files instead.
-- The project must contain at least one changed non-test production file that implements the current Requirement.
+- Prefer direct project edits. If direct editing is unavailable, output only FILE/CONTENT/END_FILE blocks for production files.
+- The project must contain at least one non-test production file that implements the current Requirement.
 """
             return prompt.rstrip() + base_guard + step_guard
         if step_key == "auto_generation":
@@ -235,7 +235,7 @@ Build output guard:
 Adaptive generation output guard:
 - You are in the Auto Generation Workflow step.
 - Use file edit/write tools to materialize the requested project change directly.
-- If direct editing is unavailable, stop and explain which edit tool was unavailable; do not return file blocks.
+- If direct editing is unavailable, output only FILE/CONTENT/END_FILE blocks for the files needed by this task.
 - You may include production files, tests, and small project documentation when useful.
 - Existing validation scripts are read-only unless the user explicitly asked to modify them.
 - The project must contain at least one changed file for this task.
@@ -248,7 +248,7 @@ Generate Tests output guard:
 - You are in the Generate Tests step. Use file edit/write tools to create or modify test files directly.
 - For Python projects, write only tests/test_*.py or tests/conftest.py.
 - Do not modify production files in this step.
-- Do not output platform file blocks for any workflow. Directly edit tests under tests/ instead.
+- Prefer direct project edits. If direct editing is unavailable, output only FILE/CONTENT/END_FILE blocks under tests/.
 """
             return prompt.rstrip() + base_guard + step_guard
         return prompt.rstrip() + base_guard
