@@ -1,5 +1,6 @@
 You are planning the next prompts for a CLI coding agent.
 
+{{thinking_guidance}}
 User request:
 {{requirement_brief}}
 

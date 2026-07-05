@@ -1,5 +1,6 @@
 Continue the same CLI coding session and execute the current AI-generated prompt.
 
+{{thinking_guidance}}
 User request:
 {{requirement_brief}}
 

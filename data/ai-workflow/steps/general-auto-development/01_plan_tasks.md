@@ -1,4 +1,4 @@
-Create a concise task plan for this project request.
+You are planning a fixed SOP development run for a CLI coding agent.
 
 User request:
 {{requirement_brief}}
@@ -13,25 +13,30 @@ Validation script, if provided:
 Retry feedback, if any:
 {{latest_failure_feedback}}
 
+Create the SPEC, TODO, and short task prompts that a human would type into Qwen/OpenCode.
+
 Rules:
 - Do not implement code in this step.
 - Do not explain the workflow platform.
-- Plan only the user's project change.
-- Keep tasks small enough for a CLI agent to execute, but do not over-split.
-- Existing validation scripts are read-only acceptance tools unless the user explicitly asked to edit them.
-- If retry feedback exists, update the plan to fix that concrete failure.
+- The SPEC must be derived only from the user request and project evidence.
+- Each task prompt must be a natural-language CLI instruction for the selected project.
+- Tasks may include implementation, tests, repair, or assembly work.
+- Do not include review tasks; review is handled by the fixed SOP review step.
+- Do not include shell commands, tool-call JSON, code blocks, absolute paths, or file contents.
+- Keep the task count practical: split stable SOP work, but do not over-split simple requests.
+- If retry feedback exists, revise the plan/task prompts to address that concrete failure.
 
-Output Markdown only:
-
-# Todo
-
-Status: READY
-
-## Task Index
-| ID | Task | Acceptance Criteria | Depends On |
-| --- | --- | --- | --- |
-| TASK-001 | ... | ... | None |
-
-## Notes
-- Testing / validation expectation:
-- Assumptions:
+Output one JSON object only:
+{
+  "goal": "short goal",
+  "spec": "Markdown SPEC with Goal, Scope, Acceptance Criteria, Test Expectations, Review Checklist",
+  "tasks": [
+    {
+      "id": "TASK-001",
+      "title": "short task title",
+      "kind": "implementation|test|repair|assembly",
+      "prompt": "short human CLI instruction for Qwen/OpenCode",
+      "acceptance": ["concrete acceptance item"]
+    }
+  ]
+}

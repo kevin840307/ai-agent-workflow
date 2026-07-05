@@ -219,7 +219,6 @@ class WorkflowIntegrationTests(unittest.TestCase):
                     ]:
                         self.assertIn(name, artifact_names)
 
-                    self.assertTrue((project_dir / "architecture.md").exists())
                     self.assertTrue((project_dir / "workflow_mock_feature.py").exists())
                     self.assertTrue((project_dir / "tests" / "test_workflow_mock_feature.py").exists())
 

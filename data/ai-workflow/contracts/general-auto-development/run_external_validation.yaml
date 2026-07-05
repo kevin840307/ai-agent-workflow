@@ -1,8 +1,7 @@
 id: run_external_validation
 key: run_external_validation
-name: Run External Validation
-description: Run the project validation script when configured or present. If no
-  validation script is required or found, record a skipped PASS result.
+name: External Validation
+description: Run user validation.py/validate.py/verify.py/check.py when provided or present. If no validation script exists, record skipped PASS.
 enabled: true
 type: python
 skill: steps/general-auto-development/04_run_external_validation.md
@@ -13,6 +12,8 @@ outputs:
 retry: 99
 failAction: selected_step
 retryFromStepKey: build
+retryEscalationEvery: 3
+retryEscalationStepKey: plan_tasks
 keepSameSession: true
 injectFailureFeedback: true
 stopAfterFailures: 99

@@ -1,7 +1,7 @@
 id: final_gate
 key: final_gate
-name: Final Gate
-description: 'Require final-review.md to contain Status: PASS.'
+name: Final Gate / Report
+description: Final controller gate. Requires AI implementation review to PASS and external validation to PASS or SKIPPED.
 enabled: true
 type: gate
 skill: steps/general-auto-development/06_final_gate.md
@@ -11,7 +11,9 @@ outputs:
 - final-review.md
 retry: 99
 failAction: selected_step
-retryFromStepKey: final_review
+retryFromStepKey: implementation_review
+retryEscalationEvery: 3
+retryEscalationStepKey: plan_tasks
 keepSameSession: true
 injectFailureFeedback: true
 stopAfterFailures: 99

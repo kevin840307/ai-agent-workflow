@@ -107,26 +107,27 @@ class WorkflowDefinitionIntegrityTests(unittest.TestCase):
     def _workflow_files(self) -> list[Path]:
         return sorted(Path("data/ai-workflow/workflows").glob("*.workflow"))
 
-    def test_general_generate_tests_allows_file_block_fallback(self) -> None:
-        prompt = Path("data/ai-workflow/steps/general-auto-development/03_generate_tests.md").read_text(encoding="utf-8")
-        self.assertIn("FILE/CONTENT/END_FILE", prompt)
-        self.assertIn("FILE: tests/test_name.py", prompt)
-        self.assertIn("mutates its input and returns `None`", prompt)
-        self.assertIn("Allowed project Python import map", prompt)
-        self.assertNotIn("Do not output full file contents", prompt)
+    def test_general_plan_tasks_outputs_json_controller_plan(self) -> None:
+        prompt = Path("data/ai-workflow/steps/general-auto-development/01_plan_tasks.md").read_text(encoding="utf-8")
+        self.assertIn("Output one JSON object only", prompt)
+        self.assertIn('"spec"', prompt)
+        self.assertIn('"tasks"', prompt)
+        self.assertIn("Do not implement code in this step", prompt)
+        self.assertIn("Do not include shell commands", prompt)
 
-    def test_general_build_prompt_forbids_standalone_code_fences(self) -> None:
+    def test_general_execute_task_loop_requires_direct_edits_and_no_file_blocks(self) -> None:
         prompt = Path("data/ai-workflow/steps/general-auto-development/03_build.md").read_text(encoding="utf-8")
-        self.assertIn("Do not output standalone code fences", prompt)
-        self.assertIn("Do not include extra code fences", prompt)
+        self.assertIn("complete this SOP task", prompt)
+        self.assertIn("Directly edit real files", prompt)
+        self.assertIn("Do not return tool-call JSON, FILE blocks, code fences", prompt)
+        self.assertIn("Prompt to type into Qwen/OpenCode", prompt)
 
     def test_adaptive_generation_prompt_requires_real_direct_edits(self) -> None:
         prompt = Path("data/ai-workflow/steps/adaptive-auto-workflow/00_auto_generation.md").read_text(encoding="utf-8")
-        self.assertIn("actual direct edit", prompt)
-        self.assertIn("tests/test_*.py", prompt)
-        self.assertIn("Do not output standalone code fences", prompt)
-        self.assertIn("mutates its input and returns `None`", prompt)
-        self.assertIn("real workflow completion requires actual project file diffs", prompt)
+        self.assertIn("Directly edit real files", prompt)
+        self.assertIn("Add or update tests", prompt)
+        self.assertIn("Do not return tool-call JSON, FILE blocks, code fences", prompt)
+        self.assertIn("Prompt to type into Qwen/OpenCode", prompt)
 
     def test_workflow_definition_integrity(self) -> None:
         self.assertTrue(self._workflow_files(), "expected workflow assets under data/ai-workflow/workflows")

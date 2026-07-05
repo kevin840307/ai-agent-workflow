@@ -353,12 +353,11 @@ class WorkflowActions:
                 agent_name=agent_name,
                 fresh_session=self._fresh_session_for_step(run, step_key),
             )
-            if not output.strip():
-                raise WorkflowError("plan_tasks: agent produced an empty task plan.")
-            if "TASK-001" not in output:
-                raise WorkflowError("plan_tasks: AI task plan must include at least TASK-001.")
-            if "Status: READY" not in output:
-                raise WorkflowError("plan_tasks: AI task plan must contain `Status: READY`.")
+            manifest = self._parse_ai_task_prompt_manifest(output, step_key="plan_tasks")
+            tasks = manifest.get("tasks") or []
+            self._write_ai_task_prompt_manifest(output_dir, manifest, source_label="AI-generated General Auto Development SOP plan")
+            await self.refresh_artifacts(run["id"])
+            await self.log(run, f"plan_tasks: AI generated SPEC, todo, and {len(tasks)} task prompt(s)")
             return
 
         try:
@@ -1417,10 +1416,23 @@ class WorkflowActions:
         artifact = normalize_artifact_name(artifact)
         await self._ensure_project_agent_configs(run, project_dir)
         before = project_file_snapshot(project_dir)
+        build_config = self._config_for_step(run, "build")
+        allow_test_files_in_task_loop = bool_config(build_config, "allowTestFilesInTaskLoop", False)
 
-        if self._is_auto_development_workflow(run) and bool_config(self._config_for_step(run, "build"), "enableTaskLoop", False):
-            manifest = read_text(output_dir / "task-manifest.md") or read_text(output_dir / "todo.md")
-            tasks = self._task_entries_from_manifest(manifest, owner="build")
+        if self._is_auto_development_workflow(run) and bool_config(build_config, "enableTaskLoop", False):
+            manifest_json_path = output_dir / "task-manifest.json"
+            tasks: list[dict[str, Any]] = []
+            if manifest_json_path.is_file():
+                try:
+                    parsed = json.loads(read_text(manifest_json_path))
+                    raw_tasks = parsed.get("tasks") if isinstance(parsed, dict) else []
+                    if isinstance(raw_tasks, list):
+                        tasks = [task for task in raw_tasks if isinstance(task, dict)]
+                except json.JSONDecodeError:
+                    tasks = []
+            if not tasks:
+                manifest = read_text(output_dir / "task-manifest.md") or read_text(output_dir / "todo.md")
+                tasks = self._task_entries_from_manifest(manifest, owner="build")
             if not tasks:
                 tasks = [{"id": "TASK-001", "owner": "build", "title": "Full requested production change"}]
             build_feedback = self._build_step_feedback(run)
@@ -1472,7 +1484,7 @@ class WorkflowActions:
                         project_dir,
                         task_before,
                         project_file_snapshot(project_dir),
-                        forbid_test_files=True,
+                        forbid_test_files=not allow_test_files_in_task_loop,
                     )
                     if not direct_files:
                         direct_files = self._apply_file_blocks_for_direct_edit(
@@ -1480,18 +1492,19 @@ class WorkflowActions:
                             read_text(task_artifact_path),
                             run=run,
                             step_key="build",
-                            forbid_test_files=True,
+                            forbid_test_files=not allow_test_files_in_task_loop,
                             validation_script=run.get("validation_script"),
                             fallback_scripts=self._fallback_validation_scripts(run),
                             output_label=f"agent build task {task_id} file block direct edit",
                         )
                     if not direct_files:
                         raise WorkflowError(
-                            f"build task {task_id} did not directly create or modify production files under Project Path: {project_dir}. "
-                            "Use Qwen/OpenCode file edit/write tools to directly modify each required production file inside Project Path."
+                            f"build task {task_id} did not directly create or modify project files under Project Path: {project_dir}. "
+                            "Use Qwen/OpenCode file edit/write tools to directly modify required files inside Project Path."
                         )
 
-                    validate_build_files_are_not_tests(direct_files)
+                    if not allow_test_files_in_task_loop:
+                        validate_build_files_are_not_tests(direct_files)
                     self._validate_build_direct_files_are_substantive(run, direct_files)
                     validate_build_files_do_not_overwrite_validation_scripts(
                         project_dir,
@@ -1527,7 +1540,7 @@ class WorkflowActions:
             after = project_file_snapshot(project_dir)
             if not snapshot_changed(before, after) and not task_artifacts and not any_task_changed:
                 raise WorkflowError(
-                    f"build did not directly create or modify production files under Project Path: {project_dir}. "
+                    f"build did not directly create or modify project files under Project Path: {project_dir}. "
                     "Use Qwen/OpenCode file edit/write tools to directly modify files inside Project Path."
                 )
             return
@@ -1562,7 +1575,7 @@ class WorkflowActions:
                 )
             if not direct_files:
                 raise WorkflowError(
-                    f"build did not directly create or modify production files under Project Path: {project_dir}. "
+                    f"build did not directly create or modify project files under Project Path: {project_dir}. "
                     "Use Qwen/OpenCode file edit/write tools to directly modify files inside Project Path."
                 )
             validate_build_files_are_not_tests(direct_files)
@@ -1693,9 +1706,9 @@ class WorkflowActions:
             agent_name=agent_name,
             fresh_session=self._fresh_session_for_step(run, "generate_task_prompts"),
         )
-        manifest = self._parse_ai_task_prompt_manifest(output)
+        manifest = self._parse_ai_task_prompt_manifest(output, step_key="generate_task_prompts")
         tasks = manifest.get("tasks") or []
-        self._write_ai_task_prompt_manifest(output_dir, manifest)
+        self._write_ai_task_prompt_manifest(output_dir, manifest, source_label="AI-generated Adaptive execution prompts")
         await self.refresh_artifacts(run["id"])
         await self.log(run, f"generate_task_prompts: AI generated {len(tasks)} task prompt(s)")
 
@@ -1715,32 +1728,32 @@ class WorkflowActions:
         try:
             parsed = json.loads(value)
         except json.JSONDecodeError as exc:
-            raise WorkflowError("generate_task_prompts: AI must output a valid JSON object with a tasks array.") from exc
+            raise WorkflowError("AI task planner must output a valid JSON object with a tasks array.") from exc
         if not isinstance(parsed, dict):
             raise WorkflowError("generate_task_prompts: AI manifest must be a JSON object.")
         return parsed
 
-    def _parse_ai_task_prompt_manifest(self, output: str) -> dict[str, Any]:
+    def _parse_ai_task_prompt_manifest(self, output: str, *, step_key: str = "generate_task_prompts") -> dict[str, Any]:
         raw = self._extract_first_json_object(output)
         raw_tasks = raw.get("tasks")
         if not isinstance(raw_tasks, list) or not raw_tasks:
-            raise WorkflowError("generate_task_prompts: AI manifest must contain a non-empty `tasks` array.")
+            raise WorkflowError(f"{step_key}: AI manifest must contain a non-empty `tasks` array.")
         tasks: list[dict[str, Any]] = []
         seen: set[str] = set()
         for index, item in enumerate(raw_tasks, start=1):
             if not isinstance(item, dict):
-                raise WorkflowError(f"generate_task_prompts: tasks[{index}] must be an object.")
+                raise WorkflowError(f"{step_key}: tasks[{index}] must be an object.")
             task_id = str(item.get("id") or f"TASK-{index:03d}").strip().upper()
             if not re.fullmatch(r"TASK-\d{3}", task_id):
                 task_id = f"TASK-{index:03d}"
             if task_id in seen:
-                raise WorkflowError(f"generate_task_prompts: duplicate task id {task_id}.")
+                raise WorkflowError(f"{step_key}: duplicate task id {task_id}.")
             seen.add(task_id)
             title = str(item.get("title") or item.get("name") or task_id).strip()[:160] or task_id
             prompt = str(item.get("prompt") or item.get("instruction") or item.get("task_prompt") or "").strip()
             if len(prompt) < 20:
-                raise WorkflowError(f"generate_task_prompts: {task_id} must include a concrete `prompt` string.")
-            self._validate_ai_task_prompt_quality(task_id, prompt)
+                raise WorkflowError(f"{step_key}: {task_id} must include a concrete `prompt` string.")
+            self._validate_ai_task_prompt_quality(task_id, prompt, step_key=step_key)
             acceptance = item.get("acceptance") or item.get("acceptance_criteria") or []
             if isinstance(acceptance, str):
                 acceptance_items = [line.strip(" -") for line in acceptance.splitlines() if line.strip()]
@@ -1765,7 +1778,7 @@ class WorkflowActions:
             or ""
         ).strip()
         if len(spec) < 40:
-            raise WorkflowError("generate_task_prompts: AI manifest must include a non-empty Markdown `spec` string for final review.")
+            raise WorkflowError(f"{step_key}: AI manifest must include a non-empty Markdown `spec` string for review.")
         return {
             "status": "READY",
             "source": "ai-generated",
@@ -1776,7 +1789,7 @@ class WorkflowActions:
 
 
     @staticmethod
-    def _validate_ai_task_prompt_quality(task_id: str, prompt: str) -> None:
+    def _validate_ai_task_prompt_quality(task_id: str, prompt: str, *, step_key: str = "generate_task_prompts") -> None:
         """Keep AI-generated task prompts as human CLI instructions, not shell scripts.
 
         The adaptive workflow is meant to simulate a human giving concise prompts
@@ -1788,31 +1801,31 @@ class WorkflowActions:
         lowered = text.lower()
         if re.match(r"^\s*(mkdir|md|echo|copy|xcopy|move|del|erase|type|cat|printf|powershell|pwsh|cmd|touch)\b", text, flags=re.I):
             raise WorkflowError(
-                f"generate_task_prompts: {task_id} prompt must be a concise natural-language CLI instruction, not a shell command."
+                f"{step_key}: {task_id} prompt must be a concise natural-language CLI instruction, not a shell command."
             )
         if re.search(r"[A-Za-z]:[\\/]", text):
             raise WorkflowError(
-                f"generate_task_prompts: {task_id} prompt must not contain absolute paths; Project Path is supplied by the workflow."
+                f"{step_key}: {task_id} prompt must not contain absolute paths; Project Path is supplied by the workflow."
             )
         if re.search(r"(^|\s)(>>?|2>|1>)\s*\S+", text):
             raise WorkflowError(
-                f"generate_task_prompts: {task_id} prompt must not use shell redirection; ask the CLI agent to edit files directly."
+                f"{step_key}: {task_id} prompt must not use shell redirection; ask the CLI agent to edit files directly."
             )
         if "```" in text:
             raise WorkflowError(
-                f"generate_task_prompts: {task_id} prompt must not contain code fences; keep it as an instruction."
+                f"{step_key}: {task_id} prompt must not contain code fences; keep it as an instruction."
             )
         if len(text) > 1400:
             raise WorkflowError(
-                f"generate_task_prompts: {task_id} prompt is too long; keep task prompts short and concrete."
+                f"{step_key}: {task_id} prompt is too long; keep task prompts short and concrete."
             )
         code_markers = ["def ", "class ", "import ", "return ", "function ", "public ", "private "]
         if sum(1 for marker in code_markers if marker in lowered) >= 3:
             raise WorkflowError(
-                f"generate_task_prompts: {task_id} prompt looks like source code; output a human instruction instead."
+                f"{step_key}: {task_id} prompt looks like source code; output a human instruction instead."
             )
 
-    def _write_ai_task_prompt_manifest(self, output_dir: Path, manifest: dict[str, Any]) -> None:
+    def _write_ai_task_prompt_manifest(self, output_dir: Path, manifest: dict[str, Any], *, source_label: str = "AI-generated task prompts") -> None:
         task_prompt_dir = output_dir / "task-prompts"
         todo_dir = output_dir / "todos"
         task_prompt_dir.mkdir(parents=True, exist_ok=True)
@@ -1821,7 +1834,8 @@ class WorkflowActions:
         spec = str(manifest.get("spec") or "").strip()
         write_text(output_dir / "spec.md", spec.rstrip() + "\n")
         write_text(output_dir / "task-manifest.json", json.dumps(manifest, indent=2, ensure_ascii=False))
-        lines = ["# Task Manifest", "", "Status: READY", "", "Source: AI-generated task prompts.", "", "## SPEC", "", "See `output/spec.md`.", "", "## Task Prompt Order"]
+        lines = ["# Task Manifest", "", "Status: READY", "", f"Source: {source_label}.", "", "## SPEC", "", "See `output/spec.md`.", "", "## Task Prompt Order"]
+        todo_lines = ["# Todo", "", "Status: READY", "", "## Task Index", "", "| ID | Task | Kind | Acceptance Criteria |", "| --- | --- | --- | --- |"]
         index_lines = ["# Task Todo Index", "", "Status: READY", ""]
         for index, task in enumerate(tasks, start=1):
             task_id = str(task.get("id") or f"TASK-{index:03d}")
@@ -1831,6 +1845,8 @@ class WorkflowActions:
             prompt_text = str(task.get("prompt") or "").strip()
             acceptance = task.get("acceptance") or []
             acceptance_lines = "\n".join(f"- {item}" for item in acceptance) if acceptance else "- Complete the current task and keep the project runnable."
+            acceptance_cell = "; ".join(str(item) for item in acceptance) if acceptance else "Complete the current task and keep the project runnable."
+            todo_lines.append(f"| {task_id} | {title} | {kind} | {acceptance_cell} |")
             task_doc = "\n".join(
                 [
                     f"# {task_id}: {title}",
@@ -1850,6 +1866,7 @@ class WorkflowActions:
             write_text(todo_dir / f"{safe_id}.md", task_doc)
             index_lines.append(f"- output/todos/{safe_id}.md")
         write_text(output_dir / "task-manifest.md", "\n".join(lines).rstrip() + "\n")
+        write_text(output_dir / "todo.md", "\n".join(todo_lines).rstrip() + "\n")
         write_text(todo_dir / "INDEX.md", "\n".join(index_lines).rstrip() + "\n")
 
     async def adaptive_review_and_validation_step(

@@ -1,18 +1,20 @@
 id: implementation_review
 key: implementation_review
 name: Implementation Review
-description: Ask the AI reviewer to check whether the task plan is concrete, bounded, and executable. The platform does not rewrite the plan.
+description: AI reviews completed task loop output against spec/todo/task results and checks test evidence. FAIL returns repair prompts to Execute Task Loop.
 enabled: true
 type: review
 skill: steps/general-auto-development/02_implementation_review.md
 command: ''
 agent: qwen
 outputs:
-- implementation-review.md
+- final-review.md
 function: ''
 retry: 99
 failAction: selected_step
-retryFromStepKey: plan_tasks
+retryFromStepKey: build
+retryEscalationEvery: 3
+retryEscalationStepKey: plan_tasks
 keepSameSession: true
 injectFailureFeedback: true
 stopAfterFailures: 99
@@ -24,8 +26,8 @@ pauseAfterStep: false
 approvalMessage: ''
 timeoutEnabled: true
 timeoutMinutes: 3.0
-reviewMode: new_agent
-confidenceThreshold: 0.7
+reviewMode: current_session
+confidenceThreshold: 0.75
 passKeywords: PASS, APPROVED
 failKeywords: FAIL, BLOCKED, RISK
 aggregatorFunction: keyword_confidence

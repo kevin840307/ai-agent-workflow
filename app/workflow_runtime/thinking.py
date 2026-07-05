@@ -101,6 +101,28 @@ def render_thinking_guidance(level: Any, *, step_key: str = "", workflow_id: str
     normalized = normalize_thinking_level(level)
     if normalized == "none":
         return ""
+
+    # Adaptive Auto Workflow intentionally uses tiny self-check hints only.
+    # The controller simulates a human typing concise prompts into Qwen/OpenCode;
+    # a long generic Thinking Control block makes small/local models drift into
+    # explaining the workflow instead of editing the project.
+    if workflow_id == "adaptive-auto-workflow" or step_key in {"generate_task_prompts", "auto_generation", "ai_review"}:
+        adaptive_checks = {
+            "generate_task_prompts": (
+                "Internal check: derive the SPEC only from the user request; output short human CLI task prompts, not shell commands, code, or workflow docs."
+            ),
+            "auto_generation": (
+                "Internal check: directly modify real project files for the current task; keep valid earlier work and add/update tests when needed."
+            ),
+            "ai_review": (
+                "Internal check: compare the project result against every SPEC acceptance item and test/validation expectation before PASS."
+            ),
+        }
+        return adaptive_checks.get(
+            step_key,
+            "Internal check: satisfy the current SPEC/task with the smallest safe project changes and preserve completed work.",
+        ).strip() + "\n"
+
     label = THINKING_LABELS[normalized]
     lines = [
         "# Thinking Control",
@@ -125,13 +147,6 @@ def render_thinking_guidance(level: Any, *, step_key: str = "", workflow_id: str
             "- Run an internal Reflect → Decide gate after the step: continue, repair current step, or replan only remaining internal tasks when the current plan is outdated.",
             "- Check edge cases, dependency drift, output handoff to the next step, and whether future internal prompts still match the current result.",
             "- If the plan needs adjustment, keep completed valid work immutable and change only remaining internal task scope.",
-        ])
-    if workflow_id == "adaptive-auto-workflow" or step_key in {"generate_task_prompts", "auto_generation", "ai_review"}:
-        lines.extend([
-            "",
-            "## Adaptive Workflow Rule",
-            "- Treat output/workflow-spec.json, output/task-manifest.json, and output/task-prompts/TASK-xxx.md as the internal Workflow Spec for this run when present.",
-            "- For each internal task, execute Task → Validate → Reflect → Decide; only retry or replan when validation or reflection requires it.",
         ])
     return "\n".join(lines).strip() + "\n"
 

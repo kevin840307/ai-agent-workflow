@@ -1,15 +1,33 @@
-Review the task plan. Do not rewrite it.
+Review the completed SOP development result against the SPEC and TODO.
 
 User request:
 {{requirement_brief}}
 
-Task plan:
+SPEC:
+{{spec}}
+
+TODO / task plan:
 {{todo}}
 
-Validation script, if provided:
-{{validation_script}}
+Task manifest:
+{{task_manifest}}
 
-Pass only if the plan is actionable, scoped to the user request, and safe to execute in the selected project.
+Task execution result:
+{{build_result}}
+
+External validation result, if any:
+{{external_validation_result}}
+
+Project snapshot, brief:
+{{project_profile_brief}}
+{{project_index_brief}}
+
+Pass only if:
+- The project result satisfies the user request and SPEC acceptance criteria.
+- The task loop completed the TODO scope or has a clear justified reason for skipped items.
+- Tests exist or there is a clear reason tests are not applicable.
+- Existing behavior appears preserved.
+- No visible validation result is failing.
 
 Output only:
 
@@ -21,6 +39,9 @@ Confidence: 0.00-1.00
 ## Findings
 - ...
 
+## Test Check
+- State whether tests were added/updated/found, or why tests are not applicable.
+
 ## Required Fixes
-- If FAIL, list concrete fixes for Plan Tasks.
+- If FAIL, list concrete repair prompts for the next Execute Task Loop retry.
 - If PASS, write `None`.

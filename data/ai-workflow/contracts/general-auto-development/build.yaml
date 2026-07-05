@@ -1,8 +1,7 @@
 id: build
 key: build
-name: Build
-description: Implement only the planned production changes inside the selected project
-  path.
+name: Execute Task Loop
+description: Execute AI-generated task prompts one by one in the same Qwen/OpenCode session. The platform checks direct project edits but does not write files for the agent.
 enabled: true
 type: ai
 skill: steps/general-auto-development/03_build.md
@@ -14,12 +13,16 @@ function: ''
 retry: 99
 failAction: same_step
 retryFromStepKey: build
+retryEscalationEvery: 3
+retryEscalationStepKey: plan_tasks
 keepSameSession: true
 injectFailureFeedback: true
 stopAfterFailures: 99
 requireSubstantiveBuild: true
+allowTestFilesInTaskLoop: true
 allowInteraction: false
-thinking: false
+thinking: true
+thinkingLevel: medium
 approvalRequired: false
 pauseAfterStep: false
 approvalMessage: ''
@@ -34,7 +37,7 @@ sources: []
 agentOptions: {}
 path: contracts/general-auto-development/build.yaml
 compactPrompt: true
-enableTaskLoop: false
-repromptOnToolCallJson: true
+enableTaskLoop: true
+repromptOnToolCallJson: false
 includeSkillContext: false
 compactRetryPromptWhenReusingSession: true

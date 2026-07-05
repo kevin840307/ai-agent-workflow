@@ -52,27 +52,21 @@ const WORKFLOW_API = "/api/workflows";
 function functionOptions(groupName, fallbackItems, selected) {
   return functionOptionsFor(availableWorkflowFunctions, groupName, fallbackItems, selected);
 }
-
 function functionMeta(groupName, selected) {
   return functionMetaFor(availableWorkflowFunctions, groupName, selected);
 }
-
 function functionHelp(groupName, selected, emptyText = "Select a backend function.") {
   return functionHelpFor(availableWorkflowFunctions, groupName, selected, emptyText);
 }
-
 function workflowFunctionCounts() {
   return workflowFunctionCountsFor(availableWorkflowFunctions);
 }
-
 function availablePromptParams() {
   return availablePromptParamsFor(availableWorkflowFunctions);
 }
-
 function stepUiCapabilities(step) {
   return stepUiCapabilitiesFor(availableWorkflowFunctions, step);
 }
-
 let systemWorkflow = Object.freeze({
   id: "system-controlled-qwen",
   kind: "system",
@@ -83,7 +77,6 @@ let systemWorkflow = Object.freeze({
   promptRoot: "steps/",
   steps: [],
 });
-
 let state = {
   workflows: [],
   selectedWorkflowId: systemWorkflow.id,
@@ -99,19 +92,16 @@ let state = {
   lintStatus: "idle",
   lintIssues: [],
 };
-
 let workflowDirty = false;
 let pendingWorkflowAction = null;
 let availableWorkflowFunctions = { functions: [], reviewStrategies: [], aggregators: [], promptParams: [] };
 let lintTimer = null;
 let lintRequestId = 0;
-
 async function initWorkflowDesignerPage() {
   await loadState();
   bindEvents();
   render();
 }
-
 async function loadState() {
   const saved = readStorage();
   let payload = null;
@@ -144,7 +134,6 @@ async function loadState() {
   state.stepActionMenuExpanded = Boolean(saved.stepActionMenuExpanded);
   workflowDirty = false;
 }
-
 function bindEvents() {
   on("designerSystemWorkflow", "click", (event) => selectWorkflow(event.currentTarget?.dataset?.workflowId || systemWorkflow.id));
   on("designerViewSystem", "click", () => selectWorkflow(systemWorkflow.id));
@@ -178,7 +167,6 @@ function bindEvents() {
   on("designerDuplicateCustomWorkflow", "click", duplicateCurrentWorkflow);
   on("designerExportWorkflow", "click", exportWorkflow);
   on("designerDeleteWorkflow", "click", () => deleteWorkflow(state.selectedWorkflowId));
-
   const nameInput = el("workflowNameInput");
   if (nameInput) {
     nameInput.addEventListener("input", () => {
@@ -189,7 +177,6 @@ function bindEvents() {
       renderWorkflowLabels();
     });
   }
-
   const descriptionInput = el("workflowDescriptionInput");
   if (descriptionInput) {
     descriptionInput.addEventListener("input", () => {
@@ -200,7 +187,6 @@ function bindEvents() {
       renderWorkflowLabels();
     });
   }
-
   document.addEventListener("click", handleDocumentClick);
   document.addEventListener("contextmenu", handleDocumentContextMenu);
   document.addEventListener("input", handleDocumentInput);
@@ -213,22 +199,18 @@ function bindEvents() {
   document.addEventListener("dragend", handleStepDragEnd);
   window.addEventListener("beforeunload", handleBeforeUnload);
 }
-
 function handleBeforeUnload(event) {
   if (!isTemplateDraftDirty() && !isWorkflowDirty()) return;
   event.preventDefault();
   event.returnValue = "";
 }
-
 function handleDocumentKeydown(event) {
   if (document.querySelector(".designer-confirm-box, .designer-template-modal-box, .designer-preview-box")) return;
-
   if (isStepEditorModalOpen() && event.altKey && (event.key === "ArrowLeft" || event.key === "ArrowRight")) {
     event.preventDefault();
     switchStepEditor(event.key === "ArrowLeft" ? -1 : 1);
     return;
   }
-
   if (event.key !== "Escape") return;
   if (isStepContextMenuOpen()) {
     closeStepContextMenu();
@@ -238,7 +220,6 @@ function handleDocumentKeydown(event) {
     closeStepEditor();
   }
 }
-
 const DesignerActionHandlers = Object.freeze({
   "delete-workflow": (action) => deleteWorkflow(action.dataset.workflowId),
   "confirm-delete-workflow": (action) => performDeleteWorkflow(action.dataset.workflowId),
@@ -284,14 +265,12 @@ const DesignerActionHandlers = Object.freeze({
   "confirm-discard-workflow-changes": () => confirmDiscardWorkflowChanges(),
   "close-confirm": () => closeConfirm(),
 });
-
 function dispatchDesignerAction(action) {
   const handler = DesignerActionHandlers[action.dataset.designerAction];
   if (!handler) return false;
   handler(action);
   return true;
 }
-
 function handleDocumentClick(event) {
   const navLink = event.target.closest("a.designer-nav-link");
   if (navLink && isWorkflowDirty()) {
@@ -299,7 +278,6 @@ function handleDocumentClick(event) {
     guardedWorkflowAction(() => { window.location.href = navLink.href; });
     return;
   }
-
   const tab = event.target.closest("[data-designer-tab]");
   if (tab) {
     if (tab.hidden) return;
@@ -309,7 +287,6 @@ function handleDocumentClick(event) {
     renderTabs();
     return;
   }
-
   const action = event.target.closest("[data-designer-action]");
   if (action) {
     const name = action.dataset.designerAction;
@@ -322,41 +299,34 @@ function handleDocumentClick(event) {
     dispatchDesignerAction(action);
     return;
   }
-
   if (!event.target.closest(".designer-step-context-menu")) {
     closeStepContextMenu();
   }
-
   const workflowButton = event.target.closest("[data-workflow-id]");
   if (workflowButton) {
     selectWorkflow(workflowButton.dataset.workflowId);
     return;
   }
-
   const stepButton = event.target.closest(".designer-step-card[data-step-id]");
   if (stepButton) {
     selectStep(stepButton.dataset.stepId, { openModal: event.detail >= 2 });
   }
 }
-
 function handleDocumentContextMenu(event) {
   const stepCard = event.target.closest(".designer-step-card[data-step-id]");
   if (!stepCard) {
     closeStepContextMenu();
     return;
   }
-
   event.preventDefault();
   openStepContextMenu(stepCard.dataset.stepId, { x: event.clientX, y: event.clientY });
 }
-
 function handleDocumentInput(event) {
   const filterInput = event.target.closest("[data-step-filter-field]");
   if (filterInput) {
     updateStepFilter(filterInput);
     return;
   }
-
   const draftInput = event.target.closest("[data-template-draft-field]");
   if (draftInput) {
     updateTemplateDraft(draftInput);
@@ -366,20 +336,17 @@ function handleDocumentInput(event) {
   if (!input) return;
   updateFromInput(input);
 }
-
 function handleDocumentChange(event) {
   const filterInput = event.target.closest("[data-step-filter-field]");
   if (filterInput) {
     updateStepFilter(filterInput);
     return;
   }
-
   const importFile = event.target.closest("#designerImportFile");
   if (importFile) {
     readImportFile(importFile);
     return;
   }
-
   const draftInput = event.target.closest("[data-template-draft-field]");
   if (draftInput) {
     updateTemplateDraft(draftInput);
@@ -389,17 +356,14 @@ function handleDocumentChange(event) {
   if (!input) return;
   updateFromInput(input);
 }
-
 function updateFromInput(input) {
   if (isReadonly()) {
     renderSettings();
     return;
   }
-
   const wf = getSelectedWorkflow();
   const step = getSelectedStep();
   const value = readInputValue(input);
-
   if (input.dataset.workflowField && wf) {
     wf[input.dataset.workflowField] = value;
     markWorkflowDirty();
@@ -407,7 +371,6 @@ function updateFromInput(input) {
     renderSettings();
     return;
   }
-
   if (input.dataset.stepField && step) {
     const field = input.dataset.stepField;
     if (field === "functionsText") {
@@ -418,7 +381,6 @@ function updateFromInput(input) {
       return;
     }
     step[field] = value;
-
     if (field === "thinkingLevel") {
       step.thinkingLevel = normalizeThinkingLevelForDesigner(value);
       step.thinking = step.thinkingLevel !== "none";
@@ -427,13 +389,11 @@ function updateFromInput(input) {
       renderStepEditorHeader();
       return;
     }
-
     if (field === "type") {
       handleStepTypeChange(step);
       markWorkflowDirty();
       return;
     }
-
     if (["function", "reviewMode"].includes(field)) {
       if (field === "function") {
         const currentFunctions = normalizeFunctionList(step.functions || step.function || "");
@@ -447,7 +407,6 @@ function updateFromInput(input) {
       markWorkflowDirty();
       return;
     }
-
     if (field === "templateContent") {
       renderPromptDiagnostics(step);
     }
@@ -460,7 +419,6 @@ function updateFromInput(input) {
     markWorkflowDirty();
     return;
   }
-
   if (input.dataset.arrayField && step) {
     const collection = input.dataset.arrayCollection;
     const index = Number(input.dataset.index);
@@ -475,12 +433,10 @@ function updateFromInput(input) {
     renderWorkflowViewOnly();
   }
 }
-
 function isAiWorkflowStepPath(value = "") {
   const normalized = String(value || "").trim().replace(/\\/g, "/");
   return normalized.startsWith("steps/") || normalized.startsWith(".ai-workflow/steps/");
 }
-
 function selectWorkflow(workflowId, stepId = null) {
   if (workflowId !== state.selectedWorkflowId && isWorkflowDirty()) {
     guardedWorkflowAction(() => doSelectWorkflow(workflowId, stepId));
@@ -488,7 +444,6 @@ function selectWorkflow(workflowId, stepId = null) {
   }
   doSelectWorkflow(workflowId, stepId);
 }
-
 function doSelectWorkflow(workflowId, stepId = null) {
   state.selectedWorkflowId = workflowId;
   const wf = getSelectedWorkflow();
@@ -496,7 +451,6 @@ function doSelectWorkflow(workflowId, stepId = null) {
   saveUiState();
   render();
 }
-
 function selectStep(stepId, options = {}) {
   state.selectedStepId = stepId;
   ensureActiveTabForStep(getSelectedStep());
@@ -506,12 +460,10 @@ function selectStep(stepId, options = {}) {
   renderSettings();
   if (options.openModal) openStepEditor(stepId);
 }
-
 function handleStepTypeChange(step) {
   applyStepTypeDefaults(step);
   handleStepCapabilityChange(step);
 }
-
 function handleStepCapabilityChange(step) {
   hydratePromptDefaultsForStepType(step);
   ensureActiveTabForStep(step);
@@ -521,7 +473,6 @@ function handleStepCapabilityChange(step) {
   renderTabs();
   renderSettings();
 }
-
 function hydratePromptDefaultsForStepType(step) {
   if (!step) return;
   const capabilities = stepUiCapabilities(step);
@@ -537,12 +488,10 @@ function hydratePromptDefaultsForStepType(step) {
     step.expectedFiles = [step.filename];
   }
 }
-
 function isPromptCapableStep(step) {
   const capabilities = stepUiCapabilities(step);
   return Boolean(capabilities.promptDefaults || capabilities.supportsPrompt);
 }
-
 function createNewWorkflow() {
   guardedWorkflowAction(() => {
     const workflow = createWorkflow({ name: uniqueWorkflowName("New Workflow") });
@@ -553,7 +502,6 @@ function createNewWorkflow() {
     toast("New workflow created. Save Draft to keep it.");
   });
 }
-
 function duplicateSystemWorkflow(name = null, sourceWorkflow = getSelectedWorkflow()) {
   const source = sourceWorkflow || systemWorkflow;
   const copy = createWorkflow({
@@ -566,7 +514,6 @@ function duplicateSystemWorkflow(name = null, sourceWorkflow = getSelectedWorkfl
   });
   return copy;
 }
-
 function duplicateCurrentWorkflow() {
   const workflow = getSelectedWorkflow();
   if (!workflow) return;
@@ -579,7 +526,6 @@ function duplicateCurrentWorkflow() {
     toast("Read-only workflow duplicated as a custom draft. Save Draft to keep it.");
     return;
   }
-
   const copy = createWorkflow({
     ...clone(workflow),
     id: makeId("workflow"),
@@ -589,7 +535,6 @@ function duplicateCurrentWorkflow() {
     description: workflow.description || `Duplicated from ${workflow.name}.`,
     steps: (workflow.steps || []).map((step) => ({ ...clone(step), id: makeId("step") })),
   });
-
   const currentIndex = state.workflows.findIndex((item) => item.id === workflow.id);
   const insertAt = currentIndex >= 0 ? currentIndex + 1 : 0;
   state.workflows.splice(insertAt, 0, copy);
@@ -598,7 +543,6 @@ function duplicateCurrentWorkflow() {
   render();
   toast("Workflow duplicated. Save Draft to keep it.");
 }
-
 function addStep() {
   const wf = getSelectedWorkflow();
   if (!wf || isReadonly()) return toast("Duplicate the system workflow before editing steps.");
@@ -611,7 +555,6 @@ function addStep() {
   openStepEditor(step.id);
   toast("Step added. Save Draft to keep it.");
 }
-
 function deleteWorkflow(workflowId) {
   const workflow = findWorkflowById(workflowId);
   if (!workflow) return;
@@ -627,7 +570,6 @@ function deleteWorkflow(workflowId) {
     workflowId,
   });
 }
-
 async function performDeleteWorkflow(workflowId) {
   const index = state.workflows.findIndex((item) => item.id === workflowId);
   if (index < 0) return closeConfirm();
@@ -647,7 +589,6 @@ async function performDeleteWorkflow(workflowId) {
     toast(`Could not delete workflow: ${error.message}`);
   }
 }
-
 function deleteStep(stepId) {
   const wf = getSelectedWorkflow();
   if (!wf || isReadonly()) return;
@@ -661,7 +602,6 @@ function deleteStep(stepId) {
     stepId,
   });
 }
-
 function performDeleteStep(stepId) {
   const wf = getSelectedWorkflow();
   if (!wf || isReadonly()) return closeConfirm();
@@ -676,7 +616,6 @@ function performDeleteStep(stepId) {
   render();
   toast("Step deleted. Save Draft to keep it.");
 }
-
 function duplicateStep(stepId) {
   const wf = getSelectedWorkflow();
   if (!wf || isReadonly()) return;
@@ -690,7 +629,6 @@ function duplicateStep(stepId) {
   openStepEditor(copy.id);
   toast("Step duplicated. Save Draft to keep it.");
 }
-
 function moveStep(stepId, offset) {
   const wf = getSelectedWorkflow();
   if (!wf || isReadonly()) return;
@@ -705,7 +643,6 @@ function moveStep(stepId, offset) {
   renderSettings();
   renderStepEditorModal();
 }
-
 function addSource() {
   const step = getSelectedStep();
   if (!step || isReadonly()) return;
@@ -714,7 +651,6 @@ function addSource() {
   renderSettings();
   renderWorkflowViewOnly();
 }
-
 function addReviewer() {
   const step = getSelectedStep();
   if (!step || isReadonly()) return;
@@ -724,7 +660,6 @@ function addReviewer() {
   renderSettings();
   renderWorkflowViewOnly();
 }
-
 function addExpectedFile() {
   const step = getSelectedStep();
   if (!step || isReadonly()) return;
@@ -733,7 +668,6 @@ function addExpectedFile() {
   renderSettings();
   renderWorkflowViewOnly();
 }
-
 function removeArrayItem(collection, index) {
   const step = getSelectedStep();
   if (!step || isReadonly() || !Array.isArray(step[collection])) return;
@@ -742,7 +676,6 @@ function removeArrayItem(collection, index) {
   renderSettings();
   renderWorkflowViewOnly();
 }
-
 function openDeleteConfirm({ title, message, confirmLabel, action, workflowId = "", stepId = "" }) {
   closeConfirm();
   const box = document.createElement("div");
@@ -763,32 +696,25 @@ function openDeleteConfirm({ title, message, confirmLabel, action, workflowId = 
   document.body.appendChild(box);
   box.querySelector("[data-designer-action='close-confirm']")?.focus();
 }
-
 function closeConfirm() {
   document.querySelectorAll(".designer-confirm-box").forEach((node) => node.remove());
 }
-
 function allSystemWorkflows() {
   return collectSystemWorkflows(systemWorkflow, state);
 }
-
 function findWorkflowById(workflowId) {
   return findWorkflowByIdFromState(systemWorkflow, state, workflowId);
 }
-
 function getSelectedWorkflow() {
   return findWorkflowById(state.selectedWorkflowId) || state.workflows[0] || clone(systemWorkflow);
 }
-
 function getSelectedStep() {
   const wf = getSelectedWorkflow();
   return wf?.steps?.find((step) => step.id === state.selectedStepId) || wf?.steps?.[0] || null;
 }
-
 function isReadonly() {
   return isWorkflowReadOnly(getSelectedWorkflow());
 }
-
 async function saveState(options = {}) {
   try {
     const workflow = getSelectedWorkflow();
@@ -817,7 +743,6 @@ async function saveState(options = {}) {
     return false;
   }
 }
-
 function saveUiState() {
   try {
     const saved = readStorage();
@@ -835,14 +760,12 @@ function saveUiState() {
   } catch {
     }
 }
-
 function markWorkflowDirty() {
   if (isReadonly()) return;
   workflowDirty = true;
   renderWorkflowDirtyState();
   scheduleWorkflowLint();
 }
-
 function setDesignerMode(mode) {
   if (!["simple", "advanced", "json"].includes(mode)) return;
   state.designerMode = mode;
@@ -850,7 +773,6 @@ function setDesignerMode(mode) {
   saveUiState();
   render();
 }
-
 function applyJsonEditor() {
   const wf = getSelectedWorkflow();
   const editor = el("designerJsonEditor");
@@ -871,11 +793,9 @@ function applyJsonEditor() {
     toast(`Invalid workflow JSON: ${error.message}`);
   }
 }
-
 function isWorkflowDirty() {
   return Boolean(workflowDirty);
 }
-
 function renderWorkflowDirtyState() {
   const badge = el("designerWorkflowDirtyBadge");
   if (!badge) return;
@@ -887,7 +807,6 @@ function renderWorkflowDirtyState() {
   if (saveButton) saveButton.classList.toggle("designer-save-attention", dirty);
   renderWorkflowLintState();
 }
-
 function scheduleWorkflowLint(delay = 350) {
   clearTimeout(lintTimer);
   lintTimer = setTimeout(() => {
@@ -898,7 +817,6 @@ function scheduleWorkflowLint(delay = 350) {
     });
   }, delay);
 }
-
 async function lintWorkflowNow(workflow = getSelectedWorkflow()) {
   if (!workflow || isReadonly()) {
     state.lintStatus = "idle";
@@ -919,7 +837,6 @@ async function lintWorkflowNow(workflow = getSelectedWorkflow()) {
   renderWorkflowLintState();
   return { ok: Boolean(result.ok), issues: state.lintIssues };
 }
-
 function renderWorkflowLintState() {
   const panel = el("designerLintPanel");
   if (!panel) return;
@@ -946,7 +863,6 @@ function renderWorkflowLintState() {
   panel.className = "designer-lint-panel is-hidden";
   panel.innerHTML = "";
 }
-
 async function copyCliCommand(targetId) {
   const target = targetId ? document.getElementById(targetId) : null;
   const text = target?.textContent?.trim();
@@ -958,7 +874,6 @@ async function copyCliCommand(targetId) {
     toast("Could not copy command.");
   }
 }
-
 function guardedWorkflowAction(action) {
   if (!isWorkflowDirty()) {
     action();
@@ -967,7 +882,6 @@ function guardedWorkflowAction(action) {
   pendingWorkflowAction = action;
   openWorkflowUnsavedConfirm();
 }
-
 function openWorkflowUnsavedConfirm() {
   closeConfirm();
   const box = document.createElement("div");
@@ -988,7 +902,6 @@ function openWorkflowUnsavedConfirm() {
   document.body.appendChild(box);
   box.querySelector("[data-designer-action='close-confirm']")?.focus();
 }
-
 function confirmDiscardWorkflowChanges() {
   const action = pendingWorkflowAction;
   pendingWorkflowAction = null;
@@ -996,11 +909,9 @@ function confirmDiscardWorkflowChanges() {
   closeConfirm();
   if (typeof action === "function") action();
 }
-
 function reloadSavedWorkflowState() {
   loadState().then(() => render());
 }
-
 function readStorage() {
   try {
     return JSON.parse(window.localStorage.getItem(STORAGE_KEY) || "{}");
@@ -1008,7 +919,6 @@ function readStorage() {
     return {};
   }
 }
-
 async function designerApi(path, options = {}) {
   const response = await fetch(path, {
     headers: { "Content-Type": "application/json", ...(options.headers || {}) },
@@ -1023,8 +933,6 @@ async function designerApi(path, options = {}) {
   }
   return response.json();
 }
-
-
 function normalizeThinkingLevelForDesigner(value) {
   const allowed = new Set(["none", "medium", "high", "extreme"]);
   const raw = String(value || "").trim().toLowerCase();
@@ -1032,7 +940,6 @@ function normalizeThinkingLevelForDesigner(value) {
   const normalized = aliases[raw] || raw;
   return allowed.has(normalized) ? normalized : "none";
 }
-
 function summarizeStep(step) {
   if (step.type === "review") return `${formatReviewMode(step.reviewMode)} - confidence >= ${step.confidenceThreshold} - retry ${step.maxRetries}${step.retryFromStepKey ? ` -> ${step.retryFromStepKey}` : ""}`;
   if (step.type === "validation" || step.type === "python") {
@@ -1043,7 +950,6 @@ function summarizeStep(step) {
   if (step.command) return `Command ${step.command} - template ${step.templatePath || "not set"} - retry ${step.maxRetries}${step.retryFromStepKey ? ` -> ${step.retryFromStepKey}` : ""}.`;
   return `${step.templatePath || "no template"} - retry ${step.maxRetries}${step.retryFromStepKey ? ` -> ${step.retryFromStepKey}` : ""} - ${step.allowInteraction ? "interactive" : "fully automatic"}${step.thinkingLevel && step.thinkingLevel !== "none" ? ` - thinking:${step.thinkingLevel}` : (step.thinking ? " - thinking" : "")}`;
 }
-
 function uniqueWorkflowName(base) {
   const names = new Set(state.workflows.map((item) => item.name));
   if (!names.has(base)) return base;
@@ -1051,7 +957,6 @@ function uniqueWorkflowName(base) {
   while (names.has(`${base} ${index}`)) index += 1;
   return `${base} ${index}`;
 }
-
 const templateEditor = installTemplateEditor({
   TemplatePresets,
   clone,
@@ -1078,7 +983,6 @@ const templateEditor = installTemplateEditor({
   state,
   toast,
 });
-
 const importExportTools = installImportExportTools({
   clone,
   closeConfirm,
@@ -1100,7 +1004,6 @@ const importExportTools = installImportExportTools({
   toast,
   uniqueWorkflowName,
 });
-
 const stepSettingsRenderer = installStepSettingsRenderer({
   FailActions,
   ReviewModes,
@@ -1121,7 +1024,6 @@ const stepSettingsRenderer = installStepSettingsRenderer({
   state,
   stepUiCapabilities,
 });
-
 const assetTools = installWorkflowAssetTools({
   defaultTemplateContent,
   designerApi,
@@ -1132,7 +1034,6 @@ const assetTools = installWorkflowAssetTools({
   renderWorkflowViewOnly: () => renderWorkflowViewOnly(),
   toast,
 });
-
 const layoutRenderer = installLayoutRenderer({
   el,
   escapeAttr,
@@ -1162,7 +1063,6 @@ const layoutRenderer = installLayoutRenderer({
   toast,
   workflowFunctionCounts,
 });
-
 function getAvailableParamKeys() { return templateEditor.getAvailableParamKeys(); }
 function getTemplateDiagnostics(step) { return templateEditor.getTemplateDiagnostics(step); }
 function renderPromptDiagnostics(step) { return templateEditor.renderPromptDiagnostics(step); }
@@ -1214,5 +1114,4 @@ function syncStepFilterControls() { return layoutRenderer.syncStepFilterControls
 function getVisibleSteps(wf) { return layoutRenderer.getVisibleSteps(wf); }
 function applyStepTypeDefaults(step) { return layoutRenderer.applyStepTypeDefaults(step); }
 function ensureActiveTabForStep(step) { return layoutRenderer.ensureActiveTabForStep(step); }
-
 export { initWorkflowDesignerPage };

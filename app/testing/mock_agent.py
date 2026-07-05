@@ -42,6 +42,32 @@ def mock_qwen_response(prompt: str) -> str:
             ensure_ascii=False,
         ) + "\n"
 
+    if "# compact reuse retry" in normalized and "step: build" in normalized:
+        return """Status: READY
+
+FILE: workflow_mock_feature.py
+CONTENT:
+def workflow_greeting() -> str:
+    return "hello from controlled workflow"
+END_FILE
+
+FILE: tests/test_workflow_mock_feature.py
+CONTENT:
+import unittest
+
+from workflow_mock_feature import workflow_greeting
+
+
+class WorkflowMockFeatureTests(unittest.TestCase):
+    def test_workflow_greeting_is_deterministic(self):
+        self.assertEqual(workflow_greeting(), "hello from controlled workflow")
+
+
+if __name__ == "__main__":
+    unittest.main()
+END_FILE
+"""
+
     if "# compact reuse retry" in normalized and "step: auto_generation" in normalized:
         return """Status: READY
 
@@ -68,6 +94,26 @@ if __name__ == "__main__":
 END_FILE
 """
 
+    if "you are planning a fixed sop development run for a cli coding agent" in normalized:
+        import json
+        return json.dumps(
+            {
+                "goal": "Implement a deterministic mock Python feature with tests",
+                "spec": "# SPEC\n\n## Goal\nImplement the requested deterministic Python helper.\n\n## Acceptance Criteria\n- AC-001: workflow_greeting exists and is import-safe.\n- AC-002: workflow_greeting returns hello from controlled workflow.\n- AC-003: tests or validation verify the behavior.\n\n## Test Expectations\n- Include a focused automated test unless validation is the only requested verifier.\n\n## Review Checklist\n- Production code exists.\n- Tests exist or validation passes.\n- No workflow files are modified.",
+                "tasks": [
+                    {
+                        "id": "TASK-001",
+                        "title": "Implement feature and tests",
+                        "kind": "implementation",
+                        "prompt": "Create the requested Python helper and focused tests inside the project. Directly edit real project files and keep the code import-safe.",
+                        "acceptance": ["Production helper exists", "Tests verify the helper or validation passes", "Project remains import-safe"],
+                    }
+                ],
+            },
+            indent=2,
+            ensure_ascii=False,
+        ) + "\n"
+
     if "you are planning the next prompts for a cli coding agent" in normalized or "you are the human-style planner for a cli agent session" in normalized:
         import json
         return json.dumps(
@@ -87,6 +133,59 @@ END_FILE
             indent=2,
             ensure_ascii=False,
         ) + "\n"
+
+    if "continue the same cli coding session and complete this sop task" in normalized:
+        if scenario == "general_no_files_once" and _scenario_once("general_no_files_once:build"):
+            return "Status: DONE\n\nIntentional mock output without project edits for general retry coverage.\n"
+        if scenario == "general_validation_fail_once" and _scenario_once("general_validation_fail_once:build"):
+            return """Status: READY
+
+FILE: workflow_mock_feature.py
+CONTENT:
+def workflow_greeting() -> str:
+    return "wrong greeting"
+END_FILE
+
+FILE: tests/test_workflow_mock_feature.py
+CONTENT:
+import unittest
+
+from workflow_mock_feature import workflow_greeting
+
+
+class WorkflowMockFeatureTests(unittest.TestCase):
+    def test_workflow_greeting_is_deterministic(self):
+        self.assertEqual(workflow_greeting(), "hello from controlled workflow")
+
+
+if __name__ == "__main__":
+    unittest.main()
+END_FILE
+"""
+        return """Status: READY
+
+FILE: workflow_mock_feature.py
+CONTENT:
+def workflow_greeting() -> str:
+    return "hello from controlled workflow"
+END_FILE
+
+FILE: tests/test_workflow_mock_feature.py
+CONTENT:
+import unittest
+
+from workflow_mock_feature import workflow_greeting
+
+
+class WorkflowMockFeatureTests(unittest.TestCase):
+    def test_workflow_greeting_is_deterministic(self):
+        self.assertEqual(workflow_greeting(), "hello from controlled workflow")
+
+
+if __name__ == "__main__":
+    unittest.main()
+END_FILE
+"""
 
     if "continue the same cli coding session and execute the current ai-generated prompt" in normalized or "continue the cli coding session and complete this task" in normalized:
         if scenario == "adaptive_no_files_once" and _scenario_once("adaptive_no_files_once:auto_generation"):
@@ -140,6 +239,11 @@ if __name__ == "__main__":
     unittest.main()
 END_FILE
 """
+
+    if "review the completed sop development result against the spec" in normalized:
+        if scenario == "general_review_fail_once" and _scenario_once("general_review_fail_once:implementation_review"):
+            return "# Implementation Review\n\nStatus: FAIL\nConfidence: 1.0\n\n## Findings\n- Intentional mock implementation review failure.\n\n## Test Check\n- Tests must be checked on retry.\n\n## Required Fixes\n- Re-run Execute Task Loop and ensure workflow_greeting plus tests satisfy the SPEC.\n"
+        return "# Implementation Review\n\nStatus: PASS\nConfidence: 1.0\n\n## Findings\n- Project files satisfy the SPEC and mock validation is expected to pass or be skipped.\n\n## Test Check\n- Tests are present or validation is available.\n\n## Required Fixes\n- None\n"
 
     if "review and validate the completed project change against the spec" in normalized or "review the completed project change" in normalized:
         if scenario == "adaptive_review_fail_once" and _scenario_once("adaptive_review_fail_once:ai_review"):

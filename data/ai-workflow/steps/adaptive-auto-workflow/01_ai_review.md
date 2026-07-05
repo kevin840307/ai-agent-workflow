@@ -1,5 +1,6 @@
 Review and validate the completed project change against the SPEC.
 
+{{thinking_guidance}}
 User request:
 {{requirement_brief}}
 

@@ -1,14 +1,17 @@
 id: plan_tasks
 key: plan_tasks
 name: Plan Tasks
-description: Ask the AI to produce a concise implementation task plan with small tasks and explicit acceptance criteria. The platform does not generate or repair the plan deterministically.
+description: AI creates SPEC, todo, task-manifest JSON, and short human-style task prompts for the fixed SOP development loop. Python validates schema only.
 enabled: true
 type: ai
 skill: steps/general-auto-development/01_plan_tasks.md
 command: ''
 agent: qwen
 outputs:
+- spec.md
 - todo.md
+- task-manifest.md
+- task-manifest.json
 function: ''
 retry: 99
 failAction: same_step
@@ -33,6 +36,5 @@ sources: []
 agentOptions: {}
 path: contracts/general-auto-development/plan_tasks.yaml
 compactPrompt: true
-repromptOnToolCallJson: true
 includeSkillContext: false
 compactRetryPromptWhenReusingSession: true

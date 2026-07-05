@@ -1,34 +1,12 @@
 import { TemplatePresets } from "../workflow-designer-constants.js?v=20260704-direct-edit-gad";
 import { clone, makeId } from "./utils.js?v=20260704-direct-edit-gad";
-
 const ThinkingLevels = new Set(["none", "medium", "high", "extreme"]);
-
 function normalizeThinkingLevel(value, legacyThinking = false) {
   const raw = String(value ?? "").trim().toLowerCase();
-  const aliases = {
-    "": legacyThinking ? "medium" : "none",
-    false: "none",
-    true: "medium",
-    "0": "none",
-    "1": "medium",
-    off: "none",
-    no: "none",
-    none: "none",
-    無: "none",
-    medium: "medium",
-    normal: "medium",
-    中: "medium",
-    high: "high",
-    deep: "high",
-    高: "high",
-    extreme: "extreme",
-    max: "extreme",
-    極高: "extreme",
-  };
+  const aliases = { "": legacyThinking ? "medium" : "none", false: "none", true: "medium", "0": "none", "1": "medium", off: "none", no: "none", none: "none", 無: "none", medium: "medium", normal: "medium", 中: "medium", high: "high", deep: "high", 高: "high", extreme: "extreme", max: "extreme", 極高: "extreme" };
   const normalized = aliases[raw] || raw;
   return ThinkingLevels.has(normalized) ? normalized : (legacyThinking ? "medium" : "none");
 }
-
 function createStep(overrides = {}) {
   const key = overrides.key || makeId("step");
   const type = inferStepType(overrides);
@@ -86,7 +64,6 @@ function createStep(overrides = {}) {
     candidateValidator: overrides.candidateValidator || "",
   };
 }
-
 function createWorkflow(overrides = {}) {
   const workflow = {
     id: overrides.id || makeId("workflow"),
@@ -101,7 +78,6 @@ function createWorkflow(overrides = {}) {
   if (!workflow.steps.length) workflow.steps.push(createStep({ name: "Generate Spec", key: "generate_spec" }));
   return workflow;
 }
-
 function normalizeWorkflow(workflow = {}) {
   return {
     id: workflow.id || makeId("workflow"),
@@ -117,7 +93,6 @@ function normalizeWorkflow(workflow = {}) {
     steps: Array.isArray(workflow.steps) ? workflow.steps.map(normalizeStep) : [],
   };
 }
-
 function normalizeStep(step = {}) {
   const base = createStep(step || {});
   const type = inferStepType(step || base);
@@ -145,14 +120,12 @@ function normalizeStep(step = {}) {
     skillPath: step?.skillPath || base.skillPath || "",
   };
 }
-
 function inferStepType(step) {
   if (!step) return "ai";
   if (step.type === "ai" && step.reviewMode && step.reviewMode !== "none") return "review";
   if (step.type === "ai" && String(step.key || "").includes("review")) return "review";
   return step.type || "ai";
 }
-
 function normalizeFunctionList(value = "") {
   const rawItems = Array.isArray(value)
     ? value
@@ -168,21 +141,14 @@ function normalizeFunctionList(value = "") {
   });
   return result;
 }
-
 function firstFunction(value = "") {
   return normalizeFunctionList(value)[0] || "";
 }
-
 function normalizeFunctionId(value = "") {
   const raw = String(value || "").trim();
-  const aliases = {
-    "functions/validate_spec.py": "validate_spec",
-    "functions/validate_todo.py": "validate_todo",
-    "functions/run_pytest.py": "run_pytest",
-  };
+  const aliases = { "functions/validate_spec.py": "validate_spec", "functions/validate_todo.py": "validate_todo", "functions/run_pytest.py": "run_pytest" };
   return aliases[raw] || raw;
 }
-
 function defaultTemplatePath(overrides = {}) {
   const preset = TemplatePresets[overrides.key];
   if (preset?.path) return preset.path;
@@ -190,7 +156,6 @@ function defaultTemplatePath(overrides = {}) {
   if (promptSource?.value) return promptSource.value;
   return `steps/${String(overrides.key || "step").replace(/[^a-zA-Z0-9_-]+/g, "_")}.md`;
 }
-
 function defaultFilename(overrides = {}) {
   const preset = TemplatePresets[overrides.key];
   if (preset?.filename) return preset.filename;
@@ -199,7 +164,6 @@ function defaultFilename(overrides = {}) {
   const expected = Array.isArray(overrides.expectedFiles) ? overrides.expectedFiles[0] : "";
   return normalizeFilename(expected || "result.md");
 }
-
 function defaultTemplateContent(overrides = {}) {
   const preset = TemplatePresets[overrides.key];
   if (preset?.content) return preset.content;
@@ -210,25 +174,9 @@ function defaultTemplateContent(overrides = {}) {
   if (overrides.type === "validation" || overrides.type === "python") return "";
   return "FILENAME: result.md\n\nProject Context:\n- Project Path: {{project_path}}\n- Workflow Workspace: {{workspace_path}}\n\nRequirement:\n{{requirement}}";
 }
-
 function normalizeFilename(value = "") {
   const raw = String(value || "").trim().replace(/\\/g, "/");
   if (!raw) return "";
   return raw.split("/").filter(Boolean).pop() || raw;
 }
-
-export {
-  createStep,
-  createWorkflow,
-  normalizeWorkflow,
-  normalizeStep,
-  inferStepType,
-  normalizeFunctionId,
-  normalizeFunctionList,
-  firstFunction,
-  defaultTemplatePath,
-  defaultFilename,
-  defaultTemplateContent,
-  normalizeFilename,
-  normalizeThinkingLevel,
-};
+export { createStep, createWorkflow, normalizeWorkflow, normalizeStep, inferStepType, normalizeFunctionId, normalizeFunctionList, firstFunction, defaultTemplatePath, defaultFilename, defaultTemplateContent, normalizeFilename, normalizeThinkingLevel };
