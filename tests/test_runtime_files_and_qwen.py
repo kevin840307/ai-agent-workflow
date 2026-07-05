@@ -267,7 +267,36 @@ def test_run():
         with self.assertRaisesRegex(WorkflowError, "placeholder example"):
             validate_generated_test_files([("tests/test_example.py", "from example import example\n")])
         with self.assertRaisesRegex(WorkflowError, "placeholder example"):
+            validate_generated_test_files([("tests/test_placeholder.py", "from your_module import main  # Replace 'your_module' with the actual module name\n")])
+        with self.assertRaisesRegex(WorkflowError, "placeholder example"):
             validate_generated_test_files([("tests/test_sorting.py", "def test_sorting():\n    assert False, 'implementation is incomplete'\n")])
+
+    def test_validate_generated_test_files_rejects_empty_pytest_files(self) -> None:
+        with self.assertRaisesRegex(WorkflowError, "without test functions"):
+            validate_generated_test_files([("tests/test_sorting.py", "\n")])
+
+    def test_validate_generated_test_files_rejects_only_conftest(self) -> None:
+        with self.assertRaisesRegex(WorkflowError, "concrete pytest test file"):
+            validate_generated_test_files([("tests/conftest.py", "import pytest\n")])
+
+    def test_validate_generated_test_files_rejects_unresolved_fixture_args(self) -> None:
+        with self.assertRaisesRegex(WorkflowError, "unresolved required fixture arguments"):
+            validate_generated_test_files([("tests/test_sorting.py", "def test_sort(data):\n    assert sorted(data) == data\n")])
+
+    def test_validate_generated_test_files_allows_local_fixture_args(self) -> None:
+        validate_generated_test_files(
+            [
+                (
+                    "tests/test_sorting.py",
+                    "import pytest\n\n"
+                    "@pytest.fixture\n"
+                    "def data():\n"
+                    "    return [1, 2]\n\n"
+                    "def test_sort(data):\n"
+                    "    assert sorted(data) == data\n",
+                )
+            ]
+        )
 
     def test_project_profile_detection(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

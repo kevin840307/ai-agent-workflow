@@ -1,6 +1,6 @@
 # Adaptive Auto Workflow - Run External Validation
 
-This Python step uses the shared `run_external_validation` function.
+This Python step uses the shared `adaptive_python_gate` function.
 
 Behavior:
 

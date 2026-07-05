@@ -8,9 +8,12 @@ class CreateMessageRequest(BaseModel):
 
     content: str = Field(min_length=1)
     client_request_id: str | None = Field(default=None, alias="clientRequestId")
+    thinking_level: str | None = Field(default=None, alias="thinkingLevel")
 
 
 class CreateRunRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
     requirement: str | None = None
     test_command: str | None = None
     validation_script: str | None = None
@@ -20,6 +23,7 @@ class CreateRunRequest(BaseModel):
     config: str | None = None
     agent: str | None = None
     run_profile: str | None = Field(default=None, alias="runProfile")
+    thinking_level: str | None = Field(default=None, alias="thinkingLevel")
 
 
 class CreateSessionRequest(BaseModel):

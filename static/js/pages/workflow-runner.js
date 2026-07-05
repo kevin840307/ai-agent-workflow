@@ -39,6 +39,9 @@ function registerWorkflowRunnerFeatures(ctx) {
 export function initWorkflowRunnerPage() {
   const ctx = registerWorkflowRunnerFeatures(createAppContext());
 
+  const thinkingSelect = ctx.ui.byKey("thinkingLevel");
+  if (thinkingSelect) thinkingSelect.value = ctx.state.thinkingLevel || "medium";
+
   ctx.features.modal.bind();
   ctx.features.events.bind();
   ctx.features.layout.restorePreferences();

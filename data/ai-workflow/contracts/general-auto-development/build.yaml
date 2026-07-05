@@ -13,9 +13,10 @@ function: ''
 retry: 99
 failAction: same_step
 retryFromStepKey: build
-keepSameSession: false
+keepSameSession: true
 injectFailureFeedback: true
 stopAfterFailures: 99
+requireSubstantiveBuild: true
 allowInteraction: false
 thinking: false
 approvalRequired: false

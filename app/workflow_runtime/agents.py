@@ -49,6 +49,8 @@ STEP_AGENT_OPTION_KEYS = {
     "session_flag",
     "skipPermissions",
     "thinking",
+    "thinkingLevel",
+    "thinking_level",
     "timeoutSec",
     "timeout_sec",
     "dangerouslySkipPermissions",

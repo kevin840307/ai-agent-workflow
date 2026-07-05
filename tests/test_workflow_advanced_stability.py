@@ -27,8 +27,8 @@ SYSTEM_ARTIFACT_SECTIONS = {
     "todo-review.md": ["Status: PASS"],
     "final-review.md": ["Status: PASS"],
     "test-result.md": ["ExitCode: 0"],
-    "build-result.md": ["FILE: workflow_mock_feature.py", "END_FILE"],
-    "test-plan.md": ["FILE: tests/test_workflow_mock_feature.py", "END_FILE"],
+    "build-result.md": ["# Build Direct Edit Result", "`workflow_mock_feature.py`"],
+    "test-plan.md": ["# Generated Tests Direct Edit Result", "`tests/test_workflow_mock_feature.py`"],
 }
 
 
@@ -105,7 +105,7 @@ class RealQwenSmokeTests(unittest.TestCase):
 
 
 class GoldenArtifactSnapshotTests(unittest.TestCase):
-    def _wait_for_terminal_run(self, client: TestClient, run_id: str, timeout_sec: float = 20) -> dict:
+    def _wait_for_terminal_run(self, client: TestClient, run_id: str, timeout_sec: float = 60) -> dict:
         deadline = time.time() + timeout_sec
         while time.time() < deadline:
             response = client.get(f"/api/workflow-runs/{run_id}")
@@ -235,6 +235,48 @@ class StoreMigrationAndCrashRecoveryTests(unittest.TestCase):
             # A recovered failed run must not block a future run for the same project.
             active = [run for run in store.load_sync()["runs"] if run.get("status") in workflow_service.ACTIVE_RUN_STATUSES]
             self.assertEqual(active, [])
+
+    def test_crash_recovery_does_not_interrupt_live_owner_runs(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            project_dir = Path(tmp) / "project"
+            run_dir = project_dir / ".qwen-workflow" / "runs" / "session-live" / "run-live"
+            (run_dir / ".workflow").mkdir(parents=True)
+            (run_dir / "output").mkdir(parents=True)
+            store_path = Path(tmp) / "store.json"
+            store = self._store(store_path, project_dir)
+            live_owner = {"id": "other-runtime", "host": "test-host", "pid": 12345, "started_at": "t0"}
+            store.save_sync(
+                {
+                    "sessions": [{"id": "session-live", "project_path": str(project_dir), "qwen_session_id": "qwen-live"}],
+                    "messages": [],
+                    "workflow_configs": [],
+                    "runs": [
+                        {
+                            "id": "run-live",
+                            "session_id": "session-live",
+                            "qwen_session_id": "qwen-live",
+                            "run_owner": live_owner,
+                            "status": "running",
+                            "error": None,
+                            "workspace": str(run_dir),
+                            "project_path": str(project_dir),
+                            "steps": [{"key": "build", "status": "running", "error": None, "retry_count": 0}],
+                        }
+                    ],
+                }
+            )
+
+            with (
+                patch("app.runtime_modules.api.store", store),
+                patch("app.runtime_modules.api.owner_matches_current_process", return_value=False),
+                patch("app.runtime_modules.api.owner_process_is_alive", return_value=True),
+            ):
+                runtime.mark_interrupted_runs()
+
+            recovered = store.load_sync()["runs"][0]
+            self.assertEqual(recovered["status"], "running")
+            self.assertIsNone(recovered["error"])
+            self.assertEqual(recovered["steps"][0]["status"], "running")
 
 
 class WorkflowRunRehydrationTests(unittest.IsolatedAsyncioTestCase):

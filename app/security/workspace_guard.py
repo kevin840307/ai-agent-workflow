@@ -89,12 +89,22 @@ def resolve_project_relative_write(project_root: str | Path, rel_path: str, *, r
         if not is_within(project_path, target):
             raise WorkflowError(f"{label} contains unsafe file path (absolute path outside Project Path): {rel_path}")
         rel_path = target.relative_to(project_path).as_posix()
+    if _looks_like_drive_stripped_absolute_path(project_path, rel_path):
+        raise WorkflowError(f"{label} contains unsafe file path (drive-stripped absolute path): {rel_path}")
     reason = unsafe_relative_path_reason(rel_path, reserved_dirs=reserved_dirs)
     if reason:
         raise WorkflowError(f"{label} contains unsafe file path ({reason}): {rel_path}")
     relative = Path(unquote(str(rel_path).strip().strip("`")).replace("\\", "/"))
     target = (project_path / relative).resolve()
     return ensure_within_project(project_path, target, action=label)
+
+
+def _looks_like_drive_stripped_absolute_path(project_path: Path, rel_path: str) -> bool:
+    rel_parts = [part.lower() for part in str(rel_path or "").replace("\\", "/").split("/") if part and part != "."]
+    root_parts = [part.lower() for part in project_path.parts if part and part not in {project_path.anchor}]
+    if len(rel_parts) < 2 or len(root_parts) < 2:
+        return False
+    return rel_parts[:2] == root_parts[:2]
 
 
 def guarded_write_text(project_root: str | Path, path: str | Path, content: str, write_func) -> None:

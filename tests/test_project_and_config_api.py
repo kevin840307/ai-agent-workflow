@@ -100,7 +100,7 @@ class ProjectAndConfigApiTests(unittest.TestCase):
             response = client.post(f"/api/sessions/{session['id']}/chat", json={"content": "hello"})
 
             self.assertEqual(response.status_code, 200, response.text)
-            resolve.assert_called_once_with()
+            resolve.assert_called_once_with({"thinking": True, "thinkingLevel": "medium"})
             assistant = response.json()["assistant"]
             self.assertEqual(assistant["content"], "opencode answer")
             self.assertEqual(assistant["trace"]["agent"], "opencode")

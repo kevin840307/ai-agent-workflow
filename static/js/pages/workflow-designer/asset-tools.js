@@ -120,6 +120,7 @@ function metadataYaml(step, id, path) {
   if (step.timeoutEnabled && step.timeoutMinutes) lines.push(`timeout: ${Math.round(Number(step.timeoutMinutes) * 60)}`);
   lines.push(`allowInteraction: ${Boolean(step.allowInteraction)}`);
   lines.push(`thinking: ${Boolean(step.thinking)}`);
+  lines.push(`thinkingLevel: ${cleanValue(step.thinkingLevel || (step.thinking ? "medium" : "none"))}`);
   lines.push(`confidenceThreshold: ${Number(step.confidenceThreshold ?? 0.75)}`);
   if (step.passKeywords) lines.push(`passKeywords: ${cleanValue(step.passKeywords)}`);
   if (step.failKeywords) lines.push(`failKeywords: ${cleanValue(step.failKeywords)}`);

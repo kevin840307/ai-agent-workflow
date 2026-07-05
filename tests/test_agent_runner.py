@@ -45,6 +45,48 @@ class RecoveringFakeAgent(FakeAgent):
         return AgentResult(output="Status: PASS\n\nrecovered", session_id=request.session_id)
 
 
+class ToolCallFakeAgent(FakeAgent):
+    async def run_stream(self, request, on_output=None) -> AgentResult:
+        self.requests.append(request)
+        return AgentResult(output='{"name": "use_exit_plan_mode"}', session_id=request.session_id)
+
+
+class ToolCallFileFakeAgent(FakeAgent):
+    async def run_stream(self, request, on_output=None) -> AgentResult:
+        self.requests.append(request)
+        return AgentResult(
+            output='```json\n{"name":"edit_file","arguments":{"file_path":"sorts.py","new_source":"def bubble_sort(items):\\n    return sorted(items)"}}\n```',
+            session_id=request.session_id,
+        )
+
+
+class ToolCallFileVariantFakeAgent(FakeAgent):
+    async def run_stream(self, request, on_output=None) -> AgentResult:
+        self.requests.append(request)
+        return AgentResult(
+            output='{"name":"write_file","parameters":"{\\"target_path\\":\\"tests/test_sorts.py\\",\\"content\\":\\"def test_sort():\\\\n    assert sorted([2, 1]) == [1, 2]\\"}"}',
+            session_id=request.session_id,
+        )
+
+
+class ToolCallTripleQuotedFileFakeAgent(FakeAgent):
+    async def run_stream(self, request, on_output=None) -> AgentResult:
+        self.requests.append(request)
+        return AgentResult(
+            output='```json\n{"name":"write_file","arguments":{"file_path":"sorts.py","new_source":"""def sort_values(items):\\n    return sorted(items)\\n"""}}\n```',
+            session_id=request.session_id,
+        )
+
+
+class ToolCallPathPrefixedContentFakeAgent(FakeAgent):
+    async def run_stream(self, request, on_output=None) -> AgentResult:
+        self.requests.append(request)
+        return AgentResult(
+            output='```json\n{"name":"auto_generation","arguments":{"new_source":"\n  sort.py: def insertion_sort(items):\\n      return sorted(items)\\n  "}}\n```',
+            session_id=request.session_id,
+        )
+
+
 class FakeAgentManager:
     def __init__(self, agent: FakeAgent) -> None:
         self.agent = agent
@@ -76,6 +118,27 @@ class AgentRunnerTests(unittest.TestCase):
 
     def test_recoverable_session_error_retries_once_without_session_id(self) -> None:
         asyncio.run(self._run_session_recovery_case())
+
+    def test_reuse_retry_uses_compact_prompt_after_failure_feedback(self) -> None:
+        asyncio.run(self._run_compact_retry_case(compact_enabled=True, expected_compact=True))
+
+    def test_reuse_retry_compaction_can_be_disabled_per_step(self) -> None:
+        asyncio.run(self._run_compact_retry_case(compact_enabled=False, expected_compact=False))
+
+    def test_tool_call_json_without_arguments_is_rejected_with_tool_name(self) -> None:
+        asyncio.run(self._run_tool_call_json_case())
+
+    def test_tool_call_json_with_file_content_is_converted_to_file_blocks(self) -> None:
+        asyncio.run(self._run_tool_call_file_block_case())
+
+    def test_tool_call_json_with_string_parameters_is_converted_to_file_blocks(self) -> None:
+        asyncio.run(self._run_tool_call_string_parameters_case())
+
+    def test_tool_call_json_with_triple_quoted_content_is_converted_to_file_blocks(self) -> None:
+        asyncio.run(self._run_tool_call_triple_quoted_content_case())
+
+    def test_tool_call_json_with_path_prefixed_content_is_converted_to_file_blocks(self) -> None:
+        asyncio.run(self._run_tool_call_path_prefixed_content_case())
 
     def test_generic_cli_provider_can_be_added_from_settings(self) -> None:
         manager = create_agent_manager({
@@ -148,6 +211,219 @@ class AgentRunnerTests(unittest.TestCase):
             self.assertEqual(len(agent.requests), 2)
             self.assertEqual(agent.requests[0].session_id, "qwen-session-1")
             self.assertIsNone(agent.requests[1].session_id)
+
+    async def _run_tool_call_json_case(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp) / "run"
+            project = Path(tmp) / "project"
+            (workspace / "output").mkdir(parents=True)
+            (workspace / "input").mkdir(parents=True)
+            project.mkdir()
+            (workspace / "requirement.md").write_text("hello", encoding="utf-8")
+
+            runner = AgentStepRunner(
+                agent_manager=FakeAgentManager(ToolCallFakeAgent()),
+                prompt_builder=FakePromptBuilder(),
+                bus=FakeBus(),
+                log=lambda run, message: _noop(),
+                refresh_artifacts=lambda run_id: _noop(),
+                append_session_message=lambda session_id, role, content: _noop_dict(),
+            )
+            run = {
+                "id": "run-1",
+                "session_id": "session-1",
+                "qwen_session_id": "qwen-session-1",
+                "workspace": str(workspace),
+                "project_path": str(project),
+                "steps": [{"key": "build", "agent": "qwen", "allow_interaction": False, "config": {}}],
+            }
+
+            with self.assertRaisesRegex(WorkflowError, "use_exit_plan_mode"):
+                await runner.run(run, "build", "05_build.md", "build-result.md")
+
+    async def _run_tool_call_file_block_case(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp) / "run"
+            project = Path(tmp) / "project"
+            (workspace / "output").mkdir(parents=True)
+            (workspace / "input").mkdir(parents=True)
+            project.mkdir()
+            (workspace / "requirement.md").write_text("hello", encoding="utf-8")
+
+            runner = AgentStepRunner(
+                agent_manager=FakeAgentManager(ToolCallFileFakeAgent()),
+                prompt_builder=FakePromptBuilder(),
+                bus=FakeBus(),
+                log=lambda run, message: _noop(),
+                refresh_artifacts=lambda run_id: _noop(),
+                append_session_message=lambda session_id, role, content: _noop_dict(),
+            )
+            run = {
+                "id": "run-1",
+                "session_id": "session-1",
+                "qwen_session_id": "qwen-session-1",
+                "workspace": str(workspace),
+                "project_path": str(project),
+                "steps": [{"key": "build", "agent": "qwen", "allow_interaction": False, "config": {}}],
+            }
+
+            await runner.run(run, "build", "05_build.md", "build-result.md")
+
+            artifact = (workspace / "output" / "build-result.md").read_text(encoding="utf-8")
+            self.assertIn("FILE: sorts.py", artifact)
+            self.assertIn("def bubble_sort", artifact)
+
+    async def _run_tool_call_string_parameters_case(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp) / "run"
+            project = Path(tmp) / "project"
+            (workspace / "output").mkdir(parents=True)
+            (workspace / "input").mkdir(parents=True)
+            project.mkdir()
+            (workspace / "requirement.md").write_text("hello", encoding="utf-8")
+
+            runner = AgentStepRunner(
+                agent_manager=FakeAgentManager(ToolCallFileVariantFakeAgent()),
+                prompt_builder=FakePromptBuilder(),
+                bus=FakeBus(),
+                log=lambda run, message: _noop(),
+                refresh_artifacts=lambda run_id: _noop(),
+                append_session_message=lambda session_id, role, content: _noop_dict(),
+            )
+            run = {
+                "id": "run-1",
+                "session_id": "session-1",
+                "qwen_session_id": "qwen-session-1",
+                "workspace": str(workspace),
+                "project_path": str(project),
+                "steps": [{"key": "generate_tests", "agent": "qwen", "allow_interaction": False, "config": {}}],
+            }
+
+            await runner.run(run, "generate_tests", "07_test.md", "test-plan.md")
+
+            artifact = (workspace / "output" / "test-plan.md").read_text(encoding="utf-8")
+            self.assertIn("FILE: tests/test_sorts.py", artifact)
+            self.assertIn("def test_sort", artifact)
+
+    async def _run_tool_call_triple_quoted_content_case(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp) / "run"
+            project = Path(tmp) / "project"
+            (workspace / "output").mkdir(parents=True)
+            (workspace / "input").mkdir(parents=True)
+            project.mkdir()
+            (workspace / "requirement.md").write_text("hello", encoding="utf-8")
+
+            runner = AgentStepRunner(
+                agent_manager=FakeAgentManager(ToolCallTripleQuotedFileFakeAgent()),
+                prompt_builder=FakePromptBuilder(),
+                bus=FakeBus(),
+                log=lambda run, message: _noop(),
+                refresh_artifacts=lambda run_id: _noop(),
+                append_session_message=lambda session_id, role, content: _noop_dict(),
+            )
+            run = {
+                "id": "run-1",
+                "session_id": "session-1",
+                "qwen_session_id": "qwen-session-1",
+                "workspace": str(workspace),
+                "project_path": str(project),
+                "steps": [{"key": "build", "agent": "qwen", "allow_interaction": False, "config": {}}],
+            }
+
+            await runner.run(run, "build", "05_build.md", "build-result.md")
+
+            artifact = (workspace / "output" / "build-result.md").read_text(encoding="utf-8")
+            self.assertIn("FILE: sorts.py", artifact)
+            self.assertIn("def sort_values", artifact)
+
+    async def _run_tool_call_path_prefixed_content_case(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp) / "run"
+            project = Path(tmp) / "project"
+            (workspace / "output").mkdir(parents=True)
+            (workspace / "input").mkdir(parents=True)
+            project.mkdir()
+            (workspace / "requirement.md").write_text("hello", encoding="utf-8")
+
+            runner = AgentStepRunner(
+                agent_manager=FakeAgentManager(ToolCallPathPrefixedContentFakeAgent()),
+                prompt_builder=FakePromptBuilder(),
+                bus=FakeBus(),
+                log=lambda run, message: _noop(),
+                refresh_artifacts=lambda run_id: _noop(),
+                append_session_message=lambda session_id, role, content: _noop_dict(),
+            )
+            run = {
+                "id": "run-1",
+                "session_id": "session-1",
+                "qwen_session_id": "qwen-session-1",
+                "workspace": str(workspace),
+                "project_path": str(project),
+                "steps": [{"key": "auto_generation", "agent": "qwen", "allow_interaction": False, "config": {}}],
+            }
+
+            await runner.run(run, "auto_generation", "00_auto_generation.md", "auto-generation-result.md")
+
+            artifact = (workspace / "output" / "auto-generation-result.md").read_text(encoding="utf-8")
+            self.assertIn("FILE: sort.py", artifact)
+            self.assertIn("def insertion_sort", artifact)
+
+    async def _run_compact_retry_case(self, *, compact_enabled: bool, expected_compact: bool) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp) / "run"
+            project = Path(tmp) / "project"
+            (workspace / "output").mkdir(parents=True)
+            (workspace / "input").mkdir(parents=True)
+            project.mkdir()
+            (workspace / "requirement.md").write_text("hello", encoding="utf-8")
+            (workspace / "input" / "failure-feedback.md").write_text(
+                "## Retry Feedback for build\n\n"
+                "### Error message to fix\n\n"
+                "old failure should not be repeated.\n\n"
+                "## Retry Feedback for build\n\n"
+                "### Error message to fix\n\n"
+                "pytest failed because bubble_sort returned None.\n",
+                encoding="utf-8",
+            )
+
+            agent = FakeAgent()
+            runner = AgentStepRunner(
+                agent_manager=FakeAgentManager(agent),
+                prompt_builder=FakePromptBuilder(),
+                bus=FakeBus(),
+                log=lambda run, message: _noop(),
+                refresh_artifacts=lambda run_id: _noop(),
+                append_session_message=lambda session_id, role, content: _noop_dict(),
+            )
+            run = {
+                "id": "run-1",
+                "session_id": "session-1",
+                "qwen_session_id": "qwen-session-1",
+                "workspace": str(workspace),
+                "project_path": str(project),
+                "steps": [
+                    {
+                        "key": "build",
+                        "agent": "qwen",
+                        "allow_interaction": False,
+                        "config": {"compactRetryPromptWhenReusingSession": compact_enabled},
+                    }
+                ],
+            }
+
+            await runner.run(run, "build", "05_build.md", "build-result.md")
+
+            prompt = agent.requests[-1].prompt
+            self.assertEqual(prompt.lstrip().startswith("# Compact Reuse Retry"), expected_compact)
+            if expected_compact:
+                self.assertIn("bubble_sort returned None", prompt)
+                self.assertNotIn("old failure should not be repeated", prompt)
+                self.assertIn("Continue the same agent session", prompt)
+                self.assertIn("FILE: relative/path/to/file.ext", prompt)
+                self.assertIn("drive-stripped absolute paths", prompt)
+            else:
+                self.assertIn("test prompt", prompt)
 
     async def _run_session_case(self, *, fresh_session: bool, fresh_per_agent: bool, expected_session: str | None) -> None:
         with tempfile.TemporaryDirectory() as tmp:

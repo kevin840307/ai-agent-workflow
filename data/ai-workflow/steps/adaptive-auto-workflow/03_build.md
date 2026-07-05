@@ -3,11 +3,11 @@ Implement the approved task plan.
 Implement the approved task plan for the current task only.
 
 Critical execution contract:
-- Prefer the Qwen/OpenCode built-in file edit/write tools to modify project files directly.
+- Modify project files directly only when the CLI actually writes files in this non-interactive run.
 - Keep edits inside the selected Project Path only.
 - Do not edit `.qwen/**`, `opencode.json`, `.ai-workflow/**`, `.qwen-workflow/**`, or `.git/**`.
 - Build owns production/project artifacts only. Do not create or modify tests in this step.
-- If your CLI environment cannot use file edit/write tools, fall back to direct file edits.
+- If direct editing is unavailable, uncertain, or would be returned as tool-call JSON such as `{"name": "edit_file"}`, output complete FILE/CONTENT/END_FILE blocks instead.
 - When falling back to direct-edit outputs, every direct-edit output must contain complete runnable project content for that file.
 
 Requirement:

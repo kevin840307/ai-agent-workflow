@@ -170,6 +170,70 @@ class PromptBuilderTests(unittest.TestCase):
             self.assertIn("def bubble_sort", result.prompt)
             self.assertIn("preserve existing behavior", result.prompt)
 
+    def test_project_index_is_refreshed_for_later_steps(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            workspace = root / "run"
+            project = root / "project"
+            workflow = root / "workflow"
+            (workspace / "input").mkdir(parents=True)
+            (workspace / "output").mkdir(parents=True)
+            (workspace / "prompts").mkdir(parents=True)
+            project.mkdir()
+            (workflow / "prompts").mkdir(parents=True)
+
+            (workspace / "requirement.md").write_text("Build sort helpers", encoding="utf-8")
+            (workspace / "output" / "project-index.md").write_text("# Project Index\n\nold_file.py\n", encoding="utf-8")
+            (project / "sort.py").write_text("def bubble_sort(items):\n    return sorted(items)\n", encoding="utf-8")
+            (workflow / "prompts" / "tests.md").write_text("Index:\n{{project_index}}", encoding="utf-8")
+
+            run = {
+                "id": "run-1",
+                "workspace": str(workspace),
+                "project_path": str(project),
+                "workflow_folder": "workflow",
+                "steps": [{"key": "generate_tests", "allow_interaction": False, "config": {"templatePath": "prompts/tests.md"}}],
+            }
+
+            with patch("app.workflow_runtime.prompt_builder.WORKFLOW_BUNDLES_DIR", root):
+                result = PromptBuilder().build(run, "generate_tests", "prompts/tests.md", allow_interaction=False)
+
+            self.assertIn("sort.py", result.prompt)
+            self.assertNotIn("old_file.py", result.prompt)
+
+    def test_prompt_includes_project_python_import_map(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            workspace = root / "run"
+            project = root / "project"
+            workflow = root / "workflow"
+            (workspace / "input").mkdir(parents=True)
+            (workspace / "output").mkdir(parents=True)
+            (workspace / "prompts").mkdir(parents=True)
+            project.mkdir()
+            (workflow / "prompts").mkdir(parents=True)
+
+            (workspace / "requirement.md").write_text("Test sort helpers", encoding="utf-8")
+            (project / "bubble_sort.py").write_text("def bubble_sort(items):\n    return sorted(items)\n", encoding="utf-8")
+            (project / "tests").mkdir()
+            (project / "tests" / "test_old.py").write_text("def test_old(): pass\n", encoding="utf-8")
+            (workflow / "prompts" / "tests.md").write_text("Imports:\n{{project_python_import_map}}", encoding="utf-8")
+
+            run = {
+                "id": "run-1",
+                "workspace": str(workspace),
+                "project_path": str(project),
+                "workflow_folder": "workflow",
+                "steps": [{"key": "generate_tests", "allow_interaction": False, "config": {"templatePath": "prompts/tests.md"}}],
+            }
+
+            with patch("app.workflow_runtime.prompt_builder.WORKFLOW_BUNDLES_DIR", root):
+                result = PromptBuilder().build(run, "generate_tests", "prompts/tests.md", allow_interaction=False)
+
+            self.assertIn("bubble_sort.py", result.prompt)
+            self.assertIn("from bubble_sort import", result.prompt)
+            self.assertNotIn("tests/test_old.py` ->", result.prompt)
+
     def test_global_step_skill_path_loads_from_asset_root(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

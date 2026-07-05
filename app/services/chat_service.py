@@ -11,18 +11,47 @@ from app.core.metrics import metrics
 from app.persistence.repositories import store as store_repository
 from app.services.agent_session_service import get_agent_session_id, update_agent_session_id
 from app.workflow_runtime.agents import AgentRequest
+from app.workflow_runtime.thinking import normalize_thinking_level, thinking_enabled, thinking_label
 
 
 CHAT_HISTORY_LIMIT = 16
 
 
-def _chat_prompt(history: list[dict], content: str, *, reuse_session: bool) -> str:
+def _chat_thinking_guidance(level: str) -> str:
+    normalized = normalize_thinking_level(level, default="none")
+    if normalized == "none":
+        return ""
+    lines = [
+        "# Chat Thinking Control",
+        "",
+        f"Thinking Level: {thinking_label(normalized)} ({normalized})",
+        "",
+        "Before answering, internally analyze the user message, relevant project context, constraints, and likely failure modes.",
+        "Do not expose hidden chain-of-thought. Answer directly, and only include concise assumptions, risks, or validation notes when useful.",
+    ]
+    if normalized in {"high", "extreme"}:
+        lines.extend([
+            "",
+            "For this answer, internally check whether the request needs code/project awareness, whether previous context changes the answer, and whether the response needs concrete next steps.",
+        ])
+    if normalized == "extreme":
+        lines.extend([
+            "",
+            "Run an internal Reflect -> Decide pass before finalizing: verify the answer matches the user intent, avoid over-answering, and surface only the final useful result.",
+        ])
+    return "\n".join(lines).strip()
+
+
+def _chat_prompt(history: list[dict], content: str, *, reuse_session: bool, thinking_level: str = "none") -> str:
     """Build a normal chat prompt, not a workflow prompt."""
     content = content.strip()
+    thinking_guidance = _chat_thinking_guidance(thinking_level)
     if reuse_session:
         return content
 
     lines: list[str] = []
+    if thinking_guidance:
+        lines.extend([thinking_guidance, ""])
     recent = history[-CHAT_HISTORY_LIMIT:]
     for message in recent:
         role = "User" if message.get("role") == "user" else "Assistant"
@@ -46,9 +75,12 @@ def _looks_like_tool_call_json(text: str) -> bool:
     return isinstance(payload, dict) and isinstance(payload.get("name"), str) and "arguments" in payload
 
 
-def _chat_repair_prompt(content: str) -> str:
+def _chat_repair_prompt(content: str, thinking_level: str = "none") -> str:
+    thinking_guidance = _chat_thinking_guidance(thinking_level)
+    prefix = f"{thinking_guidance}\n\n" if thinking_guidance else ""
     return (
-        "Please answer the user directly in natural language. "
+        prefix
+        + "Please answer the user directly in natural language. "
         "Do not output JSON, tool calls, or markdown code blocks.\n\n"
         f"User question: {content.strip()}"
     )
@@ -114,10 +146,14 @@ async def chat(session_id: str, body: runtime.CreateMessageRequest) -> dict:
 
         try:
             await runtime.update_message(assistant_msg["id"], status="running")
-            agent = runtime.agent_manager.resolve()
+            thinking_level = normalize_thinking_level(body.thinking_level, default="medium")
+            agent = runtime.agent_manager.resolve({
+                "thinking": thinking_enabled(thinking_level),
+                "thinkingLevel": thinking_level,
+            })
             agent_health = agent.health()
             reuse_session = bool(agent_health.get("reuse_session"))
-            prompt = _chat_prompt(history, body.content, reuse_session=reuse_session)
+            prompt = _chat_prompt(history, body.content, reuse_session=reuse_session, thinking_level=thinking_level)
             agent_session_id = get_agent_session_id(session, agent.name, session_id)
             repaired_tool_call = False
             chat_stream_id = f"chat-{session_id}"
@@ -153,7 +189,7 @@ async def chat(session_id: str, body: runtime.CreateMessageRequest) -> dict:
                     AgentRequest(
                         run_id=f"chat-{session_id}-repair",
                         step_key="chat",
-                        prompt=_chat_repair_prompt(body.content),
+                        prompt=_chat_repair_prompt(body.content, thinking_level),
                         cwd=project_path,
                         session_id=result.session_id,
                     ),
@@ -190,6 +226,7 @@ async def chat(session_id: str, body: runtime.CreateMessageRequest) -> dict:
                 "output_chars": len(answer or ""),
                 "duration_ms": int((time.perf_counter() - chat_started) * 1000),
                 "repaired_tool_call": repaired_tool_call,
+                "thinking_level": thinking_level,
             },
         )
         await runtime.bus.publish(

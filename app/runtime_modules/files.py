@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import json
 import re
 from pathlib import Path, PureWindowsPath
@@ -184,7 +185,7 @@ def _mentions_project_production_python_file(project_dir: Path, text: str) -> bo
     return False
 
 
-def failure_feedback_for_step(all_feedback: str, step_key: str) -> str:
+def failure_feedback_for_step(all_feedback: str, step_key: str, *, latest_only: bool = False) -> str:
     if not all_feedback.strip():
         return ""
     pattern = re.compile(
@@ -192,6 +193,8 @@ def failure_feedback_for_step(all_feedback: str, step_key: str) -> str:
         re.MULTILINE | re.DOTALL,
     )
     blocks = [match.group(0).strip() for match in pattern.finditer(all_feedback)]
+    if latest_only:
+        return blocks[-1] if blocks else ""
     return "\n\n".join(blocks)
 
 
@@ -801,11 +804,76 @@ def validate_generated_test_files(files: list[tuple[str, str]]) -> None:
         for rel_path, content in files
         if Path(rel_path).name == "test_example.py"
         or re.search(r"^\s*(from\s+example\s+import|import\s+example\b)", content, re.MULTILINE)
+        or re.search(r"^\s*(from\s+your_module\s+import|import\s+your_module\b)", content, re.MULTILINE)
+        or re.search(r"Replace ['\"]?your_module['\"]? with the actual module", content, re.IGNORECASE)
         or re.search(r"(?m)^\s*assert\s+False\b", content)
         or re.search(r"implementation\s+is\s+incomplete|TODO-only|placeholder", content, re.IGNORECASE)
     ]
     if placeholder_tests:
         raise WorkflowError("generate_tests produced placeholder example tests instead of project-specific tests: " + ", ".join(placeholder_tests))
+    concrete_test_files = [rel_path for rel_path, _ in files if Path(rel_path).name != "conftest.py"]
+    if not concrete_test_files:
+        raise WorkflowError("generate_tests must produce at least one concrete pytest test file under tests/test_*.py, not only conftest.py.")
+    files_without_tests = [
+        rel_path
+        for rel_path, content in files
+        if Path(rel_path).name != "conftest.py"
+        and not re.search(r"(?m)^\s*(def|async\s+def)\s+test_[A-Za-z0-9_]*\s*\(", content)
+        and not re.search(r"(?m)^\s*class\s+Test[A-Za-z0-9_]*\s*[:(]", content)
+    ]
+    if files_without_tests and len(files_without_tests) == len(concrete_test_files):
+        raise WorkflowError("generate_tests produced pytest files without test functions or Test* classes: " + ", ".join(files_without_tests))
+    fixture_errors = _test_functions_with_unresolved_required_args(files)
+    if fixture_errors:
+        raise WorkflowError(
+            "generate_tests produced pytest functions with unresolved required fixture arguments: "
+            + ", ".join(fixture_errors)
+        )
+
+
+def _test_functions_with_unresolved_required_args(files: list[tuple[str, str]]) -> list[str]:
+    fixture_names: set[str] = set()
+    parsed_files: list[tuple[str, ast.AST]] = []
+    for rel_path, content in files:
+        if Path(rel_path).suffix.lower() != ".py":
+            continue
+        try:
+            tree = ast.parse(content, filename=rel_path)
+        except SyntaxError:
+            continue
+        parsed_files.append((rel_path, tree))
+        for node in ast.walk(tree):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and _is_pytest_fixture(node):
+                fixture_names.add(node.name)
+
+    errors: list[str] = []
+    for rel_path, tree in parsed_files:
+        for node in ast.walk(tree):
+            if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) or not node.name.startswith("test_"):
+                continue
+            for arg in _required_test_args(node):
+                if arg not in fixture_names:
+                    errors.append(f"{rel_path}:{node.name}({arg})")
+    return errors
+
+
+def _is_pytest_fixture(node: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
+    for decorator in node.decorator_list:
+        target = decorator.func if isinstance(decorator, ast.Call) else decorator
+        if isinstance(target, ast.Attribute) and target.attr == "fixture":
+            return True
+        if isinstance(target, ast.Name) and target.id == "fixture":
+            return True
+    return False
+
+
+def _required_test_args(node: ast.FunctionDef | ast.AsyncFunctionDef) -> list[str]:
+    args = list(node.args.posonlyargs) + list(node.args.args)
+    if args and args[0].arg in {"self", "cls"}:
+        args = args[1:]
+    default_count = len(node.args.defaults)
+    required_count = max(0, len(args) - default_count)
+    return [arg.arg for arg in args[:required_count]]
 
 
 def is_build_test_file_path(rel_path: str) -> bool:

@@ -3,6 +3,13 @@ import { LocalStore, StorageKeys } from "../core/storage.js?v=20260704-direct-ed
 export function createChat(ctx) {
   const { api, state, ui } = ctx;
 
+  function isPureThinkingStatus(text) {
+    const value = String(text || "").trim();
+    const compact = value.replace(/\s+/g, "").toLowerCase();
+    return /^(thinking|reasoning|thoughts?)(\.{0,3})$/i.test(value)
+      || /^(thinking|reasoning|thought){2,}$/i.test(compact);
+  }
+
   const chat = {
     closeStream() {
       if (state.chatEventSource) {
@@ -23,7 +30,9 @@ export function createChat(ctx) {
           return;
         }
         if (event.type === "agent_output") {
-          const text = event.stream === "thinking"
+          const stream = String(event.stream || "display").toLowerCase();
+          if (["thinking", "reasoning", "thought"].includes(stream) && isPureThinkingStatus(event.text)) return;
+          const text = stream === "thinking"
             ? `\n[thinking] ${event.text}`
             : event.text;
           ctx.features.messages.updateTemporary(hasOutput ? text : `${agent}:\n${text}`, { append: hasOutput });
@@ -80,7 +89,7 @@ export function createChat(ctx) {
       try {
         await api.request(`/api/sessions/${state.activeSessionId}/chat`, {
           method: "POST",
-          body: JSON.stringify({ content, clientRequestId }),
+          body: JSON.stringify({ content, clientRequestId, thinkingLevel: state.thinkingLevel || "medium" }),
         });
         await ctx.features.messages.load({ keepDraft: true });
         await ctx.features.sessions.refreshList();

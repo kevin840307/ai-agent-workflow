@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -59,6 +60,52 @@ class WorkflowCoreTests(unittest.TestCase):
             architecture = (project / "architecture.md").read_text(encoding="utf-8")
             self.assertIn("Dominant source extensions: .yaml (1)", architecture)
             self.assertIn("config\\users.yaml", architecture)
+
+    def test_general_plan_tasks_routes_to_deterministic_planner(self) -> None:
+        class FailingAgentRunner:
+            async def run(self, *_args, **_kwargs):
+                raise AssertionError("plan_tasks should not call the agent for General Auto Development")
+
+        async def log(_run, _message):
+            return None
+
+        async def refresh(_run_id):
+            return None
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            workspace = root / "run"
+            project = root / "project"
+            output = workspace / "output"
+            (workspace / "input").mkdir(parents=True)
+            output.mkdir(parents=True)
+            project.mkdir()
+            (workspace / "requirement.md").write_text(
+                "用Python幫我建立氣泡排序法+選擇排序法+插入排序法+快速排序法+合併排序法+堆積排序+希爾排序法",
+                encoding="utf-8",
+            )
+            run = {
+                "id": "run-1",
+                "workspace": str(workspace),
+                "project_path": str(project),
+                "workflow_id": "general-auto-development",
+                "steps": [{"key": "plan_tasks", "type": "ai", "config": {"outputFile": "todo.md"}}],
+            }
+            actions = WorkflowActions(
+                agent_runner=FailingAgentRunner(),
+                functions=WorkflowFunctionService(log=log, refresh_artifacts=refresh),
+                log=log,
+                refresh_artifacts=refresh,
+            )
+
+            action = actions.action_for_step(run, run["steps"][0], output)
+            asyncio.run(action())
+
+            todo = (output / "todo.md").read_text(encoding="utf-8")
+            self.assertIn("TASK-008", todo)
+            self.assertIn("Assemble and expose the complete requested behavior", todo)
+            self.assertIn("氣泡排序法", todo)
+            self.assertIn("希爾排序法", todo)
 
     def test_catalog_function_ids_are_executable_or_runtime_special_cases(self) -> None:
         function_ids = {item["id"] for item in workflow_asset_service.function_catalog()["functions"]}
@@ -205,6 +252,80 @@ Status: READY
             with self.assertRaisesRegex(WorkflowError, "directly create or modify production files"):
                 asyncio.run(actions.build_step({"id": "run-1", "workspace": str(workspace), "project_path": str(project), "steps": [{"key": "run_external_validation", "config": {"fallbackValidationScripts": ["validation.py"]}}]}))
 
+    def test_build_step_rejects_documentation_only_direct_edits_by_default(self) -> None:
+        class FakeAgentRunner:
+            async def run(self, run, step_key, prompt_name, artifact, **_kwargs):
+                project = Path(run["project_path"])
+                (project / "architecture.md").write_text("# Architecture\n", encoding="utf-8")
+                output = Path(run["workspace"]) / "output"
+                output.mkdir(parents=True, exist_ok=True)
+                (output / artifact).write_text("# Build Result\n\nStatus: READY\n", encoding="utf-8")
+                return "# Build Result\n\nStatus: READY\n"
+
+        async def log(_run, _message):
+            return None
+
+        async def refresh(_run_id):
+            return None
+
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp) / "project"
+            workspace = Path(tmp) / "workspace"
+            project.mkdir()
+            (workspace / "output").mkdir(parents=True)
+            actions = WorkflowActions(agent_runner=FakeAgentRunner(), functions=None, log=log, refresh_artifacts=refresh)
+            run = {
+                "id": "run-1",
+                "workspace": str(workspace),
+                "project_path": str(project),
+                "steps": [{"key": "build", "config": {"requireSubstantiveBuild": True, "allowDocumentationOnlyBuild": False}}],
+            }
+
+            with self.assertRaisesRegex(WorkflowError, "requires a concrete project artifact"):
+                asyncio.run(actions.build_step(run))
+
+    def test_build_step_can_allow_documentation_only_direct_edits_by_config(self) -> None:
+        class FakeAgentRunner:
+            async def run(self, run, step_key, prompt_name, artifact, **_kwargs):
+                project = Path(run["project_path"])
+                (project / "architecture.md").write_text("# Architecture\n", encoding="utf-8")
+                output = Path(run["workspace"]) / "output"
+                output.mkdir(parents=True, exist_ok=True)
+                (output / artifact).write_text("# Build Result\n\nStatus: READY\n", encoding="utf-8")
+                return "# Build Result\n\nStatus: READY\n"
+
+        async def log(_run, _message):
+            return None
+
+        async def refresh(_run_id):
+            return None
+
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp) / "project"
+            workspace = Path(tmp) / "workspace"
+            project.mkdir()
+            (workspace / "output").mkdir(parents=True)
+            actions = WorkflowActions(agent_runner=FakeAgentRunner(), functions=None, log=log, refresh_artifacts=refresh)
+            run = {
+                "id": "run-1",
+                "workspace": str(workspace),
+                "project_path": str(project),
+                "steps": [{"key": "build", "config": {"requireSubstantiveBuild": True, "allowDocumentationOnlyBuild": True}}],
+            }
+
+            asyncio.run(actions.build_step(run))
+            self.assertTrue((project / "architecture.md").exists())
+
+    def test_general_deliverable_units_split_chinese_plus_list_without_grouping(self) -> None:
+        requirement = "用Python幫我建立氣泡排序法+選擇排序法+插入排序法+快速排序法+合併排序法+堆積排序+希爾排序法"
+
+        units = WorkflowActions._requirement_deliverable_units(requirement)
+
+        self.assertEqual(
+            units,
+            ["氣泡排序法", "選擇排序法", "插入排序法", "快速排序法", "合併排序法", "堆積排序", "希爾排序法"],
+        )
+
 
     def test_generate_tests_requires_direct_test_file_edits(self) -> None:
         class FakeAgentRunner:
@@ -259,6 +380,17 @@ Status: READY
 
             text = (workspace / "output" / "test-plan.md").read_text(encoding="utf-8")
             self.assertIn("tests/test_existing.py", text)
+
+    def test_fresh_session_respects_step_keep_same_session_config(self) -> None:
+        run = {
+            "steps": [
+                {"key": "build", "config": {"keepSameSession": True}},
+                {"key": "generate_tests", "config": {"keepSameSession": False}},
+            ]
+        }
+
+        self.assertFalse(WorkflowActions._fresh_session_for_step(run, "build"))
+        self.assertTrue(WorkflowActions._fresh_session_for_step(run, "generate_tests"))
 
     def test_workflow_bundle_paths_are_normalized_inside_asset_dirs(self) -> None:
         self.assertEqual(
@@ -513,7 +645,7 @@ Status: READY
         self.assertEqual(review["type"], "review")
         self.assertEqual(review["reviewMode"], "new_agent")
         self.assertEqual(review["retryFromStepKey"], "auto_generation")
-        self.assertEqual(validation["function"], "run_external_validation")
+        self.assertEqual(validation["function"], "adaptive_python_gate")
         self.assertEqual(validation["retryFromStepKey"], "auto_generation")
         self.assertFalse(validation["requiresValidationScript"])
 
@@ -684,6 +816,7 @@ Status: READY
             output = workspace / "output"
             project.mkdir()
             output.mkdir(parents=True)
+            requirement = "\u7528Python\u5e6b\u6211\u5efa\u7acb\u6c23\u6ce1\u6392\u5e8f\u6cd5+\u9078\u64c7\u6392\u5e8f\u6cd5+\u63d2\u5165\u6392\u5e8f\u6cd5+\u5feb\u901f\u6392\u5e8f\u6cd5+\u5408\u4f75\u6392\u5e8f\u6cd5+\u5806\u7a4d\u6392\u5e8f+\u5e0c\u723e\u6392\u5e8f\u6cd5"
             (workspace / "requirement.md").write_text(requirement, encoding="utf-8")
             (output / "todo.md").write_text(
                 "# Todo\n\n"
@@ -714,13 +847,136 @@ Status: READY
             asyncio.run(actions.implementation_review_step({"id": "run-1", "workspace": str(workspace), "project_path": str(project), "workflow_id": "general-auto-development", "steps": []}))
 
             repaired = (output / "todo.md").read_text(encoding="utf-8")
-            self.assertIn("Implement all algorithms together", repaired)
+            self.assertIn("氣泡排序法", repaired)
+            self.assertIn("希爾排序法", repaired)
+            self.assertIn("Assemble and expose the complete requested behavior", repaired)
             manifest = (output / "task-manifest.md").read_text(encoding="utf-8")
-            self.assertGreaterEqual(manifest.count("[owner=build]"), 1)
+            self.assertGreaterEqual(manifest.count("[owner=build]"), 8)
             review = (output / "implementation-review.md").read_text(encoding="utf-8")
-            self.assertIn("Deterministic review passed", review)
+            self.assertIn("repaired deterministically", review)
             self.assertTrue((output / "todos" / "TASK-001.md").is_file())
-            self.assertFalse((output / "todos" / "TASK-007.md").is_file())
+            self.assertTrue((output / "todos" / "TASK-008.md").is_file())
+
+
+    def test_adaptive_groups_structurally_cohesive_deliverables_without_domain_hardcoding(self) -> None:
+        async def log(_run, _message):
+            return None
+
+        async def refresh(_run_id):
+            return None
+
+        requirement = "用Python幫我建立氣泡排序法+選擇排序法+插入排序法+快速排序法+合併排序法+堆積排序+希爾排序法"
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp) / "project"
+            workspace = Path(tmp) / "workspace"
+            output = workspace / "output"
+            project.mkdir()
+            (project / "src").mkdir()
+            output.mkdir(parents=True)
+            requirement = "\u7528Python\u5e6b\u6211\u5efa\u7acb\u6c23\u6ce1\u6392\u5e8f\u6cd5+\u9078\u64c7\u6392\u5e8f\u6cd5+\u63d2\u5165\u6392\u5e8f\u6cd5+\u5feb\u901f\u6392\u5e8f\u6cd5+\u5408\u4f75\u6392\u5e8f\u6cd5+\u5806\u7a4d\u6392\u5e8f+\u5e0c\u723e\u6392\u5e8f\u6cd5"
+            (workspace / "requirement.md").write_text(requirement, encoding="utf-8")
+            actions = WorkflowActions(agent_runner=None, functions=None, log=log, refresh_artifacts=refresh)
+
+            asyncio.run(actions.generate_task_prompts_step({"id": "run-1", "workspace": str(workspace), "project_path": str(project), "workflow_id": "adaptive-auto-workflow", "steps": []}))
+
+            manifest = json.loads((output / "task-manifest.json").read_text(encoding="utf-8"))
+            self.assertEqual(manifest["task_strategy"], "independent_deliverable_tasks")
+            self.assertGreaterEqual(len(manifest["tasks"]), 7)
+            self.assertIn('氣泡排序法', manifest['deliverables'])
+            self.assertTrue((output / "task-prompts" / "TASK-007.md").exists())
+            prompt = (output / "task-prompts" / "TASK-001.md").read_text(encoding="utf-8")
+            self.assertIn("Deliverable Coverage Contract", prompt)
+            self.assertIn("traceability label", prompt)
+
+    def test_adaptive_generation_rejects_changes_without_deliverable_traceability(self) -> None:
+        class FakeAgentRunner:
+            async def run(self, run, step_key, prompt_name, artifact, **_kwargs):
+                text = (
+                    "# Adaptive Generation Result\n\n"
+                    "Status: READY\n\n"
+                    "FILE: src/main.py\n"
+                    "CONTENT:\n"
+                    "def calculate_sum(a, b):\n"
+                    "    return a + b\n"
+                    "END_FILE\n"
+                )
+                output = Path(run["workspace"]) / "output"
+                output.mkdir(parents=True, exist_ok=True)
+                (output / artifact).parent.mkdir(parents=True, exist_ok=True)
+                (output / artifact).write_text(text, encoding="utf-8")
+                return text
+
+        async def log(_run, _message):
+            return None
+
+        async def refresh(_run_id):
+            return None
+
+        requirement = "用Python幫我建立氣泡排序法+選擇排序法+插入排序法+快速排序法+合併排序法+堆積排序+希爾排序法"
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp) / "project"
+            workspace = Path(tmp) / "workspace"
+            output = workspace / "output"
+            (project / "src").mkdir(parents=True)
+            output.mkdir(parents=True)
+            (workspace / "requirement.md").write_text(requirement, encoding="utf-8")
+            actions = WorkflowActions(agent_runner=FakeAgentRunner(), functions=None, log=log, refresh_artifacts=refresh)
+            run = {"id": "run-1", "workspace": str(workspace), "project_path": str(project), "workflow_id": "adaptive-auto-workflow", "steps": []}
+
+            asyncio.run(actions.generate_task_prompts_step(run))
+            with self.assertRaises(WorkflowError) as raised:
+                asyncio.run(actions.adaptive_generation_step(run))
+
+            self.assertIn("deliverable traceability", str(raised.exception))
+            self.assertFalse((project / "src" / "main.py").exists())
+
+    def test_adaptive_generation_defers_traceability_labels_to_configured_validation_script(self) -> None:
+        class FakeAgentRunner:
+            async def run(self, run, step_key, prompt_name, artifact, **_kwargs):
+                text = (
+                    "# Adaptive Generation Result\n\n"
+                    "Status: READY\n\n"
+                    "FILE: src/main.py\n"
+                    "CONTENT:\n"
+                    "def calculate_sum(a, b):\n"
+                    "    return a + b\n"
+                    "END_FILE\n"
+                )
+                output = Path(run["workspace"]) / "output"
+                output.mkdir(parents=True, exist_ok=True)
+                (output / artifact).parent.mkdir(parents=True, exist_ok=True)
+                (output / artifact).write_text(text, encoding="utf-8")
+                return text
+
+        async def log(_run, _message):
+            return None
+
+        async def refresh(_run_id):
+            return None
+
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp) / "project"
+            workspace = Path(tmp) / "workspace"
+            output = workspace / "output"
+            (project / "src").mkdir(parents=True)
+            output.mkdir(parents=True)
+            validator = project / "validation.py"
+            validator.write_text("print('ok')\n", encoding="utf-8")
+            (workspace / "requirement.md").write_text("Create alpha + beta", encoding="utf-8")
+            actions = WorkflowActions(agent_runner=FakeAgentRunner(), functions=None, log=log, refresh_artifacts=refresh)
+            run = {
+                "id": "run-1",
+                "workspace": str(workspace),
+                "project_path": str(project),
+                "workflow_id": "adaptive-auto-workflow",
+                "validation_script": str(validator),
+                "steps": [],
+            }
+
+            asyncio.run(actions.generate_task_prompts_step(run))
+            asyncio.run(actions.adaptive_generation_step(run))
+
+            self.assertTrue((project / "src" / "main.py").exists())
 
     def test_build_task_loop_preserves_previous_task_markers_when_later_task_overwrites(self) -> None:
         class FakeAgentRunner:
@@ -821,6 +1077,144 @@ Status: READY
 
             self.assertEqual(calls, ["TASK-002"])
             self.assertIn("selection_sort", (project / "sort.py").read_text(encoding="utf-8"))
+
+    def test_build_task_loop_uses_generic_repair_task_for_downstream_failure(self) -> None:
+        calls: list[str] = []
+
+        class FakeAgentRunner:
+            async def run(self, run, step_key, prompt_name, artifact, **_kwargs):
+                task_id = run.get("_current_task", {}).get("id")
+                calls.append(task_id)
+                text = (
+                    "FILE: sort.py\n"
+                    "CONTENT:\n"
+                    "def bubble_sort(items):\n"
+                    "    return sorted(items)\n\n"
+                    "def selection_sort(items):\n"
+                    "    return sorted(items)\n\n"
+                    "def repaired_sort(items):\n"
+                    "    return sorted(items)\n"
+                    "END_FILE\n"
+                )
+                output = Path(run["workspace"]) / "output"
+                (output / artifact).parent.mkdir(parents=True, exist_ok=True)
+                (output / artifact).write_text(text, encoding="utf-8")
+                return text
+
+        async def log(_run, _message):
+            return None
+
+        async def refresh(_run_id):
+            return None
+
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp) / "project"
+            workspace = Path(tmp) / "workspace"
+            output = workspace / "output"
+            project.mkdir()
+            (workspace / "input").mkdir(parents=True)
+            output.mkdir(parents=True)
+            (workspace / "requirement.md").write_text("Build two sorting functions", encoding="utf-8")
+            (workspace / "input" / "failure-feedback.md").write_text(
+                "## Retry Feedback for build\n\n"
+                "### Error message to fix\n\n"
+                "Test command failed with exit code 1. Open output/test-result.md for full stdout/stderr.\n",
+                encoding="utf-8",
+            )
+            (project / "sort.py").write_text(
+                "def bubble_sort(items):\n"
+                "    return sorted(items)\n\n"
+                "def selection_sort(items):\n"
+                "    return sorted(items)\n",
+                encoding="utf-8",
+            )
+            for task_id, marker in [("TASK-001", "bubble_sort"), ("TASK-002", "selection_sort")]:
+                task_dir = output / "tasks" / task_id
+                task_dir.mkdir(parents=True)
+                (task_dir / "build-result.md").write_text(
+                    f"FILE: sort.py\nCONTENT:\ndef {marker}(items):\n    return sorted(items)\nEND_FILE\n",
+                    encoding="utf-8",
+                )
+                (task_dir / "build-state.json").write_text(
+                    json.dumps({"task_id": task_id, "phase": "build", "files": [{"path": "sort.py", "markers": [marker]}]}),
+                    encoding="utf-8",
+                )
+            (output / "task-manifest.md").write_text(
+                "# Task Manifest\n\nStatus: READY\n\n## Small Task Order\n"
+                "1. TASK-001 [owner=build]: Add bubble sort\n"
+                "2. TASK-002 [owner=build]: Add selection sort\n",
+                encoding="utf-8",
+            )
+            actions = WorkflowActions(agent_runner=FakeAgentRunner(), functions=None, log=log, refresh_artifacts=refresh)
+
+            asyncio.run(actions.build_step({"id": "run-1", "workspace": str(workspace), "project_path": str(project), "workflow_id": "general-auto-development", "steps": []}))
+
+            self.assertEqual(calls, ["TASK-999"])
+            self.assertIn("repaired_sort", (project / "sort.py").read_text(encoding="utf-8"))
+
+    def test_adaptive_task_loop_uses_generic_repair_task_for_downstream_failure(self) -> None:
+        calls: list[str] = []
+
+        class FakeAgentRunner:
+            async def run(self, run, step_key, prompt_name, artifact, **_kwargs):
+                task_id = run.get("_current_task", {}).get("id")
+                calls.append(task_id)
+                text = (
+                    "FILE: app.py\n"
+                    "CONTENT:\n"
+                    "def feature():\n"
+                    "    return 'ok'\n\n"
+                    "def repair_marker():\n"
+                    "    return 'fixed'\n"
+                    "END_FILE\n"
+                )
+                output = Path(run["workspace"]) / "output"
+                (output / artifact).parent.mkdir(parents=True, exist_ok=True)
+                (output / artifact).write_text(text, encoding="utf-8")
+                return text
+
+        async def log(_run, _message):
+            return None
+
+        async def refresh(_run_id):
+            return None
+
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp) / "project"
+            workspace = Path(tmp) / "workspace"
+            output = workspace / "output"
+            project.mkdir()
+            (workspace / "input").mkdir(parents=True)
+            output.mkdir(parents=True)
+            (workspace / "requirement.md").write_text("Build feature", encoding="utf-8")
+            (workspace / "input" / "failure-feedback.md").write_text(
+                "## Retry Feedback for auto_generation\n\n"
+                "### Error message to fix\n\n"
+                "External validation failed after generated tasks completed.\n",
+                encoding="utf-8",
+            )
+            (project / "app.py").write_text("def feature():\n    return 'ok'\n", encoding="utf-8")
+            for task_id, marker in [("TASK-001", "feature")]:
+                task_dir = output / "tasks" / task_id
+                task_dir.mkdir(parents=True)
+                (task_dir / "adaptive-generation-result.md").write_text(
+                    f"FILE: app.py\nCONTENT:\ndef {marker}():\n    return 'ok'\nEND_FILE\n",
+                    encoding="utf-8",
+                )
+                (task_dir / "auto_generation-state.json").write_text(
+                    json.dumps({"task_id": task_id, "phase": "auto_generation", "files": [{"path": "app.py", "markers": [marker]}]}),
+                    encoding="utf-8",
+                )
+            (output / "task-manifest.json").write_text(
+                json.dumps({"tasks": [{"id": "TASK-001", "title": "Add feature"}]}),
+                encoding="utf-8",
+            )
+            actions = WorkflowActions(agent_runner=FakeAgentRunner(), functions=None, log=log, refresh_artifacts=refresh)
+
+            asyncio.run(actions.adaptive_generation_step({"id": "run-1", "workspace": str(workspace), "project_path": str(project), "workflow_id": "adaptive-auto-workflow", "steps": []}))
+
+            self.assertEqual(calls, ["TASK-999"])
+            self.assertIn("repair_marker", (project / "app.py").read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":

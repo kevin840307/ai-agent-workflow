@@ -15,6 +15,7 @@ from app.services.agent_session_service import default_agent_session_ids
 from app.security.workspace_guard import PROJECT_WORKFLOW_DIR, LEGACY_WORKFLOW_DIR
 from app.services import workflow_asset_service, workflow_config_service
 from app.workflow_runtime.run_profiles import apply_run_profile, normalize_run_profile
+from app.workflow_runtime.thinking import apply_thinking_level_to_steps, normalize_thinking_level
 
 
 ACTIVE_RUN_STATUSES = {"queued", "running", "waiting_input", "cancelling"}
@@ -225,7 +226,11 @@ async def create_workflow_run(session_id: str, body: runtime.CreateRunRequest) -
                 raise HTTPException(status_code=400, detail="Requirement is required")
 
             run_profile = normalize_run_profile(body.run_profile)
+            thinking_level_override = body.thinking_level is not None
+            thinking_level = normalize_thinking_level(body.thinking_level, default="none")
             steps = apply_run_profile(runtime.initial_steps(workflow.get("steps", [])), run_profile)
+            if thinking_level_override:
+                steps = apply_thinking_level_to_steps(steps, thinking_level)
             if not steps:
                 raise HTTPException(status_code=400, detail="Workflow has no enabled steps.")
 
@@ -245,6 +250,7 @@ async def create_workflow_run(session_id: str, body: runtime.CreateRunRequest) -
                 or default_agent_session_ids(session_id, session.get("qwen_session_id") or session_id),
                 "status": "queued",
                 "error": None,
+                "run_owner": runtime.current_run_owner(),
                 "workspace": str(run_dir),
                 "project_path": project_path,
                 "workflow_id": workflow["id"],
@@ -255,6 +261,8 @@ async def create_workflow_run(session_id: str, body: runtime.CreateRunRequest) -
                 "test_command": body.test_command,
                 "validation_script": body.validation_script,
                 "run_profile": run_profile,
+                "thinking_level": thinking_level,
+                "thinking_level_override": thinking_level_override,
                 "steps": steps,
                 "artifacts": [],
                 "timeline": [],

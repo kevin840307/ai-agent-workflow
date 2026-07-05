@@ -93,13 +93,6 @@
       <section class="compose-panel">
         <div class="composer-box" id="composerBox">
           <div class="composer-topbar">
-            <div class="composer-run-mode">
-              <div class="mode-switch" role="group" aria-label="Run mode">
-                <button id="modeWorkflow" class="mode-option active" type="button">Workflow</button>
-                <button id="modeChat" class="mode-option" type="button">Chat</button>
-              </div>
-              <span id="composerMode" class="composer-mode">Requirement</span>
-            </div>
             <div class="workflow-picker" id="workflowPicker">
               <span class="workflow-picker-label">Run with</span>
               <select id="workflowSelect" class="workflow-native-select" aria-hidden="true" tabindex="-1"></select>
@@ -109,10 +102,48 @@
               </button>
               <div id="workflowDropdownMenu" class="workflow-dropdown-menu" role="listbox" hidden></div>
             </div>
+            <div class="thinking-picker" id="thinkingPicker" title="Controls how much self-checking guidance is injected into workflow and chat prompts.">
+              <span class="workflow-picker-label">Thinking</span>
+              <select id="thinkingLevel" class="workflow-native-select" aria-hidden="true" tabindex="-1">
+                <option value="none">無</option>
+                <option value="medium" selected>中</option>
+                <option value="high">高</option>
+                <option value="extreme">極高</option>
+              </select>
+              <button id="thinkingDropdownButton" class="thinking-dropdown-button workflow-dropdown-button" type="button" aria-haspopup="listbox" aria-expanded="false">
+                <span id="thinkingSelectedLabel" class="workflow-selected-label thinking-selected-label">中</span>
+                <span class="workflow-dropdown-caret thinking-dropdown-caret" aria-hidden="true"></span>
+              </button>
+              <div id="thinkingDropdownMenu" class="thinking-dropdown-menu workflow-dropdown-menu" role="listbox" hidden>
+                <button class="workflow-dropdown-option thinking-dropdown-option" type="button" role="option" data-thinking-level="none" aria-selected="false">
+                  <span class="workflow-option-main"><strong>無</strong><small>No additional thinking guidance</small></span>
+                  <span class="workflow-option-badge">OFF</span>
+                </button>
+                <button class="workflow-dropdown-option thinking-dropdown-option active" type="button" role="option" data-thinking-level="medium" aria-selected="true">
+                  <span class="workflow-option-main"><strong>中</strong><small>Basic self-check before output</small></span>
+                  <span class="workflow-option-badge">MID</span>
+                </button>
+                <button class="workflow-dropdown-option thinking-dropdown-option" type="button" role="option" data-thinking-level="high" aria-selected="false">
+                  <span class="workflow-option-main"><strong>高</strong><small>Deeper validation and repair checks</small></span>
+                  <span class="workflow-option-badge">HIGH</span>
+                </button>
+                <button class="workflow-dropdown-option thinking-dropdown-option" type="button" role="option" data-thinking-level="extreme" aria-selected="false">
+                  <span class="workflow-option-main"><strong>極高</strong><small>Reflect, decide, and replan when needed</small></span>
+                  <span class="workflow-option-badge">MAX</span>
+                </button>
+              </div>
+            </div>
           </div>
           <textarea id="messageInput" placeholder="Describe what to build..." rows="2"></textarea>
           <div class="composer-footer">
             <div class="composer-left">
+              <div class="composer-run-mode">
+                <div class="mode-switch" role="group" aria-label="Run mode">
+                  <button id="modeWorkflow" class="mode-option active" type="button">Workflow</button>
+                  <button id="modeChat" class="mode-option" type="button">Chat</button>
+                </div>
+                <span id="composerMode" class="composer-mode">Requirement</span>
+              </div>
               <button id="saveRequirement" class="composer-tool save-tool" title="Save draft" aria-label="Save draft">Save</button>
               <button id="retryRun" class="composer-tool" title="Retry workflow" aria-label="Retry workflow" disabled>Retry</button>
               <button id="addGuidance" class="composer-tool" title="Add guidance" aria-label="Add guidance" disabled>Guide</button>

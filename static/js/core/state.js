@@ -19,6 +19,7 @@ export const AppState = {
   defaultAgent: "agent",
   workflows: [],
   selectedWorkflowId: LocalStore.getString(StorageKeys.selectedWorkflowId, "system-controlled-qwen") || "system-controlled-qwen",
+  thinkingLevel: LocalStore.getString(StorageKeys.thinkingLevel, "medium") || "medium",
   validationScript: "",
   workflowActivity: null,
 };

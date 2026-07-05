@@ -34,6 +34,7 @@ from app.core.paths import (
     write_text,
 )
 from app.runtime_modules.run_state import RunState, artifact_record  # noqa: F401
+from app.runtime_modules.run_owner import current_run_owner, owner_matches_current_process, owner_process_is_alive
 from app.persistence.json_store import Store
 
 from app.workflow_runtime.actions import WorkflowActions
@@ -140,14 +141,19 @@ workflow_executor = WorkflowExecutor(
 
 
 def mark_interrupted_runs() -> None:
+    owner = current_run_owner()
     data = store.load_sync()
     changed = False
     for run in data.get("runs", []):
         if run.get("status") in {"queued", "running"}:
+            run_owner = run.get("run_owner")
+            if run_owner and not owner_matches_current_process(run_owner) and owner_process_is_alive(run_owner):
+                continue
             run["status"] = "failed"
             run["error"] = "Workflow server restarted before this run completed."
             run["ended_at"] = utc_now()
             run["updated_at"] = utc_now()
+            run["interrupted_by_owner"] = owner
             for step in run.get("steps", []):
                 if step.get("status") == "running":
                     step["status"] = "failed"

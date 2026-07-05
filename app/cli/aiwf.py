@@ -24,6 +24,7 @@ VALUE_OPTIONS = {
     "--agent",
     "--profile",
     "--run-profile",
+    "--thinking-level",
     "--project",
     "--project-path",
     "--requirement-file",
@@ -42,6 +43,7 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--config", default=None, help="Optional workflow contract/config yaml/json path.")
     run.add_argument("--agent", default=None, help="Optional run-level agent override, for example qwen or opencode.")
     run.add_argument("--profile", "--run-profile", dest="run_profile", choices=["fast", "normal", "deep"], default=None, help="Run profile: fast, normal, or deep. Deep enables compatible-agent thinking and keeps higher retry budgets.")
+    run.add_argument("--thinking-level", choices=["none", "medium", "high", "extreme"], default=None, help="Optional run-level thinking guidance override.")
     run.add_argument("--title", default="CLI Workflow", help="Session title.")
     run.add_argument("--test-command", default=None, help="Optional test command passed to the workflow.")
     run.add_argument("--validation-script", default=None, help="Optional Python validation script path passed to the workflow.")
@@ -257,6 +259,7 @@ async def run_cli(argv: Sequence[str] | None = None) -> int:
                 test_command=args.test_command,
                 validation_script=args.validation_script,
                 run_profile=args.run_profile,
+                thinking_level=args.thinking_level,
             ),
         )
         if args.wait:

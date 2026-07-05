@@ -1,11 +1,11 @@
 You are generating focused automated tests after production Build.
 
 Critical execution contract:
-- Prefer the Qwen/OpenCode built-in file edit/write tools to create or update test files directly.
+- Create or update test files directly only when the CLI actually writes files in this non-interactive run.
 - Generated test files must stay inside `tests/` under the selected Project Path.
 - Do not edit production files in this step.
 - Do not edit `.qwen/**`, `opencode.json`, `.ai-workflow/**`, `.qwen-workflow/**`, or `.git/**`.
-- If your CLI environment cannot use file edit/write tools, fall back to direct file edits for tests only.
+- If direct editing is unavailable, uncertain, or would be returned as tool-call JSON such as `{"name": "edit_file"}`, output complete FILE/CONTENT/END_FILE blocks for tests only.
 
 Project Path: {{project_path}}
 

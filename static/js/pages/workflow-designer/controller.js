@@ -419,6 +419,15 @@ function updateFromInput(input) {
     }
     step[field] = value;
 
+    if (field === "thinkingLevel") {
+      step.thinkingLevel = normalizeThinkingLevelForDesigner(value);
+      step.thinking = step.thinkingLevel !== "none";
+      markWorkflowDirty();
+      renderWorkflowViewOnly();
+      renderStepEditorHeader();
+      return;
+    }
+
     if (field === "type") {
       handleStepTypeChange(step);
       markWorkflowDirty();
@@ -445,7 +454,7 @@ function updateFromInput(input) {
     if (field === "skillPath" && isAiWorkflowStepPath(value)) {
       step.templatePath = value;
     }
-    if (["name", "templatePath", "filename", "outputFile", "contractId", "contractPath", "metadataPath", "skillPath", "aggregatorFunction", "agent", "provider", "maxRetries", "failAction", "retryFromStepKey", "keepSameSession", "injectFailureFeedback", "timeoutEnabled", "timeoutMinutes", "requiresValidationScript", "thinking", "functionsText"].includes(field)) renderWorkflowViewOnly();
+    if (["name", "templatePath", "filename", "outputFile", "contractId", "contractPath", "metadataPath", "skillPath", "aggregatorFunction", "agent", "provider", "maxRetries", "failAction", "retryFromStepKey", "keepSameSession", "injectFailureFeedback", "timeoutEnabled", "timeoutMinutes", "requiresValidationScript", "thinking", "thinkingLevel", "functionsText"].includes(field)) renderWorkflowViewOnly();
     if (field === "requiresValidationScript") renderWorkflowLabels();
     renderStepEditorHeader();
     markWorkflowDirty();
@@ -1015,6 +1024,15 @@ async function designerApi(path, options = {}) {
   return response.json();
 }
 
+
+function normalizeThinkingLevelForDesigner(value) {
+  const allowed = new Set(["none", "medium", "high", "extreme"]);
+  const raw = String(value || "").trim().toLowerCase();
+  const aliases = { "無": "none", "中": "medium", "高": "high", "極高": "extreme", true: "medium", false: "none" };
+  const normalized = aliases[raw] || raw;
+  return allowed.has(normalized) ? normalized : "none";
+}
+
 function summarizeStep(step) {
   if (step.type === "review") return `${formatReviewMode(step.reviewMode)} - confidence >= ${step.confidenceThreshold} - retry ${step.maxRetries}${step.retryFromStepKey ? ` -> ${step.retryFromStepKey}` : ""}`;
   if (step.type === "validation" || step.type === "python") {
@@ -1023,7 +1041,7 @@ function summarizeStep(step) {
   }
   if (step.type === "gate" || step.type === "manual") return step.pauseAfterStep ? "Pause and wait for human approval." : "Gate decision step.";
   if (step.command) return `Command ${step.command} - template ${step.templatePath || "not set"} - retry ${step.maxRetries}${step.retryFromStepKey ? ` -> ${step.retryFromStepKey}` : ""}.`;
-  return `${step.templatePath || "no template"} - retry ${step.maxRetries}${step.retryFromStepKey ? ` -> ${step.retryFromStepKey}` : ""} - ${step.allowInteraction ? "interactive" : "fully automatic"}${step.thinking ? " - thinking" : ""}`;
+  return `${step.templatePath || "no template"} - retry ${step.maxRetries}${step.retryFromStepKey ? ` -> ${step.retryFromStepKey}` : ""} - ${step.allowInteraction ? "interactive" : "fully automatic"}${step.thinkingLevel && step.thinkingLevel !== "none" ? ` - thinking:${step.thinkingLevel}` : (step.thinking ? " - thinking" : "")}`;
 }
 
 function uniqueWorkflowName(base) {

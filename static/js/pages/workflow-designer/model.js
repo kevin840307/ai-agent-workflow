@@ -1,9 +1,38 @@
 import { TemplatePresets } from "../workflow-designer-constants.js?v=20260704-direct-edit-gad";
 import { clone, makeId } from "./utils.js?v=20260704-direct-edit-gad";
 
+const ThinkingLevels = new Set(["none", "medium", "high", "extreme"]);
+
+function normalizeThinkingLevel(value, legacyThinking = false) {
+  const raw = String(value ?? "").trim().toLowerCase();
+  const aliases = {
+    "": legacyThinking ? "medium" : "none",
+    false: "none",
+    true: "medium",
+    "0": "none",
+    "1": "medium",
+    off: "none",
+    no: "none",
+    none: "none",
+    無: "none",
+    medium: "medium",
+    normal: "medium",
+    中: "medium",
+    high: "high",
+    deep: "high",
+    高: "high",
+    extreme: "extreme",
+    max: "extreme",
+    極高: "extreme",
+  };
+  const normalized = aliases[raw] || raw;
+  return ThinkingLevels.has(normalized) ? normalized : (legacyThinking ? "medium" : "none");
+}
+
 function createStep(overrides = {}) {
   const key = overrides.key || makeId("step");
   const type = inferStepType(overrides);
+  const thinkingLevel = normalizeThinkingLevel(overrides.thinkingLevel ?? overrides.thinking_level ?? overrides.thinking, overrides.thinking === true);
   const filename = defaultFilename({ ...overrides, key });
   const templatePath = defaultTemplatePath({ ...overrides, key });
   return {
@@ -47,7 +76,8 @@ function createStep(overrides = {}) {
     timeoutMinutes: overrides.timeoutMinutes ?? 0,
     allowInteraction: overrides.allowInteraction ?? false,
     requiresValidationScript: overrides.requiresValidationScript ?? false,
-    thinking: overrides.thinking ?? false,
+    thinkingLevel,
+    thinking: overrides.thinking ?? thinkingLevel !== "none",
     agentOptions: clone(overrides.agentOptions || {}),
     agentCount: overrides.agentCount ?? 3,
     agentMaxRetries: overrides.agentMaxRetries ?? 3,
@@ -91,6 +121,7 @@ function normalizeWorkflow(workflow = {}) {
 function normalizeStep(step = {}) {
   const base = createStep(step || {});
   const type = inferStepType(step || base);
+  const thinkingLevel = normalizeThinkingLevel(step?.thinkingLevel ?? step?.thinking_level ?? base.thinkingLevel ?? step?.thinking, step?.thinking === true || base.thinking === true);
   return {
     ...base,
     ...step,
@@ -103,6 +134,8 @@ function normalizeStep(step = {}) {
     outputFile: step?.outputFile || base.outputFile || "",
     agent: step?.agent || step?.provider || base.agent || "qwen",
     provider: step?.provider || step?.agent || base.provider || "qwen",
+    thinkingLevel,
+    thinking: step?.thinking ?? base.thinking ?? thinkingLevel !== "none",
     templateContent: step?.templateContent || base.templateContent,
     functions: normalizeFunctionList(step?.functions || step?.function || base.functions || base.function || ""),
     function: firstFunction(step?.functions || step?.function || base.functions || base.function || ""),
@@ -197,4 +230,5 @@ export {
   defaultFilename,
   defaultTemplateContent,
   normalizeFilename,
+  normalizeThinkingLevel,
 };

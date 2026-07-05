@@ -25,12 +25,14 @@ class Store:
         self._default_steps = default_steps
         self._lock_path = path.with_suffix(path.suffix + ".lock")
         self._stale_lock_sec = 60.0
+        self._lock_timeout_sec = float(os.environ.get("AI_WORKFLOW_STORE_LOCK_TIMEOUT_SEC", "600") or 600)
 
     @contextmanager
-    def _process_lock(self, timeout_sec: float = 120.0) -> Iterator[None]:
+    def _process_lock(self, timeout_sec: float | None = None) -> Iterator[None]:
         ensure_dirs()
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        deadline = time.monotonic() + timeout_sec
+        effective_timeout = self._lock_timeout_sec if timeout_sec is None else timeout_sec
+        deadline = time.monotonic() + effective_timeout
         fd: int | None = None
         while fd is None:
             try:

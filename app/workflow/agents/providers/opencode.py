@@ -8,6 +8,7 @@ from typing import Any
 from app.testing.mock_agent import mock_qwen_response
 from app.runtime_modules.errors import WorkflowError
 from app.security.workspace_guard import apply_workspace_env
+from app.workflow_runtime.thinking import normalize_thinking_level, thinking_enabled
 
 from ..base import AgentOutputCallback, AgentRequest, AgentResult, run_process_stream
 from app.workflow_runtime.agent_stream_events import AgentJsonStreamParser
@@ -33,7 +34,11 @@ class OpenCodeCliAdapter:
             if env_reuse is not None
             else bool(config.get("reuseSession", config.get("reuse_session", True)))
         )
-        self.thinking = bool(config.get("thinking", False))
+        self.thinking_level = normalize_thinking_level(
+            config.get("thinkingLevel", config.get("thinking_level", config.get("thinking", False))),
+            default="none",
+        )
+        self.thinking = thinking_enabled(self.thinking_level)
         self.skip_permissions = bool(config.get("dangerouslySkipPermissions", config.get("dangerously_skip_permissions", False)))
         self.extra_args = list(config.get("extraArgs") or config.get("extra_args") or [])
         self.prompt_file_threshold = int(config.get("promptFileThreshold") or config.get("prompt_file_threshold") or 3500)
@@ -169,6 +174,7 @@ class OpenCodeCliAdapter:
             "model": self.model,
             "agent": self.agent,
             "thinking": self.thinking,
+            "thinking_level": self.thinking_level,
             "dangerously_skip_permissions": self.skip_permissions,
             "prompt_file_threshold": self.prompt_file_threshold,
             "session_flag": "--session",

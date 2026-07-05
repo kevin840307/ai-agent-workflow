@@ -3,6 +3,8 @@ from __future__ import annotations
 from copy import deepcopy
 from typing import Any
 
+from .thinking import apply_thinking_level_to_steps
+
 VALID_RUN_PROFILES = {"fast", "normal", "deep"}
 
 
@@ -57,10 +59,15 @@ def apply_run_profile(steps: list[dict[str, Any]], profile: str | None) -> list[
                 _set_retry(step, max(current, deep_retry_floors[key]))
             if step.get("type") in {"ai", "review"} or key in {"prepare_project", "plan_tasks", "build", "generate_tests"}:
                 step["thinking"] = True
+                step["thinkingLevel"] = "high"
                 step_config["thinking"] = True
+                step_config["thinkingLevel"] = "high"
                 agent_options = step_config.setdefault("agentOptions", {})
                 if isinstance(agent_options, dict):
                     agent_options["thinking"] = True
+                    agent_options["thinkingLevel"] = "high"
+    if normalized == "fast":
+        return apply_thinking_level_to_steps(next_steps, "none")
     return next_steps
 
 

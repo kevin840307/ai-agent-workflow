@@ -99,6 +99,17 @@ class WorkflowActions:
     def _is_adaptive_workflow(run: dict[str, Any]) -> bool:
         return str(run.get("workflow_id") or "") == "adaptive-auto-workflow"
 
+    @staticmethod
+    def _fresh_session_for_step(run: dict[str, Any], step_key: str, *, default_keep_same_session: bool = True) -> bool:
+        step_record = next((step for step in run.get("steps", []) if step.get("key") == step_key), {})
+        config = step_config(step_record) if step_record else {}
+        return not bool_config(config, "keepSameSession", default_keep_same_session)
+
+    @staticmethod
+    def _config_for_step(run: dict[str, Any], step_key: str) -> dict[str, Any]:
+        step_record = next((step for step in run.get("steps", []) if step.get("key") == step_key), {})
+        return {**step_record, **step_config(step_record)} if step_record else {}
+
     async def run_agent_step(
         self,
         run: dict[str, Any],
@@ -166,6 +177,28 @@ class WorkflowActions:
         if forbid_test_files:
             validate_build_files_are_not_tests(files)
         return files
+
+    @staticmethod
+    def _validate_build_direct_files_are_substantive(run: dict[str, Any], direct_files: list[tuple[str, str]]) -> None:
+        config = WorkflowActions._config_for_step(run, "build")
+        if not bool_config(config, "requireSubstantiveBuild", False):
+            return
+        if bool_config(config, "allowDocumentationOnlyBuild", False):
+            return
+        doc_suffixes = {".md", ".markdown", ".rst", ".txt", ".adoc"}
+        substantive = [
+            rel_path
+            for rel_path, _content in direct_files
+            if Path(rel_path).suffix.lower() not in doc_suffixes
+        ]
+        if substantive:
+            return
+        changed = ", ".join(rel_path for rel_path, _content in direct_files) or "none"
+        raise WorkflowError(
+            "build only changed documentation/text files, but this workflow requires a concrete project artifact. "
+            f"Changed files: {changed}. Create or modify the actual production/config/source artifact, or enable "
+            "allowDocumentationOnlyBuild for documentation-only workflows."
+        )
 
     def _file_blocks_allowed_as_direct_edits(self) -> bool:
         return True
@@ -481,6 +514,54 @@ class WorkflowActions:
             units.append(unit)
         if len(units) >= 4 and all(len(unit) <= 40 for unit in units):
             return ["all requested deliverables: " + ", ".join(units)]
+        return units[:20]
+
+    @staticmethod
+    def _normalize_deliverable_unit(value: str) -> str:
+        text = re.sub(r"\s+", " ", str(value or "")).strip(" -:：;；,，、/\t")
+        if not text:
+            return ""
+        prefixes = [
+            r"^(?:請|请|幫我|帮我|麻煩|麻烦)\s*",
+            r"^(?:用|以)?\s*[\w#+.\- ]{1,40}?\s*(?:幫我|帮我)?\s*(?:建立|新增|製作|制作|產生|生成|實作|实现|撰寫|撰写|寫|写|create|build|implement|write|generate|add)\s*",
+            r"^(?:建立|新增|製作|制作|產生|生成|實作|实现|撰寫|撰写|寫|写)\s*",
+            r"^(?:create|build|implement|write|generate|add)\s+(?:a|an|the)?\s*",
+        ]
+        changed = True
+        while changed:
+            changed = False
+            for pattern in prefixes:
+                next_text = re.sub(pattern, "", text, flags=re.I).strip(" -:：;；,，、/\t")
+                if next_text != text:
+                    text = next_text
+                    changed = True
+        return text[:120]
+
+    @classmethod
+    def _requirement_deliverable_units(cls, requirement: str) -> list[str]:
+        text = str(requirement or "").strip()
+        if not text:
+            return []
+        candidates: list[str] = []
+        for line in text.splitlines():
+            match = re.match(r"^\s*(?:[-*]|\d+[\.)])\s+(.{2,})$", line)
+            if match:
+                candidates.append(match.group(1))
+        if len(candidates) < 2:
+            raw_parts = re.split(r"\s*(?:\+|、|，|,|;|；|/|與|和|\band\b)\s*", text, flags=re.I)
+            if len(raw_parts) >= 3:
+                candidates = raw_parts
+        units: list[str] = []
+        seen: set[str] = set()
+        for item in candidates:
+            unit = cls._normalize_deliverable_unit(item)
+            if len(unit) < 2:
+                continue
+            key = unit.casefold()
+            if key in seen:
+                continue
+            seen.add(key)
+            units.append(unit)
         return units[:20]
 
     def _build_task_ids(self, todo: str) -> list[str]:
@@ -1142,7 +1223,14 @@ class WorkflowActions:
         before = project_file_snapshot(project_dir)
         attempt_snapshot = project_content_snapshot(project_dir)
         try:
-            await self.run_agent_step(run, "generate_tests", prompt_name, artifact, agent_name=agent_name, fresh_session=True)
+            await self.run_agent_step(
+                run,
+                "generate_tests",
+                prompt_name,
+                artifact,
+                agent_name=agent_name,
+                fresh_session=self._fresh_session_for_step(run, "generate_tests"),
+            )
         except Exception as exc:
             await self._restore_failed_project_attempt(run, project_dir, attempt_snapshot, "generate_tests", exc)
             raise
@@ -1250,6 +1338,27 @@ class WorkflowActions:
     def _feedback_is_generic_for_task_loop(feedback: str) -> bool:
         block = WorkflowActions._latest_retry_feedback_block(feedback)
         return bool(block.strip()) and not bool(re.search(r"\bTASK-\d{3}\b", block))
+
+    @staticmethod
+    def _with_generic_repair_task(tasks: list[dict[str, Any]], *, owner: str) -> list[dict[str, Any]]:
+        used_ids = {str(task.get("id") or "") for task in tasks}
+        repair_id = ""
+        for number in range(999, 899, -1):
+            candidate = f"TASK-{number:03d}"
+            if candidate not in used_ids:
+                repair_id = candidate
+                break
+        if not repair_id:
+            repair_id = "TASK-REPAIR"
+        return [
+            *tasks,
+            {
+                "id": repair_id,
+                "owner": owner,
+                "title": "Repair assembled project from latest workflow failure feedback",
+                "_generic_repair_task": True,
+            },
+        ]
 
     @staticmethod
     def _content_markers(content: str) -> list[str]:
@@ -1564,8 +1673,11 @@ class WorkflowActions:
             tasks = self._task_entries_from_manifest(manifest, owner="build")
             if not tasks:
                 tasks = [{"id": "TASK-001", "owner": "build", "title": "Full requested production change"}]
-            total = len(tasks)
             build_feedback = self._build_step_feedback(run)
+            generic_build_feedback = self._feedback_is_generic_for_task_loop(build_feedback)
+            if generic_build_feedback:
+                tasks = self._with_generic_repair_task(tasks, owner="build")
+            total = len(tasks)
             task_artifacts: list[tuple[str, str, str]] = []
             any_task_changed = False
 
@@ -1578,7 +1690,7 @@ class WorkflowActions:
                 task_has_feedback = self._latest_feedback_mentions_task(
                     build_feedback,
                     task_id,
-                ) or self._feedback_is_generic_for_task_loop(build_feedback)
+                ) or (generic_build_feedback and bool(task.get("_generic_repair_task")))
                 if (
                     task_artifact_path.is_file()
                     and not task_has_feedback
@@ -1597,7 +1709,14 @@ class WorkflowActions:
                 attempt_snapshot = project_content_snapshot(project_dir)
                 await self.log(run, f"build: task loop {index}/{total} {task_id} - {task_title}")
                 try:
-                    await self.run_agent_step(scoped_run, "build", prompt_name, task_artifact, agent_name=agent_name, fresh_session=True)
+                    await self.run_agent_step(
+                        scoped_run,
+                        "build",
+                        prompt_name,
+                        task_artifact,
+                        agent_name=agent_name,
+                        fresh_session=self._fresh_session_for_step(run, "build"),
+                    )
 
                     direct_files = self._direct_edit_files_from_snapshot(
                         project_dir,
@@ -1621,6 +1740,7 @@ class WorkflowActions:
                         )
 
                     validate_build_files_are_not_tests(direct_files)
+                    self._validate_build_direct_files_are_substantive(run, direct_files)
                     validate_build_files_do_not_overwrite_validation_scripts(
                         project_dir,
                         direct_files,
@@ -1662,7 +1782,14 @@ class WorkflowActions:
 
         attempt_snapshot = project_content_snapshot(project_dir)
         try:
-            await self.run_agent_step(run, "build", prompt_name, artifact, agent_name=agent_name, fresh_session=True)
+            await self.run_agent_step(
+                run,
+                "build",
+                prompt_name,
+                artifact,
+                agent_name=agent_name,
+                fresh_session=self._fresh_session_for_step(run, "build"),
+            )
 
             direct_files = self._direct_edit_files_from_snapshot(
                 project_dir,
@@ -1685,6 +1812,7 @@ class WorkflowActions:
                     "Use Qwen/OpenCode file edit/write tools, or output complete FILE/CONTENT/END_FILE blocks."
                 )
             validate_build_files_are_not_tests(direct_files)
+            self._validate_build_direct_files_are_substantive(run, direct_files)
             validate_build_files_do_not_overwrite_validation_scripts(
                 project_dir,
                 direct_files,
@@ -1701,6 +1829,159 @@ class WorkflowActions:
         await self.log(run, "build: accepted direct agent production edit(s): " + ", ".join(rel_path for rel_path, _ in direct_files))
         await self.refresh_artifacts(run["id"])
 
+
+    @staticmethod
+    def _render_architecture_delta(task_id: str, task_title: str, direct_files: list[tuple[str, str]], output_dir: Path) -> str:
+        contract = read_text(output_dir / "architecture-contract.md")
+        files = [str(rel_path).replace("\\", "/") for rel_path, _ in direct_files]
+        existing_roots = []
+        for rel_path in files:
+            first = rel_path.split("/", 1)[0] if rel_path else ""
+            if first and first not in existing_roots:
+                existing_roots.append(first)
+        risk = "low"
+        if any(first in {"workflow_runtime", "runner", "services", "frontend", "backend"} for first in existing_roots):
+            risk = "medium"
+        if any(rel_path.startswith(('../', '/', '.git/', '.ai-workflow/', '.qwen-workflow/')) for rel_path in files):
+            risk = "high"
+        lines = [
+            "# Architecture Delta Summary",
+            "",
+            "Status: READY",
+            "",
+            "## Task",
+            f"- ID: {task_id}",
+            f"- Title: {task_title}",
+            "",
+            "## Changed Files",
+        ]
+        lines.extend(f"- `{rel_path}`" for rel_path in files)
+        lines.extend([
+            "",
+            "## Architecture Alignment",
+            f"- Existing roots touched: {', '.join(existing_roots) if existing_roots else 'None'}",
+            "- Contract applied: output/architecture-contract.md" if contract.strip() else "- Contract applied: no explicit contract artifact was available",
+            f"- Architecture drift risk: {risk}",
+            "",
+            "## Follow-up Review",
+            "- AI review should confirm that changed files reuse existing modules and do not introduce parallel architecture.",
+            "- If this task added a new root or duplicate subsystem, retry the current task and fold the change into the existing extension point.",
+        ])
+        return "\n".join(lines).rstrip() + "\n"
+
+    def _append_workflow_decision(
+        self,
+        output_dir: Path,
+        *,
+        task_id: str,
+        task_title: str,
+        status: str,
+        next_action: str,
+        reason: str,
+        changed_files: list[tuple[str, str]] | None = None,
+    ) -> None:
+        log_path = output_dir / "workflow-decision-log.md"
+        existing = read_text(log_path).rstrip() if log_path.is_file() else "# Adaptive Workflow Decision Log\n\n"
+        files = [rel_path for rel_path, _ in (changed_files or [])]
+        file_line = ", ".join(files) if files else "None"
+        entry = [
+            "",
+            f"## {task_id} - {task_title}",
+            f"- Status: {status}",
+            f"- Next action: {next_action}",
+            f"- Reason: {reason}",
+            f"- Changed files: {file_line}",
+            "",
+        ]
+        write_text(log_path, existing + "\n" + "\n".join(entry))
+
+    def _validate_adaptive_task_deliverable_coverage(
+        self,
+        project_dir: Path,
+        run: dict[str, Any],
+        output_dir: Path,
+        task: dict[str, Any],
+        direct_files: list[tuple[str, str]],
+    ) -> None:
+        """Domain-neutral deliverable coverage gate for Adaptive tasks.
+
+        The generator extracts itemized deliverables structurally from the user
+        request.  Prompts require agents to preserve those exact labels in
+        comments, docstrings, tests, validation data, or a coverage map.  This
+        lets Python verify that each requested item was considered without
+        hard-coding any business domain such as sorting, CRUD, config, etc.
+        """
+        if self._has_configured_validation_script(run, project_dir):
+            return
+        deliverables = [str(item).strip() for item in task.get("deliverables") or [] if str(item).strip()]
+        if not deliverables:
+            return
+        evidence = self._project_text_evidence(project_dir, max_files=260)
+        changed_evidence = "\n".join(content for _rel_path, content in direct_files)
+        evidence = f"{changed_evidence}\n{evidence}".casefold()
+        missing = [item for item in deliverables if item.casefold() not in evidence]
+        if missing:
+            raise WorkflowError(
+                "Adaptive task output is missing deliverable traceability label(s): "
+                + ", ".join(missing[:12])
+                + ". Add implementation/verification evidence for each listed deliverable, "
+                "using exact labels in comments, docstrings, test case ids, validation data, or a coverage map."
+            )
+
+    def _validate_adaptive_verification_gate(
+        self,
+        project_dir: Path,
+        run: dict[str, Any],
+        manifest: dict[str, Any],
+        task: dict[str, Any],
+        index: int,
+        total: int,
+    ) -> None:
+        final_acceptance = manifest.get("final_acceptance") if isinstance(manifest, dict) else {}
+        if not isinstance(final_acceptance, dict) or not final_acceptance.get("automated_tests_required", False):
+            return
+        deliverables = [str(item).strip() for item in manifest.get("deliverables") or [] if str(item).strip()]
+        task_deliverables = [str(item).strip() for item in task.get("deliverables") or [] if str(item).strip()]
+        if not deliverables or not task_deliverables:
+            return
+        is_final_or_whole_set = index >= total or set(task_deliverables) >= set(deliverables)
+        source = str(task.get("source") or "").lower()
+        title = str(task.get("title") or "").lower()
+        is_verification_task = "verification" in source or "verify" in title or "驗證" in title or "校驗" in title
+        if not (is_final_or_whole_set or is_verification_task):
+            return
+        if self._has_configured_validation_script(run, project_dir) or self._project_has_test_files(project_dir):
+            return
+        raise WorkflowError(
+            "Adaptive final deliverable set requires verification evidence, but no test files or validation script were found. "
+            "Create focused tests under the project's test layout or configure a validation script before finishing."
+        )
+
+    @staticmethod
+    def _project_has_test_files(project_dir: Path) -> bool:
+        return any(rel_path.replace("\\", "/").startswith("tests/test_") for rel_path in project_file_snapshot(project_dir))
+
+    def _has_configured_validation_script(self, run: dict[str, Any], project_dir: Path) -> bool:
+        if str(run.get("validation_script") or "").strip():
+            return True
+        for name in self._fallback_validation_scripts(run):
+            if (project_dir / str(name)).is_file():
+                return True
+        return False
+
+    @staticmethod
+    def _project_text_evidence(project_dir: Path, *, max_files: int = 260, max_chars_per_file: int = 12000) -> str:
+        chunks: list[str] = []
+        for rel_path in sorted(project_file_snapshot(project_dir))[:max_files]:
+            suffix = Path(rel_path).suffix.lower()
+            if suffix not in {".py", ".js", ".ts", ".tsx", ".jsx", ".java", ".cs", ".go", ".rs", ".md", ".txt", ".yaml", ".yml", ".json"}:
+                continue
+            try:
+                chunks.append((project_dir / rel_path).read_text(encoding="utf-8")[:max_chars_per_file])
+            except (UnicodeDecodeError, OSError):
+                continue
+        return "\n".join(chunks)
+
     async def generate_task_prompts_step(self, run: dict[str, Any], artifact: str = "task-manifest.md") -> None:
         """Generate Adaptive task manifest and per-task prompts as a visible step."""
         project_dir = Path(run.get("project_path") or ROOT)
@@ -1708,7 +1989,9 @@ class WorkflowActions:
         generator = TaskPromptGenerator()
         manifest = generator.generate(run, output_dir=output_dir, project_dir=project_dir)
         await self.refresh_artifacts(run["id"])
-        await self.log(run, f"generate_task_prompts: generated {len(manifest.get('tasks') or [])} adaptive task prompt(s)")
+        spec_path = output_dir / "workflow-spec.json"
+        spec_note = " with internal Workflow Spec" if spec_path.is_file() else ""
+        await self.log(run, f"generate_task_prompts: generated {len(manifest.get('tasks') or [])} adaptive task prompt(s){spec_note}")
 
     async def _external_validation_passes_now(self, run: dict[str, Any], output_dir: Path) -> bool:
         if not str(run.get("validation_script") or "").strip():
@@ -1738,21 +2021,28 @@ class WorkflowActions:
 
         if self._is_adaptive_workflow(run):
             manifest_path = output_dir / "task-manifest.json"
+            manifest: dict[str, Any] = {}
             tasks: list[dict[str, Any]] = []
             if manifest_path.is_file():
                 try:
                     parsed = json.loads(read_text(manifest_path))
-                    raw_tasks = parsed.get("tasks") if isinstance(parsed, dict) else []
+                    manifest = parsed if isinstance(parsed, dict) else {}
+                    raw_tasks = manifest.get("tasks") if isinstance(manifest, dict) else []
                     if isinstance(raw_tasks, list):
                         tasks = [task for task in raw_tasks if isinstance(task, dict)]
                 except json.JSONDecodeError:
+                    manifest = {}
                     tasks = []
             if not tasks:
                 tasks = [{"id": "TASK-001", "title": "Complete requested adaptive task"}]
+                manifest = {"tasks": tasks}
 
             task_artifacts: list[tuple[str, str, str]] = []
-            total = len(tasks)
             generation_feedback = failure_feedback_for_step(read_text(Path(run["workspace"]) / "input" / "failure-feedback.md"), "auto_generation")
+            generic_generation_feedback = self._feedback_is_generic_for_task_loop(generation_feedback)
+            if generic_generation_feedback:
+                tasks = self._with_generic_repair_task(tasks, owner="build")
+            total = len(tasks)
             for index, task in enumerate(tasks, start=1):
                 task_id = str(task.get("id") or f"TASK-{index:03d}")
                 task_title = str(task.get("title") or task_id)
@@ -1762,7 +2052,7 @@ class WorkflowActions:
                 task_has_feedback = self._latest_feedback_mentions_task(
                     generation_feedback,
                     task_id,
-                ) or self._feedback_is_generic_for_task_loop(generation_feedback)
+                ) or (generic_generation_feedback and bool(task.get("_generic_repair_task")))
                 if (
                     task_artifact_path.is_file()
                     and not task_has_feedback
@@ -1773,6 +2063,14 @@ class WorkflowActions:
                 ):
                     task_result = read_text(task_artifact_path)
                     task_artifacts.append((task_id, task_title, task_result))
+                    self._append_workflow_decision(
+                        output_dir,
+                        task_id=task_id,
+                        task_title=task_title,
+                        status="pass",
+                        next_action="continue",
+                        reason="Skipped because direct edits from this completed valid task are already present and preserved.",
+                    )
                     await self.log(run, f"auto_generation/{task_id}: skipped because direct edits from this task are already present and preserved")
                     continue
 
@@ -1781,7 +2079,14 @@ class WorkflowActions:
                 attempt_snapshot = project_content_snapshot(project_dir)
                 await self.log(run, f"auto_generation: adaptive task loop {index}/{total} {task_id} - {task_title}")
                 try:
-                    await self.run_agent_step(scoped_run, "auto_generation", prompt_name, task_artifact, agent_name=agent_name, fresh_session=True)
+                    await self.run_agent_step(
+                        scoped_run,
+                        "auto_generation",
+                        prompt_name,
+                        task_artifact,
+                        agent_name=agent_name,
+                        fresh_session=self._fresh_session_for_step(run, "auto_generation"),
+                    )
 
                     direct_files = self._direct_edit_files_from_snapshot(
                         project_dir,
@@ -1809,6 +2114,9 @@ class WorkflowActions:
                     )
                     validate_test_code_is_separate(direct_files)
                     validate_generated_code_files_are_clean(direct_files)
+                    validate_generated_test_files(only_test_files(direct_files)) if only_test_files(direct_files) else None
+                    self._validate_adaptive_task_deliverable_coverage(project_dir, run, output_dir, task, direct_files)
+                    self._validate_adaptive_verification_gate(project_dir, run, manifest, task, index, total)
                     self._write_task_direct_state(output_dir, project_dir, task_id, "auto_generation", direct_files)
                     self._validate_previous_direct_task_states_preserved(
                         output_dir,
@@ -1818,15 +2126,46 @@ class WorkflowActions:
                         phase="auto_generation",
                     )
                 except Exception as exc:
+                    self._append_workflow_decision(
+                        output_dir,
+                        task_id=task_id,
+                        task_title=task_title,
+                        status="fail",
+                        next_action="repair_current_step",
+                        reason=str(exc)[:500],
+                    )
+                    await self.log(run, f"auto_generation/{task_id}: reflection decision=repair_current_step after validation failure")
                     await self._restore_failed_project_attempt(run, project_dir, attempt_snapshot, f"auto_generation/{task_id}", exc)
                     if isinstance(exc, UserInputRequired):
                         raise
                     raise WorkflowError(f"{task_id}: {exc}") from exc
+                architecture_delta = self._render_architecture_delta(task_id, task_title, direct_files, output_dir)
+                write_text(output_dir / self._task_output_artifact(task_id, "architecture-delta.md"), architecture_delta)
                 task_result = self._render_direct_edit_summary("Adaptive Generation Direct Edit Result", task_id, task_title, direct_files)
                 write_text(task_artifact_path, task_result)
                 task_artifacts.append((task_id, task_title, task_result))
+                self._append_workflow_decision(
+                    output_dir,
+                    task_id=task_id,
+                    task_title=task_title,
+                    status="pass",
+                    next_action="continue",
+                    reason="Task changed project files and passed local Adaptive validation gates.",
+                    changed_files=direct_files,
+                )
                 await self.log(run, f"auto_generation/{task_id}: accepted direct agent edit(s): " + ", ".join(rel_path for rel_path, _ in direct_files))
+                await self.log(run, f"auto_generation/{task_id}: architecture delta recorded; contract alignment will be checked by review")
+                await self.log(run, f"auto_generation/{task_id}: reflection decision=continue after validation passed")
                 if await self._external_validation_passes_now(run, output_dir):
+                    self._append_workflow_decision(
+                        output_dir,
+                        task_id=task_id,
+                        task_title=task_title,
+                        status="pass",
+                        next_action="finish",
+                        reason="External validation passed early; remaining internal task loop items can stop.",
+                    )
+                    await self.log(run, f"auto_generation/{task_id}: reflection decision=finish because external validation passed")
                     break
 
             write_text(output_dir / artifact, self._render_aggregated_task_outputs("Adaptive Generation Result", task_artifacts))
@@ -1841,7 +2180,14 @@ class WorkflowActions:
 
         attempt_snapshot = project_content_snapshot(project_dir)
         try:
-            await self.run_agent_step(run, "auto_generation", prompt_name, artifact, agent_name=agent_name, fresh_session=True)
+            await self.run_agent_step(
+                run,
+                "auto_generation",
+                prompt_name,
+                artifact,
+                agent_name=agent_name,
+                fresh_session=self._fresh_session_for_step(run, "auto_generation"),
+            )
             direct_files = self._direct_edit_files_from_snapshot(
                 project_dir,
                 before,
@@ -2001,6 +2347,13 @@ class WorkflowActions:
             "generate_todo": lambda: self.generate_todo_step(
                 run,
                 step_prompt_name(step_record, "03_todo.md"),
+                step_artifact_name(step_record, "todo.md"),
+                allow_interaction=allow_interaction,
+                agent_name=agent_name,
+            ),
+            "plan_tasks": lambda: self.generate_todo_step(
+                run,
+                step_prompt_name(step_record, "01_plan_tasks.md"),
                 step_artifact_name(step_record, "todo.md"),
                 allow_interaction=allow_interaction,
                 agent_name=agent_name,

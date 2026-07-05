@@ -22,6 +22,19 @@ export function createEvents(ctx) {
       ui.on("maxRetries", "change", () => ctx.features.config.saveAgentConfig());
       ui.on("defaultAgent", "change", () => ctx.features.config.saveAgentConfig());
       ui.on("workflowSelect", "change", (event) => ctx.features.workflows.select(event.target.value));
+      ui.on("thinkingLevel", "change", (event) => {
+        ctx.features.workflows.selectThinkingLevel(event.target.value || "medium");
+      });
+      ui.on("thinkingDropdownButton", "click", (event) => {
+        event.stopPropagation();
+        ctx.features.workflows.toggleThinkingDropdown();
+      });
+      ui.on("thinkingDropdownMenu", "click", (event) => {
+        const option = event.target.closest(".thinking-dropdown-option");
+        if (!option || option.disabled || option.getAttribute("aria-disabled") === "true") return;
+        event.stopPropagation();
+        ctx.features.workflows.selectThinkingLevel(option.dataset.thinkingLevel);
+      });
       ui.on("workflowDropdownButton", "click", (event) => {
         event.stopPropagation();
         ctx.features.workflows.toggleDropdown();
@@ -51,10 +64,15 @@ export function createEvents(ctx) {
         if (header && !header.contains(event.target)) ctx.features.layout.toggleSettings(false);
         const picker = ui.byKey("workflowPicker");
         if (picker && !picker.contains(event.target)) ctx.features.workflows.closeDropdown();
+        const thinkingPicker = ui.byKey("thinkingPicker");
+        if (thinkingPicker && !thinkingPicker.contains(event.target)) ctx.features.workflows.closeThinkingDropdown();
       });
 
       document.addEventListener("keydown", (event) => {
-        if (event.key === "Escape") ctx.features.workflows.closeDropdown();
+        if (event.key === "Escape") {
+          ctx.features.workflows.closeDropdown();
+          ctx.features.workflows.closeThinkingDropdown();
+        }
       });
 
       document.querySelectorAll(".tab").forEach((tab) => {

@@ -24,6 +24,7 @@ fallbackValidationScripts:
 - verify.py
 - check.py
 thinking: false
+thinkingLevel: none
 approvalRequired: false
 pauseAfterStep: false
 approvalMessage: ''

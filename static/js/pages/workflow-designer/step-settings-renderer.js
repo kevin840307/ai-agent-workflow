@@ -55,6 +55,15 @@ function renderSettingsHtml() {
   return renderBasic(step, disabled, readonly);
 }
 
+function thinkingOptions(selected) {
+  return options([
+    ["none", "無"],
+    ["medium", "中"],
+    ["high", "高"],
+    ["extreme", "極高"],
+  ], selected || "none");
+}
+
 function renderIrrelevantTab(step, tab) {
   const tabLabel = {
     sources: "Prompt",
@@ -402,7 +411,13 @@ function renderAdvanced(step, disabled, readonly) {
       ${numberRow("Timeout Minutes", "timeoutMinutes", step.timeoutMinutes, disabled, "0", "1440", "1")}
       ${switchRow("Allow Interaction", "The selected agent can pause and ask the user questions.", "allowInteraction", step.allowInteraction, disabled)}
       ${switchRow("Requires Validation Script", "Runner and CLI should ask for a run-specific Python validation script path.", "requiresValidationScript", step.requiresValidationScript, disabled)}
-      ${switchRow("Thinking", "Pass a thinking/reasoning flag to compatible agents such as OpenCode.", "thinking", step.thinking, disabled)}
+      <label class="designer-form-row">
+        <span class="designer-label">Thinking</span>
+        <select class="designer-select" data-step-field="thinkingLevel" ${disabled}>
+          ${thinkingOptions(step.thinkingLevel || (step.thinking ? "medium" : "none"))}
+        </select>
+        <span class="designer-form-hint">無=不額外注入；中/高/極高會逐步增加 self-check、validation、repair/replan guidance。</span>
+      </label>
       <div class="designer-runner-note">
         <strong>Python functions moved to Basic</strong>
         <span>Use Basic → Python Functions for both single and multi-function steps. Advanced keeps runtime controls only.</span>

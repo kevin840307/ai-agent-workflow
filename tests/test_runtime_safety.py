@@ -17,12 +17,24 @@ from app.persistence.json_store import Store
 from app.workflow_runtime.builtin_functions.security_candidates import _security_heuristic_candidates_from_context
 from app.workflow_runtime.step_config import initial_steps
 from app.security.agent_project_config import ensure_agent_project_configs
+from app.security.workspace_guard import resolve_project_relative_write
 from app.runtime_modules.files import apply_extracted_files
 from app.runtime_modules.errors import WorkflowError
 import json
 
 
 class RuntimeSafetyTests(unittest.TestCase):
+    def test_rejects_drive_stripped_absolute_paths_inside_project(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp).resolve()
+            parts = [part for part in project.parts if part and part not in {project.anchor}]
+            if len(parts) < 2:
+                self.skipTest("project path is too short to build a drive-stripped path")
+            rel_path = str(Path(*parts, "nested", "output.py"))
+
+            with self.assertRaisesRegex(WorkflowError, "drive-stripped absolute path"):
+                resolve_project_relative_write(project, rel_path)
+
     def test_initial_steps_preserve_retry_and_consensus_config(self) -> None:
         steps = initial_steps(
             [
@@ -158,6 +170,10 @@ Status: DONE
                 self.assertTrue(store._lock_path.exists())
 
             self.assertFalse(store._lock_path.exists())
+
+    def test_store_process_lock_default_timeout_supports_parallel_workflows(self) -> None:
+        store = Store(Path("unused-store.json"), default_project_path=lambda: "", default_steps=lambda: [])
+        self.assertGreaterEqual(store._lock_timeout_sec, 600)
 
     def test_store_process_lock_reclaims_stale_live_pid_lock(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

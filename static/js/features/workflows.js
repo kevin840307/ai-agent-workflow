@@ -21,8 +21,62 @@ export function createWorkflows(ctx) {
     return workflow.kind === "system" ? "System" : "Custom";
   }
 
+  const THINKING_LABELS = Object.freeze({
+    none: "無",
+    medium: "中",
+    high: "高",
+    extreme: "極高",
+  });
+
   function isLocked() {
     return ["queued", "running", "waiting_input"].includes(state.activeRunStatus);
+  }
+
+  function normalizeThinkingLevel(level) {
+    return ["none", "medium", "high", "extreme"].includes(level) ? level : "medium";
+  }
+
+  function thinkingLabel(level) {
+    return THINKING_LABELS[normalizeThinkingLevel(level)] || THINKING_LABELS.medium;
+  }
+
+  function renderThinkingPicker(locked = isLocked()) {
+    const level = normalizeThinkingLevel(state.thinkingLevel || "medium");
+    state.thinkingLevel = level;
+
+    const select = ui.byKey("thinkingLevel");
+    const picker = ui.byKey("thinkingPicker") || select?.closest(".thinking-picker");
+    const button = ui.byKey("thinkingDropdownButton");
+    const selectedLabel = ui.byKey("thinkingSelectedLabel");
+    const menu = ui.byKey("thinkingDropdownMenu");
+
+    if (select) {
+      select.value = level;
+      select.disabled = locked;
+    }
+    if (selectedLabel) selectedLabel.textContent = thinkingLabel(level);
+    if (button) {
+      button.disabled = locked;
+      button.title = locked
+        ? `Thinking is locked while the current run is ${state.activeRunStatus}.`
+        : `Thinking: ${thinkingLabel(level)}`;
+      button.setAttribute("aria-disabled", String(locked));
+    }
+    picker?.classList.toggle("locked", locked);
+    if (menu) {
+      menu.querySelectorAll(".thinking-dropdown-option").forEach((option) => {
+        const active = option.dataset.thinkingLevel === level;
+        option.classList.toggle("active", active);
+        option.setAttribute("aria-selected", String(active));
+        option.disabled = locked;
+        option.setAttribute("aria-disabled", String(locked));
+      });
+    }
+    if (locked) workflows.toggleThinkingDropdown(false);
+  }
+
+  function renderThinkingLockState(locked) {
+    renderThinkingPicker(locked);
   }
 
   function selectedWorkflow() {
@@ -121,7 +175,9 @@ export function createWorkflows(ctx) {
         button.setAttribute("aria-disabled", String(locked));
       }
       ui.byKey("workflowPicker")?.classList.toggle("locked", locked);
+      renderThinkingLockState(locked);
       if (locked) workflows.toggleDropdown(false);
+      renderThinkingPicker(locked);
       workflows.renderPreview();
     },
 
@@ -139,6 +195,7 @@ export function createWorkflows(ctx) {
           : workflowLabel(selectedWorkflow());
       }
       picker?.classList.toggle("locked", locked);
+      renderThinkingLockState(locked);
       ui.byKey("workflowDropdownMenu")?.querySelectorAll(".workflow-dropdown-option").forEach((option) => {
         option.disabled = locked;
         option.setAttribute("aria-disabled", String(locked));
@@ -230,6 +287,17 @@ export function createWorkflows(ctx) {
       workflows.toggleDropdown(false);
     },
 
+    selectThinkingLevel(level) {
+      if (isLocked()) {
+        workflows.renderLockState();
+        return;
+      }
+      state.thinkingLevel = normalizeThinkingLevel(level);
+      LocalStore.setString(StorageKeys.thinkingLevel, state.thinkingLevel);
+      renderThinkingPicker(false);
+      workflows.toggleThinkingDropdown(false);
+    },
+
     toggleDropdown(force = null) {
       const button = ui.byKey("workflowDropdownButton");
       const menu = ui.byKey("workflowDropdownMenu");
@@ -241,13 +309,35 @@ export function createWorkflows(ctx) {
         return;
       }
       const nextOpen = force === null ? menu.hidden : Boolean(force);
+      if (nextOpen) workflows.toggleThinkingDropdown(false);
       menu.hidden = !nextOpen;
       button.setAttribute("aria-expanded", String(nextOpen));
       ui.byKey("workflowPicker")?.classList.toggle("open", nextOpen);
     },
 
+    toggleThinkingDropdown(force = null) {
+      const button = ui.byKey("thinkingDropdownButton");
+      const menu = ui.byKey("thinkingDropdownMenu");
+      if (!button || !menu) return;
+      if (isLocked()) {
+        menu.hidden = true;
+        button.setAttribute("aria-expanded", "false");
+        ui.byKey("thinkingPicker")?.classList.remove("open");
+        return;
+      }
+      const nextOpen = force === null ? menu.hidden : Boolean(force);
+      if (nextOpen) workflows.toggleDropdown(false);
+      menu.hidden = !nextOpen;
+      button.setAttribute("aria-expanded", String(nextOpen));
+      ui.byKey("thinkingPicker")?.classList.toggle("open", nextOpen);
+    },
+
     closeDropdown() {
       workflows.toggleDropdown(false);
+    },
+
+    closeThinkingDropdown() {
+      workflows.toggleThinkingDropdown(false);
     },
   };
 

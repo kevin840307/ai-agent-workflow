@@ -382,7 +382,10 @@ export function createRuns(ctx) {
         const validationScript = acceptsValidationScript
           ? (ui.byKey("validationScript")?.value?.trim() || state.validationScript?.trim() || null)
           : null;
-        const payload = { workflow_id: state.selectedWorkflowId };
+        const payload = {
+          workflow_id: state.selectedWorkflowId,
+          thinkingLevel: state.thinkingLevel || "medium",
+        };
         if (validationScript) payload.validation_script = validationScript;
         const run = await api.request(`/api/sessions/${state.activeSessionId}/workflow-runs`, {
           method: "POST",

@@ -489,7 +489,7 @@ function renderStepList() {
       ["Template", step.templatePath || "-"],
       ["File", step.filename || normalizeFilename(step.outputFile || "-")],
       ["Retry", `${step.maxRetries ?? 0}${step.retryFromStepKey ? ` -> ${step.retryFromStepKey}` : ""}`],
-      ["Agent", `${step.agent || step.provider || "default"}${step.thinking ? " + thinking" : ""}`],
+      ["Agent", `${step.agent || step.provider || "default"}${thinkingBadgeLabel(step) ? ` + ${thinkingBadgeLabel(step)}` : ""}`],
       ["Expected", (step.expectedFiles || []).length ? step.expectedFiles.join(", ") : "-"],
     ];
 
@@ -530,6 +530,37 @@ function functionBadge(step = {}) {
   return `<span class="badge passed">${escapeHtml(label)}${escapeHtml(suffix)}</span>`;
 }
 
+function thinkingBadgeLabel(step = {}) {
+  const raw = String(step.thinkingLevel ?? step.thinking_level ?? (step.thinking ? "medium" : "none") ?? "none").trim().toLowerCase();
+  const aliases = {
+    "": step.thinking ? "medium" : "none",
+    false: "none",
+    true: "medium",
+    "0": "none",
+    "1": "medium",
+    off: "none",
+    no: "none",
+    none: "none",
+    無: "none",
+    medium: "medium",
+    normal: "medium",
+    中: "medium",
+    high: "high",
+    deep: "high",
+    高: "high",
+    extreme: "extreme",
+    max: "extreme",
+    極高: "extreme",
+  };
+  const level = aliases[raw] || raw;
+  const labels = {
+    medium: "thinking:中",
+    high: "thinking:高",
+    extreme: "thinking:極高",
+  };
+  return labels[level] || "";
+}
+
 function renderCanvas() {
   const wf = getSelectedWorkflow();
   const canvas = el("designerCanvas");
@@ -552,7 +583,7 @@ function renderCanvas() {
         <span class="badge">retry ${step.maxRetries}${step.retryFromStepKey ? ` -> ${escapeHtml(step.retryFromStepKey)}` : ""}</span>
         ${step.agent || step.provider ? `<span class="badge">agent ${escapeHtml(step.agent || step.provider)}</span>` : ""}
         ${step.allowInteraction ? `<span class="badge waiting_input">interaction</span>` : `<span class="badge">auto</span>`}
-        ${step.thinking ? `<span class="badge">thinking</span>` : ""}
+        ${thinkingBadgeLabel(step) ? `<span class="badge">${escapeHtml(thinkingBadgeLabel(step))}</span>` : ""}
         ${step.pauseAfterStep ? `<span class="badge running">pause</span>` : ""}
       </div>
     </article>

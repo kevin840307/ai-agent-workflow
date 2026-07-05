@@ -10,6 +10,11 @@ agent: qwen
 outputs:
 - task-manifest.md
 - task-manifest.json
+- workflow-spec.md
+- workflow-spec.json
+- architecture-contract.md
+- architecture-contract.json
+- workflow-decision-log.md
 - generated-workflow-instance.json
 - workflow-instance-validation.md
 - workflow-run-trace.md
@@ -23,6 +28,7 @@ injectFailureFeedback: false
 stopAfterFailures: 99
 allowInteraction: false
 thinking: false
+thinkingLevel: none
 approvalRequired: false
 pauseAfterStep: false
 approvalMessage: ''

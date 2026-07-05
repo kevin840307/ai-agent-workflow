@@ -13,6 +13,17 @@ export function createMessages(ctx) {
     return limitTail(value, maxChars);
   }
 
+  function normalizeThinkingChunk(text) {
+    const value = String(text || "");
+    const compact = value.replace(/\s+/g, "").toLowerCase();
+    // Some CLI JSON streams emit repeated status labels as thinking tokens,
+    // which renders as "ThinkingThinking Thinking..." in the live card.
+    // Keep real reasoning text, but suppress pure repeated status labels.
+    if (/^(thinking|reasoning|thoughts?)(\.{0,3})$/i.test(value.trim())) return "";
+    if (/^(thinking|reasoning|thought){2,}$/i.test(compact)) return "";
+    return value;
+  }
+
   function cleanMarker(value) {
     return String(value || "")
       .replace(/[`*_>#|]/g, "")
@@ -322,7 +333,8 @@ export function createMessages(ctx) {
       if (event.type === "output" && event.text) {
         const stream = String(event.stream || "display").toLowerCase();
         if (["thinking", "reasoning", "thought"].includes(stream)) {
-          activity.thinking = appendLimited(activity.thinking, event.text, 3000);
+          const thinkingText = normalizeThinkingChunk(event.text);
+          if (thinkingText) activity.thinking = appendLimited(activity.thinking, thinkingText, 3000);
           activity.status = "Thinking...";
         } else if (["stderr", "error", "diagnostic"].includes(stream)) {
           activity.diagnostics = appendLimited(activity.diagnostics, event.text, 1600);

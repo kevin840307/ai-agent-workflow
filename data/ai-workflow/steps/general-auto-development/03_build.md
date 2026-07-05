@@ -1,8 +1,8 @@
 Implement the approved task plan for the current task only.
 
 Critical execution contract:
-- Use Qwen/OpenCode built-in file edit/write tools to modify project files directly.
-- If the CLI environment does not expose file edit/write tools, output complete project file blocks using `FILE: path`, `CONTENT:`, and `END_FILE`.
+- Modify project files directly only when the CLI actually writes files in this non-interactive run.
+- If direct editing is unavailable, uncertain, or would be returned as tool-call JSON such as `{"name": "edit_file"}`, output complete project file blocks using `FILE: path`, `CONTENT:`, and `END_FILE`.
 - The platform will inspect the project diff after you finish or safely materialize explicit FILE blocks when direct tools are unavailable.
 - Do not output standalone code fences. Every created or modified file must be represented by a direct edit or by a `FILE/CONTENT/END_FILE` block.
 - Keep edits inside the selected Project Path only.
@@ -39,6 +39,9 @@ Validation script content, read-only acceptance criteria:
 
 Rules:
 - Implement only the current task TODO shown above, plus already-required dependencies. Do not proactively implement future task TODO files.
+- If this run has multiple item tasks for one user request, keep them in one coherent product/module/interface whenever practical. Prefer extending the existing owner file from previous tasks over creating a new unrelated file or folder for each task.
+- Before creating a new file, check Project index, Architecture summary, Build result, and task-scoped file context for an existing owner file that should be extended.
+- Do not write generated source under output/, run artifact folders, path fragments copied from absolute paths, or ad-hoc nested roots unless the existing project architecture already uses them.
 - If you edit an existing file, preserve previous task behavior; never replace a shared file with only the current task fragment.
 - Do not implement workflow runner logic, repair helper functions, placeholder generators, or simulated task-output helpers unless the user specifically requested those as the product.
 - If the requirement asks for a reusable tool, script, CLI, or utility, implement a real executable/reusable project artifact.
@@ -55,8 +58,8 @@ Rules:
 Completion response:
 - Do not summarize, restate, or explain the prompt, architecture, rules, or retry feedback.
 - Do not respond with only a plan or status.
-- If you used direct edit/write tools successfully, respond with a brief Markdown summary that names the changed production files.
-- If direct edit/write tools are unavailable or uncertain, output only complete `FILE/CONTENT/END_FILE` blocks for every created or modified production file.
+- If you used direct edit/write tools successfully and files were actually written, respond with a brief Markdown summary that names the changed production files.
+- If direct edit/write tools are unavailable, uncertain, or would emit tool-call JSON, output only complete `FILE/CONTENT/END_FILE` blocks for every created or modified production file.
 - Do not include extra code fences, shell commands, project profiles, retry feedback, or explanations after the file blocks.
 - A FILE block must use this exact shape:
   `FILE: relative/path.ext`

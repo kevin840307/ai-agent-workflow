@@ -1762,6 +1762,55 @@ body.artifact-modal-open {
   }
 }
 
+
+
+/* Composer thinking-level picker */
+.thinking-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 4px 10px 4px 12px;
+  border: 1px solid rgba(203, 213, 225, 0.82);
+  border-radius: 999px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.94);
+  flex: 0 0 auto;
+}
+
+.thinking-picker:hover,
+.thinking-picker:focus-within {
+  border-color: rgba(15, 118, 110, 0.46);
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.10), 0 8px 24px rgba(15, 23, 42, 0.07);
+}
+
+.thinking-select {
+  min-width: 72px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 750;
+  outline: 0;
+}
+
+.thinking-picker.locked {
+  opacity: 0.72;
+  cursor: not-allowed;
+  border-color: rgba(148, 163, 184, 0.62);
+  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+  box-shadow: none;
+}
+
+.thinking-picker.locked .thinking-select {
+  cursor: not-allowed;
+  color: #64748b;
+}
+
+body.chat-mode .thinking-picker {
+  display: none;
+}
+
 /* Selected workflow preview and run-time lock */
 .workflow-picker.locked {
   opacity: 0.72;
@@ -2126,4 +2175,124 @@ body.run-waiting .workflow-preview-meta::after {
 @keyframes workflow-live-pulse {
   0%, 100% { opacity: 0.32; transform: scale(0.85); }
   50% { opacity: 1; transform: scale(1); }
+}
+
+/* Index composer thinking picker and run-mode placement polish */
+.composer-left .composer-run-mode {
+  flex: 0 0 auto;
+}
+
+.thinking-picker {
+  position: relative;
+  display: inline-flex !important;
+  align-items: center;
+  gap: 10px;
+  width: min(190px, 30vw);
+  max-width: 190px;
+  height: 36px;
+  padding: 4px 4px 4px 12px;
+  overflow: visible;
+  border: 1px solid rgba(203, 213, 225, 0.82);
+  border-radius: 999px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.94);
+  flex: 0 0 auto;
+  color: var(--muted);
+  white-space: nowrap;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
+}
+
+.thinking-picker:hover {
+  border-color: rgba(15, 118, 110, 0.34);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.96);
+}
+
+.thinking-picker.open,
+.thinking-picker:focus-within {
+  border-color: rgba(15, 118, 110, 0.58);
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.12), 0 12px 30px rgba(15, 23, 42, 0.10);
+}
+
+.thinking-picker .workflow-picker-label {
+  height: 24px;
+  padding-right: 10px;
+}
+
+.thinking-picker .workflow-native-select {
+  position: absolute;
+  width: 1px;
+  max-width: 1px;
+  height: 1px;
+  min-height: 1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.thinking-dropdown-button {
+  grid-template-columns: minmax(0, 1fr) 24px;
+}
+
+.thinking-dropdown-menu {
+  width: min(330px, 72vw);
+}
+
+.thinking-picker.open .workflow-dropdown-caret {
+  transform: rotate(180deg);
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #ffffff;
+}
+
+.thinking-picker.locked {
+  opacity: 0.72;
+  cursor: not-allowed;
+  border-color: rgba(148, 163, 184, 0.62);
+  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+  box-shadow: none;
+}
+
+.thinking-picker.locked .thinking-dropdown-button,
+.thinking-picker.locked .thinking-selected-label,
+.thinking-picker.locked .thinking-dropdown-caret {
+  cursor: not-allowed;
+}
+
+.thinking-picker.locked .thinking-dropdown-caret {
+  border-color: rgba(148, 163, 184, 0.34);
+  background: #e2e8f0;
+  color: #64748b;
+}
+
+body.chat-mode .thinking-picker {
+  display: inline-flex !important;
+}
+
+@media (max-width: 1280px) {
+  .thinking-picker {
+    width: min(170px, 30vw);
+    max-width: 170px;
+  }
+}
+
+@media (max-width: 760px) {
+  .thinking-picker {
+    width: 100%;
+    max-width: none;
+    flex-basis: auto;
+  }
+
+  .thinking-dropdown-menu {
+    left: 0;
+    right: 0;
+    width: 100%;
+    max-height: min(320px, calc(100dvh - 160px));
+  }
+
+  .composer-left .composer-run-mode,
+  .thinking-picker {
+    width: 100%;
+  }
 }

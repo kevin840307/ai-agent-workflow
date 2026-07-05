@@ -13,7 +13,7 @@ function: ''
 retry: 99
 failAction: same_step
 retryFromStepKey: generate_tests
-keepSameSession: false
+keepSameSession: true
 injectFailureFeedback: true
 stopAfterFailures: 99
 allowInteraction: false

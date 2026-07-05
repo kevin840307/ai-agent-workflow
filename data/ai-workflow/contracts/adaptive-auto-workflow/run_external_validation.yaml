@@ -1,8 +1,7 @@
 id: run_external_validation
 key: run_external_validation
 name: Run External Validation
-description: Run an optional user-provided Python validation script. If no validation
-  script path is provided, record a skipped PASS result.
+description: 'Run Adaptive Python Gate: configured validation script first, then pytest when tests exist, otherwise record a skipped PASS result.'
 enabled: true
 type: python
 skill: steps/adaptive-auto-workflow/02_run_external_validation.md
@@ -20,6 +19,7 @@ allowInteraction: false
 requiresValidationScript: false
 fallbackValidationScripts: []
 thinking: false
+thinkingLevel: none
 approvalRequired: false
 pauseAfterStep: false
 approvalMessage: ''
@@ -34,8 +34,8 @@ aggregatorFunction: ''
 sources: []
 agentOptions: {}
 path: contracts/adaptive-auto-workflow/run_external_validation.yaml
-function: run_external_validation
+function: adaptive_python_gate
 timeout: 0.0
 functions:
-- run_external_validation
+- adaptive_python_gate
 approval: false

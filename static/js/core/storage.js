@@ -8,6 +8,7 @@ export const StorageKeys = Object.freeze({
   qwenReuseSession: "qwen.reuseSession",
   runMode: "ui.runMode",
   selectedWorkflowId: "ui.selectedWorkflowId",
+  thinkingLevel: "ui.thinkingLevel",
 });
 
 export const LocalStore = {

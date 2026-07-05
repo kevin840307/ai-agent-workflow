@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any, Awaitable, Callable
 
 from app.runtime_modules.errors import UserInputRequired, WorkflowCancelled, WorkflowError
+from app.runtime_modules.run_owner import current_run_owner
 from app.core.paths import read_text, utc_now, write_text
 from app.core.metrics import metrics, now
 from app.runtime_modules.files import project_file_snapshot, snapshot_changed
@@ -62,6 +63,7 @@ class WorkflowExecutor:
                 lambda r: r.update(
                     {
                         "status": "running",
+                        "run_owner": current_run_owner(),
                         "started_at": r.get("started_at") or utc_now(),
                         "ended_at": None,
                         "error": None,

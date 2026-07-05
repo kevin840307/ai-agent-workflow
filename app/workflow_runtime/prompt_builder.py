@@ -12,6 +12,7 @@ from app.core.paths import AI_WORKFLOW_DIR, DEFAULT_SKILL_PATH, ROOT, SYSTEM_WOR
 from app.runtime_modules.skills import load_skill_context
 from app.services.workflow_asset_service import GLOBAL_ASSET_ROOT, PROJECT_ASSET_DIR
 from app.auto_workflow import orchestrator
+from app.workflow_runtime.thinking import render_thinking_guidance, step_thinking_level
 
 from .questions import interaction_instruction
 from .step_utils import bool_config
@@ -92,8 +93,7 @@ class PromptBuilder:
         architecture = read_text(project_dir / "architecture.md") or read_text(output_dir / "architecture.md")
         profile = project_profile(project_dir)
         project_index_path = output_dir / "project-index.md"
-        if not project_index_path.exists():
-            write_text(project_index_path, render_project_index_markdown(project_dir))
+        write_text(project_index_path, render_project_index_markdown(project_dir))
 
         skill_root = step_config.get("skillRoot") or run.get("skill_root") or str(DEFAULT_SKILL_PATH)
         skill_context, skill_files = load_skill_context(self._configured_skill_paths(step_config, str(skill_root), project_dir, run))
@@ -156,6 +156,13 @@ class PromptBuilder:
             prompt = f"{prompt}\n\nCurrent project architecture context from architecture.md:\n\n{architecture.strip()}\n"
         if profile.strip() and step_key != "prepare_project" and "{{project_profile}}" not in prompt_template:
             prompt = f"{prompt}\n\nCurrent project profile inferred from existing files:\n\n{profile.strip()}\n"
+        thinking_guidance = render_thinking_guidance(
+            step_thinking_level(step_record, run),
+            step_key=step_key,
+            workflow_id=str(run.get("workflow_id") or ""),
+        )
+        if thinking_guidance.strip() and "{{thinking_guidance}}" not in prompt_template:
+            prompt = f"{prompt}\n\n{thinking_guidance.strip()}\n"
         if allow_interaction is None:
             allow_interaction = bool(step_record.get("allow_interaction"))
         prompt = f"{prompt}\n\n{interaction_instruction(bool(allow_interaction))}"
@@ -217,11 +224,18 @@ class PromptBuilder:
                 current_task_todo = read_text(output_dir / "todos" / f"{safe_task_id}.md")
                 current_task_prompt = read_text(output_dir / "task-prompts" / f"{safe_task_id}.md")
                 current_task_failure_feedback = self._current_task_failure_feedback(failure_feedback, task_id)
+        effective_thinking_level = step_thinking_level({"key": step_key, "config": step_config or {}}, run)
+        effective_thinking_guidance = render_thinking_guidance(
+            effective_thinking_level,
+            step_key=step_key,
+            workflow_id=str(run.get("workflow_id") or ""),
+        )
         return {
             "requirement": requirement,
             "architecture": architecture,
             "project_profile": profile,
             "project_index": read_text(output_dir / "project-index.md"),
+            "project_python_import_map": self._project_python_import_map(project_dir),
             "request_intent": self._request_intent(run, requirement, project_dir),
             "user_instructions": self._user_instructions(requirement, project_dir),
             "architecture_contract": self._architecture_contract(run, requirement, project_dir, output_dir),
@@ -232,8 +246,13 @@ class PromptBuilder:
             "task_manifest": read_text(output_dir / "task-manifest.md"),
             "task_manifest_json": read_text(output_dir / "task-manifest.json"),
             "workflow_instance": read_text(output_dir / "generated-workflow-instance.json"),
+            "workflow_spec": read_text(output_dir / "workflow-spec.md"),
+            "workflow_spec_json": read_text(output_dir / "workflow-spec.json"),
             "workflow_instance_validation": read_text(output_dir / "workflow-instance-validation.md"),
             "workflow_run_trace": read_text(output_dir / "workflow-run-trace.md"),
+            "workflow_decision_log": read_text(output_dir / "workflow-decision-log.md"),
+            "thinking_level": effective_thinking_level,
+            "thinking_guidance": effective_thinking_guidance,
             "current_task": current_task_block,
             "current_task_todo": current_task_todo,
             "current_task_prompt": current_task_prompt,
@@ -333,6 +352,40 @@ class PromptBuilder:
         if len(candidate_paths) > shown:
             sections.append(f"\nAdditional preserved files omitted from prompt: {len(candidate_paths) - shown}")
         return "\n".join(sections).strip()
+
+    @staticmethod
+    def _project_python_import_map(project_dir: Path) -> str:
+        ignored_parts = {
+            ".ai-workflow",
+            ".git",
+            ".pytest_cache",
+            ".qwen",
+            ".qwen-workflow",
+            "__pycache__",
+            "tests",
+        }
+        candidates: list[str] = []
+        for path in sorted(project_dir.rglob("*.py")):
+            try:
+                rel = path.relative_to(project_dir)
+            except ValueError:
+                continue
+            parts = rel.parts
+            if any(part in ignored_parts for part in parts):
+                continue
+            if path.name.startswith("test_") or path.name == "conftest.py":
+                continue
+            module_parts = list(parts)
+            module_parts[-1] = path.stem
+            if module_parts[-1] == "__init__":
+                module_parts = module_parts[:-1]
+            if not module_parts or not all(re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", part) for part in module_parts):
+                continue
+            module_name = ".".join(module_parts)
+            candidates.append(f"- `{rel.as_posix()}` -> `import {module_name}` or `from {module_name} import ...`")
+        if not candidates:
+            return "No importable project Python modules detected yet."
+        return "\n".join(candidates[:80])
 
     @staticmethod
     def _extract_file_blocks_for_context(text: str) -> list[tuple[str, str]]:

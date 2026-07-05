@@ -21,6 +21,7 @@ from app.core.paths import DATA_DIR, ROOT, read_text, write_text
 from app.security.workspace_guard import guarded_write_text, ensure_http_within_project, is_within
 from app.workflow_runtime.builtin_functions.base import WorkflowFunctionContext, WorkflowFunctionError
 from app.workflow_runtime.step_utils import parse_function_refs
+from app.workflow_runtime.thinking import normalize_thinking_level, thinking_enabled
 
 
 GLOBAL_ASSET_ROOT = DATA_DIR / "ai-workflow"
@@ -433,6 +434,7 @@ def normalize_contract(contract: dict[str, Any], *, fallback_id: str = "contract
         "allow_interaction": "allowInteraction",
         "requires_validation_script": "requiresValidationScript",
         "fallback_validation_scripts": "fallbackValidationScripts",
+        "thinking_level": "thinkingLevel",
         "approval_required": "approvalRequired",
         "pause_after_step": "pauseAfterStep",
         "approval_message": "approvalMessage",
@@ -580,7 +582,13 @@ def apply_contract_to_step(step: dict[str, Any], contract: dict[str, Any]) -> di
     for field, transform in direct_fields.items():
         _set_if_present(item, metadata, field, field, transform=transform)
 
-    for field in ["enabled", "keepSameSession", "injectFailureFeedback", "allowInteraction", "requiresValidationScript", "thinking"]:
+    if metadata.get("thinkingLevel") is not None or metadata.get("thinking") is not None:
+        item["thinkingLevel"] = normalize_thinking_level(
+            metadata.get("thinkingLevel", metadata.get("thinking", False)),
+            default="none",
+        )
+        item["thinking"] = thinking_enabled(item["thinkingLevel"])
+    for field in ["enabled", "keepSameSession", "injectFailureFeedback", "allowInteraction", "requiresValidationScript"]:
         _set_if_present(item, metadata, field, field, transform=_coerce_bool)
     for field in ["stopAfterFailures"]:
         _set_if_present(item, metadata, field, field, transform=lambda value: int(value or 0))
@@ -823,7 +831,8 @@ def step_from_contract(contract: dict[str, Any], index: int = 0) -> dict[str, An
         "timeoutMinutes": round(float(metadata.get("timeout") or 0) / 60, 3) if metadata.get("timeout") else 0,
         "allowInteraction": _coerce_bool(metadata.get("allowInteraction", False)),
         "requiresValidationScript": _coerce_bool(metadata.get("requiresValidationScript", False)),
-        "thinking": _coerce_bool(metadata.get("thinking", False)),
+        "thinkingLevel": normalize_thinking_level(metadata.get("thinkingLevel", metadata.get("thinking", False)), default="none"),
+        "thinking": thinking_enabled(normalize_thinking_level(metadata.get("thinkingLevel", metadata.get("thinking", False)), default="none")),
         "pauseAfterStep": _coerce_bool(metadata.get("approval", False)),
         "approvalRequired": _coerce_bool(metadata.get("approval", False)),
         "sources": [],
@@ -926,7 +935,12 @@ def load_ad_hoc_workflow_asset(
 
 def _is_agent_slash_command(value: str) -> bool:
     raw = str(value or "").strip()
-    return raw.startswith("/") and not Path(raw).expanduser().is_absolute()
+    if not raw.startswith("/"):
+        return False
+    # Agent slash commands such as /build are command tokens, not filesystem
+    # absolute paths.  Treat only multi-segment slash values with a known file
+    # suffix as paths.
+    return "\\" not in raw and not ("/" in raw[1:] and Path(raw).suffix)
 
 
 def _normalize_skill_reference(value: str, contract_path: str, workflow_id: str | None = None) -> str:

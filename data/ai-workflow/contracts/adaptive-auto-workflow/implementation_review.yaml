@@ -19,6 +19,7 @@ injectFailureFeedback: true
 stopAfterFailures: 3
 allowInteraction: false
 thinking: false
+thinkingLevel: none
 approvalRequired: false
 pauseAfterStep: false
 approvalMessage: ''

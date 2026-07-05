@@ -15,6 +15,7 @@ from app.core.paths import write_text
 from app.services.workflow_lint_service import assert_workflow_valid, lint_workflow
 from app.services import workflow_asset_service
 from app.workflow_runtime.step_utils import parse_function_refs
+from app.workflow_runtime.thinking import normalize_thinking_level, thinking_enabled
 
 
 SYSTEM_WORKFLOW_ID = "system-controlled-qwen"
@@ -202,7 +203,11 @@ def normalize_step_config(step: dict) -> dict:
     item.setdefault("timeoutMinutes", 0)
     item.setdefault("allowInteraction", True)
     item.setdefault("requiresValidationScript", False)
-    item.setdefault("thinking", False)
+    item["thinkingLevel"] = normalize_thinking_level(
+        item.get("thinkingLevel", item.get("thinking_level", item.get("thinking", False))),
+        default="none",
+    )
+    item["thinking"] = thinking_enabled(item["thinkingLevel"])
     item.setdefault("agentOptions", {})
     item.setdefault("expectedFiles", [item["outputFile"]] if item.get("outputFile") else [])
     item.setdefault("requireProjectChanges", item.get("key") == "build")
@@ -281,6 +286,7 @@ def _contract_from_step(workflow_id: str, step: dict) -> dict[str, Any]:
         "requiresValidationScript": bool(item.get("requiresValidationScript", False)),
         "fallbackValidationScripts": item.get("fallbackValidationScripts") or [],
         "thinking": bool(item.get("thinking", False)),
+        "thinkingLevel": normalize_thinking_level(item.get("thinkingLevel", item.get("thinking", False)), default="none"),
         "approvalRequired": bool(item.get("approvalRequired", False)),
         "pauseAfterStep": bool(item.get("pauseAfterStep", False)),
         "approvalMessage": item.get("approvalMessage") or "",
