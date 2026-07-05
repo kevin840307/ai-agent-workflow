@@ -1,7 +1,7 @@
 id: ai_review
 key: ai_review
 name: AI Review + Validation
-description: Run AI review in the same controller session, then run the configured validation Python or project tests. Failures retry from Generate Task Prompts.
+description: Run AI review against SPEC, check tests, then run validation.py or project tests. Failures repair from Execute Prompts, with periodic escalation back to Generate Execution Prompts.
 enabled: true
 type: review
 skill: steps/adaptive-auto-workflow/01_ai_review.md
@@ -16,7 +16,9 @@ functions:
 retry: 99
 maxRetries: 99
 failAction: selected_step
-retryFromStepKey: generate_task_prompts
+retryFromStepKey: auto_generation
+retryEscalationEvery: 3
+retryEscalationStepKey: generate_task_prompts
 keepSameSession: true
 injectFailureFeedback: true
 stopAfterFailures: 99
@@ -40,6 +42,7 @@ passKeywords: PASS, APPROVED
 failKeywords: FAIL, BLOCKED, RISK
 aggregatorFunction: keyword_confidence
 contextArtifacts:
+- spec.md
 - auto-generation-result.md
 sources: []
 agentOptions: {}

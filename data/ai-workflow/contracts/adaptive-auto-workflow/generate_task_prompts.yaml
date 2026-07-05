@@ -1,13 +1,14 @@
 id: generate_task_prompts
 key: generate_task_prompts
-name: Generate Task Prompts
-description: AI generates the task prompt manifest that will be sent to Qwen/OpenCode like human CLI instructions.
+name: Generate Execution Prompts
+description: AI generates SPEC plus short execution prompts that will be sent to Qwen/OpenCode like human CLI instructions.
 enabled: true
 type: ai
 skill: steps/adaptive-auto-workflow/00_generate_task_prompts.md
 command: ''
 agent: qwen
 outputs:
+- spec.md
 - task-manifest.md
 - task-manifest.json
 function: ''

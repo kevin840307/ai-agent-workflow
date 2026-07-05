@@ -1757,10 +1757,20 @@ class WorkflowActions:
                     "kind": str(item.get("kind") or item.get("owner") or "implementation").strip() or "implementation",
                 }
             )
+        spec = str(
+            raw.get("spec")
+            or raw.get("spec_markdown")
+            or raw.get("acceptance_spec")
+            or raw.get("review_spec")
+            or ""
+        ).strip()
+        if len(spec) < 40:
+            raise WorkflowError("generate_task_prompts: AI manifest must include a non-empty Markdown `spec` string for final review.")
         return {
             "status": "READY",
             "source": "ai-generated",
             "goal": str(raw.get("goal") or raw.get("summary") or "").strip(),
+            "spec": spec,
             "tasks": tasks,
         }
 
@@ -1808,8 +1818,10 @@ class WorkflowActions:
         task_prompt_dir.mkdir(parents=True, exist_ok=True)
         todo_dir.mkdir(parents=True, exist_ok=True)
         tasks = [task for task in manifest.get("tasks") or [] if isinstance(task, dict)]
+        spec = str(manifest.get("spec") or "").strip()
+        write_text(output_dir / "spec.md", spec.rstrip() + "\n")
         write_text(output_dir / "task-manifest.json", json.dumps(manifest, indent=2, ensure_ascii=False))
-        lines = ["# Task Manifest", "", "Status: READY", "", "Source: AI-generated task prompts.", "", "## Task Prompt Order"]
+        lines = ["# Task Manifest", "", "Status: READY", "", "Source: AI-generated task prompts.", "", "## SPEC", "", "See `output/spec.md`.", "", "## Task Prompt Order"]
         index_lines = ["# Task Todo Index", "", "Status: READY", ""]
         for index, task in enumerate(tasks, start=1):
             task_id = str(task.get("id") or f"TASK-{index:03d}")

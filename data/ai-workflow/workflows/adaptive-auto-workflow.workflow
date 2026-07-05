@@ -1,6 +1,6 @@
 id: adaptive-auto-workflow
 name: Adaptive Auto Workflow
-description: 'AI Workflow Controller loop: AI generates short task prompts -> Qwen/OpenCode executes them with real project edits/tests -> AI review plus Python validation gate. Failures retry from prompt generation in the same agent session with concise feedback.'
+description: 'AI Workflow Controller loop: AI generates SPEC plus short execution prompts -> Qwen/OpenCode executes them with real project edits/tests -> AI review plus Python validation gate. Failures repair from Execute Prompts first, then periodically replan from Generate Execution Prompts.'
 kind: system
 active: true
 protected: true

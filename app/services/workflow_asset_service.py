@@ -576,6 +576,7 @@ def apply_contract_to_step(step: dict[str, Any], contract: dict[str, Any]) -> di
         "aggregatorFunction": str,
         "failAction": str,
         "retryFromStepKey": str,
+        "retryEscalationStepKey": str,
         "approvalMessage": str,
         "sessionMode": str,
     }
@@ -590,7 +591,7 @@ def apply_contract_to_step(step: dict[str, Any], contract: dict[str, Any]) -> di
         item["thinking"] = thinking_enabled(item["thinkingLevel"])
     for field in ["enabled", "keepSameSession", "injectFailureFeedback", "allowInteraction", "requiresValidationScript"]:
         _set_if_present(item, metadata, field, field, transform=_coerce_bool)
-    for field in ["stopAfterFailures"]:
+    for field in ["stopAfterFailures", "retryEscalationEvery"]:
         _set_if_present(item, metadata, field, field, transform=lambda value: int(value or 0))
     _set_if_present(item, metadata, "confidenceThreshold", "confidenceThreshold", transform=lambda value: float(value or 0))
 
@@ -874,6 +875,8 @@ def step_from_contract(contract: dict[str, Any], index: int = 0) -> dict[str, An
         "allowFileBlockMaterialization",
         "contextArtifacts",
         "dependsOnArtifacts",
+        "retryEscalationEvery",
+        "retryEscalationStepKey",
     ):
         if field in metadata:
             step[field] = metadata[field]

@@ -88,12 +88,31 @@ class WorkflowExecutor:
                 except UserInputRequired:
                     raise
                 except Exception as exc:
-                    retry_key = retry_target_for_failure(run, step_record, step_records, index, output_dir)
+                    base_retry_key = retry_target_for_failure(run, step_record, step_records, index, output_dir)
+                    if base_retry_key is None:
+                        raise
+                    if base_retry_key not in key_to_index:
+                        await self.log(run, f"{key}: retry target {base_retry_key} is not in this workflow")
+                        raise
+                    base_retry_count = await self.get_step_retry_count(run_id, base_retry_key)
+                    retry_key = retry_target_for_failure(
+                        run,
+                        step_record,
+                        step_records,
+                        index,
+                        output_dir,
+                        next_retry_count=base_retry_count + 1,
+                    )
                     if retry_key is None:
                         raise
                     if retry_key not in key_to_index:
                         await self.log(run, f"{key}: retry target {retry_key} is not in this workflow")
                         raise
+                    if retry_key != base_retry_key:
+                        await self.log(
+                            run,
+                            f"{key}: retry escalation {base_retry_key} -> {retry_key} on attempt {base_retry_count + 1}",
+                        )
                     retry_step_record = next((item for item in step_records if item.get("key") == retry_key), step_record)
                     max_retries = int(retry_step_record.get("max_retries", step_record.get("max_retries", 0)) or 0)
                     current_retry_count = await self.get_step_retry_count(run_id, retry_key)

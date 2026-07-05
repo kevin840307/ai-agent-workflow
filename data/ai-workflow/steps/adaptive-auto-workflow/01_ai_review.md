@@ -1,7 +1,10 @@
-Review the completed project change.
+Review and validate the completed project change against the SPEC.
 
 User request:
 {{requirement_brief}}
+
+SPEC:
+{{spec}}
 
 Task manifest:
 {{task_manifest}}
@@ -17,7 +20,11 @@ Project snapshot, brief:
 {{project_profile_brief}}
 {{project_index_brief}}
 
-Pass only if the project change really satisfies the user request and validation is not failing.
+Pass only if:
+- The project satisfies the SPEC and user request.
+- The implementation includes appropriate tests or a clear reason tests are not applicable.
+- Existing behavior appears preserved.
+- No validation/test result is failing.
 
 Output only:
 
@@ -29,6 +36,9 @@ Confidence: 0.00-1.00
 ## Findings
 - ...
 
+## Test Check
+- State whether tests were added/updated/found, or why tests are not applicable.
+
 ## Required Fixes
-- If FAIL, list concrete fixes for the next retry.
+- If FAIL, list concrete repair prompts for the next Execute Prompts retry.
 - If PASS, write `None`.

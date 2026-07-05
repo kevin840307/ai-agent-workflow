@@ -1,7 +1,7 @@
 id: auto_generation
 key: auto_generation
-name: Auto Generation
-description: Execute the AI-generated task prompts through Qwen/OpenCode direct project edits and tests.
+name: Execute Prompts
+description: Execute AI-generated prompts through the same Qwen/OpenCode CLI session with direct project edits and optional tests.
 enabled: true
 type: ai
 skill: steps/adaptive-auto-workflow/00_auto_generation.md
@@ -13,7 +13,9 @@ function: ''
 retry: 99
 maxRetries: 99
 failAction: selected_step
-retryFromStepKey: generate_task_prompts
+retryFromStepKey: auto_generation
+retryEscalationEvery: 3
+retryEscalationStepKey: generate_task_prompts
 keepSameSession: true
 injectFailureFeedback: true
 stopAfterFailures: 99

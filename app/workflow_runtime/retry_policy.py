@@ -32,17 +32,49 @@ def retry_target_for_step(step_record: dict[str, Any], steps: list[dict[str, Any
     return step_record.get("key")
 
 
+def escalated_retry_target_for_step(
+    step_record: dict[str, Any],
+    steps: list[dict[str, Any]],
+    *,
+    next_retry_count: int,
+) -> str | None:
+    """Return the periodic escalation target when configured.
+
+    This is a generic workflow-controller feature, not an Adaptive-specific
+    hard-code.  A step can say: normally retry from `retryFromStepKey`, but on
+    every Nth retry, jump to `retryEscalationStepKey` so the AI can regenerate
+    earlier prompts/specs after repeated repair failures.
+    """
+    config = step_record.get("config") or {}
+    available_keys = {step.get("key") for step in steps}
+    raw_every = step_record.get("retryEscalationEvery") or config.get("retryEscalationEvery")
+    try:
+        every = int(raw_every or 0)
+    except (TypeError, ValueError):
+        every = 0
+    if every <= 0 or next_retry_count <= 0 or next_retry_count % every != 0:
+        return None
+    target = step_record.get("retryEscalationStepKey") or config.get("retryEscalationStepKey")
+    return str(target) if target and target in available_keys else None
+
+
 def retry_target_for_failure(
     run: dict[str, Any],
     step_record: dict[str, Any],
     steps: list[dict[str, Any]],
     current_index: int,
     output_dir: Path,
+    *,
+    next_retry_count: int | None = None,
 ) -> str | None:
     key = step_record.get("key")
+    configured = retry_target_for_step(step_record, steps, current_index)
+    if next_retry_count is not None:
+        escalated = escalated_retry_target_for_step(step_record, steps, next_retry_count=next_retry_count)
+        if escalated:
+            return escalated
     if key == "run_test":
-        configured = retry_target_for_step(step_record, steps, current_index)
         test_result = read_text(output_dir / "test-result.md")
         classified = classify_test_retry_target(Path(run.get("project_path") or ROOT), test_result)
         return classified if classified in {step.get("key") for step in steps} else configured
-    return retry_target_for_step(step_record, steps, current_index)
+    return configured
