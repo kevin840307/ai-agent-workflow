@@ -783,6 +783,22 @@ def existing_validation_scripts(
     return scripts
 
 
+def validation_script_protected_names(
+    validation_script: str | None = None,
+    fallback_scripts: Iterable[str] | None = None,
+) -> set[str]:
+    names: set[str] = set()
+    if validation_script:
+        candidate_name = Path(validation_script).name.strip().lower()
+        if candidate_name:
+            names.add(candidate_name)
+    for name in fallback_scripts or []:
+        candidate_name = Path(str(name)).name.strip().lower()
+        if candidate_name:
+            names.add(candidate_name)
+    return names
+
+
 def validate_build_files_do_not_overwrite_validation_scripts(
     project_dir: Path,
     files: list[tuple[str, str]],
@@ -791,19 +807,42 @@ def validate_build_files_do_not_overwrite_validation_scripts(
     fallback_scripts: Iterable[str] | None = None,
 ) -> None:
     protected_scripts = existing_validation_scripts(project_dir, validation_script, fallback_scripts)
-    if not protected_scripts:
+    protected_names = validation_script_protected_names(validation_script, fallback_scripts)
+    if not protected_scripts and not protected_names:
         return
     project_root = project_dir.expanduser().resolve()
     invalid: list[str] = []
     for rel_path, _content in files:
         target = resolve_project_relative_write(project_root, rel_path, label="build output")
-        if target.resolve() in protected_scripts:
+        if target.resolve() in protected_scripts or target.name.lower() in protected_names:
             invalid.append(rel_path)
     if invalid:
         raise WorkflowError(
-            "build must not create or modify existing validation scripts. "
+            "build must not create, copy, or modify validation scripts. "
             "Validation scripts are user-provided acceptance tools, not Build-owned artifacts. "
             f"Invalid build file(s): {', '.join(invalid)}"
+        )
+
+
+def validate_test_code_is_separate(files: list[tuple[str, str]]) -> None:
+    invalid: list[str] = []
+    for rel_path, content in files:
+        if is_test_file_path(rel_path):
+            continue
+        suffix = Path(rel_path).suffix.lower()
+        if suffix == ".py" and re.search(r"(?m)^\s*(?:async\s+)?def\s+test_[A-Za-z0-9_]*\s*\(", content or ""):
+            invalid.append(rel_path)
+            continue
+        if suffix == ".py" and re.search(r"(?m)^\s*class\s+Test[A-Za-z0-9_]*\b", content or ""):
+            invalid.append(rel_path)
+            continue
+        if re.search(r"(?m)^\s*(?:def\s+test_|class\s+Test[A-Za-z0-9_]*\b)", content or ""):
+            invalid.append(rel_path)
+    if invalid:
+        raise WorkflowError(
+            "test code must be separated from production files. "
+            "Put tests under tests/ or test-named files instead of embedding them in production artifacts. "
+            f"Invalid file(s): {', '.join(invalid)}"
         )
 
 

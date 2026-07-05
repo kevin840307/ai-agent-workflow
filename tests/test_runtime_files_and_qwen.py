@@ -8,7 +8,9 @@ from unittest.mock import AsyncMock, patch
 
 from app.runtime_modules.errors import WorkflowError
 from app.runtime_modules.files import (
+    apply_extracted_files,
     extract_build_files,
+    files_from_changed_snapshot,
     project_profile,
     requirement_has_actionable_signal,
     should_ask_for_spec_input,
@@ -16,7 +18,9 @@ from app.runtime_modules.files import (
     build_generic_python_import_smoke_test,
     build_validation_script_pytest_wrapper,
     validate_build_files_are_not_tests,
+    validate_build_files_do_not_overwrite_validation_scripts,
     validate_generated_test_files,
+    validate_test_code_is_separate,
 )
 from app.runtime_modules.qwen import QwenCliClient
 from app.workflow_runtime.agents import AgentRequest, OpenCodeCliAdapter, QwenAdapter, run_process_stream
@@ -144,6 +148,46 @@ print("ok")
 END_FILE
 """
         self.assertEqual(extract_build_files(text), [("src/tool.py", "print(\"ok\")\n")])
+
+    def test_file_block_marker_path_is_rejected(self) -> None:
+        files = extract_build_files("""FILE: CONTENT/END_FILE sorting_algorithms.py
+CONTENT:
+def bubble_sort(values):
+    return values
+END_FILE
+""")
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaisesRegex(WorkflowError, "file block marker leaked into path"):
+                apply_extracted_files(Path(tmp), files)
+
+    def test_direct_edit_marker_path_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp)
+            bad_file = project / "CONTENT" / "END_FILE sorting_algorithms.py"
+            bad_file.parent.mkdir(parents=True)
+            bad_file.write_text("def bubble_sort(values):\n    return values\n", encoding="utf-8")
+
+            with self.assertRaisesRegex(WorkflowError, "file block marker leaked into path"):
+                files_from_changed_snapshot(project, ["CONTENT/END_FILE sorting_algorithms.py"])
+
+    def test_external_validation_script_basename_is_protected(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp)
+            external_validator = Path(tmp) / "validators" / "validate_acceptance.py"
+            external_validator.parent.mkdir()
+            external_validator.write_text("raise SystemExit(0)\n", encoding="utf-8")
+
+            with self.assertRaisesRegex(WorkflowError, "validation scripts"):
+                validate_build_files_do_not_overwrite_validation_scripts(
+                    project,
+                    [("validate_acceptance.py", "print('copied validator')\n")],
+                    validation_script=str(external_validator),
+                )
+
+    def test_test_code_must_be_separate_from_production_files(self) -> None:
+        validate_test_code_is_separate([("tests/test_sorting.py", "def test_sorting():\n    assert True\n")])
+        with self.assertRaisesRegex(WorkflowError, "test code must be separated"):
+            validate_test_code_is_separate([("sorting_algorithms.py", "def test_sorting():\n    assert True\n")])
 
     def test_extract_build_files_accepts_fenced_code_with_filename_comments(self) -> None:
         text = """# Result

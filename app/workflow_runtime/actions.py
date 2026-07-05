@@ -36,6 +36,7 @@ from app.runtime_modules.files import (
     validate_build_files_do_not_overwrite_validation_scripts,
     validate_build_files_are_not_tests,
     validate_generated_test_files,
+    validate_test_code_is_separate,
 )
 from app.core.paths import ROOT, read_text, write_text
 from app.security.workspace_guard import resolve_project_relative_write
@@ -1146,10 +1147,12 @@ class WorkflowActions:
                 output_label="agent generate_tests file block direct edit",
             )
         if not direct_files:
+            direct_files = self._existing_project_test_files(project_dir)
+        if not direct_files:
             raise WorkflowError(
                 f"generate_tests did not directly create or modify pytest files under {project_dir / 'tests'}. "
-                "Use Qwen/OpenCode file edit/write tools to create project-specific tests. "
-                "The platform no longer materializes FILE blocks for real agent runs; it only checks the project diff."
+                "Use Qwen/OpenCode file edit/write tools to create project-specific tests, or output complete "
+                "FILE/CONTENT/END_FILE blocks for test files under tests/."
             )
 
         validate_generated_test_files(direct_files)
@@ -1161,8 +1164,25 @@ class WorkflowActions:
         )
         write_text(output_dir / artifact, summary)
         self._write_task_direct_state(output_dir, project_dir, "GENERATE-TESTS", "generate_tests", direct_files)
-        await self.log(run, "generate_tests: accepted direct agent test edit(s): " + ", ".join(rel_path for rel_path, _ in direct_files))
+        await self.log(run, "generate_tests: accepted project test file(s): " + ", ".join(rel_path for rel_path, _ in direct_files))
         await self.refresh_artifacts(run["id"])
+
+    @staticmethod
+    def _existing_project_test_files(project_dir: Path) -> list[tuple[str, str]]:
+        tests_dir = project_dir / "tests"
+        if not tests_dir.is_dir():
+            return []
+        files: list[tuple[str, str]] = []
+        for path in sorted(tests_dir.rglob("*")):
+            if not path.is_file() or path.suffix.lower() != ".py":
+                continue
+            try:
+                rel_path = path.relative_to(project_dir).as_posix()
+                content = path.read_text(encoding="utf-8")
+            except (OSError, UnicodeDecodeError, ValueError):
+                continue
+            files.append((rel_path, content.rstrip("\n") + "\n"))
+        return files
 
     def _build_step_feedback(self, run: dict[str, Any]) -> str:
         input_dir = Path(run["workspace"]) / "input"
@@ -1534,7 +1554,10 @@ class WorkflowActions:
                 task_artifact = self._task_output_artifact(task_id, "build-result.md")
                 task_artifact_path = output_dir / task_artifact
                 task_artifact_path.parent.mkdir(parents=True, exist_ok=True)
-                task_has_feedback = self._latest_feedback_mentions_task(build_feedback, task_id)
+                task_has_feedback = self._latest_feedback_mentions_task(
+                    build_feedback,
+                    task_id,
+                ) or self._feedback_is_generic_for_task_loop(build_feedback)
                 if (
                     task_artifact_path.is_file()
                     and not task_has_feedback
@@ -1707,7 +1730,10 @@ class WorkflowActions:
                 task_artifact = self._task_output_artifact(task_id, "adaptive-generation-result.md")
                 task_artifact_path = output_dir / task_artifact
                 task_artifact_path.parent.mkdir(parents=True, exist_ok=True)
-                task_has_feedback = self._latest_feedback_mentions_task(generation_feedback, task_id)
+                task_has_feedback = self._latest_feedback_mentions_task(
+                    generation_feedback,
+                    task_id,
+                ) or self._feedback_is_generic_for_task_loop(generation_feedback)
                 if (
                     task_artifact_path.is_file()
                     and not task_has_feedback
@@ -1753,6 +1779,7 @@ class WorkflowActions:
                     validation_script=run.get("validation_script"),
                     fallback_scripts=self._fallback_validation_scripts(run),
                 )
+                validate_test_code_is_separate(direct_files)
                 self._write_task_direct_state(output_dir, project_dir, task_id, "auto_generation", direct_files)
                 self._validate_previous_direct_task_states_preserved(
                     output_dir,
@@ -1806,6 +1833,7 @@ class WorkflowActions:
             validation_script=run.get("validation_script"),
             fallback_scripts=self._fallback_validation_scripts(run),
         )
+        validate_test_code_is_separate(direct_files)
         summary = self._render_direct_edit_summary("Adaptive Generation Direct Edit Result", "AUTO-GENERATION", "Adaptive generation", direct_files)
         write_text(output_dir / artifact, summary)
         self._write_task_direct_state(output_dir, project_dir, "AUTO-GENERATION", "auto_generation", direct_files)

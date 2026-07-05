@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 from pathlib import Path, PureWindowsPath
 from urllib.parse import unquote
 from typing import Mapping
@@ -12,6 +13,7 @@ from app.runtime_modules.errors import WorkflowError
 PROJECT_WORKFLOW_DIR = ".ai-workflow"
 LEGACY_WORKFLOW_DIR = ".qwen-workflow"
 RESERVED_AGENT_WRITE_DIRS = {PROJECT_WORKFLOW_DIR, LEGACY_WORKFLOW_DIR, ".git", ".qwen"}
+FILE_BLOCK_PATH_MARKERS = {"file", "content", "start_file", "end_file", "begin_file"}
 
 
 def canonical_path(path: str | Path) -> Path:
@@ -59,6 +61,14 @@ def unsafe_relative_path_reason(raw_path: str, *, reserved_dirs: set[str] | None
         return "placeholder output path is not a real project file"
     if normalized == "opencode.json":
         return "managed agent guard config: opencode.json"
+    marker_parts = {
+        token
+        for part in parts
+        for token in re.split(r"[^a-z0-9_]+", part.lower())
+        if token
+    }
+    if marker_parts & FILE_BLOCK_PATH_MARKERS:
+        return "file block marker leaked into path"
     if any(part.strip() == ".." for part in parts):
         return "parent directory traversal"
     reserved = reserved_dirs if reserved_dirs is not None else RESERVED_AGENT_WRITE_DIRS

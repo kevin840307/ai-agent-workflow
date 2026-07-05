@@ -840,6 +840,19 @@ def step_from_contract(contract: dict[str, Any], index: int = 0) -> dict[str, An
         "stopAfterFailures": int(metadata.get("stopAfterFailures") or 3),
         "templateContent": "",
     }
+    for field in (
+        "artifactPattern",
+        "outputPattern",
+        "innerValidator",
+        "candidateValidator",
+        "agentCount",
+        "agentMaxRetries",
+        "freshSessionPerAgent",
+        "forceFreshQwenSession",
+        "isolatedQwenSession",
+    ):
+        if field in metadata:
+            step[field] = metadata[field]
     return apply_contract_to_step(step, metadata)
 
 

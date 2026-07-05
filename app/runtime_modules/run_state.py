@@ -48,7 +48,7 @@ def repair_strategy_for_class(error_class: str) -> str:
     return {
         "PATH_VIOLATION": "Rewrite only relative FILE paths inside Project Path; do not retry unsafe path tricks.",
         "TIMEOUT": "Reduce scope, simplify implementation, and avoid long-running commands.",
-        "NO_FILE_OUTPUT": "Use Qwen/OpenCode direct edits for the owner step; do not return file blocks.",
+        "NO_FILE_OUTPUT": "Use Qwen/OpenCode direct edits for the owner step, or return complete FILE/CONTENT/END_FILE blocks when direct edit tools are unavailable.",
         "NO_TEST_GENERATED": "Return focused test platform file blocks only under tests/.",
         "NO_PRODUCTION_CHANGE": "Modify or create the intended production/project artifact instead of restating the plan.",
         "SYNTAX_ERROR": "Fix the exact syntax/import error and keep the patch minimal.",

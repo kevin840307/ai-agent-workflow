@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import ctypes
 import json
 import os
 from pathlib import Path
@@ -23,6 +24,7 @@ class Store:
         self._default_project_path = default_project_path
         self._default_steps = default_steps
         self._lock_path = path.with_suffix(path.suffix + ".lock")
+        self._stale_lock_sec = 60.0
 
     @contextmanager
     def _process_lock(self, timeout_sec: float = 120.0) -> Iterator[None]:
@@ -65,6 +67,8 @@ class Store:
         holder = self._lock_holder_pid()
         if holder is not None and not self._pid_is_alive(holder):
             return True
+        if age_sec > self._stale_lock_sec:
+            return True
         return holder is None and age_sec > 120
 
     def _lock_holder_pid(self) -> int | None:
@@ -81,8 +85,12 @@ class Store:
     def _pid_is_alive(self, pid: int) -> bool:
         if pid == os.getpid():
             return True
+        if os.name == "nt":
+            return self._windows_pid_is_alive(pid)
         try:
             os.kill(pid, 0)
+        except SystemError:
+            return False
         except ProcessLookupError:
             return False
         except PermissionError:
@@ -90,6 +98,23 @@ class Store:
         except OSError:
             return False
         return True
+
+    @staticmethod
+    def _windows_pid_is_alive(pid: int) -> bool:
+        try:
+            kernel32 = ctypes.windll.kernel32
+            handle = kernel32.OpenProcess(0x1000, False, int(pid))
+            if not handle:
+                return False
+            try:
+                exit_code = ctypes.c_ulong()
+                if not kernel32.GetExitCodeProcess(handle, ctypes.byref(exit_code)):
+                    return True
+                return exit_code.value == 259
+            finally:
+                kernel32.CloseHandle(handle)
+        except Exception:
+            return False
 
     def _empty(self) -> dict[str, Any]:
         return {"sessions": [], "messages": [], "runs": [], "workflow_configs": []}

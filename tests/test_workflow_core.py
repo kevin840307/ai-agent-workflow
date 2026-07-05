@@ -131,6 +131,16 @@ Status: READY
 
         self.assertEqual(actions._task_owner(todo, "TASK-001"), "build")
 
+    def test_generic_retry_feedback_prevents_task_loop_skip(self) -> None:
+        feedback = """## Retry Feedback for auto_generation
+
+- Failure source: run_external_validation
+- Error: External validation failed because generated imports are invalid.
+"""
+
+        self.assertTrue(WorkflowActions._feedback_is_generic_for_task_loop(feedback))
+        self.assertFalse(WorkflowActions._latest_feedback_mentions_task(feedback, "TASK-001"))
+
     def test_file_blocks_cannot_escape_project_path(self) -> None:
         files = extract_build_files("FILE: ../escape.py\nCONTENT:\nprint('bad')\nEND_FILE\n")
         with tempfile.TemporaryDirectory() as tmp:
@@ -220,6 +230,35 @@ Status: READY
 
             with self.assertRaisesRegex(WorkflowError, "directly create or modify pytest files"):
                 asyncio.run(actions.generate_tests_step({"id": "run-1", "workspace": str(workspace), "project_path": str(project)}))
+
+    def test_generate_tests_accepts_existing_project_tests_after_retry(self) -> None:
+        class FakeAgentRunner:
+            async def run(self, run, step_key, prompt_name, artifact, **_kwargs):
+                output = Path(run["workspace"]) / "output"
+                output.mkdir(parents=True, exist_ok=True)
+                text = "Status: PASS\n\nTests already exist from a previous retry.\n"
+                (output / artifact).write_text(text, encoding="utf-8")
+                return text
+
+        async def log(_run, _message):
+            return None
+
+        async def refresh(_run_id):
+            return None
+
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp) / "project"
+            workspace = Path(tmp) / "workspace"
+            tests = project / "tests"
+            tests.mkdir(parents=True)
+            (workspace / "output").mkdir(parents=True)
+            (tests / "test_existing.py").write_text("def test_existing():\n    assert True\n", encoding="utf-8")
+            actions = WorkflowActions(agent_runner=FakeAgentRunner(), functions=None, log=log, refresh_artifacts=refresh)
+
+            asyncio.run(actions.generate_tests_step({"id": "run-1", "workspace": str(workspace), "project_path": str(project)}))
+
+            text = (workspace / "output" / "test-plan.md").read_text(encoding="utf-8")
+            self.assertIn("tests/test_existing.py", text)
 
     def test_workflow_bundle_paths_are_normalized_inside_asset_dirs(self) -> None:
         self.assertEqual(
@@ -501,6 +540,9 @@ Status: READY
             self.assertIn('"TASK-001"', manifest)
             self.assertTrue((output / "task-prompts" / "TASK-001.md").is_file())
             self.assertTrue((output / "todos" / "TASK-001.md").is_file())
+            task_prompt = (output / "task-prompts" / "TASK-001.md").read_text(encoding="utf-8")
+            self.assertIn("## Review Gate For This Task", task_prompt)
+            self.assertIn("Review confidence:", task_prompt)
             self.assertIn("AI produces the task manifest", (output / "workflow-instance-validation.md").read_text(encoding="utf-8"))
 
     def test_adaptive_generation_can_materialize_code_and_tests_together(self) -> None:

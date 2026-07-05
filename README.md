@@ -1,4 +1,4 @@
-# Qwen Workflow Web
+﻿# Qwen Workflow Web
 
 Agent Workflow Web is a local **AI Agent Workflow Runner**. It is not only a chat UI: the user enters a requirement in the browser, while a Python/FastAPI runner controls a fixed workflow and delegates generation work to external agent CLIs such as Qwen Code or OpenCode.
 
@@ -24,6 +24,26 @@ Web UI = operate projects, workflows, assets, runs, and artifacts
 | External validation | Runs an optional Python validation script; empty script means skipped PASS |
 | Artifacts | Stores run outputs, logs, validation reports, and generated files |
 | Workflow metadata protection | `kind: system`, `protected: true`, and `deletable: false` are enforced by UI and API |
+
+## UI overview
+
+### Workflow runner
+
+The runner is the main operating screen. Select a project, choose Workflow or Chat mode, pick a workflow, send the requirement, and watch steps, agent output, logs, and artifacts update in one place.
+
+![Workflow runner](docs/images/ui-workflow-runner.png)
+
+### Workflow designer
+
+The designer manages workflow structure, step contracts, prompt templates, retry settings, review strategy, Python functions, and CLI command examples.
+
+![Workflow designer](docs/images/ui-workflow-designer.png)
+
+### AI workflow assets
+
+The asset manager edits global or project-local workflow assets: prompts, contracts, functions, and workflow metadata.
+
+![AI workflow assets](docs/images/ui-ai-workflow-assets.png)
 
 ## Built-in workflows
 
@@ -196,17 +216,16 @@ doc/zh-TW/TESTING.md
 
 English documentation is the default entry path. Traditional Chinese documentation is available beside it.
 
-| Area | English | 中文 |
+| Area | English | Traditional Chinese |
 |---|---|---|
 | Documentation index | `doc/en/README.md` | `doc/zh-TW/README.md` |
 | Agent installation | `doc/en/AGENT_INSTALLATION.md` | `doc/zh-TW/AGENT_INSTALLATION.md` |
-| Agent slash commands | `doc/en/AGENT_SLASH_COMMANDS.md` | `doc/zh-TW/AGENT_SLASH_COMMANDS.md
-doc/zh-TW/AGENT_PROJECT_GUARD.md` |
+| Agent slash commands | `doc/en/AGENT_SLASH_COMMANDS.md` | `doc/zh-TW/AGENT_SLASH_COMMANDS.md` |
+| Agent project guard | `doc/en/AGENT_PROJECT_GUARD.md` | `doc/zh-TW/AGENT_PROJECT_GUARD.md` |
 | Adaptive workflow | `doc/en/ADAPTIVE_AUTO_WORKFLOW.md` | `doc/zh-TW/ADAPTIVE_AUTO_WORKFLOW.md` |
 | Workflow metadata | `doc/en/WORKFLOW_METADATA.md` | `doc/zh-TW/WORKFLOW_METADATA.md` |
 | Frontend structure | `doc/en/FRONTEND_STRUCTURE.md` | `doc/zh-TW/FRONTEND_STRUCTURE.md` |
 | Testing | `doc/en/TESTING.md` | `doc/zh-TW/TESTING.md` |
-
 Root-level `doc/*.md` files are kept as compatibility entry points for existing tests and links.
 
 ---
@@ -224,3 +243,4 @@ Qwen Workflow Web 是一個本機 **AI Agent Workflow Runner**。它不是單純
 - 將 Qwen / OpenCode CLI 包成可操作、可追蹤、可驗證的 Web 平台
 
 中文文件請從 `doc/zh-TW/README.md` 開始閱讀。
+

@@ -16,7 +16,11 @@ outputs:
 - security-candidates-agent-3.md
 - security-candidates-agent-3-score.md
 function: consensus_agent
-retry: 1
+innerValidator: validate_security_candidates
+artifactPattern: security-candidates-agent-{index}.md
+agentCount: 3
+agentMaxRetries: 5
+retry: 30
 failAction: same_step
 retryFromStepKey: consensus_security_scan
 keepSameSession: false

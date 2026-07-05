@@ -300,6 +300,19 @@ def _contract_from_step(workflow_id: str, step: dict) -> dict[str, Any]:
         contract["function"] = functions[0]
     elif len(functions) > 1:
         contract["functions"] = functions
+    for field in (
+        "artifactPattern",
+        "outputPattern",
+        "innerValidator",
+        "candidateValidator",
+        "agentCount",
+        "agentMaxRetries",
+        "freshSessionPerAgent",
+        "forceFreshQwenSession",
+        "isolatedQwenSession",
+    ):
+        if field in item:
+            contract[field] = item[field]
     if contract["timeoutEnabled"] and contract["timeoutMinutes"]:
         contract["timeout"] = float(contract["timeoutMinutes"]) * 60
     return workflow_asset_service.normalize_contract(contract, fallback_id=key)

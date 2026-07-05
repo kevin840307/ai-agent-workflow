@@ -4,9 +4,8 @@ Create focused automated tests for the completed production build.
 
 Critical execution contract:
 - Use Qwen/OpenCode built-in file edit/write tools to create or update test files directly.
-- Do not return test source code for the platform to materialize.
-- Do not output full file contents.
-- The platform will only inspect the project diff after you finish.
+- If the CLI environment does not expose file edit/write tools, output complete test file blocks using `FILE: tests/test_name.py`, `CONTENT:`, and `END_FILE`.
+- The platform will inspect the project diff after you finish or safely materialize explicit FILE blocks when direct tools are unavailable.
 - Generated test files must stay inside `tests/` under the selected Project Path.
 - Do not edit production files in this step.
 - Do not edit `.qwen/**`, `opencode.json`, `.ai-workflow/**`, `.qwen-workflow/**`, or `.git/**`.
@@ -39,11 +38,19 @@ Rules:
 - For Python projects, write pytest tests only under tests/.
 - Test files must be named tests/test_*.py or tests/conftest.py.
 - Import production code from actual existing module paths in the current project.
-- For Python projects that place modules under `src/` without package installation, add the project root and `src/` directory to `sys.path` before importing production modules.
+- For Python projects, pytest runs with Project Path as cwd. Before importing production modules, ensure `sys.path` includes the project root and every real source root needed by the actual file layout, such as `src/`, `app/`, `production/`, or the parent folder of the package you import.
+- If production code is under a nested package path such as `production/project/main.py`, add `production/` to `sys.path` before `from project.main import ...`.
+- Do not invent package names. Confirm the import path matches an actual `.py` file or package directory shown in Project Index / current files.
+- Every generated Python test file and `conftest.py` must be syntactically valid and import every module it references.
 - Do not import placeholder module names like `example` unless the project really contains that module.
 - Do not create or modify production files.
 - Do not run `git commit`, `git push`, or commands that change repository history or remote state.
 
 Completion response:
-- After editing test files directly, respond with a brief Markdown summary only.
-- Do not include full file contents.
+- If you used direct edit/write tools successfully, respond with a brief Markdown summary that names the changed test files.
+- If direct edit/write tools are unavailable or uncertain, output only complete `FILE/CONTENT/END_FILE` blocks for every created or modified test file.
+- A FILE block must use this exact shape:
+  `FILE: tests/test_name.py`
+  `CONTENT:`
+  full file content
+  `END_FILE`

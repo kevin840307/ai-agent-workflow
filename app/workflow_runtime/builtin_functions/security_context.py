@@ -10,6 +10,7 @@ SECURITY_CONTEXT_EXTENSIONS = {
     ".py", ".js", ".jsx", ".ts", ".tsx", ".java", ".kt", ".cs", ".vb", ".go", ".rs", ".php", ".rb",
     ".yml", ".yaml", ".json", ".xml", ".properties", ".ini", ".toml", ".env", ".config", ".conf",
     ".sql", ".sh", ".ps1", ".bat", ".cmd", ".dockerfile",
+    ".sln", ".csproj", ".vbproj", ".fsproj", ".props", ".targets",
 }
 
 
@@ -65,6 +66,19 @@ def _safe_read_limited(path: Path, max_bytes: int) -> tuple[str, bool]:
         return data.decode("utf-8"), truncated
     except UnicodeDecodeError:
         return data.decode("utf-8", errors="replace"), truncated
+
+
+def _looks_binary(path: Path, sample_bytes: int = 4096) -> bool:
+    try:
+        data = path.read_bytes()[:sample_bytes]
+    except OSError:
+        return True
+    if b"\x00" in data:
+        return True
+    if not data:
+        return False
+    control_bytes = sum(1 for byte in data if byte < 9 or 13 < byte < 32)
+    return control_bytes / max(len(data), 1) > 0.08
 
 
 def _line_matches_security_keyword(line: str) -> bool:
@@ -131,9 +145,16 @@ def collect_security_context(ctx: WorkflowFunctionContext) -> None:
         if path.name.lower() in SECURITY_CONTEXT_SKIP_FILE_NAMES or path.suffix.lower() in SECURITY_CONTEXT_SKIP_SUFFIXES:
             excluded_file_count += 1
             continue
+        suffix = path.suffix.lower()
+        if suffix not in SECURITY_CONTEXT_EXTENSIONS:
+            excluded_file_count += 1
+            continue
+        if _looks_binary(path):
+            excluded_file_count += 1
+            continue
         included_count += 1
-        suffix = path.suffix.lower() or "[no extension]"
-        extension_counts[suffix] = extension_counts.get(suffix, 0) + 1
+        extension_label = suffix or "[no extension]"
+        extension_counts[extension_label] = extension_counts.get(extension_label, 0) + 1
         if len(inventory) < max_inventory:
             inventory.append(relative.as_posix())
         score = 0

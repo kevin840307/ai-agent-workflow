@@ -254,6 +254,15 @@ Visible files:
 - Keep writes inside the selected Project path only. Reading external files for context is allowed when needed.
 - Never write `.git`, `.qwen`, `opencode.json`, `.ai-workflow`, `.qwen-workflow`, absolute paths, or parent-directory paths.
 - Do not modify validation scripts unless the user explicitly asked to modify the validator itself.
+
+## Review Gate For This Task
+- After making changes, review your own output against the User Requirement and Acceptance Criteria.
+- Check whether the changed files are real project artifacts, not prose-only summaries.
+- Check that production code and tests are separated when tests are generated.
+- Check that imports, file paths, and entry points are plausible for the current project.
+- Check whether focused tests or external validation can verify this task.
+- If confidence is below 0.75, repair the implementation before finishing.
+- In the final summary, include `Review confidence: <0.00-1.00>` and one sentence explaining the remaining risk or `No known remaining risk`.
 """.strip() + "\n"
 
     def _render_task_todo(self, manifest: dict[str, Any], task: dict[str, Any], *, index: int, total: int) -> str:

@@ -100,6 +100,10 @@ class WorkflowFunctionTests(unittest.TestCase):
             (workspace / "output").mkdir()
             project.mkdir()
             (project / "config.py").write_text('API_TOKEN = "Bearer abc"\n', encoding="utf-8")
+            (project / "SGOAuto.csproj").write_text("<Project></Project>\n", encoding="utf-8")
+            (project / "Map").mkdir()
+            (project / "Map" / "area.dat").write_bytes(b"\x00\x01\x02BinaryFormatter\x00")
+            (project / "image.tga").write_bytes(b"\x00" * 100)
             (project / "node_modules").mkdir()
             (project / "node_modules" / "ignored.js").write_text("secret = 1\n", encoding="utf-8")
 
@@ -109,7 +113,10 @@ class WorkflowFunctionTests(unittest.TestCase):
 
             self.assertIn("Status: DONE", text)
             self.assertIn("config.py", text)
+            self.assertIn("SGOAuto.csproj", text)
             self.assertNotIn("ignored.js", text)
+            self.assertNotIn("area.dat", text)
+            self.assertNotIn("image.tga", text)
             self.assertIn("Bearer", text)
 
     def test_combine_security_candidates_accepts_heuristic_findings_from_context(self) -> None:

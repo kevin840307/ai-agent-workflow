@@ -107,6 +107,12 @@ class WorkflowDefinitionIntegrityTests(unittest.TestCase):
     def _workflow_files(self) -> list[Path]:
         return sorted(Path("data/ai-workflow/workflows").glob("*.workflow"))
 
+    def test_general_generate_tests_allows_file_block_fallback(self) -> None:
+        prompt = Path("data/ai-workflow/steps/general-auto-development/03_generate_tests.md").read_text(encoding="utf-8")
+        self.assertIn("FILE/CONTENT/END_FILE", prompt)
+        self.assertIn("FILE: tests/test_name.py", prompt)
+        self.assertNotIn("Do not output full file contents", prompt)
+
     def test_workflow_definition_integrity(self) -> None:
         self.assertTrue(self._workflow_files(), "expected workflow assets under data/ai-workflow/workflows")
         allowed_first_segments = {"output", "input", "prompts", ".workflow"}
