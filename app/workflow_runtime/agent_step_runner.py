@@ -69,17 +69,20 @@ class AgentStepRunner:
         workspace_path = Path(run["workspace"]).expanduser().resolve()
         base_session_id = self._session_id_for_agent(run, agent_name)
         # Qwen serve normally keeps one Qwen session per project/app session.
-        # Some workflows, such as multi-agent security consensus, intentionally
-        # need independent Qwen sessions for the same project.  Those steps must
-        # explicitly set forceFreshQwenSession=true and keepSameSession=false.
-        force_fresh_qwen = bool(
-            config.get("forceFreshQwenSession")
-            or config.get("isolatedQwenSession")
-            or config.get("freshSessionPerAgent")
-            or run.get("_force_fresh_qwen_session")
-        )
+        # Review / multi-agent review steps intentionally need independent Qwen
+        # sessions so reviewers are not contaminated by the build session.
         if agent_name == "qwen":
-            session_id = None if fresh_session and force_fresh_qwen else base_session_id
+            # Controller mode keeps Qwen/OpenCode behavior close to a normal CLI
+            # session: retries continue the same session and send only concise
+            # failure feedback.  Fresh sessions are opt-in workflow settings, not
+            # an implicit review/task-loop default.
+            isolated = bool(
+                config.get("forceFreshQwenSession")
+                or config.get("isolatedQwenSession")
+                or config.get("freshSessionPerAgent")
+                or run.get("_force_fresh_qwen_session")
+            )
+            session_id = None if (fresh_session and isolated) else base_session_id
         else:
             session_id = None if fresh_session else base_session_id
         prompt_text = self._harden_prompt_for_step(
@@ -172,13 +175,50 @@ class AgentStepRunner:
             await self.append_session_message(run["session_id"], "assistant", f"{agent_name} asks:\n\n{questions}")
             await self.refresh_artifacts(run["id"])
             raise UserInputRequired(f"{step_key}: {agent_name} needs more user input. See input/questions.md.")
-        file_block_output = self._tool_call_file_blocks(output, cwd)
-        if file_block_output:
-            output = file_block_output
+
+        raw_tool_name = self._tool_call_name(output)
+        if raw_tool_name and self._reprompt_on_tool_call_json(step_key, config):
+            await self.log(run, f"{step_key}: {agent_name} returned tool-call JSON `{raw_tool_name}`; sending one CLI-style correction prompt instead of failing immediately")
+            correction = self._render_tool_call_json_correction_prompt(
+                step_key,
+                raw_tool_name,
+                cwd=cwd,
+                artifact=artifact,
+            )
+            correction_request = AgentRequest(
+                run_id=run["id"],
+                step_key=step_key,
+                prompt=correction,
+                cwd=cwd,
+                session_id=session_id,
+                metadata={
+                    "project_path": str(cwd),
+                    "workspace_path": str(workspace_path),
+                    "prompt_file": str(workspace_path / prompt_result.relative_prompt_path),
+                    "write_root": str(cwd),
+                    "read_policy": "unrestricted",
+                    "tool_call_json_reprompt": raw_tool_name,
+                },
+            )
+            correction_result = await agent.run_stream(correction_request, on_output=publish_agent_output)
+            output = correction_result.output
+            if not output.strip():
+                raise WorkflowError(f"{step_key}: {agent_name} returned empty stdout after tool-call JSON correction prompt.")
+
         tool_name = self._tool_call_name(output)
         if tool_name:
             write_text(output_dir / artifact, output + "\n")
-            raise WorkflowError(f"{step_key}: {agent_name} returned tool-call JSON `{tool_name}` instead of artifact content.")
+            raise WorkflowError(
+                f"{step_key}: {agent_name} returned tool-call JSON `{tool_name}` after the correction prompt. "
+                "The workflow controller does not execute agent edit/write JSON. Use Qwen/OpenCode real file edit/write tools so the project files actually change."
+            )
+
+        # Keep optional FILE block normalization only for mock/unit-test runs.
+        # Real workflow runs must prove completion through actual project diffs.
+        if self._mock_file_block_normalization_allowed(config):
+            file_block_output = self._tool_call_file_blocks(output, cwd)
+            if file_block_output:
+                output = file_block_output
         if "No specification found" in output:
             raise WorkflowError(f"{step_key}: {agent_name} did not treat the prompt file as the task.")
         write_text(output_dir / artifact, output + "\n")
@@ -186,6 +226,41 @@ class AgentStepRunner:
         await self.log(run, f"{step_key}: wrote output/{artifact}")
         await self.refresh_artifacts(run["id"])
         return output
+
+
+    @staticmethod
+    def _reprompt_on_tool_call_json(step_key: str, config: dict[str, Any]) -> bool:
+        value = config.get("repromptOnToolCallJson")
+        if value is not None:
+            return str(value).lower() not in {"0", "false", "no", "off"}
+        return step_key in {"build", "generate_tests", "auto_generation"}
+
+    @staticmethod
+    def _mock_file_block_normalization_allowed(config: dict[str, Any]) -> bool:
+        value = config.get("normalizeToolCallFileBlocksForMock")
+        if value is not None:
+            return str(value).lower() in {"1", "true", "yes", "on"}
+        return os.environ.get("QWEN_WORKFLOW_MOCK_FILE_BLOCK_NORMALIZATION", "").lower() in {"1", "true", "yes", "on"}
+
+    @staticmethod
+    def _render_tool_call_json_correction_prompt(step_key: str, tool_name: str, *, cwd: Path, artifact: str) -> str:
+        return "\n".join(
+            [
+                "# Continue this CLI task",
+                "",
+                f"Step: {step_key}",
+                f"Project Path: {cwd}",
+                f"Previous response problem: you returned tool-call JSON `{tool_name}` instead of performing real project edits.",
+                "",
+                "Do this now:",
+                "- Continue the same task from the previous prompt.",
+                "- Use the CLI agent's actual file edit/write capability to modify files inside Project Path.",
+                "- Do not return JSON for edit_file/write_file/open_code/use_exit_plan_mode.",
+                "- Do not output FILE/CONTENT/END_FILE blocks as a substitute for editing files.",
+                "- Keep writes inside Project Path only.",
+                f"- After the real edits are done, return a short Markdown summary for output/{artifact}.",
+            ]
+        )
 
 
     @staticmethod
@@ -269,6 +344,20 @@ class AgentStepRunner:
             return prefix + json.dumps(content)
 
         return re.sub(r'(:\s*)"""(.*?)"""', replace, text, flags=re.DOTALL)
+
+    @staticmethod
+    def _file_blocks_from_text(text: str) -> list[tuple[str, str]]:
+        files: list[tuple[str, str]] = []
+        pattern = re.compile(
+            r"^FILE:\s*(?P<path>.+?)\s*\r?\n(?:CONTENT:\r?\n)?(?P<content>.*?)(?=^END_FILE\s*$|^FILE:\s*|\Z)",
+            re.DOTALL | re.MULTILINE,
+        )
+        for match in pattern.finditer(text or ""):
+            rel_path = match.group("path").strip().strip("`").replace("\\", "/")
+            content = match.group("content").strip("\n\r")
+            if rel_path:
+                files.append((rel_path, content))
+        return files
 
     @staticmethod
     def _tool_call_file_blocks(output: str, cwd: Path) -> str:
@@ -507,14 +596,9 @@ class AgentStepRunner:
                 "- Use the previous full prompt, current project files, and this failure feedback as the source of truth.",
                 "- Make the smallest project changes needed for this retry.",
                 "- Keep writes inside Project Path only.",
-                "- Do not output tool-call JSON or call tools such as use_exit_plan_mode; this workflow expects artifact text, direct edits, or FILE/CONTENT/END_FILE blocks.",
-                "- If the previous failure says tool-call JSON, edit_file, write_file, open_code, enter_plan_mode, exit_plan_mode, or empty output, stop using tool-call JSON entirely for this retry.",
-                "- In that case, output only complete file blocks in this exact shape:",
-                "  FILE: relative/path/to/file.ext",
-                "  CONTENT:",
-                "  complete file content",
-                "  END_FILE",
-                "- Put only a relative path on the FILE line. Never put absolute paths, drive-stripped absolute paths, prose, bullets, or code on the FILE line.",
+                "- Do not output tool-call JSON or call tools such as use_exit_plan_mode; this workflow expects artifact text plus real direct project edits.",
+                "- If the previous failure says tool-call JSON, edit_file, write_file, open_code, enter_plan_mode, exit_plan_mode, or empty output, stop using tool-call JSON entirely and use the CLI's real file edit/write capability instead.",
+                "- Do not rely on platform FILE/CONTENT/END_FILE fallback in real Qwen/OpenCode runs; production workflow completion is verified from actual project file diffs.",
                 *[f"- {item}" for item in extra],
                 "",
                 "Return only the artifact/direct-edit result expected by this step.",
@@ -532,16 +616,17 @@ Workspace safety guard:
 - Do not write absolute paths, parent-directory paths, `.git`, `.qwen`, `opencode.json`, `.ai-workflow`, or `.qwen-workflow`.
 - Do not run dangerous commands, `git commit`, `git push`, installs, deletes, or any command that changes repository history, remote state, or files outside the project.
 - Use CLI file edit/write tools only when they actually modify files in this non-interactive run.
-- If tool use would be returned as JSON such as `{"name": "edit_file"}`, do not use that tool call; output complete FILE/CONTENT/END_FILE blocks instead.
+- If tool use would be returned as JSON such as `{"name": "edit_file"}`, do not emit that JSON; use the CLI's real file edit/write capability or report the concrete blocker in the artifact.
+- Real Qwen/OpenCode runs must not depend on platform FILE/CONTENT/END_FILE materialization. The platform verifies actual project file diffs.
 """
         if step_key == "build":
             step_guard = """
 
 Build output guard:
-- You are in the Build step. Create or modify production project files directly, or output FILE/CONTENT/END_FILE blocks for the platform to materialize.
+- You are in the Build step. Create or modify production project files directly with the CLI agent's real file edit/write capability.
 - Do not output, copy, rewrite, summarize, or include test file blocks.
 - Do not write paths under tests/ and do not write files named test_*.py.
-- Do not return edit tool JSON. If direct editing is unavailable or would emit JSON, output only FILE/CONTENT/END_FILE blocks for production files.
+- Do not return edit tool JSON. Do not rely on platform FILE/CONTENT/END_FILE materialization in real runs.
 - The project must contain at least one non-test production file that implements the current Requirement.
 """
             return prompt.rstrip() + base_guard + step_guard
@@ -550,8 +635,8 @@ Build output guard:
 
 Adaptive generation output guard:
 - You are in the Auto Generation Workflow step.
-- Materialize the requested project change directly, or output FILE/CONTENT/END_FILE blocks for the platform to materialize.
-- Do not return edit tool JSON. If direct editing is unavailable or would emit JSON, output only FILE/CONTENT/END_FILE blocks for the files needed by this task.
+- Materialize the requested project change through real direct edits inside Project Path.
+- Do not return edit tool JSON. Do not rely on platform FILE/CONTENT/END_FILE materialization in real runs.
 - You may include production files, tests, and small project documentation when useful.
 - Existing validation scripts are read-only unless the user explicitly asked to modify them.
 - The project must contain at least one changed file for this task.
@@ -563,10 +648,10 @@ Adaptive generation output guard:
             step_guard = """
 
 Generate Tests output guard:
-- You are in the Generate Tests step. Create or modify test files directly, or output FILE/CONTENT/END_FILE blocks for the platform to materialize.
+- You are in the Generate Tests step. Create or modify test files directly with the CLI agent's real file edit/write capability.
 - For Python projects, write only tests/test_*.py or tests/conftest.py.
 - Do not modify production files in this step.
-- Do not return edit tool JSON. If direct editing is unavailable or would emit JSON, output only FILE/CONTENT/END_FILE blocks under tests/.
+- Do not return edit tool JSON. Do not rely on platform FILE/CONTENT/END_FILE materialization in real runs.
 """
             return prompt.rstrip() + base_guard + step_guard
         return prompt.rstrip() + base_guard

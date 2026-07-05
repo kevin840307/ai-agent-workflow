@@ -1,39 +1,31 @@
 id: generate_task_prompts
 key: generate_task_prompts
 name: Generate Task Prompts
-description: Deterministically generate an adaptive task manifest and one task-scoped prompt per task before execution.
+description: AI generates the task prompt manifest that will be sent to Qwen/OpenCode like human CLI instructions.
 enabled: true
-type: python
+type: ai
 skill: steps/adaptive-auto-workflow/00_generate_task_prompts.md
 command: ''
 agent: qwen
 outputs:
 - task-manifest.md
 - task-manifest.json
-- workflow-spec.md
-- workflow-spec.json
-- architecture-contract.md
-- architecture-contract.json
-- workflow-decision-log.md
-- generated-workflow-instance.json
-- workflow-instance-validation.md
-- workflow-run-trace.md
 function: ''
 retry: 99
 maxRetries: 99
 failAction: same_step
 retryFromStepKey: generate_task_prompts
 keepSameSession: true
-injectFailureFeedback: false
+injectFailureFeedback: true
 stopAfterFailures: 99
 allowInteraction: false
-thinking: false
-thinkingLevel: none
+thinking: true
+thinkingLevel: medium
 approvalRequired: false
 pauseAfterStep: false
 approvalMessage: ''
-timeoutEnabled: false
-timeoutMinutes: 0.0
+timeoutEnabled: true
+timeoutMinutes: 3.0
 reviewMode: none
 confidenceThreshold: 0.75
 passKeywords: PASS, APPROVED
@@ -41,4 +33,7 @@ failKeywords: FAIL, BLOCKED
 aggregatorFunction: ''
 sources: []
 agentOptions: {}
+includeSkillContext: false
 path: contracts/adaptive-auto-workflow/generate_task_prompts.yaml
+compactPrompt: true
+compactRetryPromptWhenReusingSession: true

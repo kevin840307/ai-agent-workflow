@@ -1,38 +1,37 @@
 id: implementation_review
 key: implementation_review
 name: Implementation Review
-description: Check that the task plan is concrete, bounded, and testable before building.
+description: Ask the AI reviewer to check whether the task plan is concrete, bounded, and executable. The platform does not rewrite the plan.
 enabled: true
-type: python
+type: review
 skill: steps/general-auto-development/02_implementation_review.md
 command: ''
 agent: qwen
 outputs:
 - implementation-review.md
-- task-manifest.md
-- task-manifest.json
-- generated-workflow-instance.json
-- workflow-instance-validation.md
-- workflow-run-trace.md
-function: 
-retry: 0
+function: ''
+retry: 99
 failAction: selected_step
 retryFromStepKey: plan_tasks
 keepSameSession: true
 injectFailureFeedback: true
-stopAfterFailures: 3
+stopAfterFailures: 99
 allowInteraction: false
-thinking: false
+thinking: true
+thinkingLevel: medium
 approvalRequired: false
 pauseAfterStep: false
 approvalMessage: ''
-timeoutEnabled: false
-timeoutMinutes: 0.0
-reviewMode: none
-confidenceThreshold: 0.75
+timeoutEnabled: true
+timeoutMinutes: 3.0
+reviewMode: new_agent
+confidenceThreshold: 0.7
 passKeywords: PASS, APPROVED
-failKeywords: FAIL, BLOCKED
-aggregatorFunction: ''
+failKeywords: FAIL, BLOCKED, RISK
+aggregatorFunction: keyword_confidence
 sources: []
 agentOptions: {}
 path: contracts/general-auto-development/implementation_review.yaml
+compactPrompt: true
+includeSkillContext: false
+compactRetryPromptWhenReusingSession: true

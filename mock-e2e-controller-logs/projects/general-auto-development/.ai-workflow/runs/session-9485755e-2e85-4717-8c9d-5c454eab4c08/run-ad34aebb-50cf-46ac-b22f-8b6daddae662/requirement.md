@@ -1,0 +1,1 @@
+Create a deterministic Python helper named workflow_greeting and verify it with tests.

@@ -1,7 +1,8 @@
 id: generate_tests
 key: generate_tests
 name: Generate Tests
-description: Create focused automated tests once after production Build using direct agent edits.
+description: Create focused automated tests once after production Build using direct
+  agent edits.
 enabled: true
 type: ai
 skill: steps/general-auto-development/03_generate_tests.md
@@ -28,8 +29,10 @@ confidenceThreshold: 0.75
 passKeywords: PASS, APPROVED
 failKeywords: FAIL, BLOCKED
 aggregatorFunction: ''
-sources:
-- type: skill_path
-  value: test-driven-development
+sources: []
 agentOptions: {}
 path: contracts/general-auto-development/generate_tests.yaml
+compactPrompt: true
+repromptOnToolCallJson: true
+includeSkillContext: false
+compactRetryPromptWhenReusingSession: true

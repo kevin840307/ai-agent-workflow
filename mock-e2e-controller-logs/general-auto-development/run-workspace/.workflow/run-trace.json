@@ -1,0 +1,581 @@
+{
+  "run_id": "ad34aebb-50cf-46ac-b22f-8b6daddae662",
+  "session_id": "9485755e-2e85-4717-8c9d-5c454eab4c08",
+  "status": "done",
+  "error": null,
+  "error_code": null,
+  "workflow_id": "general-auto-development",
+  "workflow_name": "General Auto Development",
+  "project_path": "/mnt/data/mock-e2e-controller-logs/projects/general-auto-development",
+  "workspace": "/mnt/data/mock-e2e-controller-logs/projects/general-auto-development/.ai-workflow/runs/session-9485755e-2e85-4717-8c9d-5c454eab4c08/run-ad34aebb-50cf-46ac-b22f-8b6daddae662",
+  "created_at": "2026-07-05T13:51:52.670265+00:00",
+  "started_at": "2026-07-05T13:51:52.689528+00:00",
+  "ended_at": "2026-07-05T13:51:59.230055+00:00",
+  "duration_ms": 6540,
+  "agent_session_ids": {
+    "qwen": "9485755e-2e85-4717-8c9d-5c454eab4c08",
+    "opencode": "9485755e-2e85-4717-8c9d-5c454eab4c08"
+  },
+  "step_count": 8,
+  "passed_steps": 8,
+  "failed_steps": 0,
+  "total_retries": 0,
+  "steps": [
+    {
+      "key": "plan_tasks",
+      "title": "Plan Tasks",
+      "kind": "agent",
+      "type": "ai",
+      "agent": "qwen",
+      "status": "passed",
+      "started_at": "2026-07-05T13:51:52.693439+00:00",
+      "ended_at": "2026-07-05T13:51:53.011537+00:00",
+      "duration_ms": 318,
+      "retry_count": 0,
+      "retry_from_step_key": "plan_tasks",
+      "error": null,
+      "error_code": null,
+      "prompt_path": "prompts/plan_tasks.md",
+      "prompt_chars": 2493,
+      "output_path": "output/todo.md",
+      "output_chars": 344,
+      "events": [
+        {
+          "time": "2026-07-05T13:51:52.697280+00:00",
+          "ts": "2026-07-05T13:51:52.697280+00:00",
+          "step_key": "plan_tasks",
+          "stepKey": "plan_tasks",
+          "kind": "started",
+          "type": "started",
+          "message": "plan_tasks: started"
+        },
+        {
+          "time": "2026-07-05T13:51:53.013906+00:00",
+          "ts": "2026-07-05T13:51:53.013906+00:00",
+          "step_key": "plan_tasks",
+          "stepKey": "plan_tasks",
+          "kind": "passed",
+          "type": "passed",
+          "message": "plan_tasks: passed"
+        }
+      ]
+    },
+    {
+      "key": "implementation_review",
+      "title": "Implementation Review",
+      "kind": "agent",
+      "type": "review",
+      "agent": "qwen",
+      "status": "passed",
+      "started_at": "2026-07-05T13:51:53.017199+00:00",
+      "ended_at": "2026-07-05T13:51:53.267372+00:00",
+      "duration_ms": 250,
+      "retry_count": 0,
+      "retry_from_step_key": "plan_tasks",
+      "error": null,
+      "error_code": null,
+      "prompt_path": "prompts/implementation_review.md",
+      "prompt_chars": 1096,
+      "output_path": "output/implementation-review.md",
+      "output_chars": 127,
+      "events": [
+        {
+          "time": "2026-07-05T13:51:53.020411+00:00",
+          "ts": "2026-07-05T13:51:53.020411+00:00",
+          "step_key": "implementation_review",
+          "stepKey": "implementation_review",
+          "kind": "started",
+          "type": "started",
+          "message": "implementation_review: started"
+        },
+        {
+          "time": "2026-07-05T13:51:53.269733+00:00",
+          "ts": "2026-07-05T13:51:53.269733+00:00",
+          "step_key": "implementation_review",
+          "stepKey": "implementation_review",
+          "kind": "passed",
+          "type": "passed",
+          "message": "implementation_review: passed"
+        }
+      ]
+    },
+    {
+      "key": "build",
+      "title": "Build",
+      "kind": "agent",
+      "type": "ai",
+      "agent": "qwen",
+      "status": "passed",
+      "started_at": "2026-07-05T13:51:53.273787+00:00",
+      "ended_at": "2026-07-05T13:51:53.504463+00:00",
+      "duration_ms": 230,
+      "retry_count": 0,
+      "retry_from_step_key": "build",
+      "error": null,
+      "error_code": null,
+      "prompt_path": "prompts/build.md",
+      "prompt_chars": 2476,
+      "output_path": "output/build-result.md",
+      "output_chars": 352,
+      "events": [
+        {
+          "time": "2026-07-05T13:51:53.276902+00:00",
+          "ts": "2026-07-05T13:51:53.276902+00:00",
+          "step_key": "build",
+          "stepKey": "build",
+          "kind": "started",
+          "type": "started",
+          "message": "build: started"
+        },
+        {
+          "time": "2026-07-05T13:51:53.506189+00:00",
+          "ts": "2026-07-05T13:51:53.506189+00:00",
+          "step_key": "build",
+          "stepKey": "build",
+          "kind": "passed",
+          "type": "passed",
+          "message": "build: passed"
+        }
+      ]
+    },
+    {
+      "key": "generate_tests",
+      "title": "Generate Tests",
+      "kind": "agent",
+      "type": "ai",
+      "agent": "qwen",
+      "status": "passed",
+      "started_at": "2026-07-05T13:51:53.510499+00:00",
+      "ended_at": "2026-07-05T13:51:53.989932+00:00",
+      "duration_ms": 479,
+      "retry_count": 0,
+      "retry_from_step_key": "generate_tests",
+      "error": null,
+      "error_code": null,
+      "prompt_path": "prompts/generate_tests.md",
+      "prompt_chars": 2484,
+      "output_path": "output/test-plan.md",
+      "output_chars": 443,
+      "events": [
+        {
+          "time": "2026-07-05T13:51:53.514481+00:00",
+          "ts": "2026-07-05T13:51:53.514481+00:00",
+          "step_key": "generate_tests",
+          "stepKey": "generate_tests",
+          "kind": "started",
+          "type": "started",
+          "message": "generate_tests: started"
+        },
+        {
+          "time": "2026-07-05T13:51:53.992813+00:00",
+          "ts": "2026-07-05T13:51:53.992813+00:00",
+          "step_key": "generate_tests",
+          "stepKey": "generate_tests",
+          "kind": "passed",
+          "type": "passed",
+          "message": "generate_tests: passed"
+        }
+      ]
+    },
+    {
+      "key": "run_test",
+      "title": "Run Test",
+      "kind": "python",
+      "type": "python",
+      "agent": "qwen",
+      "status": "passed",
+      "started_at": "2026-07-05T13:51:53.995816+00:00",
+      "ended_at": "2026-07-05T13:51:58.852112+00:00",
+      "duration_ms": 4856,
+      "retry_count": 0,
+      "retry_from_step_key": "build",
+      "error": null,
+      "error_code": null,
+      "prompt_path": "",
+      "prompt_chars": 0,
+      "output_path": "output/test-result.md",
+      "output_chars": 159,
+      "events": [
+        {
+          "time": "2026-07-05T13:51:54.006026+00:00",
+          "ts": "2026-07-05T13:51:54.006026+00:00",
+          "step_key": "run_test",
+          "stepKey": "run_test",
+          "kind": "started",
+          "type": "started",
+          "message": "run_test: started"
+        },
+        {
+          "time": "2026-07-05T13:51:58.855030+00:00",
+          "ts": "2026-07-05T13:51:58.855030+00:00",
+          "step_key": "run_test",
+          "stepKey": "run_test",
+          "kind": "passed",
+          "type": "passed",
+          "message": "run_test: passed"
+        }
+      ]
+    },
+    {
+      "key": "run_external_validation",
+      "title": "Run External Validation",
+      "kind": "python",
+      "type": "python",
+      "agent": "qwen",
+      "status": "passed",
+      "started_at": "2026-07-05T13:51:58.858751+00:00",
+      "ended_at": "2026-07-05T13:51:58.899827+00:00",
+      "duration_ms": 41,
+      "retry_count": 0,
+      "retry_from_step_key": "build",
+      "error": null,
+      "error_code": null,
+      "prompt_path": "",
+      "prompt_chars": 0,
+      "output_path": "output/external-validation-result.md",
+      "output_chars": 291,
+      "events": [
+        {
+          "time": "2026-07-05T13:51:58.863001+00:00",
+          "ts": "2026-07-05T13:51:58.863001+00:00",
+          "step_key": "run_external_validation",
+          "stepKey": "run_external_validation",
+          "kind": "started",
+          "type": "started",
+          "message": "run_external_validation: started"
+        },
+        {
+          "time": "2026-07-05T13:51:58.901881+00:00",
+          "ts": "2026-07-05T13:51:58.901881+00:00",
+          "step_key": "run_external_validation",
+          "stepKey": "run_external_validation",
+          "kind": "passed",
+          "type": "passed",
+          "message": "run_external_validation: passed"
+        }
+      ]
+    },
+    {
+      "key": "final_review",
+      "title": "Final Review",
+      "kind": "agent",
+      "type": "review",
+      "agent": "qwen",
+      "status": "passed",
+      "started_at": "2026-07-05T13:51:58.905667+00:00",
+      "ended_at": "2026-07-05T13:51:59.193658+00:00",
+      "duration_ms": 287,
+      "retry_count": 0,
+      "retry_from_step_key": "build",
+      "error": null,
+      "error_code": null,
+      "prompt_path": "prompts/final_review.md",
+      "prompt_chars": 2936,
+      "output_path": "output/final-review.md",
+      "output_chars": 151,
+      "events": [
+        {
+          "time": "2026-07-05T13:51:58.912491+00:00",
+          "ts": "2026-07-05T13:51:58.912491+00:00",
+          "step_key": "final_review",
+          "stepKey": "final_review",
+          "kind": "started",
+          "type": "started",
+          "message": "final_review: started"
+        },
+        {
+          "time": "2026-07-05T13:51:59.195679+00:00",
+          "ts": "2026-07-05T13:51:59.195679+00:00",
+          "step_key": "final_review",
+          "stepKey": "final_review",
+          "kind": "passed",
+          "type": "passed",
+          "message": "final_review: passed"
+        }
+      ]
+    },
+    {
+      "key": "final_gate",
+      "title": "Final Gate",
+      "kind": "gate",
+      "type": "gate",
+      "agent": "qwen",
+      "status": "passed",
+      "started_at": "2026-07-05T13:51:59.198979+00:00",
+      "ended_at": "2026-07-05T13:51:59.223172+00:00",
+      "duration_ms": 24,
+      "retry_count": 0,
+      "retry_from_step_key": "final_review",
+      "error": null,
+      "error_code": null,
+      "prompt_path": "",
+      "prompt_chars": 0,
+      "output_path": "output/final-review.md",
+      "output_chars": 151,
+      "events": [
+        {
+          "time": "2026-07-05T13:51:59.203606+00:00",
+          "ts": "2026-07-05T13:51:59.203606+00:00",
+          "step_key": "final_gate",
+          "stepKey": "final_gate",
+          "kind": "started",
+          "type": "started",
+          "message": "final_gate: started"
+        },
+        {
+          "time": "2026-07-05T13:51:59.226147+00:00",
+          "ts": "2026-07-05T13:51:59.226147+00:00",
+          "step_key": "final_gate",
+          "stepKey": "final_gate",
+          "kind": "passed",
+          "type": "passed",
+          "message": "final_gate: passed"
+        }
+      ]
+    }
+  ],
+  "project_changes": [],
+  "artifacts": [
+    {
+      "name": "requirement.md",
+      "path": "requirement.md",
+      "size": 86
+    },
+    {
+      "name": "state.json",
+      "path": ".workflow/state.json",
+      "size": 25665
+    },
+    {
+      "name": "plan_tasks.md",
+      "path": "prompts/plan_tasks.md",
+      "size": 2493
+    },
+    {
+      "name": "todo.md",
+      "path": "output/todo.md",
+      "size": 344
+    },
+    {
+      "name": "implementation_review.md",
+      "path": "prompts/implementation_review.md",
+      "size": 1096
+    },
+    {
+      "name": "implementation-review.md",
+      "path": "output/implementation-review.md",
+      "size": 127
+    },
+    {
+      "name": "build.md",
+      "path": "prompts/build.md",
+      "size": 2476
+    },
+    {
+      "name": "build-result.md",
+      "path": "output/build-result.md",
+      "size": 352
+    },
+    {
+      "name": "generate_tests.md",
+      "path": "prompts/generate_tests.md",
+      "size": 2484
+    },
+    {
+      "name": "test-plan.md",
+      "path": "output/test-plan.md",
+      "size": 443
+    },
+    {
+      "name": "test-result.md",
+      "path": "output/test-result.md",
+      "size": 159
+    },
+    {
+      "name": "external-validation-result.md",
+      "path": "output/external-validation-result.md",
+      "size": 291
+    },
+    {
+      "name": "final_review.md",
+      "path": "prompts/final_review.md",
+      "size": 2936
+    },
+    {
+      "name": "final-review.md",
+      "path": "output/final-review.md",
+      "size": 151
+    },
+    {
+      "name": "architecture-contract.json",
+      "path": "output/architecture-contract.json",
+      "size": 1818
+    },
+    {
+      "name": "run_external_validation-result.md",
+      "path": "output/run_external_validation-result.md",
+      "size": 291
+    },
+    {
+      "name": "project-index.md",
+      "path": "output/project-index.md",
+      "size": 999
+    },
+    {
+      "name": "build-state.json",
+      "path": "output/tasks/BUILD/build-state.json",
+      "size": 171
+    },
+    {
+      "name": "generate_tests-state.json",
+      "path": "output/tasks/GENERATE-TESTS/generate_tests-state.json",
+      "size": 258
+    }
+  ],
+  "timeline": [
+    {
+      "time": "2026-07-05T13:51:52.697280+00:00",
+      "ts": "2026-07-05T13:51:52.697280+00:00",
+      "step_key": "plan_tasks",
+      "stepKey": "plan_tasks",
+      "kind": "started",
+      "type": "started",
+      "message": "plan_tasks: started"
+    },
+    {
+      "time": "2026-07-05T13:51:53.013906+00:00",
+      "ts": "2026-07-05T13:51:53.013906+00:00",
+      "step_key": "plan_tasks",
+      "stepKey": "plan_tasks",
+      "kind": "passed",
+      "type": "passed",
+      "message": "plan_tasks: passed"
+    },
+    {
+      "time": "2026-07-05T13:51:53.020411+00:00",
+      "ts": "2026-07-05T13:51:53.020411+00:00",
+      "step_key": "implementation_review",
+      "stepKey": "implementation_review",
+      "kind": "started",
+      "type": "started",
+      "message": "implementation_review: started"
+    },
+    {
+      "time": "2026-07-05T13:51:53.269733+00:00",
+      "ts": "2026-07-05T13:51:53.269733+00:00",
+      "step_key": "implementation_review",
+      "stepKey": "implementation_review",
+      "kind": "passed",
+      "type": "passed",
+      "message": "implementation_review: passed"
+    },
+    {
+      "time": "2026-07-05T13:51:53.276902+00:00",
+      "ts": "2026-07-05T13:51:53.276902+00:00",
+      "step_key": "build",
+      "stepKey": "build",
+      "kind": "started",
+      "type": "started",
+      "message": "build: started"
+    },
+    {
+      "time": "2026-07-05T13:51:53.506189+00:00",
+      "ts": "2026-07-05T13:51:53.506189+00:00",
+      "step_key": "build",
+      "stepKey": "build",
+      "kind": "passed",
+      "type": "passed",
+      "message": "build: passed"
+    },
+    {
+      "time": "2026-07-05T13:51:53.514481+00:00",
+      "ts": "2026-07-05T13:51:53.514481+00:00",
+      "step_key": "generate_tests",
+      "stepKey": "generate_tests",
+      "kind": "started",
+      "type": "started",
+      "message": "generate_tests: started"
+    },
+    {
+      "time": "2026-07-05T13:51:53.992813+00:00",
+      "ts": "2026-07-05T13:51:53.992813+00:00",
+      "step_key": "generate_tests",
+      "stepKey": "generate_tests",
+      "kind": "passed",
+      "type": "passed",
+      "message": "generate_tests: passed"
+    },
+    {
+      "time": "2026-07-05T13:51:54.006026+00:00",
+      "ts": "2026-07-05T13:51:54.006026+00:00",
+      "step_key": "run_test",
+      "stepKey": "run_test",
+      "kind": "started",
+      "type": "started",
+      "message": "run_test: started"
+    },
+    {
+      "time": "2026-07-05T13:51:58.855030+00:00",
+      "ts": "2026-07-05T13:51:58.855030+00:00",
+      "step_key": "run_test",
+      "stepKey": "run_test",
+      "kind": "passed",
+      "type": "passed",
+      "message": "run_test: passed"
+    },
+    {
+      "time": "2026-07-05T13:51:58.863001+00:00",
+      "ts": "2026-07-05T13:51:58.863001+00:00",
+      "step_key": "run_external_validation",
+      "stepKey": "run_external_validation",
+      "kind": "started",
+      "type": "started",
+      "message": "run_external_validation: started"
+    },
+    {
+      "time": "2026-07-05T13:51:58.901881+00:00",
+      "ts": "2026-07-05T13:51:58.901881+00:00",
+      "step_key": "run_external_validation",
+      "stepKey": "run_external_validation",
+      "kind": "passed",
+      "type": "passed",
+      "message": "run_external_validation: passed"
+    },
+    {
+      "time": "2026-07-05T13:51:58.912491+00:00",
+      "ts": "2026-07-05T13:51:58.912491+00:00",
+      "step_key": "final_review",
+      "stepKey": "final_review",
+      "kind": "started",
+      "type": "started",
+      "message": "final_review: started"
+    },
+    {
+      "time": "2026-07-05T13:51:59.195679+00:00",
+      "ts": "2026-07-05T13:51:59.195679+00:00",
+      "step_key": "final_review",
+      "stepKey": "final_review",
+      "kind": "passed",
+      "type": "passed",
+      "message": "final_review: passed"
+    },
+    {
+      "time": "2026-07-05T13:51:59.203606+00:00",
+      "ts": "2026-07-05T13:51:59.203606+00:00",
+      "step_key": "final_gate",
+      "stepKey": "final_gate",
+      "kind": "started",
+      "type": "started",
+      "message": "final_gate: started"
+    },
+    {
+      "time": "2026-07-05T13:51:59.226147+00:00",
+      "ts": "2026-07-05T13:51:59.226147+00:00",
+      "step_key": "final_gate",
+      "stepKey": "final_gate",
+      "kind": "passed",
+      "type": "passed",
+      "message": "final_gate: passed"
+    }
+  ]
+}

@@ -5,6 +5,7 @@ import json
 import re
 import os
 import subprocess
+import sys
 from pathlib import Path
 
 from app.workflow_runtime.builtin_functions.base import WorkflowFunctionContext, WorkflowFunctionError

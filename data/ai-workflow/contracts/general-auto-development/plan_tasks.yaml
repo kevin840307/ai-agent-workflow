@@ -1,7 +1,7 @@
 id: plan_tasks
 key: plan_tasks
 name: Plan Tasks
-description: Produce a concise implementation task plan with small tasks and explicit acceptance criteria.
+description: Ask the AI to produce a concise implementation task plan with small tasks and explicit acceptance criteria. The platform does not generate or repair the plan deterministically.
 enabled: true
 type: ai
 skill: steps/general-auto-development/01_plan_tasks.md
@@ -17,7 +17,8 @@ keepSameSession: true
 injectFailureFeedback: true
 stopAfterFailures: 99
 allowInteraction: false
-thinking: false
+thinking: true
+thinkingLevel: medium
 approvalRequired: false
 pauseAfterStep: false
 approvalMessage: ''
@@ -31,3 +32,7 @@ aggregatorFunction: ''
 sources: []
 agentOptions: {}
 path: contracts/general-auto-development/plan_tasks.yaml
+compactPrompt: true
+repromptOnToolCallJson: true
+includeSkillContext: false
+compactRetryPromptWhenReusingSession: true

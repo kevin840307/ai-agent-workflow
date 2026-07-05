@@ -1,0 +1,50 @@
+[
+  {
+    "key": "plan_tasks",
+    "status": "passed",
+    "error": null,
+    "retry_count": null
+  },
+  {
+    "key": "implementation_review",
+    "status": "passed",
+    "error": null,
+    "retry_count": null
+  },
+  {
+    "key": "build",
+    "status": "passed",
+    "error": null,
+    "retry_count": null
+  },
+  {
+    "key": "generate_tests",
+    "status": "passed",
+    "error": null,
+    "retry_count": null
+  },
+  {
+    "key": "run_test",
+    "status": "passed",
+    "error": null,
+    "retry_count": null
+  },
+  {
+    "key": "run_external_validation",
+    "status": "passed",
+    "error": null,
+    "retry_count": null
+  },
+  {
+    "key": "final_review",
+    "status": "passed",
+    "error": null,
+    "retry_count": null
+  },
+  {
+    "key": "final_gate",
+    "status": "passed",
+    "error": null,
+    "retry_count": null
+  }
+]

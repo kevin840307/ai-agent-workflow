@@ -59,7 +59,7 @@ class WorkflowCoreTests(unittest.TestCase):
 
             architecture = (project / "architecture.md").read_text(encoding="utf-8")
             self.assertIn("Dominant source extensions: .yaml (1)", architecture)
-            self.assertIn("config\\users.yaml", architecture)
+            self.assertIn("config/users.yaml", architecture.replace("\\", "/"))
 
     def test_general_plan_tasks_routes_to_deterministic_planner(self) -> None:
         class FailingAgentRunner:
@@ -630,24 +630,39 @@ Status: READY
             [
                 "generate_task_prompts",
                 "auto_generation",
+                "sub_agent_review",
                 "ai_review",
                 "run_external_validation",
+                "final_review",
+                "final_gate",
             ],
         )
         generation_prompts = next(step for step in workflow["steps"] if step["key"] == "generate_task_prompts")
         generation = next(step for step in workflow["steps"] if step["key"] == "auto_generation")
+        sub_review = next(step for step in workflow["steps"] if step["key"] == "sub_agent_review")
         review = next(step for step in workflow["steps"] if step["key"] == "ai_review")
         validation = next(step for step in workflow["steps"] if step["key"] == "run_external_validation")
+        final_review = next(step for step in workflow["steps"] if step["key"] == "final_review")
+        final_gate = next(step for step in workflow["steps"] if step["key"] == "final_gate")
         self.assertEqual(generation_prompts["type"], "python")
         self.assertIn("task-manifest.json", generation_prompts["expectedFiles"])
         self.assertEqual(generation["type"], "ai")
         self.assertGreaterEqual(generation["maxRetries"], 20)
+        self.assertEqual(sub_review["type"], "review")
+        self.assertEqual(sub_review["reviewMode"], "multi_agent")
+        self.assertEqual(sub_review["retryFromStepKey"], "auto_generation")
+        self.assertTrue(sub_review["forceFreshQwenSession"])
+        self.assertTrue(sub_review["isolatedQwenSession"])
         self.assertEqual(review["type"], "review")
         self.assertEqual(review["reviewMode"], "new_agent")
         self.assertEqual(review["retryFromStepKey"], "auto_generation")
+        self.assertTrue(review["forceFreshQwenSession"])
+        self.assertTrue(review["isolatedQwenSession"])
         self.assertEqual(validation["function"], "adaptive_python_gate")
         self.assertEqual(validation["retryFromStepKey"], "auto_generation")
         self.assertFalse(validation["requiresValidationScript"])
+        self.assertEqual(final_review["key"], "final_review")
+        self.assertEqual(final_gate["function"], "require_status_pass")
 
     def test_adaptive_generate_task_prompts_writes_manifest_and_scoped_prompts(self) -> None:
         async def log(_run, _message):

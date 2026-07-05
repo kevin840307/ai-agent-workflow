@@ -187,12 +187,12 @@ subprocess.run(
 
 ---
 
-## Workspace Structure
+## Project-scoped Run Structure
 
 每個 Run 必須獨立：
 
 ```text
-workspaces/
+<Project Path>/.ai-workflow/runs/
   session-{session_id}/
     run-{run_id}/
       requirement.md

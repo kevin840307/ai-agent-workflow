@@ -1,0 +1,19 @@
+{
+  "status": "READY",
+  "project_root": "/mnt/data/mock-e2e-controller-logs/projects/general-auto-development",
+  "top_level_entries": [
+    ".ai-workflow",
+    "README.md"
+  ],
+  "preferred_roots": [],
+  "rules": [
+    "Write only inside the selected Project Path.",
+    "Do not write .git, .ai-workflow, .qwen-workflow, global settings, or sibling projects.",
+    "Follow existing language, naming style, source layout, and dependency style.",
+    "Keep production code and tests separate.",
+    "Do not introduce a new top-level framework folder unless the task requires a new project scaffold.",
+    "Do not create sample-specific deterministic fallbacks or hard-code a user example as product behavior.",
+    "Do not run git commit, git push, or commands that change repository history or remote state."
+  ],
+  "project_index_excerpt": "# Project Index\n\nStatus: READY\n\n## Project Path\n- /mnt/data/mock-e2e-controller-logs/projects/general-auto-development\n\n## Deterministic Profile\nDetected project profile:\n- Dominant source extensions: .md (1)\n- Test framework: unknown\n- Marker/config files: none detected\n- Source roots by usage: none detected\n- Existing source files: none detected\n- Existing test files: none detected\n- Architecture guidance: extend the dominant existing language, module layout, naming, and test style. Do not introduce a new src/tests layout unless it is the dominant source root or architecture.md says to use it.\n\n## Suggested Test Commands\n- Unknown; use the configured workflow test command or project convention.\n\n## Workspace Isolation\n- Agent writes must stay inside Project Path.\n- External paths may be read as context but are not write targets.\n- Protected write directories: `.git`, `.ai-workflow`, `.qwen-workflow`\n\n## Visible Files\n- README.md\n"
+}

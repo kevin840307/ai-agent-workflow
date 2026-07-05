@@ -1,7 +1,8 @@
 id: diff_review
 key: diff_review
 name: Diff Review
-description: Review changed files and verifier evidence for risks. This reviewer can warn, but cannot decide PASS.
+description: Review changed files and verifier evidence for risks. This reviewer can
+  warn, but cannot decide PASS.
 enabled: true
 type: ai
 skill: steps/general-auto-development/05_diff_review.md
@@ -13,7 +14,7 @@ function: ''
 retry: 99
 failAction: same_step
 retryFromStepKey: diff_review
-keepSameSession: false
+keepSameSession: true
 injectFailureFeedback: true
 stopAfterFailures: 99
 allowInteraction: false
@@ -28,8 +29,9 @@ confidenceThreshold: 0.75
 passKeywords: ''
 failKeywords: ''
 aggregatorFunction: ''
-sources:
-- type: skill_path
-  value: code-review
+sources: []
 agentOptions: {}
 path: contracts/general-auto-development/diff_review.yaml
+compactPrompt: true
+includeSkillContext: false
+compactRetryPromptWhenReusingSession: true

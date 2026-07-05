@@ -1,7 +1,8 @@
 id: build
 key: build
 name: Build
-description: Implement only the planned production changes inside the selected project path.
+description: Implement only the planned production changes inside the selected project
+  path.
 enabled: true
 type: ai
 skill: steps/general-auto-development/03_build.md
@@ -32,3 +33,8 @@ aggregatorFunction: ''
 sources: []
 agentOptions: {}
 path: contracts/general-auto-development/build.yaml
+compactPrompt: true
+enableTaskLoop: false
+repromptOnToolCallJson: true
+includeSkillContext: false
+compactRetryPromptWhenReusingSession: true

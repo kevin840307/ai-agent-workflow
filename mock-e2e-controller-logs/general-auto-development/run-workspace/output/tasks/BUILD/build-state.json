@@ -1,0 +1,12 @@
+{
+  "task_id": "BUILD",
+  "phase": "build",
+  "files": [
+    {
+      "path": "workflow_mock_feature.py",
+      "markers": [
+        "workflow_greeting"
+      ]
+    }
+  ]
+}

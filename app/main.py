@@ -59,7 +59,7 @@ async def ready():
     checks = {
         "storeReadable": runtime.STORE_FILE.exists(),
         "storeWritable": os.access(runtime.STORE_FILE.parent, os.W_OK),
-        "runsWritable": os.access(runtime.WORKSPACES_DIR, os.W_OK),
+        "dataWritable": os.access(runtime.DATA_DIR, os.W_OK),
         "staticAvailable": (runtime.STATIC_DIR / "index.html").exists(),
         "designerAvailable": (runtime.STATIC_DIR / "workflow-designer.html").exists(),
         "assetsPageAvailable": (runtime.STATIC_DIR / "ai-workflow-assets.html").exists(),

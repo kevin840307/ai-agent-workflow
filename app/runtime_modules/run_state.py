@@ -48,8 +48,8 @@ def repair_strategy_for_class(error_class: str) -> str:
     return {
         "PATH_VIOLATION": "Rewrite only relative FILE paths inside Project Path; do not retry unsafe path tricks.",
         "TIMEOUT": "Reduce scope, simplify implementation, and avoid long-running commands.",
-        "NO_FILE_OUTPUT": "Use Qwen/OpenCode direct edits for the owner step, or return complete FILE/CONTENT/END_FILE blocks when direct edit tools are unavailable.",
-        "NO_TEST_GENERATED": "Return focused test platform file blocks only under tests/.",
+        "NO_FILE_OUTPUT": "Use Qwen/OpenCode direct edits for the owner step. Real runs are verified from actual project diffs, not platform FILE block materialization.",
+        "NO_TEST_GENERATED": "Create focused test files directly under tests/.",
         "NO_PRODUCTION_CHANGE": "Modify or create the intended production/project artifact instead of restating the plan.",
         "SYNTAX_ERROR": "Fix the exact syntax/import error and keep the patch minimal.",
         "TEST_FAILED": "Use failing assertions/stdout/stderr to repair production code first; change tests only when they are clearly invalid.",
@@ -92,8 +92,8 @@ def retry_recovery_notes(source_key: str, target_key: str, error: str) -> list[s
         ])
     elif source_key == "build":
         notes.extend([
-            "Build did not produce acceptable production changes or file blocks.",
-            "Use Qwen/OpenCode direct edits inside the selected Project Path, or return complete FILE/CONTENT/END_FILE blocks.",
+            "Build did not produce acceptable production changes.",
+            "Use Qwen/OpenCode direct edits inside the selected Project Path; do not rely on platform FILE block materialization in real runs.",
         ])
     else:
         notes.append("Retry the target step using the concrete error message and previously approved artifacts as the source of truth.")
@@ -102,7 +102,7 @@ def retry_recovery_notes(source_key: str, target_key: str, error: str) -> list[s
         notes.append("Workspace isolation was enforced: writes must stay inside the selected Project Path; external paths are read-only context.")
     if "validation scripts" in text:
         notes.append("Existing validation scripts are protected acceptance tools and must not be overwritten by Build.")
-    if "test file blocks" in text:
+    if "test file blocks" in text or "test files" in text:
         notes.append("Build owns production files only; Generate Tests owns tests/ files only.")
     return notes
 

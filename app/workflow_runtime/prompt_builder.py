@@ -96,7 +96,16 @@ class PromptBuilder:
         write_text(project_index_path, render_project_index_markdown(project_dir))
 
         skill_root = step_config.get("skillRoot") or run.get("skill_root") or str(DEFAULT_SKILL_PATH)
-        skill_context, skill_files = load_skill_context(self._configured_skill_paths(step_config, str(skill_root), project_dir, run))
+        compact_prompt = bool_config(step_config, "compactPrompt", False)
+        # In compact workflow mode the step template is already the full instruction.
+        # Loading the same skill/template file again as background methodology doubles
+        # the prompt and confuses small CLI agents.  Only include extra skill context
+        # when a contract explicitly asks for it.
+        include_skill_context = bool_config(step_config, "includeSkillContext", not compact_prompt)
+        if include_skill_context:
+            skill_context, skill_files = load_skill_context(self._configured_skill_paths(step_config, str(skill_root), project_dir, run))
+        else:
+            skill_context, skill_files = "", []
 
         values = self._template_values(
             run,
@@ -145,6 +154,7 @@ class PromptBuilder:
                 failure_feedback.strip()
                 and "{{last_error}}" not in prompt_template
                 and "{{failure_feedback}}" not in prompt_template
+                and "{{latest_failure_feedback}}" not in prompt_template
                 and "{{current_task_failure_feedback}}" not in prompt_template
             ):
                 prompt = (
@@ -152,16 +162,17 @@ class PromptBuilder:
                     "Failure feedback from previous retry attempts. Fix these concrete errors before producing this step output:\n\n"
                     f"{failure_feedback.strip()}\n"
                 )
-        if architecture.strip() and step_key != "prepare_project" and "{{architecture}}" not in prompt_template:
-            prompt = f"{prompt}\n\nCurrent project architecture context from architecture.md:\n\n{architecture.strip()}\n"
-        if profile.strip() and step_key != "prepare_project" and "{{project_profile}}" not in prompt_template:
-            prompt = f"{prompt}\n\nCurrent project profile inferred from existing files:\n\n{profile.strip()}\n"
+        if not compact_prompt:
+            if architecture.strip() and step_key != "prepare_project" and "{{architecture}}" not in prompt_template:
+                prompt = f"{prompt}\n\nCurrent project architecture context from architecture.md:\n\n{architecture.strip()}\n"
+            if profile.strip() and step_key != "prepare_project" and "{{project_profile}}" not in prompt_template:
+                prompt = f"{prompt}\n\nCurrent project profile inferred from existing files:\n\n{profile.strip()}\n"
         thinking_guidance = render_thinking_guidance(
             step_thinking_level(step_record, run),
             step_key=step_key,
             workflow_id=str(run.get("workflow_id") or ""),
         )
-        if thinking_guidance.strip() and "{{thinking_guidance}}" not in prompt_template:
+        if not compact_prompt and thinking_guidance.strip() and "{{thinking_guidance}}" not in prompt_template:
             prompt = f"{prompt}\n\n{thinking_guidance.strip()}\n"
         if allow_interaction is None:
             allow_interaction = bool(step_record.get("allow_interaction"))
@@ -230,19 +241,28 @@ class PromptBuilder:
             step_key=step_key,
             workflow_id=str(run.get("workflow_id") or ""),
         )
+        project_index = read_text(output_dir / "project-index.md")
+        architecture_contract = self._architecture_contract(run, requirement, project_dir, output_dir)
+        validation_script_content = self._validation_script_content(run, project_dir, include_content=step_key in {"run_external_validation", "python_gate"})
         return {
             "requirement": requirement,
+            "requirement_brief": self._compact_text(requirement, max_chars=2000),
             "architecture": architecture,
+            "architecture_brief": self._compact_text(architecture, max_chars=2200),
             "project_profile": profile,
-            "project_index": read_text(output_dir / "project-index.md"),
+            "project_profile_brief": self._compact_text(profile, max_chars=1600),
+            "project_index": project_index,
+            "project_index_brief": self._compact_project_index(project_index),
             "project_python_import_map": self._project_python_import_map(project_dir),
             "request_intent": self._request_intent(run, requirement, project_dir),
             "user_instructions": self._user_instructions(requirement, project_dir),
-            "architecture_contract": self._architecture_contract(run, requirement, project_dir, output_dir),
-            "project_overview": project_overview(project_dir),
+            "architecture_contract": architecture_contract,
+            "architecture_contract_brief": self._compact_architecture_contract(architecture_contract),
+            "project_overview": project_overview(project_dir, limit=40),
             "spec": read_text(output_dir / "spec.md"),
             "spec_review": read_text(output_dir / "spec-review.md"),
             "todo": read_text(output_dir / "todo.md"),
+            "task_prompts": read_text(output_dir / "task-prompts.md"),
             "task_manifest": read_text(output_dir / "task-manifest.md"),
             "task_manifest_json": read_text(output_dir / "task-manifest.json"),
             "workflow_instance": read_text(output_dir / "generated-workflow-instance.json"),
@@ -291,7 +311,8 @@ class PromptBuilder:
             "project_path": str(run.get("project_path", "")),
             "workspace_path": str(run.get("workspace", "")),
             "validation_script": str(run.get("validation_script") or ""),
-            "validation_script_content": self._validation_script_content(run, project_dir, include_content=step_key in {"run_external_validation", "python_gate"}),
+            "validation_script_content": validation_script_content,
+            "validation_script_content_brief": self._compact_text(validation_script_content, max_chars=1800),
             "fallback_validation_scripts": self._fallback_validation_scripts(run),
         }
 
@@ -330,7 +351,7 @@ class PromptBuilder:
             "When editing any of these paths, return the complete file content and preserve existing behavior unless the current task explicitly requires changing it.",
         ]
         shown = 0
-        for rel_path in candidate_paths[:8]:
+        for rel_path in candidate_paths[:4]:
             safe_rel = rel_path.strip().strip("`").replace("\\", "/")
             if not safe_rel or safe_rel.startswith("/") or ".." in safe_rel.split("/"):
                 continue
@@ -343,8 +364,8 @@ class PromptBuilder:
                 continue
             except OSError:
                 continue
-            if len(content) > 12000:
-                content = content[:12000].rstrip() + "\n... <truncated>\n"
+            if len(content) > 5000:
+                content = content[:5000].rstrip() + "\n... <truncated>\n"
             sections.extend(["", f"### {safe_rel}", "```", content.rstrip(), "```"])
             shown += 1
         if shown == 0:
@@ -352,6 +373,51 @@ class PromptBuilder:
         if len(candidate_paths) > shown:
             sections.append(f"\nAdditional preserved files omitted from prompt: {len(candidate_paths) - shown}")
         return "\n".join(sections).strip()
+
+    @staticmethod
+    def _compact_text(text: str, *, max_chars: int = 2400) -> str:
+        value = (text or "").strip()
+        if not value:
+            return ""
+        value = re.sub(r"\n{3,}", "\n\n", value)
+        if len(value) <= max_chars:
+            return value
+        return value[:max_chars].rstrip() + "\n... <truncated>"
+
+    def _compact_project_index(self, project_index: str) -> str:
+        lines = [line.rstrip() for line in (project_index or "").splitlines() if line.strip()]
+        if not lines:
+            return "No project files detected yet."
+        keep: list[str] = []
+        important_prefixes = ("#", "- `", "- ")
+        for line in lines:
+            if line.startswith(important_prefixes):
+                keep.append(line)
+            if len(keep) >= 80:
+                break
+        return self._compact_text("\n".join(keep or lines[:80]), max_chars=3000)
+
+    def _compact_architecture_contract(self, contract_text: str) -> str:
+        value = (contract_text or "").strip()
+        if not value:
+            return "No architecture contract was generated."
+        try:
+            data = json.loads(value)
+        except json.JSONDecodeError:
+            return self._compact_text(value, max_chars=2200)
+        lines = ["Architecture constraints:"]
+        for key, label in [
+            ("preferred_roots", "Preferred roots"),
+            ("extension_points", "Extension points"),
+            ("rules", "Rules"),
+            ("forbidden_parallel_changes", "Forbidden"),
+        ]:
+            items = data.get(key) or []
+            if isinstance(items, list) and items:
+                lines.append(f"- {label}: " + "; ".join(str(item) for item in items[:6]))
+        if len(lines) == 1:
+            return self._compact_text(value, max_chars=2200)
+        return self._compact_text("\n".join(lines), max_chars=2200)
 
     @staticmethod
     def _project_python_import_map(project_dir: Path) -> str:
@@ -418,7 +484,7 @@ class PromptBuilder:
         # very large and may pull small/local models toward repairing the
         # workflow itself instead of implementing the current user task.
         joined = "\n\n".join(matches[-3:])
-        return joined[-6000:]
+        return joined[-3500:]
 
     @staticmethod
     def _latest_failure_feedback(feedback: str) -> str:
@@ -430,7 +496,7 @@ class PromptBuilder:
             flags=re.MULTILINE | re.DOTALL,
         )
         text = (blocks[-1] if blocks else feedback).strip()
-        return text[-6000:] if len(text) > 6000 else text
+        return text[-3500:] if len(text) > 3500 else text
 
     def _request_intent(self, run: dict[str, Any], requirement: str, project_dir: Path) -> str:
         intent = orchestrator.route_request(
@@ -479,7 +545,7 @@ class PromptBuilder:
 
     def _fallback_validation_scripts(self, run: dict[str, Any]) -> str:
         for step in run.get("steps") or []:
-            if step.get("key") not in {"run_external_validation", "python_gate"}:
+            if step.get("key") not in {"run_external_validation", "python_gate", "ai_review"}:
                 continue
             nested = step.get("config") if isinstance(step.get("config"), dict) else {}
             config = {**step, **nested}

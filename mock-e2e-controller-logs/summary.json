@@ -1,0 +1,17 @@
+{
+  "status": "PASS",
+  "results": [
+    {
+      "workflow_id": "adaptive-auto-workflow",
+      "status": "done",
+      "error": null,
+      "workspace": "/mnt/data/mock-e2e-controller-logs/projects/adaptive-auto-workflow/.ai-workflow/runs/session-43249121-b536-4b86-b8de-d96e4a076405/run-9e306faa-05a9-4469-9b49-7d07d8378ffb"
+    },
+    {
+      "workflow_id": "general-auto-development",
+      "status": "done",
+      "error": null,
+      "workspace": "/mnt/data/mock-e2e-controller-logs/projects/general-auto-development/.ai-workflow/runs/session-9485755e-2e85-4717-8c9d-5c454eab4c08/run-ad34aebb-50cf-46ac-b22f-8b6daddae662"
+    }
+  ]
+}

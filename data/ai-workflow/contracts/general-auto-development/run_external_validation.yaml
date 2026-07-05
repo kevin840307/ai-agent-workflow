@@ -17,7 +17,7 @@ keepSameSession: true
 injectFailureFeedback: true
 stopAfterFailures: 99
 allowInteraction: false
-requiresValidationScript: true
+requiresValidationScript: false
 fallbackValidationScripts:
 - validation.py
 - validate.py

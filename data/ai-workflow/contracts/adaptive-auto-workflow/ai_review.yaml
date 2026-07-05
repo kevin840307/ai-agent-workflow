@@ -1,7 +1,7 @@
 id: ai_review
 key: ai_review
-name: AI Review
-description: Review generated project changes in a fresh agent session. Failures retry Auto Generation Workflow with feedback.
+name: AI Review + Validation
+description: Run AI review in the same controller session, then run the configured validation Python or project tests. Failures retry from Generate Task Prompts.
 enabled: true
 type: review
 skill: steps/adaptive-auto-workflow/01_ai_review.md
@@ -9,15 +9,24 @@ command: ''
 agent: qwen
 outputs:
 - ai-review.md
-function: ''
+- external-validation-result.md
+function: adaptive_python_gate
+functions:
+- adaptive_python_gate
 retry: 99
 maxRetries: 99
 failAction: selected_step
-retryFromStepKey: auto_generation
-keepSameSession: false
+retryFromStepKey: generate_task_prompts
+keepSameSession: true
 injectFailureFeedback: true
 stopAfterFailures: 99
 allowInteraction: false
+requiresValidationScript: false
+fallbackValidationScripts:
+- validation.py
+- validate.py
+- verify.py
+- check.py
 thinking: true
 thinkingLevel: medium
 approvalRequired: false
@@ -35,3 +44,6 @@ contextArtifacts:
 sources: []
 agentOptions: {}
 path: contracts/adaptive-auto-workflow/ai_review.yaml
+compactPrompt: true
+includeSkillContext: false
+compactRetryPromptWhenReusingSession: true

@@ -1,4 +1,4 @@
-﻿# Qwen Workflow Web
+# Qwen Workflow Web
 
 Agent Workflow Web is a local **AI Agent Workflow Runner**. It is not only a chat UI: the user enters a requirement in the browser, while a Python/FastAPI runner controls a fixed workflow and delegates generation work to external agent CLIs such as Qwen Code or OpenCode.
 
@@ -6,7 +6,7 @@ The core idea is:
 
 ```text
 Agent CLI = generate, edit, review, and explain failures
-Python runner = orchestrate, validate, retry, gate, log, and protect workspaces
+Python runner = forward concise prompts, orchestrate steps, validate, retry, gate, log, and protect project-scoped run data
 Web UI = operate projects, workflows, assets, runs, and artifacts
 ```
 
@@ -49,24 +49,20 @@ The asset manager edits global or project-local workflow assets: prompts, contra
 
 ### Adaptive Auto Workflow
 
-A simple automatic loop for broad tasks:
+A three-step controller flow for broad tasks:
 
 ```text
 User requirement
-  -> Step 1: Auto Generation
-  -> Step 2: AI Review
-  -> Step 3: Run External Validation optional
+  -> Step 1: AI generates short CLI task prompts
+  -> Step 2: Qwen/OpenCode executes those prompts and directly edits project files
+  -> Step 3: AI reviews the result, then Python runs validation/test gates when configured
 ```
 
-Step 3 uses the shared `run_external_validation` Python function:
-
-- No validation script: skip external validation and return `Status: PASS`.
-- Validation script provided: execute the Python script.
-- Script failed: write stdout / stderr / exit code to the validation artifact and return the error message to `auto_generation` for repair.
+Any failure retries from Step 1 using the same agent session with concise failure feedback. The controller does not generate production code or execute agent edit/write JSON.
 
 ### General Auto Development
 
-A fuller engineering workflow for tasks that need specification, todo planning, build, tests, review, validation, and final gate.
+An AI-driven engineering controller flow: AI plans tasks, AI reviews the plan, Qwen/OpenCode builds, Qwen/OpenCode writes tests, Python runs tests/validation, then AI performs final review and a simple Python pass gate.
 
 ## Quick start
 

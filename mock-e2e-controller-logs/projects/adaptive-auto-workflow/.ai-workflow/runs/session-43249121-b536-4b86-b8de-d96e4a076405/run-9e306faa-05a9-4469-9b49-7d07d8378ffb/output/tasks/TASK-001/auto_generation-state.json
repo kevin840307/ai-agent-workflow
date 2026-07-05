@@ -1,0 +1,19 @@
+{
+  "task_id": "TASK-001",
+  "phase": "auto_generation",
+  "files": [
+    {
+      "path": "workflow_mock_feature.py",
+      "markers": [
+        "workflow_greeting"
+      ]
+    },
+    {
+      "path": "tests/test_workflow_mock_feature.py",
+      "markers": [
+        "test_workflow_greeting_is_deterministic",
+        "WorkflowMockFeatureTests"
+      ]
+    }
+  ]
+}

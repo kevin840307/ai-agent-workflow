@@ -22,6 +22,101 @@ def mock_qwen_response(prompt: str) -> str:
     normalized = prompt.lower()
     scenario = os.environ.get("QWEN_MOCK_SCENARIO", "").strip().lower()
 
+    if "you are the human-style planner for a cli agent session" in normalized:
+        return """{
+  "goal": "Implement a deterministic mock Python feature with tests",
+  "tasks": [
+    {
+      "id": "TASK-001",
+      "title": "Implement feature and tests",
+      "kind": "implementation",
+      "prompt": "Create the requested Python helper and focused tests inside the project. Directly edit real project files and keep the code import-safe.",
+      "acceptance": ["Production helper exists", "Tests verify the helper", "Project tests pass"]
+    }
+  ]
+}
+"""
+
+    if "continue the cli coding session and complete this task" in normalized:
+        return """Status: READY
+
+FILE: workflow_mock_feature.py
+CONTENT:
+def workflow_greeting() -> str:
+    return "hello from controlled workflow"
+END_FILE
+
+FILE: tests/test_workflow_mock_feature.py
+CONTENT:
+import unittest
+
+from workflow_mock_feature import workflow_greeting
+
+
+class WorkflowMockFeatureTests(unittest.TestCase):
+    def test_workflow_greeting_is_deterministic(self):
+        self.assertEqual(workflow_greeting(), "hello from controlled workflow")
+
+
+if __name__ == "__main__":
+    unittest.main()
+END_FILE
+"""
+
+    if "review the completed project change" in normalized:
+        return "# AI Review\n\nStatus: PASS\nConfidence: 1.0\n\n## Findings\n- Project files were changed and mock validation is expected to pass.\n\n## Required Fixes\n- None\n"
+
+    if "create a concise task plan for this project request" in normalized:
+        return """# Todo
+
+Status: READY
+
+## Task Index
+| ID | Task | Acceptance Criteria | Depends On |
+| --- | --- | --- | --- |
+| TASK-001 | Create the production mock helper | Helper exists and is import-safe | None |
+
+## Notes
+- Testing / validation expectation: Add focused tests after build and run them.
+- Assumptions: Python standard library is enough.
+"""
+
+    if "review the task plan" in normalized:
+        return "# Implementation Review\n\nStatus: PASS\nConfidence: 1.0\n\n## Findings\n- Plan is scoped and actionable.\n\n## Required Fixes\n- None\n"
+
+    if "continue the cli coding session and implement the current build task" in normalized:
+        return """Status: READY
+
+FILE: workflow_mock_feature.py
+CONTENT:
+def workflow_greeting() -> str:
+    return "hello from controlled workflow"
+END_FILE
+"""
+
+    if "continue the cli coding session and add focused automated tests" in normalized:
+        return """Status: READY
+
+FILE: tests/test_workflow_mock_feature.py
+CONTENT:
+import unittest
+
+from workflow_mock_feature import workflow_greeting
+
+
+class WorkflowMockFeatureTests(unittest.TestCase):
+    def test_workflow_greeting_is_deterministic(self):
+        self.assertEqual(workflow_greeting(), "hello from controlled workflow")
+
+
+if __name__ == "__main__":
+    unittest.main()
+END_FILE
+"""
+
+    if "review the final project result" in normalized:
+        return "# Final Review\n\nStatus: PASS\nConfidence: 1.0\n\n## Findings\n- Implementation, tests, and validation satisfy the mock request.\n\n## Required Fixes\n- None\n"
+
     if scenario == "fail_final_review_once" and ("output/final-review.md" in prompt or "you are doing the final workflow review" in normalized):
         if _scenario_once("fail_final_review_once:final_review"):
             return "Status: FAIL\n\n## Findings\n- Intentional mock failure for Playwright retry coverage.\nConfidence: 1.0\n"

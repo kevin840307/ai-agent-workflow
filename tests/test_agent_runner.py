@@ -128,16 +128,16 @@ class AgentRunnerTests(unittest.TestCase):
     def test_tool_call_json_without_arguments_is_rejected_with_tool_name(self) -> None:
         asyncio.run(self._run_tool_call_json_case())
 
-    def test_tool_call_json_with_file_content_is_converted_to_file_blocks(self) -> None:
+    def test_tool_call_json_with_file_content_is_rejected(self) -> None:
         asyncio.run(self._run_tool_call_file_block_case())
 
-    def test_tool_call_json_with_string_parameters_is_converted_to_file_blocks(self) -> None:
+    def test_tool_call_json_with_string_parameters_is_rejected(self) -> None:
         asyncio.run(self._run_tool_call_string_parameters_case())
 
-    def test_tool_call_json_with_triple_quoted_content_is_converted_to_file_blocks(self) -> None:
+    def test_tool_call_json_with_triple_quoted_content_is_rejected(self) -> None:
         asyncio.run(self._run_tool_call_triple_quoted_content_case())
 
-    def test_tool_call_json_with_path_prefixed_content_is_converted_to_file_blocks(self) -> None:
+    def test_tool_call_json_with_path_prefixed_content_is_rejected(self) -> None:
         asyncio.run(self._run_tool_call_path_prefixed_content_case())
 
     def test_generic_cli_provider_can_be_added_from_settings(self) -> None:
@@ -267,11 +267,10 @@ class AgentRunnerTests(unittest.TestCase):
                 "steps": [{"key": "build", "agent": "qwen", "allow_interaction": False, "config": {}}],
             }
 
-            await runner.run(run, "build", "05_build.md", "build-result.md")
+            with self.assertRaisesRegex(WorkflowError, "edit_file"):
+                await runner.run(run, "build", "05_build.md", "build-result.md")
 
-            artifact = (workspace / "output" / "build-result.md").read_text(encoding="utf-8")
-            self.assertIn("FILE: sorts.py", artifact)
-            self.assertIn("def bubble_sort", artifact)
+            self.assertFalse((project / "sorts.py").exists())
 
     async def _run_tool_call_string_parameters_case(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -299,11 +298,10 @@ class AgentRunnerTests(unittest.TestCase):
                 "steps": [{"key": "generate_tests", "agent": "qwen", "allow_interaction": False, "config": {}}],
             }
 
-            await runner.run(run, "generate_tests", "07_test.md", "test-plan.md")
+            with self.assertRaisesRegex(WorkflowError, "write_file"):
+                await runner.run(run, "generate_tests", "07_test.md", "test-plan.md")
 
-            artifact = (workspace / "output" / "test-plan.md").read_text(encoding="utf-8")
-            self.assertIn("FILE: tests/test_sorts.py", artifact)
-            self.assertIn("def test_sort", artifact)
+            self.assertFalse((project / "tests" / "test_sorts.py").exists())
 
     async def _run_tool_call_triple_quoted_content_case(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -331,11 +329,10 @@ class AgentRunnerTests(unittest.TestCase):
                 "steps": [{"key": "build", "agent": "qwen", "allow_interaction": False, "config": {}}],
             }
 
-            await runner.run(run, "build", "05_build.md", "build-result.md")
+            with self.assertRaisesRegex(WorkflowError, "write_file|edit_file"):
+                await runner.run(run, "build", "05_build.md", "build-result.md")
 
-            artifact = (workspace / "output" / "build-result.md").read_text(encoding="utf-8")
-            self.assertIn("FILE: sorts.py", artifact)
-            self.assertIn("def sort_values", artifact)
+            self.assertFalse((project / "sorts.py").exists())
 
     async def _run_tool_call_path_prefixed_content_case(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -363,11 +360,10 @@ class AgentRunnerTests(unittest.TestCase):
                 "steps": [{"key": "auto_generation", "agent": "qwen", "allow_interaction": False, "config": {}}],
             }
 
-            await runner.run(run, "auto_generation", "00_auto_generation.md", "auto-generation-result.md")
+            with self.assertRaisesRegex(WorkflowError, "auto_generation|tool-call JSON"):
+                await runner.run(run, "auto_generation", "00_auto_generation.md", "auto-generation-result.md")
 
-            artifact = (workspace / "output" / "auto-generation-result.md").read_text(encoding="utf-8")
-            self.assertIn("FILE: sort.py", artifact)
-            self.assertIn("def insertion_sort", artifact)
+            self.assertFalse((project / "sort.py").exists())
 
     async def _run_compact_retry_case(self, *, compact_enabled: bool, expected_compact: bool) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -420,8 +416,8 @@ class AgentRunnerTests(unittest.TestCase):
                 self.assertIn("bubble_sort returned None", prompt)
                 self.assertNotIn("old failure should not be repeated", prompt)
                 self.assertIn("Continue the same agent session", prompt)
-                self.assertIn("FILE: relative/path/to/file.ext", prompt)
-                self.assertIn("drive-stripped absolute paths", prompt)
+                self.assertIn("real direct project edits", prompt)
+                self.assertIn("actual project file diffs", prompt)
             else:
                 self.assertIn("test prompt", prompt)
 

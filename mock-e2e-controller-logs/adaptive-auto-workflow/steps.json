@@ -1,0 +1,20 @@
+[
+  {
+    "key": "generate_task_prompts",
+    "status": "passed",
+    "error": null,
+    "retry_count": null
+  },
+  {
+    "key": "auto_generation",
+    "status": "passed",
+    "error": null,
+    "retry_count": null
+  },
+  {
+    "key": "ai_review",
+    "status": "passed",
+    "error": null,
+    "retry_count": null
+  }
+]

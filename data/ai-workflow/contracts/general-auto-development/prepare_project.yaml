@@ -33,3 +33,6 @@ aggregatorFunction: ''
 sources: []
 agentOptions: {}
 path: contracts/general-auto-development/prepare_project.yaml
+compactPrompt: true
+includeSkillContext: false
+compactRetryPromptWhenReusingSession: true

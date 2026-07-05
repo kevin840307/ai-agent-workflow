@@ -319,7 +319,7 @@ The runtime passes the current `TASK-xxx.md` into the Build and Generate Tests p
 `adaptive-auto-workflow` is the simplified loop-oriented workflow:
 
 ```text
-User requirement -> auto generation -> isolated AI review -> optional external validation -> retry generation on review/validation failure
+User requirement -> AI task prompt generation -> CLI execution -> AI review + optional Python validation -> retry prompt generation on failure
 ```
 
-It uses one generation step for task planning, file changes, tests, and documentation, then an isolated AI review step, then the shared `run_external_validation` Python function. The validation step is optional: an empty validation script path records skipped `Status: PASS`; a provided Python script is executed and failures loop back to `auto_generation` with concrete repair feedback.
+It uses AI to produce short CLI-style task prompts, then sends those prompts to Qwen/OpenCode for real project edits. The controller does not generate production code or execute agent edit JSON. Review and validation failures loop back with concise failure feedback in the same agent session.

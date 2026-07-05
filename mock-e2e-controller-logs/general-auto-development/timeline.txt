@@ -1,0 +1,16 @@
+ plan_tasks: started
+ plan_tasks: passed
+ implementation_review: started
+ implementation_review: passed
+ build: started
+ build: passed
+ generate_tests: started
+ generate_tests: passed
+ run_test: started
+ run_test: passed
+ run_external_validation: started
+ run_external_validation: passed
+ final_review: started
+ final_review: passed
+ final_gate: started
+ final_gate: passed

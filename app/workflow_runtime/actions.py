@@ -46,7 +46,6 @@ from app.security.workspace_guard import resolve_project_relative_write
 from app.security.agent_project_config import ensure_agent_project_configs
 from app.workflow_runtime.builtin_functions.registry import PYTHON_FUNCTIONS
 from app.workflow_runtime.builtin_functions.base import WorkflowFunctionError
-from app.workflow_runtime.task_prompt_generator import TaskPromptGenerator
 
 from .agent_step_runner import AgentStepRunner
 from .functions import WorkflowFunctionService
@@ -200,8 +199,35 @@ class WorkflowActions:
             "allowDocumentationOnlyBuild for documentation-only workflows."
         )
 
-    def _file_blocks_allowed_as_direct_edits(self) -> bool:
-        return True
+    def _file_blocks_allowed_as_direct_edits(self, run: dict[str, Any] | None = None, step_key: str = "") -> bool:
+        """Return whether the platform may materialize agent FILE blocks.
+
+        Real Qwen/OpenCode workflow runs should prove work through actual
+        project-file diffs.  FILE/CONTENT/END_FILE materialization is kept as
+        an explicit mock/test compatibility path only, so production behavior
+        stays close to normal CLI agent usage.
+        """
+        env_value = os.environ.get("QWEN_WORKFLOW_ALLOW_FILE_BLOCK_MATERIALIZATION", "").lower()
+        if env_value in {"1", "true", "yes", "on"}:
+            return True
+
+        if run:
+            if bool(run.get("allow_file_block_materialization") or run.get("_allow_file_block_materialization")):
+                return True
+            config = self._config_for_step(run, step_key) if step_key else {}
+            if bool_config(config, "allowFileBlockMaterialization", False):
+                return True
+
+        if any(
+            os.environ.get(name, "").lower() in {"1", "true", "yes", "on"}
+            for name in ("QWEN_MOCK", "OPENCODE_MOCK", "GENERIC_AGENT_MOCK")
+        ):
+            return True
+
+        # Unit tests and deterministic local fakes often inject a tiny runner
+        # instead of the real AgentStepRunner.  Keep their FILE-block fixtures
+        # working without enabling fallback in real CLI runs.
+        return not isinstance(self.agent_runner, AgentStepRunner)
 
     async def _restore_failed_project_attempt(
         self,
@@ -219,13 +245,15 @@ class WorkflowActions:
         project_dir: Path,
         output_text: str,
         *,
+        run: dict[str, Any] | None = None,
+        step_key: str = "",
         require_test_files: bool = False,
         forbid_test_files: bool = False,
         validation_script: str | None = None,
         fallback_scripts: list[str] | None = None,
         output_label: str = "agent file block direct edit output",
     ) -> list[tuple[str, str]]:
-        if not self._file_blocks_allowed_as_direct_edits():
+        if not self._file_blocks_allowed_as_direct_edits(run, step_key):
             return []
         files = extract_build_files(output_text)
         if not files:
@@ -310,25 +338,39 @@ class WorkflowActions:
         *,
         allow_interaction: bool = False,
         agent_name: str | None = None,
+        step_key: str = "generate_todo",
     ) -> None:
         output_dir = Path(run["workspace"]) / "output"
         artifact = normalize_artifact_name(artifact)
 
-        if self._is_general_auto_development_workflow(run):
-            requirement = read_text(Path(run["workspace"]) / "requirement.md")
-            units = self._requirement_deliverable_units(requirement)
-            todo = self._render_fallback_todo(requirement, units)
-            write_text(output_dir / artifact, todo)
-            await self.refresh_artifacts(run["id"])
-            await self.log(run, "plan_tasks: wrote deterministic task plan without agent call")
+        if self._is_general_auto_development_workflow(run) and step_key == "plan_tasks":
+            output = await self.run_agent_step(
+                run,
+                step_key,
+                prompt_name,
+                artifact,
+                allow_interaction=allow_interaction,
+                agent_name=agent_name,
+                fresh_session=self._fresh_session_for_step(run, step_key),
+            )
+            if not output.strip():
+                raise WorkflowError("plan_tasks: agent produced an empty task plan.")
+            if "TASK-001" not in output:
+                raise WorkflowError("plan_tasks: AI task plan must include at least TASK-001.")
+            if "Status: READY" not in output:
+                raise WorkflowError("plan_tasks: AI task plan must contain `Status: READY`.")
             return
 
         try:
-            await self.run_agent_step(run, "generate_todo", prompt_name, artifact, allow_interaction=allow_interaction, agent_name=agent_name)
-            self.functions.validate_todo(output_dir)
+            await self.run_agent_step(run, step_key, prompt_name, artifact, allow_interaction=allow_interaction, agent_name=agent_name)
+            if step_key == "generate_todo":
+                self.functions.validate_todo(output_dir)
         except UserInputRequired:
             raise
         except (WorkflowError, ValidationError) as exc:
+            if self._is_auto_development_workflow(run) or step_key == "plan_tasks":
+                await self.log(run, f"{step_key}: agent output was not valid and deterministic fallback is disabled: {exc}")
+                raise
             await self.log(run, f"generate_todo: agent output was not valid, writing deterministic fallback: {exc}")
             write_text(output_dir / artifact, render_generic_todo_from_spec(output_dir))
             await self.refresh_artifacts(run["id"])
@@ -428,7 +470,7 @@ class WorkflowActions:
     @staticmethod
     def _fallback_validation_scripts(run: dict[str, Any]) -> list[str]:
         for step in run.get("steps") or []:
-            if step.get("key") not in {"run_external_validation", "python_gate"}:
+            if step.get("key") not in {"run_external_validation", "python_gate", "ai_review"}:
                 continue
             config = {**step, **step_config(step)}
             value = config.get("fallbackValidationScripts") or config.get("fallback_validation_scripts") or []
@@ -461,239 +503,6 @@ class WorkflowActions:
                 found.append(display)
         return found
 
-
-    @staticmethod
-    def _normalize_deliverable_unit(value: str) -> str:
-        text = re.sub(r"\s+", " ", str(value or "")).strip(" -:：。.;；,，、+/\t")
-        if not text:
-            return ""
-        # Remove request framing from the first extracted unit without assuming a domain.
-        prefixes = [
-            r"^(?:請|麻煩|幫我|協助)(?:你)?\s*",
-            r"^用[^,，、+;；]{1,40}?(?:幫我)?(?:建立|製作|產生|實作|新增|寫|撰寫|create|build|implement|write|generate)\s*",
-            r"^(?:建立|製作|產生|實作|新增|寫|撰寫)\s*",
-            r"^(?:create|build|implement|write|generate|add)\s+(?:a|an|the)?\s*",
-        ]
-        changed = True
-        while changed:
-            changed = False
-            for pattern in prefixes:
-                next_text = re.sub(pattern, "", text, flags=re.I).strip()
-                if next_text != text:
-                    text = next_text
-                    changed = True
-        text = re.sub(r"(?:等等|等)$", "", text).strip(" -:：。.;；,，、+/\t")
-        return text[:120]
-
-    @classmethod
-    def _requirement_deliverable_units(cls, requirement: str) -> list[str]:
-        text = str(requirement or "").strip()
-        if not text:
-            return []
-        candidates: list[str] = []
-        for line in text.splitlines():
-            match = re.match(r"^\s*(?:[-*]|\d+[\.、\)])\s+(.{2,})$", line)
-            if match:
-                candidates.append(match.group(1))
-        if len(candidates) < 2:
-            # Split only on explicit list separators. This keeps ordinary prose intact
-            # while handling requirements that enumerate independent deliverables.
-            raw_parts = re.split(r"\s*(?:\+|、|，|,|；|;|/|和|與|及|\band\b)\s*", text, flags=re.I)
-            if len(raw_parts) >= 3:
-                candidates = raw_parts
-        units: list[str] = []
-        seen: set[str] = set()
-        for item in candidates:
-            unit = cls._normalize_deliverable_unit(item)
-            if len(unit) < 2:
-                continue
-            key = unit.lower()
-            if key in seen:
-                continue
-            seen.add(key)
-            units.append(unit)
-        if len(units) >= 4 and all(len(unit) <= 40 for unit in units):
-            return ["all requested deliverables: " + ", ".join(units)]
-        return units[:20]
-
-    @staticmethod
-    def _normalize_deliverable_unit(value: str) -> str:
-        text = re.sub(r"\s+", " ", str(value or "")).strip(" -:：;；,，、/\t")
-        if not text:
-            return ""
-        prefixes = [
-            r"^(?:請|请|幫我|帮我|麻煩|麻烦)\s*",
-            r"^(?:用|以)?\s*[\w#+.\- ]{1,40}?\s*(?:幫我|帮我)?\s*(?:建立|新增|製作|制作|產生|生成|實作|实现|撰寫|撰写|寫|写|create|build|implement|write|generate|add)\s*",
-            r"^(?:建立|新增|製作|制作|產生|生成|實作|实现|撰寫|撰写|寫|写)\s*",
-            r"^(?:create|build|implement|write|generate|add)\s+(?:a|an|the)?\s*",
-        ]
-        changed = True
-        while changed:
-            changed = False
-            for pattern in prefixes:
-                next_text = re.sub(pattern, "", text, flags=re.I).strip(" -:：;；,，、/\t")
-                if next_text != text:
-                    text = next_text
-                    changed = True
-        return text[:120]
-
-    @classmethod
-    def _requirement_deliverable_units(cls, requirement: str) -> list[str]:
-        text = str(requirement or "").strip()
-        if not text:
-            return []
-        candidates: list[str] = []
-        for line in text.splitlines():
-            match = re.match(r"^\s*(?:[-*]|\d+[\.)])\s+(.{2,})$", line)
-            if match:
-                candidates.append(match.group(1))
-        if len(candidates) < 2:
-            raw_parts = re.split(r"\s*(?:\+|、|，|,|;|；|/|與|和|\band\b)\s*", text, flags=re.I)
-            if len(raw_parts) >= 3:
-                candidates = raw_parts
-        units: list[str] = []
-        seen: set[str] = set()
-        for item in candidates:
-            unit = cls._normalize_deliverable_unit(item)
-            if len(unit) < 2:
-                continue
-            key = unit.casefold()
-            if key in seen:
-                continue
-            seen.add(key)
-            units.append(unit)
-        return units[:20]
-
-    def _build_task_ids(self, todo: str) -> list[str]:
-        return [task_id for task_id in self._ordered_task_ids(todo) if self._task_owner(todo, task_id) == "build"]
-
-    def _under_split_findings(self, requirement: str, todo: str) -> tuple[list[str], list[str]]:
-        units = self._requirement_deliverable_units(requirement)
-        if len(units) < 3:
-            return [], units
-        build_task_ids = self._build_task_ids(todo)
-        grouped = len(units) == 1 and units[0].startswith("all requested deliverables: ")
-        expected = 1 if grouped else min(len(units), 12)
-        task_texts = [f"{self._task_title(todo, task_id)}\n{self._task_section(todo, task_id)}".lower() for task_id in build_task_ids]
-        covered_units = 0
-        for unit in units:
-            unit_key = unit.lower()
-            if any(unit_key in task_text for task_text in task_texts):
-                covered_units += 1
-        findings: list[str] = []
-        if len(build_task_ids) < expected or covered_units < expected:
-            findings.append(
-                "Todo appears under-split: requirement lists "
-                f"{len(units)} independently verifiable item(s), but the plan has "
-                f"{len(build_task_ids)} build-owned task(s) and explicitly covers {covered_units}. "
-                "Create one build task per item or document a grouping reason when grouping is necessary."
-            )
-        return findings, units
-
-    def _render_fallback_todo(self, requirement: str, deliverable_units: list[str]) -> str:
-        units = deliverable_units[:12]
-        if not units:
-            units = ["production change"]
-        multiple = len(units) > 1
-        lines = [
-            "# Todo",
-            "",
-            "Status: READY",
-            "",
-            "## Requirement",
-            f"- {requirement or 'Complete the requested change.'}",
-            "",
-            "## Task Index",
-            "| ID | Task | Acceptance Criteria | Depends On |",
-            "| --- | --- | --- | --- |",
-        ]
-        previous = "None"
-        for index, unit in enumerate(units, start=1):
-            task_id = f"TASK-{index:03d}"
-            ac_id = f"AC-{index:03d}"
-            title = f"Implement {unit}" if unit != "production change" else "Implement production change"
-            lines.append(f"| {task_id} | {title} | {ac_id} | {previous} |")
-            previous = task_id
-        assembly_id = f"TASK-{len(units) + 1:03d}" if multiple else ""
-        if multiple:
-            lines.append(f"| {assembly_id} | Assemble and expose the complete requested behavior | AC-{len(units) + 1:03d} | {previous} |")
-        lines.extend([
-            "",
-            "## Task Assembly Plan",
-            "- Build order: implement each independently verifiable item first, then assemble them into the final requested behavior.",
-            "- Integration point: shared project source files under the selected Project path.",
-            "- Assembled behavior that proves the larger request is complete: all item-level capabilities are available together and are covered by tests and external validation when configured.",
-            "",
-            "## Tasks",
-            "",
-        ])
-        for index, unit in enumerate(units, start=1):
-            task_id = f"TASK-{index:03d}"
-            ac_id = f"AC-{index:03d}"
-            title = f"Implement {unit}" if unit != "production change" else "Implement production change"
-            dep = "None" if index == 1 else f"TASK-{index - 1:03d}"
-            lines.extend([
-                f"### {task_id}: {title}",
-                f"- Goal: Implement the independently verifiable deliverable `{unit}` using the detected project architecture.",
-                "- Files: production/project files under Project path only.",
-                "- Acceptance Criteria:",
-                f"  - {ac_id}: `{unit}` is implemented and can be verified independently before final assembly.",
-                "- Depends On:",
-                f"  - {dep}",
-                "- Assembly:",
-                "  - This task contributes one item-level capability to the final requested behavior.",
-                "- Validation:",
-                "  - Covered by generated tests for this item and external validation when configured or present.",
-                "",
-            ])
-        if multiple:
-            ac_id = f"AC-{len(units) + 1:03d}"
-            lines.extend([
-                f"### {assembly_id}: Assemble and expose the complete requested behavior",
-                "- Goal: Integrate the item-level deliverables into one coherent project result.",
-                "- Files: production/project files under Project path only.",
-                "- Acceptance Criteria:",
-                f"  - {ac_id}: The project exposes the full requested behavior with all item-level deliverables working together.",
-                "- Depends On:",
-                f"  - {previous}",
-                "- Assembly:",
-                "  - Confirms the independent item tasks are connected through the final interface, module, command, or artifact requested by the user.",
-                "- Validation:",
-                "  - Covered by generated integration tests and external validation when configured or present.",
-                "",
-            ])
-        lines.extend([
-            "## Execution SOP",
-            "- Step 1: Build production code only, one small task at a time.",
-            "- Step 2: Generate tests only under the project test folder, using the task manifest as coverage input.",
-            "- Step 3: Run automated tests.",
-            "- Step 4: Run external validation when configured or present.",
-            "- Step 5: Retry the failed owner step using concrete recovery analysis and error classification.",
-            "",
-            "## Acceptance & Stop Conditions",
-            "- Build must create or modify at least one production/project artifact under Project path.",
-            "- Small tasks must be implemented in order and assembled into one coherent project state.",
-            "- Generated tests must cover item-level acceptance criteria and the assembled behavior.",
-            "- Automated tests must pass.",
-            "- External validation must pass when configured or present; otherwise it must record a skipped PASS.",
-            "- Final Review, verifier-report.json, Diff Review, and Final Gate must complete.",
-            "- Stop retrying when the configured max retry count is reached.",
-            "",
-            "## External Validation",
-            "- If a validation script path is provided, that exact script is mandatory.",
-            "- Otherwise use only the fallback validation script names configured by this workflow.",
-            "- If no validation script is configured or found, external validation is skipped with a PASS result.",
-            "",
-            "## Assumptions",
-            "- Use detected project language and structure.",
-            "- Use reasonable defaults for unspecified minor details.",
-            "",
-            "## Suggested Todo Files",
-        ])
-        for index in range(1, len(units) + (2 if multiple else 1)):
-            lines.append(f"- output/todos/TASK-{index:03d}.md")
-        lines.append("")
-        return "\n".join(lines)
 
     def _render_task_manifest(self, todo: str) -> str:
         task_ids = self._ordered_task_ids(todo)
@@ -729,7 +538,7 @@ class WorkflowActions:
             "",
             "## Assembly Strategy",
             "- Implement small build-owned tasks in the listed order.",
-            "- After each build-owned task, materialize only that task's production FILE blocks under Project Path.",
+            "- After each build-owned task, verify that the CLI agent directly changed only that task's production files under Project Path.",
             "- After all small tasks are implemented, aggregate task outputs into `output/build-result.md` and run generated tests against the assembled project state.",
             "- Generate Tests should create focused tests for task-level acceptance criteria and the assembled behavior.",
             "- Run Test and External Validation are the source of truth for completion.",
@@ -779,7 +588,7 @@ class WorkflowActions:
             "- Git commit and git push are forbidden; the user reviews git diff manually.",
             "",
             "## Completion Evidence",
-            "- The task is complete only when task output materializes file changes and later tests/validation pass.",
+            "- The task is complete only when the CLI agent directly changes project files and later tests/validation pass.",
             "- AI review can warn about risks, but Python verifier/test/validation decide final status.",
             "",
         ]
@@ -837,11 +646,9 @@ class WorkflowActions:
 
     def _task_run(self, run: dict[str, Any], task: dict[str, Any], *, index: int, total: int, phase: str) -> dict[str, Any]:
         scoped = dict(run)
-        # Per-task prompts must not inherit a long conversational memory from
-        # earlier attempts/tasks.  The runner still receives deterministic task
-        # context through prompt variables, but Qwen/OpenCode should solve only
-        # the current small task.
-        scoped["_force_fresh_qwen_session"] = True
+        # Keep all task-loop retries in the same agent session.  The controller
+        # only changes the prompt it sends; it does not replace the CLI agent's
+        # own conversation, planning, editing, or repair behavior.
         task_id = str(task.get("id") or "TASK-001")
         scoped["_current_task"] = {
             "id": task_id,
@@ -890,94 +697,39 @@ class WorkflowActions:
         lines.extend(["", "The agent modified the project files directly. The platform recorded this summary from the before/after project snapshot and did not materialize FILE blocks."])
         return "\n".join(lines).rstrip() + "\n"
 
-    async def implementation_review_step(self, run: dict[str, Any], artifact: str = "implementation-review.md") -> None:
+    async def ai_implementation_review_step(
+        self,
+        run: dict[str, Any],
+        prompt_name: str = "02_implementation_review.md",
+        artifact: str = "implementation-review.md",
+        *,
+        allow_interaction: bool = False,
+        agent_name: str | None = None,
+    ) -> None:
+        """Run AI implementation review, then compile task files from AI-authored todo.md."""
         output_dir = Path(run["workspace"]) / "output"
-        todo = read_text(output_dir / "todo.md")
-        artifact = normalize_artifact_name(artifact)
-        findings: list[str] = []
-        required_markers = [
-            "Status: READY",
-            "## Requirement",
-            "## Task Index",
-            "## Tasks",
-            "## Execution SOP",
-            "## Acceptance & Stop Conditions",
-            "## External Validation",
-        ]
-        missing = [marker for marker in required_markers if marker not in todo]
-        if missing:
-            findings.append("Missing required Todo marker(s): " + ", ".join(missing))
-        if not re.search(r"\bTASK-\d{3}\b", todo):
-            findings.append("Todo must include at least one TASK-xxx item.")
-        if not re.search(r"\bAC-\d{3}\b", todo):
-            findings.append("Todo must include task-level acceptance criteria AC-xxx.")
-        if "external validation" not in todo.lower():
-            findings.append("Todo must include the external validation step, which may skip when no script is configured or found.")
-        if "stop condition" not in todo.lower() and "stop conditions" not in todo.lower():
-            findings.append("Todo must include explicit acceptance and stop conditions for completion/retry control.")
-        protected_validation_targets = self._todo_owned_validation_targets(run, todo)
-        if protected_validation_targets:
-            findings.append(
-                "Todo must not list existing validation scripts as Build-owned task files: "
-                + ", ".join(protected_validation_targets)
-                + ". Validation scripts are external acceptance tools."
-            )
-
-        requirement = read_text(Path(run["workspace"]) / "requirement.md").strip() or "Complete the requested change."
-        split_findings, deliverable_units = self._under_split_findings(requirement, todo)
-        findings.extend(split_findings)
-
-        remediated = False
-        if findings:
-            remediated = True
-            fallback_todo = self._render_fallback_todo(requirement, deliverable_units)
-            write_text(output_dir / "todo.md", fallback_todo)
-            todo = fallback_todo
-            await self.log(run, "implementation_review: repaired invalid or under-split todo.md with deterministic fallback")
-
-        task_manifest = self._render_task_manifest(todo)
-        write_text(output_dir / "task-manifest.md", task_manifest)
-        task_todo_files = self._write_task_todo_files(output_dir, todo, task_manifest)
-        project_dir = Path(run.get("project_path") or ROOT)
-        requirement = read_text(Path(run["workspace"]) / "requirement.md")
-        instructions = orchestrator.extract_user_instructions(requirement, project_dir)
-        task_manifest_json = orchestrator.task_manifest_from_todo(todo, project_dir=project_dir, instructions=instructions)
-        task_manifest_findings = orchestrator.validate_task_manifest(task_manifest_json, project_dir)
-        workflow_instance = orchestrator.compile_workflow_instance(task_manifest_json, run_profile=str(run.get("run_profile") or "normal"))
-        workflow_findings = orchestrator.validate_workflow_instance(workflow_instance, task_manifest_json)
-        write_text(output_dir / "task-manifest.json", json.dumps(task_manifest_json, indent=2, ensure_ascii=False))
-        write_text(output_dir / "generated-workflow-instance.json", json.dumps(workflow_instance, indent=2, ensure_ascii=False))
-        write_text(output_dir / "workflow-instance-validation.md", orchestrator.render_validation_markdown(task_manifest_findings, workflow_findings))
-        write_text(output_dir / "workflow-run-trace.md", orchestrator.render_run_trace(workflow_instance))
-        if task_manifest_findings or workflow_findings:
-            findings.extend(task_manifest_findings)
-            findings.extend(workflow_findings)
-
-        text = "\n".join(
-            [
-                "# Implementation Review",
-                "",
-                "Status: PASS",
-                "Confidence: 1.00",
-                "",
-                "## Checks",
-                "- Todo is concrete enough for automated Build.",
-                "- Tasks include acceptance criteria.",
-                "- Task granularity was checked against independent deliverables in the requirement.",
-                "- task-manifest.md was generated from todo.md to stabilize small-task order and assembly.",
-                "- task-manifest.json and generated-workflow-instance.json were compiled by Python from todo.md.",
-                "- workflow-instance-validation.md and workflow-run-trace.md were generated as deterministic evidence.",
-                "- output/todos/TASK-xxx.md files were generated so Build/Generate Tests can consume one small TODO at a time.",
-                "- Acceptance and stop conditions are present.",
-                "- Mandatory test and external validation stages are present.",
-                "- Edits are constrained to the selected Project path.",
-                "",
-                "## Findings",
-                *( ["- Invalid, unsafe, or under-split AI Todo was repaired deterministically: " + "; ".join(findings)] if remediated else ["- Deterministic review passed, including task granularity and validation ownership checks."] ),
-                "",
-            ]
+        await self.review_step(
+            run,
+            "implementation_review",
+            prompt_name,
+            artifact,
+            allow_interaction=allow_interaction,
+            agent_name=agent_name,
         )
-        write_text(output_dir / artifact, text)
+        todo = read_text(output_dir / "todo.md")
+        if not todo.strip():
+            raise WorkflowError("implementation_review: todo.md is missing or empty; Plan Tasks must be produced by AI first.")
+        if "TASK-001" not in todo:
+            raise WorkflowError("implementation_review: AI-authored todo.md must include at least TASK-001.")
+        manifest = self._render_task_manifest(todo)
+        write_text(output_dir / "task-manifest.md", manifest)
+        tasks = self._task_entries_from_manifest(manifest)
+        write_text(
+            output_dir / "task-manifest.json",
+            json.dumps({"source": "ai-authored todo.md", "tasks": tasks}, indent=2, ensure_ascii=False),
+        )
+        self._write_task_todo_files(output_dir, todo, manifest)
+        await self.log(run, f"implementation_review: AI review passed; compiled {len(tasks)} task manifest entrie(s) from todo.md")
         await self.refresh_artifacts(run["id"])
 
     async def final_review_step(self, run: dict[str, Any], artifact: str = "final-review.md") -> None:
@@ -1166,19 +918,16 @@ class WorkflowActions:
         write_text(output_dir / "architecture-contract.json", json.dumps(architecture_contract, indent=2, ensure_ascii=False))
         await self._ensure_project_agent_configs(run, project_dir)
 
-        # Prepare Project is deterministic for every workflow.  It writes only
-        # architecture context and guard metadata; Qwen/OpenCode are reserved for
-        # real Build / Auto Generation / Generate Tests direct edits.  This keeps
-        # Step 1 fast and removes the old file-block materialization path.
+        # Deprecated compatibility step.  Current controller workflows should not
+        # call this step: project understanding belongs to Qwen/OpenCode, while
+        # the platform only provides a small project index/profile as prompt
+        # context.  Keep a lightweight artifact for legacy workflows that still
+        # reference prepare_project, but do not write architecture.md into the
+        # user's project.
         rendered = self.render_project_architecture_markdown(run, project_dir)
-        before = read_text(architecture_path)
         write_text(output_dir / artifact, rendered)
-        write_text(architecture_path, rendered)
         await self.refresh_artifacts(run["id"])
-        if rendered != before:
-            await self.log(run, "prepare_project: rendered deterministic architecture context")
-        else:
-            await self.log(run, "prepare_project: deterministic architecture context already up to date")
+        await self.log(run, "prepare_project: wrote legacy context artifact only; project files were not modified")
 
     @staticmethod
     def render_project_architecture_markdown(run: dict[str, Any], project_dir: Path) -> str:
@@ -1246,6 +995,8 @@ class WorkflowActions:
                 direct_files = self._apply_file_blocks_for_direct_edit(
                     project_dir,
                     read_text(output_dir / artifact),
+                    run=run,
+                    step_key="generate_tests",
                     require_test_files=True,
                     validation_script=run.get("validation_script"),
                     fallback_scripts=self._fallback_validation_scripts(run),
@@ -1256,8 +1007,7 @@ class WorkflowActions:
             if not direct_files:
                 raise WorkflowError(
                     f"generate_tests did not directly create or modify pytest files under {project_dir / 'tests'}. "
-                    "Use Qwen/OpenCode file edit/write tools to create project-specific tests, or output complete "
-                    "FILE/CONTENT/END_FILE blocks for test files under tests/."
+                    "Use Qwen/OpenCode file edit/write tools to directly create project-specific tests under tests/."
                 )
 
             validate_generated_test_files(direct_files)
@@ -1668,8 +1418,8 @@ class WorkflowActions:
         await self._ensure_project_agent_configs(run, project_dir)
         before = project_file_snapshot(project_dir)
 
-        if self._is_auto_development_workflow(run):
-            manifest = read_text(output_dir / "task-manifest.md")
+        if self._is_auto_development_workflow(run) and bool_config(self._config_for_step(run, "build"), "enableTaskLoop", False):
+            manifest = read_text(output_dir / "task-manifest.md") or read_text(output_dir / "todo.md")
             tasks = self._task_entries_from_manifest(manifest, owner="build")
             if not tasks:
                 tasks = [{"id": "TASK-001", "owner": "build", "title": "Full requested production change"}]
@@ -1696,7 +1446,7 @@ class WorkflowActions:
                     and not task_has_feedback
                     and (
                         self._task_direct_state_is_satisfied(output_dir, project_dir, task_id, "build")
-                        or (self._file_blocks_allowed_as_direct_edits() and self._task_artifact_is_satisfied(project_dir, task_artifact_path))
+                        or (self._file_blocks_allowed_as_direct_edits(run, "build") and self._task_artifact_is_satisfied(project_dir, task_artifact_path))
                     )
                 ):
                     task_result = read_text(task_artifact_path)
@@ -1728,6 +1478,8 @@ class WorkflowActions:
                         direct_files = self._apply_file_blocks_for_direct_edit(
                             project_dir,
                             read_text(task_artifact_path),
+                            run=run,
+                            step_key="build",
                             forbid_test_files=True,
                             validation_script=run.get("validation_script"),
                             fallback_scripts=self._fallback_validation_scripts(run),
@@ -1736,7 +1488,7 @@ class WorkflowActions:
                     if not direct_files:
                         raise WorkflowError(
                             f"build task {task_id} did not directly create or modify production files under Project Path: {project_dir}. "
-                            "Use Qwen/OpenCode file edit/write tools, or output complete FILE/CONTENT/END_FILE blocks for each production file."
+                            "Use Qwen/OpenCode file edit/write tools to directly modify each required production file inside Project Path."
                         )
 
                     validate_build_files_are_not_tests(direct_files)
@@ -1776,7 +1528,7 @@ class WorkflowActions:
             if not snapshot_changed(before, after) and not task_artifacts and not any_task_changed:
                 raise WorkflowError(
                     f"build did not directly create or modify production files under Project Path: {project_dir}. "
-                    "Use Qwen/OpenCode file edit/write tools, or output complete FILE/CONTENT/END_FILE blocks."
+                    "Use Qwen/OpenCode file edit/write tools to directly modify files inside Project Path."
                 )
             return
 
@@ -1801,6 +1553,8 @@ class WorkflowActions:
                 direct_files = self._apply_file_blocks_for_direct_edit(
                     project_dir,
                     read_text(output_dir / artifact),
+                    run=run,
+                    step_key="build",
                     forbid_test_files=True,
                     validation_script=run.get("validation_script"),
                     fallback_scripts=self._fallback_validation_scripts(run),
@@ -1809,7 +1563,7 @@ class WorkflowActions:
             if not direct_files:
                 raise WorkflowError(
                     f"build did not directly create or modify production files under Project Path: {project_dir}. "
-                    "Use Qwen/OpenCode file edit/write tools, or output complete FILE/CONTENT/END_FILE blocks."
+                    "Use Qwen/OpenCode file edit/write tools to directly modify files inside Project Path."
                 )
             validate_build_files_are_not_tests(direct_files)
             self._validate_build_direct_files_are_substantive(run, direct_files)
@@ -1895,68 +1649,6 @@ class WorkflowActions:
         ]
         write_text(log_path, existing + "\n" + "\n".join(entry))
 
-    def _validate_adaptive_task_deliverable_coverage(
-        self,
-        project_dir: Path,
-        run: dict[str, Any],
-        output_dir: Path,
-        task: dict[str, Any],
-        direct_files: list[tuple[str, str]],
-    ) -> None:
-        """Domain-neutral deliverable coverage gate for Adaptive tasks.
-
-        The generator extracts itemized deliverables structurally from the user
-        request.  Prompts require agents to preserve those exact labels in
-        comments, docstrings, tests, validation data, or a coverage map.  This
-        lets Python verify that each requested item was considered without
-        hard-coding any business domain such as sorting, CRUD, config, etc.
-        """
-        if self._has_configured_validation_script(run, project_dir):
-            return
-        deliverables = [str(item).strip() for item in task.get("deliverables") or [] if str(item).strip()]
-        if not deliverables:
-            return
-        evidence = self._project_text_evidence(project_dir, max_files=260)
-        changed_evidence = "\n".join(content for _rel_path, content in direct_files)
-        evidence = f"{changed_evidence}\n{evidence}".casefold()
-        missing = [item for item in deliverables if item.casefold() not in evidence]
-        if missing:
-            raise WorkflowError(
-                "Adaptive task output is missing deliverable traceability label(s): "
-                + ", ".join(missing[:12])
-                + ". Add implementation/verification evidence for each listed deliverable, "
-                "using exact labels in comments, docstrings, test case ids, validation data, or a coverage map."
-            )
-
-    def _validate_adaptive_verification_gate(
-        self,
-        project_dir: Path,
-        run: dict[str, Any],
-        manifest: dict[str, Any],
-        task: dict[str, Any],
-        index: int,
-        total: int,
-    ) -> None:
-        final_acceptance = manifest.get("final_acceptance") if isinstance(manifest, dict) else {}
-        if not isinstance(final_acceptance, dict) or not final_acceptance.get("automated_tests_required", False):
-            return
-        deliverables = [str(item).strip() for item in manifest.get("deliverables") or [] if str(item).strip()]
-        task_deliverables = [str(item).strip() for item in task.get("deliverables") or [] if str(item).strip()]
-        if not deliverables or not task_deliverables:
-            return
-        is_final_or_whole_set = index >= total or set(task_deliverables) >= set(deliverables)
-        source = str(task.get("source") or "").lower()
-        title = str(task.get("title") or "").lower()
-        is_verification_task = "verification" in source or "verify" in title or "驗證" in title or "校驗" in title
-        if not (is_final_or_whole_set or is_verification_task):
-            return
-        if self._has_configured_validation_script(run, project_dir) or self._project_has_test_files(project_dir):
-            return
-        raise WorkflowError(
-            "Adaptive final deliverable set requires verification evidence, but no test files or validation script were found. "
-            "Create focused tests under the project's test layout or configure a validation script before finishing."
-        )
-
     @staticmethod
     def _project_has_test_files(project_dir: Path) -> bool:
         return any(rel_path.replace("\\", "/").startswith("tests/test_") for rel_path in project_file_snapshot(project_dir))
@@ -1982,16 +1674,198 @@ class WorkflowActions:
                 continue
         return "\n".join(chunks)
 
-    async def generate_task_prompts_step(self, run: dict[str, Any], artifact: str = "task-manifest.md") -> None:
-        """Generate Adaptive task manifest and per-task prompts as a visible step."""
-        project_dir = Path(run.get("project_path") or ROOT)
+    async def generate_task_prompts_step(
+        self,
+        run: dict[str, Any],
+        prompt_name: str = "00_generate_task_prompts.md",
+        artifact: str = "task-manifest.md",
+        *,
+        agent_name: str | None = None,
+    ) -> None:
+        """Ask the agent to author Adaptive task prompts, then validate and materialize prompt files."""
         output_dir = Path(run["workspace"]) / "output"
-        generator = TaskPromptGenerator()
-        manifest = generator.generate(run, output_dir=output_dir, project_dir=project_dir)
+        artifact = normalize_artifact_name(artifact)
+        output = await self.run_agent_step(
+            run,
+            "generate_task_prompts",
+            prompt_name,
+            artifact,
+            agent_name=agent_name,
+            fresh_session=self._fresh_session_for_step(run, "generate_task_prompts"),
+        )
+        manifest = self._parse_ai_task_prompt_manifest(output)
+        tasks = manifest.get("tasks") or []
+        self._write_ai_task_prompt_manifest(output_dir, manifest)
         await self.refresh_artifacts(run["id"])
-        spec_path = output_dir / "workflow-spec.json"
-        spec_note = " with internal Workflow Spec" if spec_path.is_file() else ""
-        await self.log(run, f"generate_task_prompts: generated {len(manifest.get('tasks') or [])} adaptive task prompt(s){spec_note}")
+        await self.log(run, f"generate_task_prompts: AI generated {len(tasks)} task prompt(s)")
+
+    @staticmethod
+    def _extract_first_json_object(text: str) -> dict[str, Any]:
+        value = (text or "").strip()
+        if not value:
+            raise WorkflowError("AI task prompt manifest is empty.")
+        fence = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", value, flags=re.DOTALL | re.IGNORECASE)
+        if fence:
+            value = fence.group(1).strip()
+        else:
+            start = value.find("{")
+            end = value.rfind("}")
+            if start >= 0 and end > start:
+                value = value[start : end + 1]
+        try:
+            parsed = json.loads(value)
+        except json.JSONDecodeError as exc:
+            raise WorkflowError("generate_task_prompts: AI must output a valid JSON object with a tasks array.") from exc
+        if not isinstance(parsed, dict):
+            raise WorkflowError("generate_task_prompts: AI manifest must be a JSON object.")
+        return parsed
+
+    def _parse_ai_task_prompt_manifest(self, output: str) -> dict[str, Any]:
+        raw = self._extract_first_json_object(output)
+        raw_tasks = raw.get("tasks")
+        if not isinstance(raw_tasks, list) or not raw_tasks:
+            raise WorkflowError("generate_task_prompts: AI manifest must contain a non-empty `tasks` array.")
+        tasks: list[dict[str, Any]] = []
+        seen: set[str] = set()
+        for index, item in enumerate(raw_tasks, start=1):
+            if not isinstance(item, dict):
+                raise WorkflowError(f"generate_task_prompts: tasks[{index}] must be an object.")
+            task_id = str(item.get("id") or f"TASK-{index:03d}").strip().upper()
+            if not re.fullmatch(r"TASK-\d{3}", task_id):
+                task_id = f"TASK-{index:03d}"
+            if task_id in seen:
+                raise WorkflowError(f"generate_task_prompts: duplicate task id {task_id}.")
+            seen.add(task_id)
+            title = str(item.get("title") or item.get("name") or task_id).strip()[:160] or task_id
+            prompt = str(item.get("prompt") or item.get("instruction") or item.get("task_prompt") or "").strip()
+            if len(prompt) < 20:
+                raise WorkflowError(f"generate_task_prompts: {task_id} must include a concrete `prompt` string.")
+            self._validate_ai_task_prompt_quality(task_id, prompt)
+            acceptance = item.get("acceptance") or item.get("acceptance_criteria") or []
+            if isinstance(acceptance, str):
+                acceptance_items = [line.strip(" -") for line in acceptance.splitlines() if line.strip()]
+            elif isinstance(acceptance, list):
+                acceptance_items = [str(line).strip() for line in acceptance if str(line).strip()]
+            else:
+                acceptance_items = []
+            tasks.append(
+                {
+                    "id": task_id,
+                    "title": title,
+                    "prompt": prompt,
+                    "acceptance": acceptance_items,
+                    "kind": str(item.get("kind") or item.get("owner") or "implementation").strip() or "implementation",
+                }
+            )
+        return {
+            "status": "READY",
+            "source": "ai-generated",
+            "goal": str(raw.get("goal") or raw.get("summary") or "").strip(),
+            "tasks": tasks,
+        }
+
+
+    @staticmethod
+    def _validate_ai_task_prompt_quality(task_id: str, prompt: str) -> None:
+        """Keep AI-generated task prompts as human CLI instructions, not shell scripts.
+
+        The adaptive workflow is meant to simulate a human giving concise prompts
+        to Qwen/OpenCode.  If the planner emits shell commands or inline source
+        code, the execution step becomes brittle and often bypasses the agent's
+        normal edit tools.
+        """
+        text = (prompt or "").strip()
+        lowered = text.lower()
+        if re.match(r"^\s*(mkdir|md|echo|copy|xcopy|move|del|erase|type|cat|printf|powershell|pwsh|cmd|touch)\b", text, flags=re.I):
+            raise WorkflowError(
+                f"generate_task_prompts: {task_id} prompt must be a concise natural-language CLI instruction, not a shell command."
+            )
+        if re.search(r"[A-Za-z]:[\\/]", text):
+            raise WorkflowError(
+                f"generate_task_prompts: {task_id} prompt must not contain absolute paths; Project Path is supplied by the workflow."
+            )
+        if re.search(r"(^|\s)(>>?|2>|1>)\s*\S+", text):
+            raise WorkflowError(
+                f"generate_task_prompts: {task_id} prompt must not use shell redirection; ask the CLI agent to edit files directly."
+            )
+        if "```" in text:
+            raise WorkflowError(
+                f"generate_task_prompts: {task_id} prompt must not contain code fences; keep it as an instruction."
+            )
+        if len(text) > 1400:
+            raise WorkflowError(
+                f"generate_task_prompts: {task_id} prompt is too long; keep task prompts short and concrete."
+            )
+        code_markers = ["def ", "class ", "import ", "return ", "function ", "public ", "private "]
+        if sum(1 for marker in code_markers if marker in lowered) >= 3:
+            raise WorkflowError(
+                f"generate_task_prompts: {task_id} prompt looks like source code; output a human instruction instead."
+            )
+
+    def _write_ai_task_prompt_manifest(self, output_dir: Path, manifest: dict[str, Any]) -> None:
+        task_prompt_dir = output_dir / "task-prompts"
+        todo_dir = output_dir / "todos"
+        task_prompt_dir.mkdir(parents=True, exist_ok=True)
+        todo_dir.mkdir(parents=True, exist_ok=True)
+        tasks = [task for task in manifest.get("tasks") or [] if isinstance(task, dict)]
+        write_text(output_dir / "task-manifest.json", json.dumps(manifest, indent=2, ensure_ascii=False))
+        lines = ["# Task Manifest", "", "Status: READY", "", "Source: AI-generated task prompts.", "", "## Task Prompt Order"]
+        index_lines = ["# Task Todo Index", "", "Status: READY", ""]
+        for index, task in enumerate(tasks, start=1):
+            task_id = str(task.get("id") or f"TASK-{index:03d}")
+            title = str(task.get("title") or task_id)
+            kind = str(task.get("kind") or "implementation")
+            lines.append(f"{index}. {task_id} [kind={kind}]: {title}")
+            prompt_text = str(task.get("prompt") or "").strip()
+            acceptance = task.get("acceptance") or []
+            acceptance_lines = "\n".join(f"- {item}" for item in acceptance) if acceptance else "- Complete the current task and keep the project runnable."
+            task_doc = "\n".join(
+                [
+                    f"# {task_id}: {title}",
+                    "",
+                    "Status: READY",
+                    "",
+                    "## AI-Generated Prompt",
+                    prompt_text,
+                    "",
+                    "## Acceptance",
+                    acceptance_lines,
+                    "",
+                ]
+            )
+            safe_id = self._safe_task_id(task_id)
+            write_text(task_prompt_dir / f"{safe_id}.md", task_doc)
+            write_text(todo_dir / f"{safe_id}.md", task_doc)
+            index_lines.append(f"- output/todos/{safe_id}.md")
+        write_text(output_dir / "task-manifest.md", "\n".join(lines).rstrip() + "\n")
+        write_text(todo_dir / "INDEX.md", "\n".join(index_lines).rstrip() + "\n")
+
+    async def adaptive_review_and_validation_step(
+        self,
+        run: dict[str, Any],
+        prompt_name: str = "01_ai_review.md",
+        artifact: str = "ai-review.md",
+        *,
+        allow_interaction: bool = False,
+        agent_name: str | None = None,
+    ) -> None:
+        """Run final AI review and then the Python gate when validation/tests exist."""
+        output_dir = Path(run["workspace"]) / "output"
+        await self.review_step(
+            run,
+            "ai_review",
+            prompt_name,
+            artifact,
+            allow_interaction=allow_interaction,
+            agent_name=agent_name,
+        )
+        await self.functions.call_python_function(
+            self._run_with_step_context(run, {"key": "ai_review", "config": self._config_for_step(run, "ai_review")}),
+            "adaptive_python_gate",
+            output_dir,
+            "external-validation-result.md",
+        )
+        await self.refresh_artifacts(run["id"])
 
     async def _external_validation_passes_now(self, run: dict[str, Any], output_dir: Path) -> bool:
         if not str(run.get("validation_script") or "").strip():
@@ -2019,7 +1893,7 @@ class WorkflowActions:
         await self._ensure_project_agent_configs(run, project_dir)
         before = project_file_snapshot(project_dir)
 
-        if self._is_adaptive_workflow(run):
+        if self._is_adaptive_workflow(run) and bool_config(self._config_for_step(run, "auto_generation"), "enableTaskLoop", False):
             manifest_path = output_dir / "task-manifest.json"
             manifest: dict[str, Any] = {}
             tasks: list[dict[str, Any]] = []
@@ -2034,8 +1908,7 @@ class WorkflowActions:
                     manifest = {}
                     tasks = []
             if not tasks:
-                tasks = [{"id": "TASK-001", "title": "Complete requested adaptive task"}]
-                manifest = {"tasks": tasks}
+                raise WorkflowError("auto_generation: task-manifest.json has no AI-generated tasks. Retry Generate Task Prompts.")
 
             task_artifacts: list[tuple[str, str, str]] = []
             generation_feedback = failure_feedback_for_step(read_text(Path(run["workspace"]) / "input" / "failure-feedback.md"), "auto_generation")
@@ -2058,7 +1931,7 @@ class WorkflowActions:
                     and not task_has_feedback
                     and (
                         self._task_direct_state_is_satisfied(output_dir, project_dir, task_id, "auto_generation")
-                        or (self._file_blocks_allowed_as_direct_edits() and self._task_artifact_is_satisfied(project_dir, task_artifact_path))
+                        or (self._file_blocks_allowed_as_direct_edits(run, "auto_generation") and self._task_artifact_is_satisfied(project_dir, task_artifact_path))
                     )
                 ):
                     task_result = read_text(task_artifact_path)
@@ -2097,6 +1970,8 @@ class WorkflowActions:
                         direct_files = self._apply_file_blocks_for_direct_edit(
                             project_dir,
                             read_text(task_artifact_path),
+                            run=run,
+                            step_key="auto_generation",
                             validation_script=run.get("validation_script"),
                             fallback_scripts=self._fallback_validation_scripts(run),
                             output_label=f"agent adaptive task {task_id} file block direct edit",
@@ -2104,7 +1979,7 @@ class WorkflowActions:
                     if not direct_files:
                         raise WorkflowError(
                             f"auto_generation task {task_id} did not directly create or modify files under Project Path: {project_dir}. "
-                            "Use Qwen/OpenCode file edit/write tools, or output complete FILE/CONTENT/END_FILE blocks."
+                            "Use Qwen/OpenCode file edit/write tools to directly modify files inside Project Path."
                         )
                     validate_build_files_do_not_overwrite_validation_scripts(
                         project_dir,
@@ -2115,8 +1990,6 @@ class WorkflowActions:
                     validate_test_code_is_separate(direct_files)
                     validate_generated_code_files_are_clean(direct_files)
                     validate_generated_test_files(only_test_files(direct_files)) if only_test_files(direct_files) else None
-                    self._validate_adaptive_task_deliverable_coverage(project_dir, run, output_dir, task, direct_files)
-                    self._validate_adaptive_verification_gate(project_dir, run, manifest, task, index, total)
                     self._write_task_direct_state(output_dir, project_dir, task_id, "auto_generation", direct_files)
                     self._validate_previous_direct_task_states_preserved(
                         output_dir,
@@ -2156,25 +2029,13 @@ class WorkflowActions:
                 await self.log(run, f"auto_generation/{task_id}: accepted direct agent edit(s): " + ", ".join(rel_path for rel_path, _ in direct_files))
                 await self.log(run, f"auto_generation/{task_id}: architecture delta recorded; contract alignment will be checked by review")
                 await self.log(run, f"auto_generation/{task_id}: reflection decision=continue after validation passed")
-                if await self._external_validation_passes_now(run, output_dir):
-                    self._append_workflow_decision(
-                        output_dir,
-                        task_id=task_id,
-                        task_title=task_title,
-                        status="pass",
-                        next_action="finish",
-                        reason="External validation passed early; remaining internal task loop items can stop.",
-                    )
-                    await self.log(run, f"auto_generation/{task_id}: reflection decision=finish because external validation passed")
-                    break
-
             write_text(output_dir / artifact, self._render_aggregated_task_outputs("Adaptive Generation Result", task_artifacts))
             await self.refresh_artifacts(run["id"])
             after = project_file_snapshot(project_dir)
             if not snapshot_changed(before, after) and not task_artifacts:
                 raise WorkflowError(
                     f"auto_generation did not directly create or modify files under Project Path: {project_dir}. "
-                    "Use Qwen/OpenCode file edit/write tools, or output complete FILE/CONTENT/END_FILE blocks."
+                    "Use Qwen/OpenCode file edit/write tools to directly modify files inside Project Path."
                 )
             return
 
@@ -2197,6 +2058,8 @@ class WorkflowActions:
                 direct_files = self._apply_file_blocks_for_direct_edit(
                     project_dir,
                     read_text(output_dir / artifact),
+                    run=run,
+                    step_key="auto_generation",
                     validation_script=run.get("validation_script"),
                     fallback_scripts=self._fallback_validation_scripts(run),
                     output_label="agent adaptive file block direct edit",
@@ -2204,7 +2067,7 @@ class WorkflowActions:
             if not direct_files:
                 raise WorkflowError(
                     f"auto_generation did not directly create or modify files under Project Path: {project_dir}. "
-                    "Use Qwen/OpenCode file edit/write tools, or output complete FILE/CONTENT/END_FILE blocks."
+                    "Use Qwen/OpenCode file edit/write tools to directly modify files inside Project Path."
                 )
             validate_build_files_do_not_overwrite_validation_scripts(
                 project_dir,
@@ -2222,6 +2085,36 @@ class WorkflowActions:
         self._write_task_direct_state(output_dir, project_dir, "AUTO-GENERATION", "auto_generation", direct_files)
         await self.log(run, "auto_generation: accepted direct agent edit(s): " + ", ".join(rel_path for rel_path, _ in direct_files))
         await self.refresh_artifacts(run["id"])
+
+    async def adaptive_ai_review_with_validation_step(
+        self,
+        run: dict[str, Any],
+        prompt_name: str = "01_ai_review.md",
+        artifact: str = "ai-review.md",
+        *,
+        allow_interaction: bool = False,
+        agent_name: str | None = None,
+    ) -> None:
+        output_dir = Path(run["workspace"]) / "output"
+        step_record = next((step for step in run.get("steps", []) if step.get("key") == "ai_review"), {})
+        await self.review_step(
+            run,
+            "ai_review",
+            prompt_name,
+            artifact,
+            allow_interaction=allow_interaction,
+            agent_name=agent_name,
+        )
+        await asyncio.to_thread(self.functions.require_status, output_dir / normalize_artifact_name(artifact), "PASS")
+        if bool_config({**step_record, **step_config(step_record)}, "runPythonGate", True):
+            await self.functions.call_python_functions(
+                self._run_with_step_context(run, step_record),
+                ["adaptive_python_gate"],
+                output_dir,
+                "external-validation-result.md",
+            )
+            await self.refresh_artifacts(run["id"])
+            await self.log(run, "ai_review: AI review passed and Python validation gate passed or was skipped")
 
     async def consensus_agent_step(
         self,
@@ -2350,6 +2243,7 @@ class WorkflowActions:
                 step_artifact_name(step_record, "todo.md"),
                 allow_interaction=allow_interaction,
                 agent_name=agent_name,
+                step_key="generate_todo",
             ),
             "plan_tasks": lambda: self.generate_todo_step(
                 run,
@@ -2357,6 +2251,7 @@ class WorkflowActions:
                 step_artifact_name(step_record, "todo.md"),
                 allow_interaction=allow_interaction,
                 agent_name=agent_name,
+                step_key="plan_tasks",
             ),
             "validate_todo": lambda: self.validate_or_repair_todo(run, output_dir),
             "review_todo": lambda: self.review_step(
@@ -2367,17 +2262,13 @@ class WorkflowActions:
                 allow_interaction=allow_interaction,
                 agent_name=agent_name,
             ),
-            "implementation_review": lambda: (
-                self.implementation_review_step(run, step_artifact_name(step_record, "implementation-review.md"))
-                if self._is_auto_development_workflow(run)
-                else self.review_step(
-                    run,
-                    key,
-                    step_prompt_name(step_record, "02_implementation_review.md"),
-                    step_artifact_name(step_record, "implementation-review.md"),
-                    allow_interaction=allow_interaction,
-                    agent_name=agent_name,
-                )
+            "implementation_review": lambda: self.review_step(
+                run,
+                key,
+                step_prompt_name(step_record, "02_implementation_review.md"),
+                step_artifact_name(step_record, "implementation-review.md"),
+                allow_interaction=allow_interaction,
+                agent_name=agent_name,
             ),
             "todo_gate": lambda: asyncio.to_thread(self.functions.require_status, output_dir / step_artifact_name(step_record, "todo-review.md"), "PASS"),
             "generate_tests": lambda: self.generate_tests_step(
@@ -2394,13 +2285,33 @@ class WorkflowActions:
             ),
             "generate_task_prompts": lambda: self.generate_task_prompts_step(
                 run,
-                step_artifact_name(step_record, "task-manifest.md"),
+                step_prompt_name(step_record, "00_generate_task_prompts.md"),
+                step_artifact_name(step_record, "task-prompts.md"),
+                agent_name=agent_name,
             ),
             "auto_generation": lambda: self.adaptive_generation_step(
                 run,
                 step_prompt_name(step_record, "00_auto_generation.md"),
                 step_artifact_name(step_record, "auto-generation-result.md"),
                 agent_name=agent_name,
+            ),
+            "ai_review": lambda: (
+                self.adaptive_ai_review_with_validation_step(
+                    run,
+                    step_prompt_name(step_record, "01_ai_review.md"),
+                    step_artifact_name(step_record, "ai-review.md"),
+                    allow_interaction=allow_interaction,
+                    agent_name=agent_name,
+                )
+                if self._is_adaptive_workflow(run)
+                else self.review_step(
+                    run,
+                    key,
+                    step_prompt_name(step_record, "01_ai_review.md"),
+                    step_artifact_name(step_record, "ai-review.md"),
+                    allow_interaction=allow_interaction,
+                    agent_name=agent_name,
+                )
             ),
             "run_test": lambda: self.functions.call_python_functions(
                 self._run_with_step_context(run, step_record),
@@ -2420,11 +2331,11 @@ class WorkflowActions:
             ),
             "final_review": lambda: (
                 self.final_review_step(run, step_artifact_name(step_record, "final-review.md"))
-                if self._is_auto_development_workflow(run)
+                if step_type == "python"
                 else self.review_step(
                     run,
                     key,
-                    step_prompt_name(step_record, "06_final_review.md"),
+                    step_prompt_name(step_record, "05_final_review.md"),
                     step_artifact_name(step_record, "final-review.md"),
                     allow_interaction=allow_interaction,
                     agent_name=agent_name,

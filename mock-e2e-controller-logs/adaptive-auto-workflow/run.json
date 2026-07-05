@@ -1,0 +1,539 @@
+{
+  "id": "9e306faa-05a9-4469-9b49-7d07d8378ffb",
+  "session_id": "43249121-b536-4b86-b8de-d96e4a076405",
+  "qwen_session_id": "43249121-b536-4b86-b8de-d96e4a076405",
+  "agent_session_ids": {
+    "qwen": "43249121-b536-4b86-b8de-d96e4a076405",
+    "opencode": "43249121-b536-4b86-b8de-d96e4a076405"
+  },
+  "status": "done",
+  "error": null,
+  "run_owner": {
+    "id": "6a45a4ce3c46:12328",
+    "host": "6a45a4ce3c46",
+    "pid": 12328,
+    "started_at": "2026-07-05T13:51:45.653898+00:00"
+  },
+  "workspace": "/mnt/data/mock-e2e-controller-logs/projects/adaptive-auto-workflow/.ai-workflow/runs/session-43249121-b536-4b86-b8de-d96e4a076405/run-9e306faa-05a9-4469-9b49-7d07d8378ffb",
+  "project_path": "/mnt/data/mock-e2e-controller-logs/projects/adaptive-auto-workflow",
+  "workflow_id": "adaptive-auto-workflow",
+  "workflow_folder": "adaptive-auto-workflow",
+  "workflow_name": "Adaptive Auto Workflow",
+  "skill_root": ".ai-workflow",
+  "agent": null,
+  "test_command": "python -m pytest -q",
+  "validation_script": null,
+  "run_profile": "normal",
+  "thinking_level": "none",
+  "thinking_level_override": false,
+  "steps": [
+    {
+      "key": "generate_task_prompts",
+      "title": "Generate Task Prompts",
+      "kind": "agent",
+      "type": "ai",
+      "agent": "qwen",
+      "status": "passed",
+      "started_at": "2026-07-05T13:51:46.130219+00:00",
+      "ended_at": "2026-07-05T13:51:46.434173+00:00",
+      "error": null,
+      "error_code": null,
+      "retry_count": 0,
+      "config": {
+        "id": "asset-generate_task_prompts",
+        "key": "generate_task_prompts",
+        "name": "Generate Task Prompts",
+        "description": "AI generates the task prompt manifest that will be sent to Qwen/OpenCode like human CLI instructions.",
+        "type": "ai",
+        "enabled": true,
+        "contractId": "generate_task_prompts",
+        "contractPath": "contracts/adaptive-auto-workflow/generate_task_prompts.yaml",
+        "metadataPath": "contracts/adaptive-auto-workflow/generate_task_prompts.yaml",
+        "skillPath": "steps/adaptive-auto-workflow/00_generate_task_prompts.md",
+        "templatePath": "steps/adaptive-auto-workflow/00_generate_task_prompts.md",
+        "command": "",
+        "agent": "qwen",
+        "provider": "qwen",
+        "filename": "task-manifest.md",
+        "outputFile": "task-manifest.md",
+        "expectedFiles": [
+          "task-manifest.md",
+          "task-manifest.json"
+        ],
+        "functions": [],
+        "function": "",
+        "maxRetries": 99,
+        "timeoutEnabled": true,
+        "timeoutMinutes": 3.0,
+        "allowInteraction": false,
+        "requiresValidationScript": false,
+        "thinkingLevel": "medium",
+        "thinking": true,
+        "pauseAfterStep": false,
+        "approvalRequired": false,
+        "sources": [],
+        "reviewers": [],
+        "reviewMode": "none",
+        "confidenceThreshold": 0.75,
+        "passKeywords": "PASS, APPROVED",
+        "failKeywords": "FAIL, BLOCKED",
+        "aggregatorFunction": "",
+        "failAction": "same_step",
+        "retryFromStepKey": "generate_task_prompts",
+        "keepSameSession": true,
+        "injectFailureFeedback": true,
+        "stopAfterFailures": 99,
+        "templateContent": "You are the human-style planner for a CLI agent session.\n\nUser request:\n{{requirement_brief}}\n\nProject snapshot, brief:\n{{project_profile_brief}}\n{{project_index_brief}}\n\nRetry feedback from the last failed run, if any:\n{{latest_failure_feedback}}\n\nCreate the short prompts that a human would type next into Qwen/OpenCode.\n\nRules:\n- Do not implement code in this step.\n- Do not create workflow docs or explain the workflow platform.\n- Generate prompts only for the user's project task.\n- Each task prompt must be a short natural-language CLI instruction.\n- Do not include shell commands, tool-call JSON, code blocks, absolute paths, or file contents.\n- Prefer 1 task for simple requests. Use 2-3 tasks only when independent chunks are safer.\n- If retry feedback exists, revise the next prompts to fix that concrete failure.\n\nOutput one JSON object only:\n{\n  \"goal\": \"short goal\",\n  \"tasks\": [\n    {\n      \"id\": \"TASK-001\",\n      \"title\": \"short task title\",\n      \"kind\": \"implementation|test|repair|assembly\",\n      \"prompt\": \"short human CLI instruction for Qwen/OpenCode\",\n      \"acceptance\": [\"concrete acceptance item\"]\n    }\n  ]\n}\n",
+        "compactPrompt": true,
+        "includeSkillContext": false,
+        "approvalMessage": "",
+        "agentOptions": {},
+        "requireProjectChanges": false
+      },
+      "max_retries": 99,
+      "retry_from_step_key": "generate_task_prompts",
+      "fail_action": "same_step",
+      "allow_interaction": false,
+      "thinking": true,
+      "pause_after_step": false,
+      "events": [
+        {
+          "time": "2026-07-05T13:51:46.133003+00:00",
+          "ts": "2026-07-05T13:51:46.133003+00:00",
+          "step_key": "generate_task_prompts",
+          "stepKey": "generate_task_prompts",
+          "kind": "started",
+          "type": "started",
+          "message": "generate_task_prompts: started"
+        },
+        {
+          "time": "2026-07-05T13:51:46.435378+00:00",
+          "ts": "2026-07-05T13:51:46.435378+00:00",
+          "step_key": "generate_task_prompts",
+          "stepKey": "generate_task_prompts",
+          "kind": "passed",
+          "type": "passed",
+          "message": "generate_task_prompts: passed"
+        }
+      ],
+      "last_event": "generate_task_prompts: passed"
+    },
+    {
+      "key": "auto_generation",
+      "title": "Auto Generation",
+      "kind": "agent",
+      "type": "ai",
+      "agent": "qwen",
+      "status": "passed",
+      "started_at": "2026-07-05T13:51:46.437379+00:00",
+      "ended_at": "2026-07-05T13:51:47.035742+00:00",
+      "error": null,
+      "error_code": null,
+      "retry_count": 0,
+      "config": {
+        "id": "asset-auto_generation",
+        "key": "auto_generation",
+        "name": "Auto Generation",
+        "description": "Execute the AI-generated task prompts through Qwen/OpenCode direct project edits and tests.",
+        "type": "ai",
+        "enabled": true,
+        "contractId": "auto_generation",
+        "contractPath": "contracts/adaptive-auto-workflow/auto_generation.yaml",
+        "metadataPath": "contracts/adaptive-auto-workflow/auto_generation.yaml",
+        "skillPath": "steps/adaptive-auto-workflow/00_auto_generation.md",
+        "templatePath": "steps/adaptive-auto-workflow/00_auto_generation.md",
+        "command": "",
+        "agent": "qwen",
+        "provider": "qwen",
+        "filename": "auto-generation-result.md",
+        "outputFile": "auto-generation-result.md",
+        "expectedFiles": [
+          "auto-generation-result.md"
+        ],
+        "functions": [],
+        "function": "",
+        "maxRetries": 99,
+        "timeoutEnabled": true,
+        "timeoutMinutes": 5.0,
+        "allowInteraction": false,
+        "requiresValidationScript": false,
+        "thinkingLevel": "medium",
+        "thinking": true,
+        "pauseAfterStep": false,
+        "approvalRequired": false,
+        "sources": [],
+        "reviewers": [],
+        "reviewMode": "none",
+        "confidenceThreshold": 0.75,
+        "passKeywords": "PASS, APPROVED",
+        "failKeywords": "FAIL, BLOCKED",
+        "aggregatorFunction": "",
+        "failAction": "selected_step",
+        "retryFromStepKey": "generate_task_prompts",
+        "keepSameSession": true,
+        "injectFailureFeedback": true,
+        "stopAfterFailures": 99,
+        "templateContent": "Continue the CLI coding session and complete this task.\n\nUser request:\n{{requirement_brief}}\n\nCurrent task:\n{{current_task}}\n\nHuman prompt to execute:\n{{current_task_prompt}}\n\nProject snapshot, brief:\n{{project_profile_brief}}\n{{project_index_brief}}\n\nRetry feedback for this task, if any:\n{{current_task_failure_feedback}}\n\nDo:\n- Directly edit real files inside the selected project.\n- Keep earlier completed work intact.\n- Add or update tests when the task prompt asks for tests or when needed to prove the change.\n- Do not edit workflow/run files, validation scripts, `.git`, `.qwen`, `.qwen-workflow`, `.ai-workflow`, or files outside the project.\n- Do not return tool-call JSON, FILE blocks, code fences, shell scripts, or prompt explanations.\n\nReturn a short Markdown summary with changed files and what was done.\n",
+        "compactPrompt": true,
+        "includeSkillContext": false,
+        "enableTaskLoop": true,
+        "approvalMessage": "",
+        "agentOptions": {},
+        "requireProjectChanges": false
+      },
+      "max_retries": 99,
+      "retry_from_step_key": "generate_task_prompts",
+      "fail_action": "selected_step",
+      "allow_interaction": false,
+      "thinking": true,
+      "pause_after_step": false,
+      "events": [
+        {
+          "time": "2026-07-05T13:51:46.439306+00:00",
+          "ts": "2026-07-05T13:51:46.439306+00:00",
+          "step_key": "auto_generation",
+          "stepKey": "auto_generation",
+          "kind": "started",
+          "type": "started",
+          "message": "auto_generation: started"
+        },
+        {
+          "time": "2026-07-05T13:51:47.037062+00:00",
+          "ts": "2026-07-05T13:51:47.037062+00:00",
+          "step_key": "auto_generation",
+          "stepKey": "auto_generation",
+          "kind": "passed",
+          "type": "passed",
+          "message": "auto_generation: passed"
+        }
+      ],
+      "last_event": "auto_generation: passed"
+    },
+    {
+      "key": "ai_review",
+      "title": "AI Review + Validation",
+      "kind": "agent",
+      "type": "review",
+      "agent": "qwen",
+      "status": "passed",
+      "started_at": "2026-07-05T13:51:47.039256+00:00",
+      "ended_at": "2026-07-05T13:51:52.364381+00:00",
+      "error": null,
+      "error_code": null,
+      "retry_count": 0,
+      "config": {
+        "id": "asset-ai_review",
+        "key": "ai_review",
+        "name": "AI Review + Validation",
+        "description": "Run AI review in the same controller session, then run the configured validation Python or project tests. Failures retry from Generate Task Prompts.",
+        "type": "review",
+        "enabled": true,
+        "contractId": "ai_review",
+        "contractPath": "contracts/adaptive-auto-workflow/ai_review.yaml",
+        "metadataPath": "contracts/adaptive-auto-workflow/ai_review.yaml",
+        "skillPath": "steps/adaptive-auto-workflow/01_ai_review.md",
+        "templatePath": "steps/adaptive-auto-workflow/01_ai_review.md",
+        "command": "",
+        "agent": "qwen",
+        "provider": "qwen",
+        "filename": "ai-review.md",
+        "outputFile": "ai-review.md",
+        "expectedFiles": [
+          "ai-review.md",
+          "external-validation-result.md"
+        ],
+        "functions": [
+          "adaptive_python_gate"
+        ],
+        "function": "adaptive_python_gate",
+        "maxRetries": 99,
+        "timeoutEnabled": true,
+        "timeoutMinutes": 3.0,
+        "allowInteraction": false,
+        "requiresValidationScript": false,
+        "thinkingLevel": "medium",
+        "thinking": true,
+        "pauseAfterStep": false,
+        "approvalRequired": false,
+        "sources": [],
+        "reviewers": [],
+        "reviewMode": "new_agent",
+        "confidenceThreshold": 0.7,
+        "passKeywords": "PASS, APPROVED",
+        "failKeywords": "FAIL, BLOCKED, RISK",
+        "aggregatorFunction": "keyword_confidence",
+        "failAction": "selected_step",
+        "retryFromStepKey": "generate_task_prompts",
+        "keepSameSession": true,
+        "injectFailureFeedback": true,
+        "stopAfterFailures": 99,
+        "templateContent": "Review the completed project change.\n\nUser request:\n{{requirement_brief}}\n\nTask manifest:\n{{task_manifest}}\n\nExecution result:\n{{auto_generation_result}}\n\nValidation / test result, if any:\n{{external_validation_result}}\n{{python_gate_result}}\n\nProject snapshot, brief:\n{{project_profile_brief}}\n{{project_index_brief}}\n\nPass only if the project change really satisfies the user request and validation is not failing.\n\nOutput only:\n\n# AI Review\n\nStatus: PASS or FAIL\nConfidence: 0.00-1.00\n\n## Findings\n- ...\n\n## Required Fixes\n- If FAIL, list concrete fixes for the next retry.\n- If PASS, write `None`.\n",
+        "compactPrompt": true,
+        "includeSkillContext": false,
+        "contextArtifacts": [
+          "auto-generation-result.md"
+        ],
+        "approvalMessage": "",
+        "agentOptions": {},
+        "fallbackValidationScripts": [
+          "validation.py",
+          "validate.py",
+          "verify.py",
+          "check.py"
+        ],
+        "requireProjectChanges": false
+      },
+      "max_retries": 99,
+      "retry_from_step_key": "generate_task_prompts",
+      "fail_action": "selected_step",
+      "allow_interaction": false,
+      "thinking": true,
+      "pause_after_step": false,
+      "events": [
+        {
+          "time": "2026-07-05T13:51:47.041741+00:00",
+          "ts": "2026-07-05T13:51:47.041741+00:00",
+          "step_key": "ai_review",
+          "stepKey": "ai_review",
+          "kind": "started",
+          "type": "started",
+          "message": "ai_review: started"
+        },
+        {
+          "time": "2026-07-05T13:51:52.366926+00:00",
+          "ts": "2026-07-05T13:51:52.366926+00:00",
+          "step_key": "ai_review",
+          "stepKey": "ai_review",
+          "kind": "passed",
+          "type": "passed",
+          "message": "ai_review: passed"
+        }
+      ],
+      "last_event": "ai_review: passed"
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "9e306faa-05a9-4469-9b49-7d07d8378ffb:requirement.md",
+      "name": "requirement.md",
+      "path": "requirement.md",
+      "size": 86,
+      "updated_at": "2026-07-05T13:51:52.386446+00:00"
+    },
+    {
+      "id": "9e306faa-05a9-4469-9b49-7d07d8378ffb:.workflow|run-log.md",
+      "name": "run-log.md",
+      "path": ".workflow/run-log.md",
+      "size": 5955,
+      "updated_at": "2026-07-05T13:51:52.386774+00:00"
+    },
+    {
+      "id": "9e306faa-05a9-4469-9b49-7d07d8378ffb:.workflow|run-summary.md",
+      "name": "run-summary.md",
+      "path": ".workflow/run-summary.md",
+      "size": 1612,
+      "updated_at": "2026-07-05T13:51:52.386878+00:00"
+    },
+    {
+      "id": "9e306faa-05a9-4469-9b49-7d07d8378ffb:.workflow|run-trace.json",
+      "name": "run-trace.json",
+      "path": ".workflow/run-trace.json",
+      "size": 8685,
+      "updated_at": "2026-07-05T13:51:52.386951+00:00"
+    },
+    {
+      "id": "9e306faa-05a9-4469-9b49-7d07d8378ffb:.workflow|state.json",
+      "name": "state.json",
+      "path": ".workflow/state.json",
+      "size": 20863,
+      "updated_at": "2026-07-05T13:51:52.387029+00:00"
+    },
+    {
+      "id": "9e306faa-05a9-4469-9b49-7d07d8378ffb:prompts|generate_task_prompts.md",
+      "name": "generate_task_prompts.md",
+      "path": "prompts/generate_task_prompts.md",
+      "size": 2762,
+      "updated_at": "2026-07-05T13:51:52.387102+00:00"
+    },
+    {
+      "id": "9e306faa-05a9-4469-9b49-7d07d8378ffb:output|task-manifest.md",
+      "name": "task-manifest.md",
+      "path": "output/task-manifest.md",
+      "size": 152,
+      "updated_at": "2026-07-05T13:51:52.387171+00:00"
+    },
+    {
+      "id": "9e306faa-05a9-4469-9b49-7d07d8378ffb:output|task-manifest.json",
+      "name": "task-manifest.json",
+      "path": "output/task-manifest.json",
+      "size": 539,
+      "updated_at": "2026-07-05T13:51:52.387239+00:00"
+    },
+    {
+      "id": "9e306faa-05a9-4469-9b49-7d07d8378ffb:prompts|auto_generation.md",
+      "name": "auto_generation.md",
+      "path": "prompts/auto_generation.md",
+      "size": 2888,
+      "updated_at": "2026-07-05T13:51:52.387307+00:00"
+    },
+    {
+      "id": "9e306faa-05a9-4469-9b49-7d07d8378ffb:output|auto-generation-result.md",
+      "name": "auto-generation-result.md",
+      "path": "output/auto-generation-result.md",
+      "size": 626,
+      "updated_at": "2026-07-05T13:51:52.387384+00:00"
+    },
+    {
+      "id": "9e306faa-05a9-4469-9b49-7d07d8378ffb:prompts|ai_review.md",
+      "name": "ai_review.md",
+      "path": "prompts/ai_review.md",
+      "size": 3793,
+      "updated_at": "2026-07-05T13:51:52.387592+00:00"
+    },
+    {
+      "id": "9e306faa-05a9-4469-9b49-7d07d8378ffb:output|ai-review.md",
+      "name": "ai-review.md",
+      "path": "output/ai-review.md",
+      "size": 152,
+      "updated_at": "2026-07-05T13:51:52.387734+00:00"
+    },
+    {
+      "id": "9e306faa-05a9-4469-9b49-7d07d8378ffb:output|external-validation-result.md",
+      "name": "external-validation-result.md",
+      "path": "output/external-validation-result.md",
+      "size": 266,
+      "updated_at": "2026-07-05T13:51:52.387825+00:00"
+    },
+    {
+      "id": "9e306faa-05a9-4469-9b49-7d07d8378ffb:output|architecture-contract.json",
+      "name": "architecture-contract.json",
+      "path": "output/architecture-contract.json",
+      "size": 1814,
+      "updated_at": "2026-07-05T13:51:52.387900+00:00"
+    },
+    {
+      "id": "9e306faa-05a9-4469-9b49-7d07d8378ffb:output|workflow-decision-log.md",
+      "name": "workflow-decision-log.md",
+      "path": "output/workflow-decision-log.md",
+      "size": 277,
+      "updated_at": "2026-07-05T13:51:52.387991+00:00"
+    },
+    {
+      "id": "9e306faa-05a9-4469-9b49-7d07d8378ffb:output|project-index.md",
+      "name": "project-index.md",
+      "path": "output/project-index.md",
+      "size": 997,
+      "updated_at": "2026-07-05T13:51:52.388203+00:00"
+    },
+    {
+      "id": "9e306faa-05a9-4469-9b49-7d07d8378ffb:output|test-result.md",
+      "name": "test-result.md",
+      "path": "output/test-result.md",
+      "size": 159,
+      "updated_at": "2026-07-05T13:51:52.388320+00:00"
+    },
+    {
+      "id": "9e306faa-05a9-4469-9b49-7d07d8378ffb:output|task-prompts|TASK-001.md",
+      "name": "TASK-001.md",
+      "path": "output/task-prompts/TASK-001.md",
+      "size": 305,
+      "updated_at": "2026-07-05T13:51:52.388423+00:00"
+    },
+    {
+      "id": "9e306faa-05a9-4469-9b49-7d07d8378ffb:output|todos|TASK-001.md",
+      "name": "TASK-001.md",
+      "path": "output/todos/TASK-001.md",
+      "size": 305,
+      "updated_at": "2026-07-05T13:51:52.388620+00:00"
+    },
+    {
+      "id": "9e306faa-05a9-4469-9b49-7d07d8378ffb:output|todos|INDEX.md",
+      "name": "INDEX.md",
+      "path": "output/todos/INDEX.md",
+      "size": 61,
+      "updated_at": "2026-07-05T13:51:52.388824+00:00"
+    },
+    {
+      "id": "9e306faa-05a9-4469-9b49-7d07d8378ffb:output|tasks|TASK-001|auto_generation-state.json",
+      "name": "auto_generation-state.json",
+      "path": "output/tasks/TASK-001/auto_generation-state.json",
+      "size": 363,
+      "updated_at": "2026-07-05T13:51:52.388965+00:00"
+    },
+    {
+      "id": "9e306faa-05a9-4469-9b49-7d07d8378ffb:output|tasks|TASK-001|architecture-delta.md",
+      "name": "architecture-delta.md",
+      "path": "output/tasks/TASK-001/architecture-delta.md",
+      "size": 640,
+      "updated_at": "2026-07-05T13:51:52.389095+00:00"
+    },
+    {
+      "id": "9e306faa-05a9-4469-9b49-7d07d8378ffb:output|tasks|TASK-001|adaptive-generation-result.md",
+      "name": "adaptive-generation-result.md",
+      "path": "output/tasks/TASK-001/adaptive-generation-result.md",
+      "size": 517,
+      "updated_at": "2026-07-05T13:51:52.389199+00:00"
+    }
+  ],
+  "timeline": [
+    {
+      "time": "2026-07-05T13:51:46.133003+00:00",
+      "ts": "2026-07-05T13:51:46.133003+00:00",
+      "step_key": "generate_task_prompts",
+      "stepKey": "generate_task_prompts",
+      "kind": "started",
+      "type": "started",
+      "message": "generate_task_prompts: started"
+    },
+    {
+      "time": "2026-07-05T13:51:46.435378+00:00",
+      "ts": "2026-07-05T13:51:46.435378+00:00",
+      "step_key": "generate_task_prompts",
+      "stepKey": "generate_task_prompts",
+      "kind": "passed",
+      "type": "passed",
+      "message": "generate_task_prompts: passed"
+    },
+    {
+      "time": "2026-07-05T13:51:46.439306+00:00",
+      "ts": "2026-07-05T13:51:46.439306+00:00",
+      "step_key": "auto_generation",
+      "stepKey": "auto_generation",
+      "kind": "started",
+      "type": "started",
+      "message": "auto_generation: started"
+    },
+    {
+      "time": "2026-07-05T13:51:47.037062+00:00",
+      "ts": "2026-07-05T13:51:47.037062+00:00",
+      "step_key": "auto_generation",
+      "stepKey": "auto_generation",
+      "kind": "passed",
+      "type": "passed",
+      "message": "auto_generation: passed"
+    },
+    {
+      "time": "2026-07-05T13:51:47.041741+00:00",
+      "ts": "2026-07-05T13:51:47.041741+00:00",
+      "step_key": "ai_review",
+      "stepKey": "ai_review",
+      "kind": "started",
+      "type": "started",
+      "message": "ai_review: started"
+    },
+    {
+      "time": "2026-07-05T13:51:52.366926+00:00",
+      "ts": "2026-07-05T13:51:52.366926+00:00",
+      "step_key": "ai_review",
+      "stepKey": "ai_review",
+      "kind": "passed",
+      "type": "passed",
+      "message": "ai_review: passed"
+    }
+  ],
+  "created_at": "2026-07-05T13:51:46.117938+00:00",
+  "updated_at": "2026-07-05T13:51:52.389214+00:00",
+  "started_at": "2026-07-05T13:51:46.127977+00:00",
+  "ended_at": "2026-07-05T13:51:52.370465+00:00",
+  "error_code": null
+}

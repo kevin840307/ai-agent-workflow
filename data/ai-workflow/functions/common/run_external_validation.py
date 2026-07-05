@@ -122,7 +122,12 @@ def _requires_validation_script(context: Any) -> bool:
     step_config = context.run.get("_current_step_config") or {}
     if not isinstance(step_config, dict):
         return False
-    return bool(step_config.get("requiresValidationScript") or step_config.get("requires_validation_script"))
+    value = step_config.get("requiresValidationScript")
+    if value is None:
+        value = step_config.get("requires_validation_script")
+    if isinstance(value, bool):
+        return value
+    return str(value or "").strip().lower() in {"1", "true", "yes", "on"}
 
 
 def _resolve_explicit_script(project_dir: Path, value: str) -> Path | None:

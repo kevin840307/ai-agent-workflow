@@ -849,6 +849,12 @@ def step_from_contract(contract: dict[str, Any], index: int = 0) -> dict[str, An
         "stopAfterFailures": int(metadata.get("stopAfterFailures") or 3),
         "templateContent": "",
     }
+    # Runtime behavior flags must survive contract -> workflow step normalization.
+    # These are intentionally not domain-specific; they control how the platform
+    # sends prompts, loops AI-generated tasks, and verifies direct edits.  If they
+    # are dropped here, YAML such as `compactPrompt: true` or `enableTaskLoop: true`
+    # silently stops working and the runner falls back to one large generic agent
+    # call, which confuses small CLI models.
     for field in (
         "artifactPattern",
         "outputPattern",
@@ -859,6 +865,15 @@ def step_from_contract(contract: dict[str, Any], index: int = 0) -> dict[str, An
         "freshSessionPerAgent",
         "forceFreshQwenSession",
         "isolatedQwenSession",
+        "compactPrompt",
+        "includeSkillContext",
+        "enableTaskLoop",
+        "repromptOnToolCallJson",
+        "requireSubstantiveBuild",
+        "allowDocumentationOnlyBuild",
+        "allowFileBlockMaterialization",
+        "contextArtifacts",
+        "dependsOnArtifacts",
     ):
         if field in metadata:
             step[field] = metadata[field]

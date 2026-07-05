@@ -1,0 +1,13 @@
+{
+  "task_id": "GENERATE-TESTS",
+  "phase": "generate_tests",
+  "files": [
+    {
+      "path": "tests/test_workflow_mock_feature.py",
+      "markers": [
+        "test_workflow_greeting_is_deterministic",
+        "WorkflowMockFeatureTests"
+      ]
+    }
+  ]
+}

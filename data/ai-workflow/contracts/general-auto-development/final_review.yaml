@@ -1,36 +1,37 @@
 id: final_review
 key: final_review
 name: Final Review
-description: Confirm the request, architecture, task plan, build output, and external validation result are aligned.
+description: Ask the AI reviewer to confirm the request, task plan, build output, test result, and external validation result are aligned.
 enabled: true
-type: python
+type: review
 skill: steps/general-auto-development/05_final_review.md
 command: ''
 agent: qwen
 outputs:
 - final-review.md
-- verifier-report.json
-- diff-context.md
-- workflow-run-trace.md
 function: ''
-retry: 0
+retry: 99
 failAction: selected_step
 retryFromStepKey: build
 keepSameSession: true
 injectFailureFeedback: true
 stopAfterFailures: 3
 allowInteraction: false
-thinking: false
+thinking: true
+thinkingLevel: medium
 approvalRequired: false
 pauseAfterStep: false
 approvalMessage: ''
-timeoutEnabled: false
-timeoutMinutes: 0.0
-reviewMode: none
+timeoutEnabled: true
+timeoutMinutes: 3.0
+reviewMode: new_agent
 confidenceThreshold: 0.75
 passKeywords: PASS, APPROVED
 failKeywords: FAIL, BLOCKED
-aggregatorFunction: ''
+aggregatorFunction: keyword_confidence
 sources: []
 agentOptions: {}
 path: contracts/general-auto-development/final_review.yaml
+compactPrompt: true
+includeSkillContext: false
+compactRetryPromptWhenReusingSession: true

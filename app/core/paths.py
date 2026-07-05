@@ -25,7 +25,8 @@ def utc_now() -> str:
 
 def ensure_dirs() -> None:
     DATA_DIR.mkdir(exist_ok=True)
-    WORKSPACES_DIR.mkdir(exist_ok=True)
+    # Runs are stored under <Project Path>/.ai-workflow/runs.
+    # The old controller-root workspaces/ folder is intentionally not created.
 
 
 def read_text(path: Path) -> str:
