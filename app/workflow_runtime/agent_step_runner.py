@@ -97,6 +97,22 @@ class AgentStepRunner:
                 config=config,
             ),
         )
+        effective_prompt_rel = f"prompts/{step_key}.effective.md"
+        effective_prompt_path = workspace_path / effective_prompt_rel
+        write_text(effective_prompt_path, prompt_text)
+        prompt_meta_rel = f"prompts/{step_key}.prompt-meta.json"
+        prompt_meta = {
+            "step_key": step_key,
+            "agent": agent_name,
+            "session_id": session_id,
+            "template_prompt_path": prompt_result.relative_prompt_path,
+            "effective_prompt_path": effective_prompt_rel,
+            "prompt_chars": len(prompt_result.prompt),
+            "effective_prompt_chars": len(prompt_text),
+            "compact_retry": self._is_compact_retry_prompt(prompt_text),
+            "cwd": str(cwd),
+        }
+        write_text(workspace_path / prompt_meta_rel, json.dumps(prompt_meta, indent=2, ensure_ascii=False))
         request = AgentRequest(
             run_id=run["id"],
             step_key=step_key,
@@ -106,7 +122,8 @@ class AgentStepRunner:
             metadata={
                 "project_path": str(cwd),
                 "workspace_path": str(workspace_path),
-                "prompt_file": str(workspace_path / prompt_result.relative_prompt_path),
+                "prompt_file": str(effective_prompt_path),
+                "template_prompt_file": str(workspace_path / prompt_result.relative_prompt_path),
                 "write_root": str(cwd),
                 "read_policy": "unrestricted",
             },
@@ -153,7 +170,8 @@ class AgentStepRunner:
                     "recovered_from_session_id": request.session_id,
                     "project_path": str(cwd),
                     "workspace_path": str(workspace_path),
-                    "prompt_file": str(workspace_path / prompt_result.relative_prompt_path),
+                    "prompt_file": str(effective_prompt_path),
+                    "template_prompt_file": str(workspace_path / prompt_result.relative_prompt_path),
                     "write_root": str(cwd),
                     "read_policy": "unrestricted",
                 },
@@ -194,7 +212,8 @@ class AgentStepRunner:
                 metadata={
                     "project_path": str(cwd),
                     "workspace_path": str(workspace_path),
-                    "prompt_file": str(workspace_path / prompt_result.relative_prompt_path),
+                    "prompt_file": str(effective_prompt_path),
+                    "template_prompt_file": str(workspace_path / prompt_result.relative_prompt_path),
                     "write_root": str(cwd),
                     "read_policy": "unrestricted",
                     "tool_call_json_reprompt": raw_tool_name,

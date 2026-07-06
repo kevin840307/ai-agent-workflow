@@ -57,6 +57,11 @@ class SubmitGuidanceRequest(BaseModel):
     content: str = Field(min_length=1)
     step_key: str
 
+
+class StepControlRequest(BaseModel):
+    step_key: str
+    reason: str | None = None
+
 __all__ = [
     "CreateMessageRequest",
     "CreateRunRequest",
@@ -65,4 +70,5 @@ __all__ = [
     "RetryRunRequest",
     "SubmitAnswersRequest",
     "SubmitGuidanceRequest",
+    "StepControlRequest",
 ]

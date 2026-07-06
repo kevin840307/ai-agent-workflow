@@ -73,13 +73,17 @@ class RuntimeRefactorContractTests(unittest.TestCase):
             store_path = Path(tmp) / "isolated-store.json"
             env = os.environ.copy()
             env["AIWF_STORE_FILE"] = str(store_path)
+            repo = Path(__file__).resolve().parents[1]
+            env["PYTHONPATH"] = str(repo)
+            env.pop("PYTEST_CURRENT_TEST", None)
             completed = subprocess.run(
                 [sys.executable, "-c", "from app.runtime_modules import api; print(api.store.path)"],
-                cwd=Path(__file__).resolve().parents[1],
+                cwd=repo,
                 env=env,
                 text=True,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
+                timeout=20,
                 check=True,
             )
             self.assertEqual(Path(completed.stdout.strip()), store_path)

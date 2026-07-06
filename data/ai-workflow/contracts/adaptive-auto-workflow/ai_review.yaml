@@ -1,7 +1,9 @@
 id: ai_review
 key: ai_review
 name: AI Review + Validation
-description: Run AI review against SPEC, check tests, then run validation.py or project tests. Failures repair from Execute Prompts, with periodic escalation back to Generate Execution Prompts.
+description: Run AI review against SPEC, check tests, then run validation.py or project
+  tests. Failures repair from Execute Prompts, with periodic escalation back to Generate
+  Execution Prompts.
 enabled: true
 type: review
 skill: steps/adaptive-auto-workflow/01_ai_review.md
@@ -38,7 +40,7 @@ timeoutEnabled: true
 timeoutMinutes: 3.0
 reviewMode: new_agent
 confidenceThreshold: 0.7
-passKeywords: PASS, APPROVED
+passKeywords: PASS
 failKeywords: FAIL, BLOCKED, RISK
 aggregatorFunction: keyword_confidence
 contextArtifacts:
@@ -50,3 +52,9 @@ path: contracts/adaptive-auto-workflow/ai_review.yaml
 compactPrompt: true
 includeSkillContext: false
 compactRetryPromptWhenReusingSession: true
+reviewOutputFormat: json
+retryPolicy:
+  defaultRetryTo: auto_generation
+  escalateEvery: 3
+  escalateTo: generate_task_prompts
+  maxRetries: 99

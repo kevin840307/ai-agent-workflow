@@ -114,7 +114,9 @@ class WorkflowExecutor:
                             f"{key}: retry escalation {base_retry_key} -> {retry_key} on attempt {base_retry_count + 1}",
                         )
                     retry_step_record = next((item for item in step_records if item.get("key") == retry_key), step_record)
-                    max_retries = int(retry_step_record.get("max_retries", step_record.get("max_retries", 0)) or 0)
+                    retry_policy = retry_step_record.get("retryPolicy") or (retry_step_record.get("config") or {}).get("retryPolicy") or {}
+                    policy_max_retries = retry_policy.get("maxRetries") if isinstance(retry_policy, dict) else None
+                    max_retries = int(policy_max_retries or retry_step_record.get("max_retries", step_record.get("max_retries", 0)) or 0)
                     current_retry_count = await self.get_step_retry_count(run_id, retry_key)
                     if current_retry_count >= max_retries:
                         message = (

@@ -1,4 +1,4 @@
-Review and validate the completed project change against the SPEC.
+Review the completed project change against the SPEC after the controller has already run validation/test gates.
 
 {{thinking_guidance}}
 User request:
@@ -13,7 +13,7 @@ Task manifest:
 Execution result:
 {{auto_generation_result}}
 
-Validation / test result, if any:
+Validation/test result:
 {{external_validation_result}}
 {{python_gate_result}}
 
@@ -23,23 +23,16 @@ Project snapshot, brief:
 
 Pass only if:
 - The project satisfies the SPEC and user request.
-- The implementation includes appropriate tests or a clear reason tests are not applicable.
+- Tests exist, or tests are clearly not applicable for this request.
+- The validation/test result above is PASS or skipped for a valid reason.
 - Existing behavior appears preserved.
-- No validation/test result is failing.
 
-Output only:
-
-# AI Review
-
-Status: PASS or FAIL
-Confidence: 0.00-1.00
-
-## Findings
-- ...
-
-## Test Check
-- State whether tests were added/updated/found, or why tests are not applicable.
-
-## Required Fixes
-- If FAIL, list concrete repair prompts for the next Execute Prompts retry.
-- If PASS, write `None`.
+Return ONLY a JSON object in this shape:
+{
+  "status": "PASS or FAIL",
+  "confidence": 0.0,
+  "summary": "one short sentence",
+  "missing_items": ["concrete missing item, empty when PASS"],
+  "test_check": "tests present / validation passed / tests not applicable because ...",
+  "repair_prompt": "concrete prompt for Execute Prompts retry, or empty when PASS"
+}

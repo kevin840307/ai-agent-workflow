@@ -7,17 +7,41 @@ from app.runtime_modules.files import classify_test_retry_target
 from app.core.paths import ROOT, read_text
 
 
+def _retry_policy(step_record: dict[str, Any]) -> dict[str, Any]:
+    """Return the normalized generic retry policy for a workflow step.
+
+    Workflow authors may use the legacy flat keys or the clearer nested form:
+
+    retryPolicy:
+      defaultRetryTo: build
+      escalateEvery: 3
+      escalateTo: plan_tasks
+      maxRetries: 9
+
+    The executor still honors existing flat keys for backward compatibility.
+    """
+    config = step_record.get("config") or {}
+    raw = config.get("retryPolicy") or step_record.get("retryPolicy") or {}
+    return raw if isinstance(raw, dict) else {}
+
+
 def retry_target_for_step(step_record: dict[str, Any], steps: list[dict[str, Any]], current_index: int) -> str | None:
-    """Resolve retry target from workflow.json, not hard-coded defaults.
+    """Resolve retry target from workflow config, not hard-coded defaults.
 
     Precedence:
-    1. retryFromStepKey explicitly configured in workflow.json.
+    1. retryPolicy.defaultRetryTo / retryFromStepKey.
     2. failAction behavior.
     3. current failed step.
     """
     config = step_record.get("config") or {}
+    policy = _retry_policy(step_record)
     available_keys = {step.get("key") for step in steps}
-    configured_retry_from = step_record.get("retry_from_step_key") or config.get("retryFromStepKey")
+    configured_retry_from = (
+        policy.get("defaultRetryTo")
+        or policy.get("retryTo")
+        or step_record.get("retry_from_step_key")
+        or config.get("retryFromStepKey")
+    )
     if configured_retry_from and configured_retry_from in available_keys:
         return str(configured_retry_from)
 
@@ -27,7 +51,7 @@ def retry_target_for_step(step_record: dict[str, Any], steps: list[dict[str, Any
     if fail_action == "previous_step" and current_index > 0:
         return steps[current_index - 1]["key"]
     if fail_action == "selected_step":
-        selected = config.get("failActionStepKey") or config.get("selectedStepKey") or config.get("retryFromStepKey")
+        selected = config.get("failActionStepKey") or config.get("selectedStepKey") or config.get("retryFromStepKey") or policy.get("defaultRetryTo")
         return str(selected) if selected and selected in available_keys else step_record.get("key")
     return step_record.get("key")
 
@@ -46,15 +70,16 @@ def escalated_retry_target_for_step(
     earlier prompts/specs after repeated repair failures.
     """
     config = step_record.get("config") or {}
+    policy = _retry_policy(step_record)
     available_keys = {step.get("key") for step in steps}
-    raw_every = step_record.get("retryEscalationEvery") or config.get("retryEscalationEvery")
+    raw_every = policy.get("escalateEvery") or step_record.get("retryEscalationEvery") or config.get("retryEscalationEvery")
     try:
         every = int(raw_every or 0)
     except (TypeError, ValueError):
         every = 0
     if every <= 0 or next_retry_count <= 0 or next_retry_count % every != 0:
         return None
-    target = step_record.get("retryEscalationStepKey") or config.get("retryEscalationStepKey")
+    target = policy.get("escalateTo") or step_record.get("retryEscalationStepKey") or config.get("retryEscalationStepKey")
     return str(target) if target and target in available_keys else None
 
 

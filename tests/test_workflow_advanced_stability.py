@@ -112,6 +112,12 @@ class GoldenArtifactSnapshotTests(unittest.TestCase):
             self.assertEqual(response.status_code, 200, response.text)
             run = response.json()
             if run["status"] in {"done", "failed", "cancelled", "waiting_input"}:
+                cleanup_deadline = time.time() + 2
+                while time.time() < cleanup_deadline:
+                    task = runtime.running_tasks.get(run_id)
+                    if task is None or task.done():
+                        return run
+                    time.sleep(0.01)
                 return run
             time.sleep(0.05)
         self.fail(f"workflow run did not finish within {timeout_sec} seconds")

@@ -9,6 +9,8 @@ export const StorageKeys = Object.freeze({
   runMode: "ui.runMode",
   selectedWorkflowId: "ui.selectedWorkflowId",
   thinkingLevel: "ui.thinkingLevel",
+  runProfile: "ui.runProfile",
+  advancedMode: "ui.advancedMode",
 });
 
 export const LocalStore = {

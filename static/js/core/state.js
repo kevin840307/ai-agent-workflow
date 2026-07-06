@@ -20,6 +20,8 @@ export const AppState = {
   workflows: [],
   selectedWorkflowId: LocalStore.getString(StorageKeys.selectedWorkflowId, "system-controlled-qwen") || "system-controlled-qwen",
   thinkingLevel: LocalStore.getString(StorageKeys.thinkingLevel, "medium") || "medium",
+  runProfile: LocalStore.getString(StorageKeys.runProfile, "normal") || "normal",
+  advancedMode: LocalStore.getBoolean(StorageKeys.advancedMode, false),
   validationScript: "",
   workflowActivity: null,
 };

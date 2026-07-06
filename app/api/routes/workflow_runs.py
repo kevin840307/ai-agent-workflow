@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 
 from fastapi import APIRouter
-from fastapi.responses import StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse
 
 from app.runtime_modules import api as runtime
 from app.domain import schemas
@@ -45,6 +45,32 @@ async def submit_answers(run_id: str, body: schemas.SubmitAnswersRequest):
 @router.post("/api/workflow-runs/{run_id}/guidance")
 async def submit_guidance(run_id: str, body: schemas.SubmitGuidanceRequest):
     return await workflow_service.submit_guidance(run_id, body)
+
+
+@router.post("/api/workflow-runs/{run_id}/steps/skip")
+async def skip_step(run_id: str, body: schemas.StepControlRequest):
+    return await workflow_service.skip_step(run_id, body)
+
+
+@router.post("/api/workflow-runs/{run_id}/steps/pass")
+async def mark_step_passed(run_id: str, body: schemas.StepControlRequest):
+    return await workflow_service.mark_step_passed(run_id, body)
+
+
+@router.post("/api/workflow-runs/{run_id}/resume")
+async def resume_run(run_id: str, body: schemas.StepControlRequest | None = None):
+    return await workflow_service.resume_run(run_id, body)
+
+
+@router.get("/api/workflow-runs/{run_id}/export")
+async def export_run(run_id: str):
+    bundle = await workflow_service.export_run_bundle(run_id)
+    return FileResponse(bundle, filename=bundle.name, media_type="application/zip")
+
+
+@router.post("/api/workflow-runs/{run_id}/replay")
+async def replay_run(run_id: str, body: schemas.CreateRunRequest | None = None):
+    return await workflow_service.replay_run(run_id, body)
 
 
 @router.post("/api/workflow-runs/{run_id}/simulate-question")

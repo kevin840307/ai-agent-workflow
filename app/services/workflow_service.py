@@ -2,7 +2,10 @@ from __future__ import annotations
 
 import asyncio
 import json
+import shutil
+import tempfile
 import uuid
+from zipfile import ZipFile, ZIP_DEFLATED
 from pathlib import Path
 
 from fastapi import HTTPException
@@ -279,6 +282,57 @@ async def create_workflow_run(session_id: str, body: runtime.CreateRunRequest) -
             return run
 
 
+async def export_run_bundle(run_id: str) -> Path:
+    """Create a self-contained run bundle for debugging, sharing, or replay."""
+    run = await get_run(run_id)
+    run_dir = Path(run["workspace"])
+    export_root = Path(tempfile.mkdtemp(prefix=f"aiwf-export-{run_id}-"))
+    bundle_path = export_root / f"run-{run_id}-bundle.zip"
+    manifest = {
+        "schema": "aiwf.run-bundle.v1",
+        "run_id": run.get("id"),
+        "session_id": run.get("session_id"),
+        "workflow_id": run.get("workflow_id"),
+        "workflow_name": run.get("workflow_name"),
+        "project_path": run.get("project_path"),
+        "status": run.get("status"),
+        "requirement": runtime.read_text(run_dir / "requirement.md"),
+        "validation_script": run.get("validation_script"),
+        "test_command": run.get("test_command"),
+        "run_profile": run.get("run_profile"),
+        "thinking_level": run.get("thinking_level"),
+    }
+    with ZipFile(bundle_path, "w", ZIP_DEFLATED) as zf:
+        zf.writestr("bundle-manifest.json", json.dumps(manifest, indent=2, ensure_ascii=False))
+        zf.writestr("run.json", json.dumps(run, indent=2, ensure_ascii=False))
+        if run_dir.exists():
+            for path in run_dir.rglob("*"):
+                if path.is_file():
+                    zf.write(path, f"run-workspace/{path.relative_to(run_dir).as_posix()}")
+    return bundle_path
+
+
+async def replay_run(run_id: str, body: runtime.CreateRunRequest | None = None) -> dict:
+    """Replay a previous run by creating a fresh run with the same requirement/workflow/project by default."""
+    source = await get_run(run_id)
+    source_dir = Path(source["workspace"])
+    override = body or runtime.CreateRunRequest()
+    replay_body = runtime.CreateRunRequest(
+        requirement=override.requirement or runtime.read_text(source_dir / "requirement.md"),
+        test_command=override.test_command if override.test_command is not None else source.get("test_command"),
+        validation_script=override.validation_script if override.validation_script is not None else source.get("validation_script"),
+        project_path=override.project_path or source.get("project_path"),
+        workflow_id=override.workflow_id or source.get("workflow_id"),
+        agent=override.agent or source.get("agent"),
+        runProfile=override.run_profile or source.get("run_profile"),
+        thinkingLevel=override.thinking_level if override.thinking_level is not None else source.get("thinking_level"),
+    )
+    replay = await create_workflow_run(source["session_id"], replay_body)
+    await runtime.log(replay, f"workflow: replayed from run {run_id}")
+    await runtime.record_step_event(replay["id"], replay["steps"][0]["key"] if replay.get("steps") else "replay", "replay", f"Replayed from run {run_id}", {"source_run_id": run_id})
+    return await get_run(replay["id"])
+
+
 async def get_run(run_id: str) -> dict:
     _cleanup_done_tasks()
     try:
@@ -444,6 +498,90 @@ async def submit_guidance(run_id: str, body: runtime.SubmitGuidanceRequest) -> d
     await runtime.refresh_artifacts(run_id)
     if is_running:
         return await get_run(run_id)
+    await runtime.reset_steps_from(run_id, start_index)
+    start_workflow_task(run_id, start_index=start_index)
+    return await get_run(run_id)
+
+
+async def _assert_not_active(run_id: str) -> dict:
+    run = await get_run(run_id)
+    active_task = runtime.running_tasks.get(run_id)
+    if active_task and not active_task.done():
+        raise HTTPException(status_code=400, detail="This run is still running. Stop it before manual step control.")
+    return run
+
+
+async def _step_index_or_400(run: dict, step_key: str) -> int:
+    for index, step in enumerate(run.get("steps", [])):
+        if step.get("key") == step_key:
+            return index
+    raise HTTPException(status_code=400, detail=f"Unknown step: {step_key}")
+
+
+async def skip_step(run_id: str, body: runtime.StepControlRequest) -> dict:
+    run = await _assert_not_active(run_id)
+    step_index = await _step_index_or_400(run, body.step_key)
+    reason = (body.reason or "Skipped manually by user.").strip()
+
+    def apply(item):
+        item["status"] = "waiting_input" if any(s.get("status") == "waiting_input" for s in item.get("steps", [])) else item.get("status", "failed")
+        item["updated_at"] = runtime.utc_now()
+        for index, step in enumerate(item.get("steps", [])):
+            if index == step_index:
+                step["status"] = "skipped"
+                step["error"] = reason
+                step["error_code"] = None
+                step["ended_at"] = runtime.utc_now()
+            elif index > step_index and step.get("status") in {"running", "failed", "waiting_input"}:
+                step["status"] = "pending"
+                step["error"] = None
+                step["error_code"] = None
+                step["started_at"] = None
+                step["ended_at"] = None
+
+    await runtime.update_run(run_id, apply)
+    await runtime.record_step_event(run_id, body.step_key, "manual_skip", reason, {"target_step": body.step_key})
+    await runtime.refresh_artifacts(run_id)
+    return await get_run(run_id)
+
+
+async def mark_step_passed(run_id: str, body: runtime.StepControlRequest) -> dict:
+    run = await _assert_not_active(run_id)
+    step_index = await _step_index_or_400(run, body.step_key)
+    reason = (body.reason or "Marked passed manually by user.").strip()
+
+    def apply(item):
+        item["updated_at"] = runtime.utc_now()
+        for index, step in enumerate(item.get("steps", [])):
+            if index == step_index:
+                step["status"] = "passed"
+                step["error"] = reason
+                step["error_code"] = None
+                step["ended_at"] = runtime.utc_now()
+            elif index > step_index and step.get("status") in {"running", "failed", "waiting_input"}:
+                step["status"] = "pending"
+                step["error"] = None
+                step["error_code"] = None
+                step["started_at"] = None
+                step["ended_at"] = None
+
+    await runtime.update_run(run_id, apply)
+    await runtime.record_step_event(run_id, body.step_key, "manual_pass", reason, {"target_step": body.step_key})
+    await runtime.refresh_artifacts(run_id)
+    return await get_run(run_id)
+
+
+async def resume_run(run_id: str, body: runtime.StepControlRequest | None = None) -> dict:
+    run = await _assert_not_active(run_id)
+    step_keys = [step["key"] for step in run.get("steps", [])]
+    if not step_keys:
+        raise HTTPException(status_code=400, detail="Run has no steps to resume.")
+    if body and body.step_key:
+        start_index = await _step_index_or_400(run, body.step_key)
+    else:
+        start_index = next((index for index, step in enumerate(run.get("steps", [])) if step.get("status") in {"pending", "failed", "waiting_input", "skipped"}), len(step_keys) - 1)
+    target_key = step_keys[start_index]
+    await runtime.record_step_event(run_id, target_key, "manual_resume", "Manual resume requested.", {"target_step": target_key, "start_index": start_index})
     await runtime.reset_steps_from(run_id, start_index)
     start_workflow_task(run_id, start_index=start_index)
     return await get_run(run_id)

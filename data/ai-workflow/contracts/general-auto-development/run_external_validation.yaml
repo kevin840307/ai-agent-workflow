@@ -1,7 +1,8 @@
 id: run_external_validation
 key: run_external_validation
 name: External Validation
-description: Run user validation.py/validate.py/verify.py/check.py when provided or present. If no validation script exists, record skipped PASS.
+description: Run user validation.py/validate.py/verify.py/check.py when provided or
+  present. If no validation script exists, record skipped PASS.
 enabled: true
 type: python
 skill: steps/general-auto-development/04_run_external_validation.md
@@ -44,3 +45,8 @@ timeout: 0.0
 functions:
 - run_external_validation
 approval: false
+retryPolicy:
+  defaultRetryTo: build
+  escalateEvery: 3
+  escalateTo: plan_tasks
+  maxRetries: 99

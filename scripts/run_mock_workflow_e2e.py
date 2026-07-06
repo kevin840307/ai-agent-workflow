@@ -66,7 +66,7 @@ def run_workflow(client: TestClient, workflow_id: str, project_dir: Path) -> dic
             "workflow_id": workflow_id,
             "project_path": str(project_dir),
             "requirement": "Create a deterministic Python helper named workflow_greeting and verify it with tests.",
-            "test_command": "python -m pytest -q",
+            "test_command": "python -c \"from workflow_mock_feature import workflow_greeting; assert workflow_greeting() == \\\"hello from controlled workflow\\\"\"",
         },
     )
     run_resp.raise_for_status()
@@ -92,8 +92,8 @@ def main() -> int:
     from app.main import app
 
     results: list[dict] = []
-    with TestClient(app) as client:
-        for workflow_id in ["adaptive-auto-workflow", "general-auto-development"]:
+    for workflow_id in ["adaptive-auto-workflow", "general-auto-development"]:
+        with TestClient(app) as client:
             project_dir = output_root / "projects" / workflow_id
             project_dir.mkdir(parents=True, exist_ok=True)
             (project_dir / "README.md").write_text(f"# Mock project for {workflow_id}\n", encoding="utf-8")

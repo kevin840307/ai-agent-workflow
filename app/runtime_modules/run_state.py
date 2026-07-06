@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from app.workflow_runtime.failure_diagnosis import diagnose_agent_failure, summarize_failure_diagnosis
 from app.core.paths import read_text, utc_now, write_text
 
 MAX_RUN_LOG_CHARS = 250_000
@@ -288,6 +289,7 @@ class RunState:
             f"- Retry target: {target_key}\n"
             f"- Retry attempt: {retry_count}/{max_retries}\n"
             f"- Error class: {classify_repair_error(source_key, target_key, error)}\n"
+            f"- Agent diagnosis: {summarize_failure_diagnosis(error, step_key=source_key)}\n"
             f"- Stop condition: retry continues through repeated errors until {target_key} reaches {max_retries}/{max_retries} attempts or all downstream gates pass.\n"
             f"- Strategy shift: if this same class repeats 3+ times, try a different implementation approach rather than reusing the same output.\n\n"
             "### Recovery analysis\n"
@@ -308,6 +310,7 @@ class RunState:
                 "max_retries": max_retries,
                 "error": error,
                 "error_class": classify_repair_error(source_key, target_key, error),
+                "agent_diagnosis": diagnose_agent_failure(error, step_key=source_key),
             },
         )
         await self.refresh_artifacts(run["id"])
@@ -360,6 +363,8 @@ class RunState:
                 ".workflow/run-log.md",
                 ".workflow/run-summary.md",
                 ".workflow/run-trace.json",
+                ".workflow/gate-report.md",
+                ".workflow/gate-report.json",
                 ".workflow/state.json",
             ]
 
@@ -375,6 +380,8 @@ class RunState:
             for step in run.get("steps", []):
                 config = step.get("config") or {}
                 add_rel(f"prompts/{step.get('key')}.md")
+                add_rel(f"prompts/{step.get('key')}.effective.md")
+                add_rel(f"prompts/{step.get('key')}.prompt-meta.json")
                 add_rel(config.get("outputFile") or config.get("filename"))
                 for expected in config.get("expectedFiles") or []:
                     add_rel(expected)

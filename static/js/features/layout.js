@@ -113,6 +113,7 @@ export function createLayout(ctx) {
       bindRailResize();
       layout.setProjectsCollapsed(LocalStore.getBoolean(StorageKeys.projectsCollapsed, false), false);
       layout.setDetailsCollapsed(LocalStore.getBoolean(StorageKeys.detailsCollapsed, false), false);
+      layout.setAdvancedMode(ctx.state.advancedMode, false);
     },
 
     applyRunStatus(status = "") {
@@ -150,6 +151,16 @@ export function createLayout(ctx) {
 
     toggleDetails() {
       layout.setDetailsCollapsed(!document.body.classList.contains("details-collapsed"));
+    },
+
+    setAdvancedMode(enabled, persist = true) {
+      ctx.state.advancedMode = Boolean(enabled);
+      document.body.classList.toggle("advanced-mode", ctx.state.advancedMode);
+      document.body.classList.toggle("novice-mode", !ctx.state.advancedMode);
+      const checkbox = ui.byKey("advancedMode");
+      if (checkbox) checkbox.checked = ctx.state.advancedMode;
+      if (persist) LocalStore.setBoolean(StorageKeys.advancedMode, ctx.state.advancedMode);
+      if (ctx.features.workflows?.renderPreview) ctx.features.workflows.renderPreview();
     },
 
     activateTab(panelId) {

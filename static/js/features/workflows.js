@@ -87,8 +87,25 @@ export function createWorkflows(ctx) {
     return (workflow?.steps || []).filter((step) => step.enabled !== false);
   }
 
+  function stepAcceptsValidationScript(step = {}) {
+    const fallbackScripts = Array.isArray(step.fallbackValidationScripts)
+      ? step.fallbackValidationScripts
+      : Array.isArray(step.fallback_validation_scripts)
+        ? step.fallback_validation_scripts
+        : [];
+    const functions = Array.isArray(step.functions) ? step.functions : [];
+    return Boolean(
+      step.requiresValidationScript
+        || step.function === "run_external_validation"
+        || step.function === "adaptive_python_gate"
+        || functions.includes("run_external_validation")
+        || functions.includes("adaptive_python_gate")
+        || fallbackScripts.length > 0
+    );
+  }
+
   function acceptsValidationScript(workflow) {
-    return enabledSteps(workflow).some((step) => step.requiresValidationScript || step.function === "run_external_validation");
+    return enabledSteps(workflow).some(stepAcceptsValidationScript);
   }
 
   function requiresValidationScript(workflow) {
@@ -165,6 +182,14 @@ export function createWorkflows(ctx) {
         }).join("");
       }
 
+      const profileSelect = ui.byKey("runProfile");
+      if (profileSelect) {
+        profileSelect.value = ["small", "normal", "strong"].includes(state.runProfile) ? state.runProfile : "normal";
+        profileSelect.disabled = locked;
+      }
+      const advancedToggle = ui.byKey("advancedMode");
+      if (advancedToggle) advancedToggle.checked = Boolean(state.advancedMode);
+
       const selected = selectedWorkflow();
       if (selectedLabel) selectedLabel.textContent = workflowLabel(selected);
       if (button) {
@@ -196,6 +221,8 @@ export function createWorkflows(ctx) {
       }
       picker?.classList.toggle("locked", locked);
       renderThinkingLockState(locked);
+      const profileSelect = ui.byKey("runProfile");
+      if (profileSelect) profileSelect.disabled = locked;
       ui.byKey("workflowDropdownMenu")?.querySelectorAll(".workflow-dropdown-option").forEach((option) => {
         option.disabled = locked;
         option.setAttribute("aria-disabled", String(locked));
@@ -229,13 +256,13 @@ export function createWorkflows(ctx) {
       const stepsHtml = compact ? "" : `
           <div class="workflow-preview-steps" aria-label="Selected workflow steps">
             ${steps.map((step, index) => `
-              <div class="workflow-preview-step${step.requiresValidationScript ? " requires-validation" : ""}">
+              <div class="workflow-preview-step${stepAcceptsValidationScript(step) ? " accepts-validation" : ""}${step.requiresValidationScript ? " requires-validation" : ""}">
                 <span class="workflow-preview-step-no">${index + 1}</span>
                 <span class="workflow-preview-step-main">
                   <strong>${ui.escapeHtml(step.name || step.key || `Step ${index + 1}`)}</strong>
                   <small>${ui.escapeHtml(step.key || "")}${step.type ? ` - ${ui.escapeHtml(step.type)}` : ""}</small>
                 </span>
-                <span class="workflow-preview-step-output">${ui.escapeHtml(step.requiresValidationScript ? "Validation Script" : outputLabel(step))}</span>
+                <span class="workflow-preview-step-output">${ui.escapeHtml(stepAcceptsValidationScript(step) ? "Validation / Gate" : outputLabel(step))}</span>
               </div>
             `).join("")}
           </div>`;
@@ -243,10 +270,10 @@ export function createWorkflows(ctx) {
       const validationHtml = !compact && acceptsValidationScript(workflow) ? `
           <div class="workflow-validation-note workflow-step-validation">
             <label class="validation-script-field workflow-step-validation-script" id="validationScriptField" title="Optional run-specific Python validation script path">
-              <span>Validation Script</span>
+              <span>Validation Script <em>optional</em></span>
               <input id="validationScript" type="text" value="${ui.escapeHtml(validationValue)}" placeholder="Optional: tools/check_config.py or C:\path\validate.py" autocomplete="off" />
             </label>
-            <small>Optional. Leave empty to skip external validation with PASS.</small>
+            <small>Optional. If empty, the workflow auto-detects validation.py / validate.py / verify.py / check.py, or skips validation as PASS.</small>
           </div>` : "";
       preview.innerHTML = `
         <div class="workflow-preview-card${compact ? " locked compact" : ""}">
@@ -259,6 +286,7 @@ export function createWorkflows(ctx) {
             <div class="workflow-preview-meta">
               <span>${steps.length} enabled</span>
               <span>${allSteps.length} total</span>
+              <span>model: ${ui.escapeHtml(state.runProfile || "normal")}</span>
               ${compact ? `<span class="workflow-preview-lock">${ui.escapeHtml(compactLabel)}</span>` : ""}
             </div>
           </div>
@@ -285,6 +313,15 @@ export function createWorkflows(ctx) {
       LocalStore.setString(StorageKeys.selectedWorkflowId, state.selectedWorkflowId);
       workflows.render();
       workflows.toggleDropdown(false);
+    },
+
+    selectRunProfile(profile) {
+      const normalized = ["small", "normal", "strong"].includes(profile) ? profile : "normal";
+      state.runProfile = normalized;
+      LocalStore.setString(StorageKeys.runProfile, normalized);
+      const select = ui.byKey("runProfile");
+      if (select) select.value = normalized;
+      workflows.renderPreview();
     },
 
     selectThinkingLevel(level) {

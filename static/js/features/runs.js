@@ -124,10 +124,13 @@ export function createRuns(ctx) {
       const config = step.config || {};
       const relatedArtifacts = ctx.features.artifacts.artifactsForStep(step, run.artifacts || []);
       const promptArtifact = relatedArtifacts.find((artifact) => String(artifact.path || "") === `prompts/${step.key}.md`);
+      const effectivePromptArtifact = relatedArtifacts.find((artifact) => String(artifact.path || "") === `prompts/${step.key}.effective.md`);
+      const promptMetaArtifact = relatedArtifacts.find((artifact) => String(artifact.path || "") === `prompts/${step.key}.prompt-meta.json`);
+      const policy = config.retryPolicy || step.retry_policy || {};
       const retryPolicy = [
-        `max ${Number(step.max_retries ?? config.maxRetries ?? 0)}`,
-        `from ${step.retry_from_step_key || config.retryFromStepKey || "auto"}`,
-        `on fail ${step.fail_action || config.failAction || "same_step"}`,
+        `max ${Number(policy.maxRetries ?? step.max_retries ?? config.maxRetries ?? 0)}`,
+        `retry to ${policy.defaultRetryTo || step.retry_from_step_key || config.retryFromStepKey || "auto"}`,
+        policy.escalateEvery ? `every ${policy.escalateEvery} -> ${policy.escalateTo || "earlier step"}` : `on fail ${step.fail_action || config.failAction || "same_step"}`,
       ].join(" - ");
       const events = (step.events || []).slice(-5).reverse();
       const files = relatedArtifacts.slice(0, 6);
@@ -146,6 +149,11 @@ export function createRuns(ctx) {
             <div><span>Output</span><strong>${ui.escapeHtml(config.outputFile || config.filename || "-")}</strong><small>${files.length} related file${files.length === 1 ? "" : "s"}</small></div>
           </div>
           ${step.error ? `<div class="step-detail-error"><strong>Failure</strong><span>${ui.escapeHtml(step.error)}</span></div>` : ""}
+          ${Array.isArray(step.changed_files) && step.changed_files.length ? `
+          <div class="step-detail-section compact-files">
+            <div class="step-detail-section-head"><strong>Changed Files</strong><span>${step.changed_files.length} detected</span></div>
+            <div class="step-detail-files">${step.changed_files.slice(0, 10).map((file) => `<span class="step-detail-file passive">${ui.escapeHtml(file)}</span>`).join("")}</div>
+          </div>` : ""}
           <div class="step-detail-section">
             <div class="step-detail-section-head">
               <strong>Recent Events</strong>
@@ -175,10 +183,16 @@ export function createRuns(ctx) {
           </div>
           <div class="step-detail-actions" aria-label="Step actions">
             ${promptArtifact ? `<button class="mini-button step-detail-open-prompt" type="button">Prompt</button>` : ""}
+            ${effectivePromptArtifact ? `<button class="mini-button step-detail-open-effective-prompt" type="button">Effective</button>` : ""}
+            ${state.advancedMode ? `<button class="mini-button step-detail-export-run" type="button">Export Run</button><button class="mini-button step-detail-replay-run" type="button">Replay</button>` : ""}
+            ${promptMetaArtifact ? `<button class="mini-button step-detail-open-prompt-meta" type="button">Meta</button>` : ""}
             <button class="mini-button step-detail-open-drawer" type="button">Details</button>
             ${relatedArtifacts.length ? `<button class="mini-button step-detail-open-files" type="button">Files ${relatedArtifacts.length}</button>` : ""}
             <button class="mini-button step-detail-guide" type="button">Guide</button>
             <button class="mini-button step-detail-retry" type="button">Retry</button>
+            <button class="mini-button step-detail-resume" type="button">Resume</button>
+            <button class="mini-button step-detail-skip" type="button">Skip</button>
+            <button class="mini-button step-detail-pass" type="button">Mark Pass</button>
           </div>
         </article>
       `;
@@ -186,8 +200,13 @@ export function createRuns(ctx) {
       target.querySelector(".step-detail-open-files")?.addEventListener("click", () => ctx.features.artifacts.openStepFilesModal(run, step));
       target.querySelector(".step-detail-open-drawer")?.addEventListener("click", () => runs.openStepDetailModal(run, step));
       target.querySelector(".step-detail-open-prompt")?.addEventListener("click", () => ctx.features.artifacts.open(promptArtifact.id));
+      target.querySelector(".step-detail-open-effective-prompt")?.addEventListener("click", () => ctx.features.artifacts.open(effectivePromptArtifact.id));
+      target.querySelector(".step-detail-open-prompt-meta")?.addEventListener("click", () => ctx.features.artifacts.open(promptMetaArtifact.id));
       target.querySelector(".step-detail-guide")?.addEventListener("click", () => runs.addGuidance(step.key));
       target.querySelector(".step-detail-retry")?.addEventListener("click", () => runs.retry(step.key));
+      target.querySelector(".step-detail-resume")?.addEventListener("click", () => runs.resume(step.key));
+      target.querySelector(".step-detail-skip")?.addEventListener("click", () => runs.manualStepControl("skip", step.key));
+      target.querySelector(".step-detail-pass")?.addEventListener("click", () => runs.manualStepControl("pass", step.key));
       target.querySelectorAll("[data-artifact-id]").forEach((button) => {
         button.addEventListener("click", () => ctx.features.artifacts.open(button.dataset.artifactId));
       });
@@ -203,6 +222,7 @@ export function createRuns(ctx) {
       }
       const summary = (run.artifacts || []).find((artifact) => artifact.path === ".workflow/run-summary.md");
       const trace = (run.artifacts || []).find((artifact) => artifact.path === ".workflow/run-trace.json");
+      const gateReport = (run.artifacts || []).find((artifact) => artifact.path === ".workflow/gate-report.md");
       const failed = (run.steps || []).find((step) => ["failed", "waiting_input", "cancelled"].includes(step.status));
       const passed = (run.steps || []).filter((step) => step.status === "passed").length;
       const retries = (run.steps || []).reduce((total, step) => total + Number(step.retry_count || 0), 0);
@@ -215,6 +235,7 @@ export function createRuns(ctx) {
             <p>${ui.escapeHtml(failed?.error || run.error || (run.status === "done" ? "All enabled steps finished." : "Inspect the failed step for details."))}</p>
           </div>
           <div class="run-result-actions">
+            ${gateReport ? `<button class="mini-button" data-result-artifact="${ui.escapeHtml(gateReport.id)}">Gate Report</button>` : ""}
             ${summary ? `<button class="mini-button" data-result-artifact="${ui.escapeHtml(summary.id)}">Summary</button>` : ""}
             ${trace ? `<button class="mini-button" data-result-artifact="${ui.escapeHtml(trace.id)}">Trace</button>` : ""}
             <button class="mini-button" data-result-tab="logsPanel">Logs</button>
@@ -224,6 +245,14 @@ export function createRuns(ctx) {
           <div><span>Steps</span><strong>${passed} / ${(run.steps || []).length}</strong></div>
           <div><span>Retries</span><strong>${retries}</strong></div>
           <div><span>Error Code</span><strong>${ui.escapeHtml(failed?.error_code || run.error_code || "-")}</strong></div>
+        </div>
+        <div class="run-timeline-inline" aria-label="Run timeline">
+          ${(run.timeline || []).slice(-6).reverse().map((event) => `
+            <div class="run-timeline-item">
+              <span>${ui.escapeHtml(event.step_key || event.stepKey || "run")}</span>
+              <strong>${ui.escapeHtml(event.kind || event.type || "event")}</strong>
+              <small>${ui.escapeHtml(event.message || "")}</small>
+            </div>`).join("") || `<div class="run-timeline-item empty"><span>timeline</span><strong>empty</strong><small>No events yet.</small></div>`}
         </div>
       `;
       panel.querySelectorAll("[data-result-artifact]").forEach((button) => {
@@ -236,6 +265,8 @@ export function createRuns(ctx) {
       const modal = runs.ensureStepDetailModal();
       const related = ctx.features.artifacts.artifactsForStep(step, run.artifacts || []);
       const promptArtifact = related.find((artifact) => artifact.path === `prompts/${step.key}.md`);
+      const effectivePromptArtifact = related.find((artifact) => artifact.path === `prompts/${step.key}.effective.md`);
+      const promptMetaArtifact = related.find((artifact) => artifact.path === `prompts/${step.key}.prompt-meta.json`);
       const outputArtifact = related.find((artifact) => artifact.path === `output/${step.config?.outputFile || step.config?.filename || ""}`);
       const traceArtifact = (run.artifacts || []).find((artifact) => artifact.path === ".workflow/run-trace.json");
       modal.title.textContent = step.title || step.key || "Step Details";
@@ -254,6 +285,8 @@ export function createRuns(ctx) {
         }</div>
         <div class="step-detail-actions">
           ${promptArtifact ? `<button class="mini-button" data-artifact-id="${ui.escapeHtml(promptArtifact.id)}">Prompt</button>` : ""}
+          ${effectivePromptArtifact ? `<button class="mini-button" data-artifact-id="${ui.escapeHtml(effectivePromptArtifact.id)}">Effective Prompt</button>` : ""}
+          ${promptMetaArtifact ? `<button class="mini-button" data-artifact-id="${ui.escapeHtml(promptMetaArtifact.id)}">Prompt Meta</button>` : ""}
           ${outputArtifact ? `<button class="mini-button" data-artifact-id="${ui.escapeHtml(outputArtifact.id)}">Output</button>` : ""}
           ${traceArtifact ? `<button class="mini-button" data-artifact-id="${ui.escapeHtml(traceArtifact.id)}">Trace</button>` : ""}
           ${related.length ? `<button class="mini-button" data-open-files="1">Files ${related.length}</button>` : ""}
@@ -385,6 +418,7 @@ export function createRuns(ctx) {
         const payload = {
           workflow_id: state.selectedWorkflowId,
           thinkingLevel: state.thinkingLevel || "medium",
+          runProfile: state.runProfile || "normal",
         };
         if (validationScript) payload.validation_script = validationScript;
         const run = await api.request(`/api/sessions/${state.activeSessionId}/workflow-runs`, {
@@ -477,6 +511,77 @@ export function createRuns(ctx) {
         ctx.features.layout.activateTab("logsPanel");
       } finally {
         ui.byKey("addGuidance").disabled = false;
+      }
+    },
+
+
+    async manualStepControl(action, stepKey) {
+      if (!state.activeRunId || !stepKey) return;
+      const title = action === "skip" ? "Skip Step" : "Mark Step Passed";
+      const reason = await ctx.features.modal.openInput({
+        title,
+        description: `${title}: ${stepKey}`,
+        label: "Reason",
+        placeholder: action === "skip" ? "Why is this safe to skip?" : "Why is this safe to mark passed?",
+        hint: "This is a manual controller action. Use it only when you have inspected the artifacts.",
+        confirmText: title,
+        multiline: true,
+      });
+      if (reason === null || reason === undefined) return;
+      try {
+        const endpoint = action === "skip" ? "skip" : "pass";
+        const run = await api.request(`/api/workflow-runs/${state.activeRunId}/steps/${endpoint}`, {
+          method: "POST",
+          body: JSON.stringify({ step_key: stepKey, reason }),
+        });
+        ctx.features.console.append("logs", `${title} applied to ${stepKey}.`);
+        runs.render(run);
+      } catch (err) {
+        ctx.features.console.append("logs", `${title} failed: ${err.message}`);
+        ctx.features.layout.activateTab("logsPanel");
+      }
+    },
+
+    async resume(stepKey = null) {
+      if (!state.activeRunId) return;
+      try {
+        ctx.features.console.append("logs", stepKey ? `Resume requested from ${stepKey}...` : "Resume requested...");
+        const run = await api.request(`/api/workflow-runs/${state.activeRunId}/resume`, {
+          method: "POST",
+          body: JSON.stringify({ step_key: stepKey || state.selectedStepKey || "" }),
+        });
+        await runs.follow(run.id);
+      } catch (err) {
+        ctx.features.console.append("logs", `Resume failed: ${err.message}`);
+        ctx.features.layout.activateTab("logsPanel");
+      }
+    },
+
+    async exportRun() {
+      if (!state.activeRunId) return;
+      window.open(`/api/workflow-runs/${state.activeRunId}/export`, "_blank", "noopener");
+    },
+
+    async replayRun() {
+      if (!state.activeRunId) return;
+      const confirmText = await ctx.features.modal.openInput({
+        title: "Replay Run",
+        description: "Create a new run using the same requirement, workflow, project, validation script, and model profile.",
+        label: "Reason",
+        placeholder: "Optional replay note",
+        hint: "This starts a fresh run. Existing artifacts stay unchanged.",
+        confirmText: "Replay",
+        multiline: true,
+      });
+      if (confirmText === null || confirmText === undefined) return;
+      try {
+        ctx.features.console.append("logs", "Replay requested...");
+        const run = await api.request(`/api/workflow-runs/${state.activeRunId}/replay`, { method: "POST", body: JSON.stringify({}) });
+        ctx.features.console.append("logs", `Replay started: ${run.id}`);
+        await runs.follow(run.id);
+      } catch (err) {
+        ctx.features.console.append("logs", `Replay failed: ${err.message}`);
+        ctx.features.layout.activateTab("logsPanel");
       }
     },
 

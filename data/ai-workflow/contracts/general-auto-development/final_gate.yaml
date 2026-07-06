@@ -1,7 +1,8 @@
 id: final_gate
 key: final_gate
 name: Final Gate / Report
-description: Final controller gate. Requires AI implementation review to PASS and external validation to PASS or SKIPPED.
+description: Final controller gate. Requires AI implementation review to PASS and
+  external validation to PASS or SKIPPED.
 enabled: true
 type: gate
 skill: steps/general-auto-development/06_final_gate.md
@@ -39,3 +40,8 @@ timeout: 0.0
 functions:
 - require_status_pass
 approval: false
+retryPolicy:
+  defaultRetryTo: implementation_review
+  escalateEvery: 3
+  escalateTo: plan_tasks
+  maxRetries: 99

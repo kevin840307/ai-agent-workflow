@@ -35,6 +35,15 @@ export const FailActions = [
   ["stop", "Stop immediately"],
 ];
 
+export const DesignerSettingGroups = [
+  { id: "basic", label: "Basic", description: "Name, type, agent, and visible step metadata." },
+  { id: "prompt", label: "Prompt", description: "Human CLI-style instruction template and included artifacts." },
+  { id: "retry", label: "Retry", description: "Retry from step, every-N escalation, and max retry safety." },
+  { id: "validation", label: "Validation", description: "Optional validation script, test command, and gate evidence." },
+  { id: "session", label: "Session", description: "Same-session repair, fresh planning, or isolated reviewer sessions." },
+  { id: "advanced", label: "Advanced", description: "Timeout, compact prompt, and compatibility switches." },
+];
+
 export const BuiltInPromptParams = [
   { key: "requirement", label: "Requirement", description: "Main user input from the runner composer.", sample: "Create a controllable agent workflow UI." },
   { key: "project_path", label: "Project Path", description: "Current project folder path.", sample: "C:\\Users\\kevin\\sort" },

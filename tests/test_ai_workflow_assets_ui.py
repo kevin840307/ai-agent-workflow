@@ -82,10 +82,30 @@ class AiWorkflowAssetsUiTests(unittest.TestCase):
         self.assertNotIn('id="validationScript"', html)
         self.assertIn('validationScript: "validationScript"', dom)
         self.assertIn("payload.validation_script = validationScript", runs)
-        self.assertIn("requiresValidationScript(workflow)", workflows)
+        self.assertIn("stepAcceptsValidationScript(step", workflows)
+        self.assertIn('step.function === "adaptive_python_gate"', workflows)
+        self.assertIn('fallbackScripts.length > 0', workflows)
         self.assertIn('id="validationScript"', workflows)
         self.assertIn("workflow-step-validation", workflows)
+        self.assertIn("Validation Script <em>optional</em>", workflows)
+        self.assertIn("auto-detects validation.py", workflows)
         self.assertIn("body.chat-mode .validation-script-field", css)
+
+
+    def test_validation_script_field_is_common_for_adaptive_and_general_workflows(self) -> None:
+        workflows = (ROOT / "static/js/features/workflows.js").read_text(encoding="utf-8")
+        designer = (ROOT / "static/js/pages/workflow-designer/layout-renderer.js").read_text(encoding="utf-8")
+        adaptive_contract = (ROOT / "data/ai-workflow/contracts/adaptive-auto-workflow/ai_review.yaml").read_text(encoding="utf-8")
+        general_contract = (ROOT / "data/ai-workflow/contracts/general-auto-development/run_external_validation.yaml").read_text(encoding="utf-8")
+
+        self.assertIn("adaptive_python_gate", adaptive_contract)
+        self.assertIn("fallbackValidationScripts:", adaptive_contract)
+        self.assertIn("run_external_validation", general_contract)
+        self.assertIn("fallbackValidationScripts:", general_contract)
+        self.assertIn('step.function === "adaptive_python_gate"', workflows)
+        self.assertIn('step.function === "run_external_validation"', workflows)
+        self.assertIn("workflowAcceptsValidationScript(wf)", designer)
+        self.assertIn("--validation-script <validate.py>", designer)
 
     def test_general_auto_development_external_validation_is_optional_with_fallback_scripts(self) -> None:
         contract = (ROOT / "data/ai-workflow/contracts/general-auto-development/run_external_validation.yaml").read_text(encoding="utf-8")

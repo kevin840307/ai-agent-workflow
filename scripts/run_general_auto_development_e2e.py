@@ -81,7 +81,7 @@ def run_case(client: TestClient, output_root: Path, label: str, *, scenario: str
             "workflow_id": "general-auto-development",
             "project_path": str(project_dir),
             "requirement": "Create a deterministic Python helper named workflow_greeting and verify it with tests.",
-            "test_command": "python -m pytest -q",
+            "test_command": "python -c \"from workflow_mock_feature import workflow_greeting; assert workflow_greeting() == \\\"hello from controlled workflow\\\"\"",
         },
     )
     run_resp.raise_for_status()
@@ -112,6 +112,9 @@ def main() -> int:
         ("04-validation-fail-repair", "general_validation_fail_once", True),
     ]
     results: list[dict] = []
+    # Use a single TestClient for the whole scenario matrix. This avoids
+    # repeated ASGI shutdown/startup drains in constrained CI while still
+    # creating one isolated project and session per scenario.
     with TestClient(app) as client:
         for label, scenario, with_validation in cases:
             results.append(run_case(client, output_root, label, scenario=scenario, with_validation=with_validation))

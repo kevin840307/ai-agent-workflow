@@ -42,7 +42,7 @@
         <header class="designer-topbar">
           <div>
             <h1>Workflow Designer</h1>
-            <p>Configure custom workflows, prompts, skills, review strategy, retry, timeout, and human gates.</p>
+            <p>Configure workflows using common controller concepts: Basic, Prompt, Retry, Validation, Session, and Advanced settings.</p>
           </div>
           <div class="designer-topbar-actions">
             <div class="designer-action-group" aria-label="Workflow actions">
@@ -120,6 +120,14 @@
           </div>
         </details>
 
+
+        <section class="designer-assets-callout designer-controller-concepts" aria-label="Workflow controller concepts">
+          <div>
+            <span class="designer-eyebrow">Controller UX</span>
+            <h3>Keep workflow settings common and user-facing.</h3>
+            <p>Use <strong>Retry from step</strong>, <strong>Every N failures escalate</strong>, <strong>Validation Script optional</strong>, and <strong>Session strategy</strong>. Avoid exposing internal function names such as adaptive_python_gate to end users.</p>
+          </div>
+        </section>
 
         <section class="designer-assets-callout" aria-label="Workflow asset library shortcut">
           <div>

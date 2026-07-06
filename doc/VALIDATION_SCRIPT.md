@@ -1,0 +1,25 @@
+# Validation Script
+
+A validation script is an optional Python acceptance gate.
+
+The controller checks, in order:
+
+1. Run request `validation_script`
+2. `validation.py`
+3. `validate.py`
+4. `verify.py`
+5. `check.py`
+6. pytest tests if present
+7. skipped PASS
+
+The script is executed from Project Path. The controller first tries:
+
+```bash
+python validation.py --project <project> --workspace <run-workspace> --output <output-dir>
+```
+
+If the script rejects those arguments, it falls back to:
+
+```bash
+python validation.py
+```

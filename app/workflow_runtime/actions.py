@@ -825,6 +825,20 @@ class WorkflowActions:
 
     def _review_decision(self, output: str, config: dict[str, Any]) -> dict[str, Any]:
         text = output or ""
+        json_decision = self._review_json_decision(text)
+        if json_decision is not None:
+            status = str(json_decision.get("status") or "").strip().upper()
+            confidence = self._coerce_confidence(json_decision.get("confidence"))
+            reason = str(json_decision.get("reason") or json_decision.get("summary") or status or "json review decision").strip()
+            if status == "PASS":
+                threshold = float(config.get("confidenceThreshold") or 0)
+                effective_confidence = confidence if confidence is not None else 1.0
+                if effective_confidence < threshold:
+                    return {"passed": False, "confidence": effective_confidence, "reason": f"confidence {effective_confidence:.2f} < threshold {threshold:.2f}"}
+                return {"passed": True, "confidence": effective_confidence, "reason": reason}
+            if status in {"FAIL", "BLOCKED", "RISK"}:
+                return {"passed": False, "confidence": confidence or 0.0, "reason": reason or f"json status {status}"}
+
         lowered = text.lower()
         pass_keywords = self._split_keywords(config.get("passKeywords") or "PASS, APPROVED")
         fail_keywords = self._split_keywords(config.get("failKeywords") or "FAIL, BLOCKED")
@@ -841,6 +855,38 @@ class WorkflowActions:
         if effective_confidence < threshold:
             return {"passed": False, "confidence": effective_confidence, "reason": f"confidence {effective_confidence:.2f} < threshold {threshold:.2f}"}
         return {"passed": True, "confidence": effective_confidence, "reason": pass_hit or "passed"}
+
+    @staticmethod
+    def _review_json_decision(output: str) -> dict[str, Any] | None:
+        text = (output or "").strip()
+        if not text:
+            return None
+        if text.startswith("```"):
+            match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, flags=re.DOTALL | re.IGNORECASE)
+            if match:
+                text = match.group(1).strip()
+        else:
+            start = text.find("{")
+            end = text.rfind("}")
+            if start >= 0 and end > start:
+                text = text[start : end + 1]
+        try:
+            parsed = json.loads(text)
+        except Exception:
+            return None
+        return parsed if isinstance(parsed, dict) else None
+
+    @staticmethod
+    def _coerce_confidence(value: Any) -> float | None:
+        try:
+            if value is None or value == "":
+                return None
+            parsed = float(value)
+        except (TypeError, ValueError):
+            return None
+        if parsed > 1 and parsed <= 100:
+            parsed = parsed / 100.0
+        return max(0.0, min(1.0, parsed))
 
     def _aggregate_review(self, config: dict[str, Any], decisions: list[dict[str, Any]]) -> dict[str, Any]:
         aggregator = str(config.get("aggregatorFunction") or "keyword_confidence")
@@ -2126,6 +2172,16 @@ class WorkflowActions:
     ) -> None:
         output_dir = Path(run["workspace"]) / "output"
         step_record = next((step for step in run.get("steps", []) if step.get("key") == "ai_review"), {})
+        config = {**step_record, **step_config(step_record)}
+        if bool_config(config, "runPythonGate", True):
+            await self.functions.call_python_functions(
+                self._run_with_step_context(run, step_record),
+                ["adaptive_python_gate"],
+                output_dir,
+                "external-validation-result.md",
+            )
+            await self.refresh_artifacts(run["id"])
+            await self.log(run, "ai_review: Python validation/test gate passed or was skipped before AI review")
         await self.review_step(
             run,
             "ai_review",
@@ -2134,16 +2190,7 @@ class WorkflowActions:
             allow_interaction=allow_interaction,
             agent_name=agent_name,
         )
-        await asyncio.to_thread(self.functions.require_status, output_dir / normalize_artifact_name(artifact), "PASS")
-        if bool_config({**step_record, **step_config(step_record)}, "runPythonGate", True):
-            await self.functions.call_python_functions(
-                self._run_with_step_context(run, step_record),
-                ["adaptive_python_gate"],
-                output_dir,
-                "external-validation-result.md",
-            )
-            await self.refresh_artifacts(run["id"])
-            await self.log(run, "ai_review: AI review passed and Python validation gate passed or was skipped")
+        await self.log(run, "ai_review: AI review passed after reading validation/test evidence")
 
     async def consensus_agent_step(
         self,

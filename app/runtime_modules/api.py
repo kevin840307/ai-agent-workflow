@@ -15,6 +15,7 @@ from app.domain.schemas import (  # noqa: F401
     RetryRunRequest,
     SubmitAnswersRequest,
     SubmitGuidanceRequest,
+    StepControlRequest,
 )
 from app.runtime_modules.events import EventBus
 from app.runtime_modules.errors import ValidationError, WorkflowCancelled, WorkflowError, UserInputRequired  # noqa: F401

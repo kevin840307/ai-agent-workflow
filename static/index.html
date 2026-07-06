@@ -133,6 +133,18 @@
                 </button>
               </div>
             </div>
+            <div class="profile-picker" id="profilePicker" title="Tune workflow prompts and retry behavior for model capability.">
+              <span class="workflow-picker-label">Model</span>
+              <select id="runProfile" class="workflow-native-select">
+                <option value="small">Small</option>
+                <option value="normal" selected>Normal</option>
+                <option value="strong">Strong</option>
+              </select>
+            </div>
+            <label class="advanced-mode-toggle" title="Show advanced prompt, trace, and manual controller details.">
+              <input id="advancedMode" type="checkbox" />
+              <span>Advanced</span>
+            </label>
           </div>
           <textarea id="messageInput" placeholder="Describe what to build..." rows="2"></textarea>
           <div class="composer-footer">

@@ -56,8 +56,24 @@ def validate_todo(ctx: WorkflowFunctionContext, artifact: str = "todo.md") -> No
 
 def require_status_pass(ctx: WorkflowFunctionContext, artifact: str) -> None:
     text = ctx.read_text(ctx.output_dir / artifact)
-    if "Status: PASS" not in text:
-        raise WorkflowFunctionError(f"{artifact} must contain 'Status: PASS'.")
+    if "Status: PASS" in text:
+        return
+    try:
+        raw = text.strip()
+        if raw.startswith("```"):
+            match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", raw, flags=re.DOTALL | re.IGNORECASE)
+            raw = match.group(1).strip() if match else raw
+        else:
+            start = raw.find("{")
+            end = raw.rfind("}")
+            if start >= 0 and end > start:
+                raw = raw[start : end + 1]
+        parsed = json.loads(raw)
+    except Exception:
+        parsed = None
+    if isinstance(parsed, dict) and str(parsed.get("status") or "").strip().upper() == "PASS":
+        return
+    raise WorkflowFunctionError(f"{artifact} must contain 'Status: PASS' or JSON status PASS.")
 
 
 def summarize_command_failure(stdout: str, stderr: str) -> str:
@@ -207,35 +223,15 @@ async def _run_validation_script(ctx: WorkflowFunctionContext, script: Path, art
         "--output",
         str(ctx.output_dir),
     ]
-    await ctx.log(ctx.run, f"python_gate: executing validation script `{script}` in {ctx.project_dir}")
+    timeout_sec = _test_command_timeout_seconds()
+    await ctx.log(ctx.run, f"python_gate: executing validation script `{script}` in {ctx.project_dir} (timeout {timeout_sec:.0f}s)")
 
-    def execute() -> subprocess.CompletedProcess[str]:
-        return subprocess.run(
-            command,
-            cwd=str(ctx.project_dir),
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            timeout=None,
-        )
+    proc = await _run_validation_command(command, cwd=ctx.project_dir, timeout_sec=timeout_sec)
+    if proc["returncode"] != 0 and _looks_like_script_argument_error(proc["stderr"]):
+        command = [sys.executable, str(script)]
+        proc = await _run_validation_command(command, cwd=ctx.project_dir, timeout_sec=timeout_sec)
 
-    proc = await asyncio.to_thread(execute)
-    if proc.returncode != 0 and _looks_like_script_argument_error(proc.stderr):
-        fallback_command = [sys.executable, str(script)]
-
-        def execute_fallback() -> subprocess.CompletedProcess[str]:
-            return subprocess.run(
-                fallback_command,
-                cwd=str(ctx.project_dir),
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                timeout=None,
-            )
-
-        command = fallback_command
-        proc = await asyncio.to_thread(execute_fallback)
-    status = "PASS" if proc.returncode == 0 else "FAIL"
+    status = "PASS" if proc["returncode"] == 0 else "FAIL"
     result = "\n".join(
         [
             "# Python Gate Result",
@@ -244,26 +240,52 @@ async def _run_validation_script(ctx: WorkflowFunctionContext, script: Path, art
             "Mode: validation_script",
             f"Script: {_display_path(ctx.project_dir, script)}",
             f"Command: {' '.join(_quote_command_part(part) for part in command)}",
-            f"Exit Code: {proc.returncode}",
+            f"Exit Code: {proc['returncode']}",
+            *([f"TimeoutSec: {timeout_sec:.0f}"] if proc["returncode"] == "TIMEOUT" else []),
             "",
             "## Stdout",
             "```text",
-            (proc.stdout or "").rstrip(),
+            (proc["stdout"] or "").rstrip(),
             "```",
             "",
             "## Stderr",
             "```text",
-            (proc.stderr or "").rstrip(),
+            (proc["stderr"] or "").rstrip(),
             "```",
             "",
         ]
     )
     ctx.write_text(ctx.output_dir / artifact, result)
-    if proc.returncode != 0:
-        summary = summarize_command_failure(proc.stdout, proc.stderr)
+    if proc["returncode"] == "TIMEOUT":
+        raise WorkflowFunctionError(f"Python gate validation script timed out after {timeout_sec:.0f} seconds")
+    if proc["returncode"] != 0:
+        summary = summarize_command_failure(proc["stdout"], proc["stderr"])
         detail = f": {summary}" if summary else ""
-        raise WorkflowFunctionError(f"Python gate validation script failed with exit code {proc.returncode}{detail}")
+        raise WorkflowFunctionError(f"Python gate validation script failed with exit code {proc['returncode']}{detail}")
 
+
+async def _run_validation_command(command: list[str], *, cwd: Path, timeout_sec: float) -> dict[str, object]:
+    process = await asyncio.create_subprocess_exec(
+        *command,
+        cwd=str(cwd),
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+    try:
+        stdout_b, stderr_b = await asyncio.wait_for(process.communicate(), timeout=timeout_sec)
+    except asyncio.TimeoutError:
+        process.kill()
+        stdout_b, stderr_b = await process.communicate()
+        return {
+            "returncode": "TIMEOUT",
+            "stdout": stdout_b.decode("utf-8", errors="replace") if isinstance(stdout_b, bytes) else str(stdout_b or ""),
+            "stderr": stderr_b.decode("utf-8", errors="replace") if isinstance(stderr_b, bytes) else str(stderr_b or ""),
+        }
+    return {
+        "returncode": int(process.returncode or 0),
+        "stdout": stdout_b.decode("utf-8", errors="replace") if isinstance(stdout_b, bytes) else str(stdout_b or ""),
+        "stderr": stderr_b.decode("utf-8", errors="replace") if isinstance(stderr_b, bytes) else str(stderr_b or ""),
+    }
 
 def _project_has_pytest_files(project_dir: Path) -> bool:
     tests_dir = project_dir / "tests"

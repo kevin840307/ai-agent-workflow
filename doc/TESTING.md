@@ -7,6 +7,17 @@ python -m unittest discover -s tests -v
 PYTHONPATH=. pytest -q tests/test_prompt_builder.py tests/test_agent_runner.py
 ```
 
+
+## Full local test suite
+
+Use the grouped runner for the full suite. It covers every `tests/test_*.py` module while isolating workflow runtime state between groups, which avoids FastAPI TestClient event-loop/resource leakage in long pytest sessions.
+
+```bash
+python scripts/run_tests.py
+```
+
+The runner writes logs to `test-results/` and returns a non-zero exit code if any group fails.
+
 ## Real Qwen opt-in scenarios
 
 Set these only when you want to run actual Qwen/OpenCode integration tests instead of mock tests:

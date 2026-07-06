@@ -241,14 +241,44 @@ END_FILE
 """
 
     if "review the completed sop development result against the spec" in normalized:
+        import json
         if scenario == "general_review_fail_once" and _scenario_once("general_review_fail_once:implementation_review"):
-            return "# Implementation Review\n\nStatus: FAIL\nConfidence: 1.0\n\n## Findings\n- Intentional mock implementation review failure.\n\n## Test Check\n- Tests must be checked on retry.\n\n## Required Fixes\n- Re-run Execute Task Loop and ensure workflow_greeting plus tests satisfy the SPEC.\n"
-        return "# Implementation Review\n\nStatus: PASS\nConfidence: 1.0\n\n## Findings\n- Project files satisfy the SPEC and mock validation is expected to pass or be skipped.\n\n## Test Check\n- Tests are present or validation is available.\n\n## Required Fixes\n- None\n"
+            return json.dumps({
+                "status": "FAIL",
+                "confidence": 1.0,
+                "summary": "Intentional mock implementation review failure.",
+                "missing_items": ["mock review requests one repair pass"],
+                "test_check": "tests must be checked on retry",
+                "repair_prompt": "Re-run Execute Task Loop and ensure workflow_greeting plus tests satisfy the SPEC."
+            }, indent=2) + "\n"
+        return json.dumps({
+            "status": "PASS",
+            "confidence": 1.0,
+            "summary": "Project files satisfy the SPEC and mock validation is expected to pass or be skipped.",
+            "missing_items": [],
+            "test_check": "tests are present or validation is available",
+            "repair_prompt": ""
+        }, indent=2) + "\n"
 
-    if "review and validate the completed project change against the spec" in normalized or "review the completed project change" in normalized:
+    if "review the completed project change against the spec" in normalized or "review the completed project change" in normalized:
+        import json
         if scenario == "adaptive_review_fail_once" and _scenario_once("adaptive_review_fail_once:ai_review"):
-            return "# AI Review\n\nStatus: FAIL\nConfidence: 1.0\n\n## Findings\n- Intentional mock review failure.\n\n## Test Check\n- Tests must be checked on retry.\n\n## Required Fixes\n- Re-run Execute Prompts and ensure workflow_greeting plus tests satisfy the SPEC.\n"
-        return "# AI Review\n\nStatus: PASS\nConfidence: 1.0\n\n## Findings\n- Project files satisfy the SPEC and mock validation is expected to pass.\n\n## Test Check\n- Tests are present or validation is available.\n\n## Required Fixes\n- None\n"
+            return json.dumps({
+                "status": "FAIL",
+                "confidence": 1.0,
+                "summary": "Intentional mock adaptive review failure.",
+                "missing_items": ["mock review requests one repair pass"],
+                "test_check": "tests must be checked on retry",
+                "repair_prompt": "Re-run Execute Prompts and ensure workflow_greeting plus tests satisfy the SPEC."
+            }, indent=2) + "\n"
+        return json.dumps({
+            "status": "PASS",
+            "confidence": 1.0,
+            "summary": "Project files satisfy the SPEC and validation/test evidence is acceptable.",
+            "missing_items": [],
+            "test_check": "tests are present or validation is available",
+            "repair_prompt": ""
+        }, indent=2) + "\n"
 
     if "create a concise task plan for this project request" in normalized:
         return """# Todo

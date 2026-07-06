@@ -1,7 +1,8 @@
 id: implementation_review
 key: implementation_review
 name: Implementation Review
-description: AI reviews completed task loop output against spec/todo/task results and checks test evidence. FAIL returns repair prompts to Execute Task Loop.
+description: AI reviews completed task loop output against spec/todo/task results
+  and checks test evidence. FAIL returns repair prompts to Execute Task Loop.
 enabled: true
 type: review
 skill: steps/general-auto-development/02_implementation_review.md
@@ -28,7 +29,7 @@ timeoutEnabled: true
 timeoutMinutes: 3.0
 reviewMode: current_session
 confidenceThreshold: 0.75
-passKeywords: PASS, APPROVED
+passKeywords: PASS
 failKeywords: FAIL, BLOCKED, RISK
 aggregatorFunction: keyword_confidence
 sources: []
@@ -37,3 +38,9 @@ path: contracts/general-auto-development/implementation_review.yaml
 compactPrompt: true
 includeSkillContext: false
 compactRetryPromptWhenReusingSession: true
+reviewOutputFormat: json
+retryPolicy:
+  defaultRetryTo: build
+  escalateEvery: 3
+  escalateTo: plan_tasks
+  maxRetries: 99

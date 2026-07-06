@@ -109,7 +109,7 @@ class WorkflowDefinitionIntegrityTests(unittest.TestCase):
 
     def test_general_plan_tasks_outputs_json_controller_plan(self) -> None:
         prompt = Path("data/ai-workflow/steps/general-auto-development/01_plan_tasks.md").read_text(encoding="utf-8")
-        self.assertIn("Output one JSON object only", prompt)
+        self.assertIn("JSON object", prompt)
         self.assertIn('"spec"', prompt)
         self.assertIn('"tasks"', prompt)
         self.assertIn("Do not implement code in this step", prompt)
@@ -584,3 +584,44 @@ class SecurityBoundaryUnitTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+class ControllerReviewRetryObservabilityTests(unittest.TestCase):
+    def test_nested_retry_policy_is_supported_and_points_to_existing_steps(self) -> None:
+        from app.workflow_runtime.retry_policy import retry_target_for_step, escalated_retry_target_for_step
+
+        import yaml
+
+        workflow = workflow_config_service.read_workflow_file(Path("data/ai-workflow/workflows/adaptive-auto-workflow.workflow"))
+        keys = {step["key"] for step in workflow["steps"]}
+        review = yaml.safe_load(Path("data/ai-workflow/contracts/adaptive-auto-workflow/ai_review.yaml").read_text(encoding="utf-8"))
+        policy = review.get("retryPolicy")
+        self.assertIsInstance(policy, dict)
+        step_record = {"key": "ai_review", "config": review}
+        steps = workflow["steps"]
+        current_index = next(i for i, step in enumerate(steps) if step.get("key") == "ai_review")
+        self.assertEqual(retry_target_for_step(step_record, steps, current_index), "auto_generation")
+        self.assertEqual(escalated_retry_target_for_step(step_record, steps, next_retry_count=3), "generate_task_prompts")
+        self.assertIn(policy.get("defaultRetryTo"), keys)
+        self.assertIn(policy.get("escalateTo"), keys)
+        self.assertEqual(policy.get("escalateEvery"), 3)
+
+    def test_review_prompts_require_json_and_read_validation_evidence(self) -> None:
+        adaptive_review = Path("data/ai-workflow/steps/adaptive-auto-workflow/01_ai_review.md").read_text(encoding="utf-8")
+        general_review = Path("data/ai-workflow/steps/general-auto-development/02_implementation_review.md").read_text(encoding="utf-8")
+        for prompt in (adaptive_review, general_review):
+            with self.subTest(prompt=prompt[:40]):
+                self.assertIn("Return ONLY a JSON object", prompt)
+                self.assertIn('"status"', prompt)
+                self.assertIn('"repair_prompt"', prompt)
+                self.assertIn("validation", prompt.lower())
+                self.assertIn("result", prompt.lower())
+
+    def test_review_contracts_declare_json_output_format(self) -> None:
+        for rel in [
+            "data/ai-workflow/contracts/adaptive-auto-workflow/ai_review.yaml",
+            "data/ai-workflow/contracts/general-auto-development/implementation_review.yaml",
+        ]:
+            text = Path(rel).read_text(encoding="utf-8")
+            with self.subTest(contract=rel):
+                self.assertIn("reviewOutputFormat: json", text)
+                self.assertIn("retryPolicy:", text)

@@ -138,7 +138,7 @@ function renderWorkflowLabels() {
 
 function renderCliCommands(wf) {
   const workflowId = wf.id || "workflow-id";
-  const validationSuffix = workflowRequiresValidationScript(wf) ? " --validation-script <validate.py>" : "";
+  const validationSuffix = workflowAcceptsValidationScript(wf) ? " --validation-script <validate.py>" : "";
   setText("designerCliWorkflowName", wf.name || workflowId);
   setText("designerAutoCliCommand", `python -m app.cli.aiwf wf ${workflowId} "需求"${validationSuffix}`);
   setText("designerQwenCliCommand", `/wf ${workflowId} "需求"${validationSuffix}`);
@@ -147,8 +147,28 @@ function renderCliCommands(wf) {
   setText("designerSlashConfigCliCommand", `/wstep /build build.yaml "需求"`);
 }
 
+function workflowAcceptsValidationScript(workflow = {}) {
+  return (workflow.steps || []).some((step) => {
+    if (step.enabled === false) return false;
+    const fallbackScripts = Array.isArray(step.fallbackValidationScripts)
+      ? step.fallbackValidationScripts
+      : Array.isArray(step.fallback_validation_scripts)
+        ? step.fallback_validation_scripts
+        : [];
+    const functions = Array.isArray(step.functions) ? step.functions : [];
+    return Boolean(
+      step.requiresValidationScript
+        || step.function === "run_external_validation"
+        || step.function === "adaptive_python_gate"
+        || functions.includes("run_external_validation")
+        || functions.includes("adaptive_python_gate")
+        || fallbackScripts.length > 0
+    );
+  });
+}
+
 function workflowRequiresValidationScript(workflow = {}) {
-  return (workflow.steps || []).some((step) => step.enabled !== false && (step.requiresValidationScript || step.function === "run_external_validation"));
+  return (workflow.steps || []).some((step) => step.enabled !== false && step.requiresValidationScript);
 }
 
 function renderStepFloatingActions(wf) {

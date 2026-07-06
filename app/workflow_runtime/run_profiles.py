@@ -5,42 +5,57 @@ from typing import Any
 
 from .thinking import apply_thinking_level_to_steps
 
-VALID_RUN_PROFILES = {"fast", "normal", "deep"}
+VALID_RUN_PROFILES = {"small", "normal", "strong", "deep"}
+LEGACY_PROFILE_ALIASES = {
+    "fast": "small",
+    "quick": "small",
+    "low": "small",
+    "small-model": "small",
+    "normal-model": "normal",
+    "high": "deep",
+    "最高": "deep",
+    "超高": "deep",
+    "deep-thinking": "deep",
+    "strong-model": "strong",
+}
 
 
 def normalize_run_profile(value: str | None) -> str:
     profile = str(value or "normal").strip().lower()
-    if profile in {"high", "最高", "超高", "deep-thinking"}:
-        return "deep"
-    if profile in {"quick", "low"}:
-        return "fast"
+    profile = LEGACY_PROFILE_ALIASES.get(profile, profile)
     return profile if profile in VALID_RUN_PROFILES else "normal"
 
 
 def apply_run_profile(steps: list[dict[str, Any]], profile: str | None) -> list[dict[str, Any]]:
-    """Apply a small, deterministic run profile to workflow step metadata.
+    """Apply model capability profile to workflow metadata only.
 
-    Profiles tune runner behavior only; they do not add domain-specific logic.
-    - fast: fewer retries for quick iteration.
-    - normal: keep workflow defaults.
-    - deep: enable compatible-agent thinking and keep/increase retry budgets.
+    Profiles do not add domain logic and never generate tasks/code.
+    - small: shorter prompts, conservative retries, no extra thinking blocks.
+    - normal: workflow defaults.
+    - strong/deep: allows deeper self-checking and higher retry ceilings.
     """
     normalized = normalize_run_profile(profile)
     next_steps = deepcopy(steps)
     if normalized == "normal":
         return next_steps
 
-    fast_retry_caps = {
-        "prepare_project": 1,
-        "plan_tasks": 2,
-        "build": 4,
-        "generate_tests": 2,
+    small_retry_caps = {
+        "generate_task_prompts": 3,
+        "plan_tasks": 3,
+        "auto_generation": 6,
+        "build": 6,
+        "generate_tests": 3,
+        "implementation_review": 3,
+        "ai_review": 3,
     }
-    deep_retry_floors = {
-        "prepare_project": 3,
-        "plan_tasks": 5,
+    strong_retry_floors = {
+        "generate_task_prompts": 6,
+        "plan_tasks": 6,
+        "auto_generation": 12,
         "build": 12,
-        "generate_tests": 5,
+        "generate_tests": 6,
+        "implementation_review": 6,
+        "ai_review": 6,
         "run_test": 99,
         "run_external_validation": 99,
     }
@@ -48,16 +63,21 @@ def apply_run_profile(steps: list[dict[str, Any]], profile: str | None) -> list[
     for step in next_steps:
         key = str(step.get("key") or "")
         step_config = step.setdefault("config", {})
-        if normalized == "fast":
-            if key in fast_retry_caps:
-                _set_retry(step, min(int(step.get("max_retries", step.get("maxRetries", 0)) or 0), fast_retry_caps[key]))
+        if normalized == "small":
+            if key in small_retry_caps:
+                current = int(step.get("max_retries", step.get("maxRetries", small_retry_caps[key])) or small_retry_caps[key])
+                _set_retry(step, min(current, small_retry_caps[key]))
             step["thinking"] = False
+            step["thinkingLevel"] = "none"
             step_config["thinking"] = False
-        elif normalized == "deep":
-            if key in deep_retry_floors:
+            step_config["thinkingLevel"] = "none"
+            step_config["compactPrompt"] = True
+            step_config["includeSkillContext"] = False
+        elif normalized in {"strong", "deep"}:
+            if key in strong_retry_floors:
                 current = int(step.get("max_retries", step.get("maxRetries", 0)) or 0)
-                _set_retry(step, max(current, deep_retry_floors[key]))
-            if step.get("type") in {"ai", "review"} or key in {"prepare_project", "plan_tasks", "build", "generate_tests"}:
+                _set_retry(step, max(current, strong_retry_floors[key]))
+            if step.get("type") in {"ai", "review"} or key in strong_retry_floors:
                 step["thinking"] = True
                 step["thinkingLevel"] = "high"
                 step_config["thinking"] = True
@@ -66,7 +86,7 @@ def apply_run_profile(steps: list[dict[str, Any]], profile: str | None) -> list[
                 if isinstance(agent_options, dict):
                     agent_options["thinking"] = True
                     agent_options["thinkingLevel"] = "high"
-    if normalized == "fast":
+    if normalized == "small":
         return apply_thinking_level_to_steps(next_steps, "none")
     return next_steps
 
@@ -77,3 +97,6 @@ def _set_retry(step: dict[str, Any], value: int) -> None:
     step["maxRetries"] = value
     config = step.setdefault("config", {})
     config["maxRetries"] = value
+    policy = config.get("retryPolicy")
+    if isinstance(policy, dict):
+        policy["maxRetries"] = value

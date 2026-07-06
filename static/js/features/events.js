@@ -25,6 +25,8 @@ export function createEvents(ctx) {
       ui.on("thinkingLevel", "change", (event) => {
         ctx.features.workflows.selectThinkingLevel(event.target.value || "medium");
       });
+      ui.on("runProfile", "change", (event) => ctx.features.workflows.selectRunProfile(event.target.value || "normal"));
+      ui.on("advancedMode", "change", (event) => ctx.features.layout.setAdvancedMode(Boolean(event.target.checked)));
       ui.on("thinkingDropdownButton", "click", (event) => {
         event.stopPropagation();
         ctx.features.workflows.toggleThinkingDropdown();

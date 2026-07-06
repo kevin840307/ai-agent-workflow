@@ -25,23 +25,16 @@ Project snapshot, brief:
 Pass only if:
 - The project result satisfies the user request and SPEC acceptance criteria.
 - The task loop completed the TODO scope or has a clear justified reason for skipped items.
-- Tests exist or there is a clear reason tests are not applicable.
+- Tests exist, or tests are clearly not applicable for this request.
 - Existing behavior appears preserved.
 - No visible validation result is failing.
 
-Output only:
-
-# Implementation Review
-
-Status: PASS or FAIL
-Confidence: 0.00-1.00
-
-## Findings
-- ...
-
-## Test Check
-- State whether tests were added/updated/found, or why tests are not applicable.
-
-## Required Fixes
-- If FAIL, list concrete repair prompts for the next Execute Task Loop retry.
-- If PASS, write `None`.
+Return ONLY a JSON object in this shape:
+{
+  "status": "PASS or FAIL",
+  "confidence": 0.0,
+  "summary": "one short sentence",
+  "missing_items": ["concrete missing item, empty when PASS"],
+  "test_check": "tests present / validation passed / tests not applicable because ...",
+  "repair_prompt": "concrete prompt for Execute Task Loop retry, or empty when PASS"
+}

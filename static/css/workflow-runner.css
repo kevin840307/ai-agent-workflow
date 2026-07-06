@@ -430,6 +430,12 @@ body.chat-mode .workflow-picker {
   color: #64748b;
 }
 
+.validation-script-field em {
+  color: #94a3b8;
+  font-style: normal;
+  font-weight: 700;
+}
+
 .validation-script-field input {
   min-width: 0;
   width: 100%;
@@ -2295,4 +2301,87 @@ body.chat-mode .thinking-picker {
   .thinking-picker {
     width: 100%;
   }
+}
+
+/* Workflow observability / manual controller UX */
+.run-timeline-inline {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+.run-timeline-item {
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel-2);
+}
+.run-timeline-item span,
+.run-timeline-item small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+  font-size: 10px;
+}
+.run-timeline-item strong {
+  display: block;
+  margin: 2px 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+}
+.compact-files {
+  margin-top: 10px;
+}
+.step-detail-file.passive {
+  display: inline-flex;
+  cursor: default;
+  background: var(--panel-2);
+  color: var(--text);
+}
+.step-detail-actions {
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+
+/* Novice / Advanced controller UX */
+.profile-picker, .advanced-mode-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.profile-picker select {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 6px 8px;
+  background: var(--panel);
+  color: var(--text);
+}
+.advanced-mode-toggle {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+.advanced-mode-toggle input { margin: 0; }
+body.novice-mode .step-detail-section:has(.step-detail-events),
+body.novice-mode .step-detail-actions .step-detail-open-effective-prompt,
+body.novice-mode .step-detail-actions .step-detail-open-prompt-meta,
+body.novice-mode .step-detail-actions .step-detail-export-run,
+body.novice-mode .step-detail-actions .step-detail-replay-run {
+  display: none;
+}
+body.advanced-mode .workflow-preview-card::after {
+  content: "Advanced controller view";
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--muted);
 }
