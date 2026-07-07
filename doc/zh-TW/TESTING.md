@@ -65,3 +65,13 @@ python -m unittest tests.test_workflow_advanced_stability -v
 $env:QWEN_MOCK_SCENARIO="generate_tests_no_files"
 python -m unittest tests.test_workflow_resilience_e2e -v
 ```
+
+## Self-prompt workflow E2E
+
+執行排序法 self-prompt benchmark 並保留 logs：
+
+```bash
+python scripts/run_self_prompt_workflow_e2e.py ./selfprompt-logs --timeout-sec 120
+```
+
+這會透過真實 FastAPI workflow API 跑 `general-auto-development` 與 `adaptive-auto-workflow`，但由 deterministic self-prompt mock agent 扮演 Qwen/OpenCode。每個 workflow 目錄都會產生 `run.json`、`steps.json`、`timeline.txt`、`case-summary.json`、`stability-report.md`。

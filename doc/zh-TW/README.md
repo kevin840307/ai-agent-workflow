@@ -15,3 +15,5 @@
 9. `TESTING.md` - 執行日常檢查與 opt-in 手動測試。
 
 英文文件在 `../en/`。
+
+See also: `doc/WORKFLOW_STABILITY_PLAN.md` for the stability score, failure-injection matrix, and isolated-workspace guard pattern.

@@ -22,6 +22,16 @@ async def get_latest_run_for_session(session_id: str):
     return await workflow_service.get_latest_run_for_session(session_id)
 
 
+@router.get("/api/workflow-runs/active")
+async def list_active_runs():
+    return await workflow_service.list_active_runs()
+
+
+@router.get("/api/workflow-runs/queue")
+async def list_run_queue():
+    return await workflow_service.list_run_queue()
+
+
 @router.get("/api/workflow-runs/{run_id}")
 async def get_run(run_id: str):
     return await workflow_service.get_run(run_id)
@@ -37,6 +47,11 @@ async def terminate_run(run_id: str):
     return await workflow_service.terminate_run(run_id)
 
 
+@router.post("/api/workflow-runs/{run_id}/cancel")
+async def cancel_run(run_id: str):
+    return await workflow_service.cancel_run(run_id)
+
+
 @router.post("/api/workflow-runs/{run_id}/answers")
 async def submit_answers(run_id: str, body: schemas.SubmitAnswersRequest):
     return await workflow_service.submit_answers(run_id, body)
@@ -45,6 +60,60 @@ async def submit_answers(run_id: str, body: schemas.SubmitAnswersRequest):
 @router.post("/api/workflow-runs/{run_id}/guidance")
 async def submit_guidance(run_id: str, body: schemas.SubmitGuidanceRequest):
     return await workflow_service.submit_guidance(run_id, body)
+
+
+@router.post("/api/workflow-runs/{run_id}/steps/rerun")
+async def rerun_step(run_id: str, body: schemas.RerunStepRequest | None = None):
+    return await workflow_service.rerun_step(run_id, body)
+
+
+@router.get("/api/workflow-runs/{run_id}/console")
+async def get_run_console(run_id: str):
+    return await workflow_service.get_run_console(run_id)
+
+
+@router.get("/api/workflow-runs/{run_id}/diff")
+async def get_run_diff(run_id: str):
+    return await workflow_service.get_run_diff(run_id)
+
+
+@router.get("/api/workflow-runs/{run_id}/patch")
+async def get_patch_preview(run_id: str):
+    return await workflow_service.get_patch_preview(run_id)
+
+
+@router.post("/api/workflow-runs/{run_id}/patch/apply")
+async def apply_patch(run_id: str, body: schemas.PatchApplyRequest | None = None):
+    return await workflow_service.apply_run_patch(run_id, body)
+
+
+@router.get("/api/workflow-runs/{run_id}/version-meta")
+async def get_version_metadata(run_id: str):
+    return await workflow_service.get_run_version_metadata(run_id)
+
+
+@router.get("/api/workflow-runs/{run_id}/failures")
+async def get_failure_classification(run_id: str):
+    return await workflow_service.get_failure_classification(run_id)
+
+
+@router.get("/api/workflow-runs/{run_id}/artifact-index")
+async def get_run_artifact_index(run_id: str):
+    return await workflow_service.get_run_artifact_index(run_id)
+
+
+@router.get("/api/workflow-runs/{run_id}/debug-bundle")
+async def get_run_debug_bundle(run_id: str):
+    return await workflow_service.get_run_debug_bundle(run_id)
+
+@router.get("/api/workflow-runs/{run_id}/lifecycle")
+async def get_run_lifecycle(run_id: str):
+    return await workflow_service.get_run_lifecycle(run_id)
+
+
+@router.get("/api/workflow-runs/{run_id}/repair-policy")
+async def get_run_repair_policy(run_id: str):
+    return await workflow_service.get_run_repair_policy(run_id)
 
 
 @router.post("/api/workflow-runs/{run_id}/steps/skip")

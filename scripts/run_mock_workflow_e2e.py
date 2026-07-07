@@ -10,6 +10,8 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
+from e2e_log_utils import iter_project_snapshot_files
+
 
 def wait_for_terminal_run(client: TestClient, run: dict, timeout_sec: float = 30.0) -> dict:
     deadline = time.time() + timeout_sec
@@ -32,12 +34,8 @@ def copy_run_logs(project_dir: Path, run: dict, output_root: Path, label: str) -
         shutil.copytree(workspace, dest / "run-workspace", dirs_exist_ok=True)
     project_snapshot = dest / "project-snapshot"
     project_snapshot.mkdir(parents=True, exist_ok=True)
-    for path in sorted(project_dir.rglob("*")):
-        if not path.is_file():
-            continue
+    for path in iter_project_snapshot_files(project_dir):
         rel = path.relative_to(project_dir)
-        if rel.parts and rel.parts[0] in {".ai-workflow", ".qwen", ".qwen-workflow", ".git", "__pycache__"}:
-            continue
         target = project_snapshot / rel
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(path, target)

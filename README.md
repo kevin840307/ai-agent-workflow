@@ -62,7 +62,7 @@ Any failure retries from Step 1 using the same agent session with concise failur
 
 ### General Auto Development
 
-An AI-driven engineering controller flow: AI plans tasks, AI reviews the plan, Qwen/OpenCode builds, Qwen/OpenCode writes tests, Python runs tests/validation, then AI performs final review and a simple Python pass gate.
+An AI-driven engineering controller flow: AI plans tasks, Qwen/OpenCode executes the task loop, test files are ensured, Python runs pytest, AI performs implementation review, Python runs external validation, a deterministic Python final verifier writes final-review.md/verifier-report.json, then the final gate checks PASS.
 
 ## Quick start
 
@@ -240,3 +240,5 @@ Qwen Workflow Web 是一個本機 **AI Agent Workflow Runner**。它不是單純
 
 中文文件請從 `doc/zh-TW/README.md` 開始閱讀。
 
+
+See also: `doc/WORKFLOW_STABILITY_PLAN.md` for the stability score, failure-injection matrix, and isolated-workspace guard pattern.

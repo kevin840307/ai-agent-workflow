@@ -45,10 +45,10 @@ class GeneralAutoDevelopmentWorkflowTests(unittest.TestCase):
             time.sleep(0.05)
         self.fail(f"workflow run did not reach a terminal state within {timeout_sec}s: {run}")
 
-    def test_workflow_is_fixed_five_step_sop_controller(self) -> None:
+    def test_workflow_is_fixed_evidence_based_sop_controller(self) -> None:
         workflow = workflow_asset_service.load_workflow_asset("general-auto-development")
         keys = [step["key"] for step in workflow["steps"]]
-        self.assertEqual(keys, ["plan_tasks", "build", "implementation_review", "run_external_validation", "final_gate"])
+        self.assertEqual(keys, ["plan_tasks", "build", "generate_tests", "run_test", "implementation_review", "run_external_validation", "final_review", "final_gate"])
 
         plan = next(step for step in workflow["steps"] if step["key"] == "plan_tasks")
         self.assertEqual(plan["type"], "ai")
@@ -62,6 +62,14 @@ class GeneralAutoDevelopmentWorkflowTests(unittest.TestCase):
         self.assertEqual(build["retryEscalationEvery"], 3)
         self.assertEqual(build["retryEscalationStepKey"], "plan_tasks")
 
+        generate_tests = next(step for step in workflow["steps"] if step["key"] == "generate_tests")
+        self.assertEqual(generate_tests["type"], "ai")
+        self.assertEqual(generate_tests["outputFile"], "test-plan.md")
+
+        run_test = next(step for step in workflow["steps"] if step["key"] == "run_test")
+        self.assertEqual(run_test["type"], "python")
+        self.assertEqual(run_test["function"], "run_pytest")
+
         review = next(step for step in workflow["steps"] if step["key"] == "implementation_review")
         self.assertEqual(review["type"], "review")
         self.assertEqual(review["outputFile"], "final-review.md")
@@ -72,6 +80,10 @@ class GeneralAutoDevelopmentWorkflowTests(unittest.TestCase):
         self.assertEqual(validation["function"], "run_external_validation")
         self.assertEqual(validation["retryFromStepKey"], "build")
         self.assertFalse(validation["requiresValidationScript"])
+
+        final_review = next(step for step in workflow["steps"] if step["key"] == "final_review")
+        self.assertEqual(final_review["type"], "python")
+        self.assertEqual(final_review["function"], "validate_general_auto_final")
 
     def test_validation_script_fallback_does_not_trigger_on_plain_usage_text(self) -> None:
         self.assertFalse(_looks_like_script_argument_error("usage: validator.py [-h] --project PROJECT\nmissing required value"))
@@ -169,7 +181,7 @@ END_FILE
             self.assertTrue((project / "calculator.py").exists())
             self.assertTrue((project / "tests" / "test_calculator.py").exists())
             keys = [step["key"] for step in run["steps"]]
-            self.assertEqual(keys, ["plan_tasks", "build", "implementation_review", "run_external_validation", "final_gate"])
+            self.assertEqual(keys, ["plan_tasks", "build", "generate_tests", "run_test", "implementation_review", "run_external_validation", "final_review", "final_gate"])
             self.assertIn("external validation ok", (Path(run["workspace"]) / "output" / "external-validation-result.md").read_text(encoding="utf-8"))
 
     def test_general_auto_development_can_complete_bubble_sort_from_prompt_only(self) -> None:

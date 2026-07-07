@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import os
 from pathlib import Path
 from typing import Any
@@ -13,6 +14,8 @@ from app.domain.schemas import (  # noqa: F401
     CreateRunRequest,
     CreateSessionRequest,
     RetryRunRequest,
+    PatchApplyRequest,
+    RerunStepRequest,
     SubmitAnswersRequest,
     SubmitGuidanceRequest,
     StepControlRequest,
@@ -37,11 +40,13 @@ from app.core.paths import (
 from app.runtime_modules.run_state import RunState, artifact_record  # noqa: F401
 from app.runtime_modules.run_owner import current_run_owner, owner_matches_current_process, owner_process_is_alive
 from app.persistence.json_store import Store
+from app.persistence.sqlite_store import SQLiteStore
 
 from app.workflow_runtime.actions import WorkflowActions
 from app.workflow_runtime.agent_step_runner import AgentStepRunner
 from app.workflow_runtime.agents import AgentManager, create_agent_manager
 from app.workflow_runtime.executor import WorkflowExecutor
+from app.workflow_engine.kernel import WorkflowEngineKernel
 from app.workflow_runtime.functions import WorkflowFunctionService
 from app.workflow_runtime.prompt_builder import PromptBuilder, load_prompt, workflow_prompt_path
 from app.workflow_runtime.questions import extract_user_questions, interaction_instruction
@@ -49,15 +54,23 @@ from app.workflow_runtime import qwen_serve as _qwen_serve
 from app.workflow_runtime.qwen_serve import QwenCliClient
 from app.workflow_runtime.retry_policy import retry_target_for_failure, retry_target_for_step
 from app.workflow_runtime.settings import default_settings, load_settings, resolve_project_path, save_settings
+from app.workflow_runtime.run_lifecycle import clear_project_lock, mark_interrupted_store_runs
 from app.workflow_runtime.step_config import initial_steps, step_kind_from_type
 from app.workflow_runtime.step_utils import format_exception, step_artifact_name, step_prompt_name, step_function_name
 
 
-store = Store(
-    Path(os.environ.get("AIWF_STORE_FILE") or STORE_FILE),
-    default_project_path=lambda: load_settings()["qwen"].get("project_path") or str(ROOT),
-    default_steps=lambda: [],
-)
+def _create_store_backend():
+    backend = os.environ.get("AIWF_STORE_BACKEND", "file").strip().lower()
+    path = Path(os.environ.get("AIWF_STORE_FILE") or STORE_FILE)
+    default_project = lambda: load_settings()["qwen"].get("project_path") or str(ROOT)
+    if backend in {"sqlite", "sqlite3"}:
+        if path.suffix.lower() not in {".sqlite", ".sqlite3", ".db"}:
+            path = path.with_suffix(".sqlite3")
+        return SQLiteStore(path, default_project_path=default_project, default_steps=lambda: [])
+    return Store(path, default_project_path=default_project, default_steps=lambda: [])
+
+
+store = _create_store_backend()
 
 bus = EventBus()
 running_tasks: dict[str, asyncio.Task] = {}
@@ -96,6 +109,7 @@ def qwen_runtime_config() -> dict[str, Any]:
 run_state = RunState(store, bus)
 update_run = run_state.update_run
 get_run_record = run_state.get_run_record
+transition_run_status = run_state.transition_run_status
 append_session_message = run_state.append_session_message
 update_message = run_state.update_message
 log = run_state.log
@@ -138,31 +152,32 @@ workflow_executor = WorkflowExecutor(
     refresh_artifacts=refresh_artifacts,
     log=log,
     record_step_event=record_step_event,
+    transition_run_status=transition_run_status,
 )
+workflow_kernel = WorkflowEngineKernel(executor=workflow_executor, actions=workflow_actions, store=store, bus=bus)
 
 
 def mark_interrupted_runs() -> None:
-    owner = current_run_owner()
     data = store.load_sync()
-    changed = False
-    for run in data.get("runs", []):
-        if run.get("status") in {"queued", "running"}:
-            run_owner = run.get("run_owner")
-            if run_owner and not owner_matches_current_process(run_owner) and owner_process_is_alive(run_owner):
-                continue
-            run["status"] = "failed"
-            run["error"] = "Workflow server restarted before this run completed."
-            run["ended_at"] = utc_now()
-            run["updated_at"] = utc_now()
-            run["interrupted_by_owner"] = owner
-            for step in run.get("steps", []):
-                if step.get("status") == "running":
-                    step["status"] = "failed"
-                    step["error"] = run["error"]
-                    step["ended_at"] = utc_now()
-            changed = True
-    if changed:
-        store.save_sync(data)
+    changed_runs = mark_interrupted_store_runs(data)
+    if not changed_runs:
+        return
+    store.save_sync(data)
+    for run in changed_runs:
+        try:
+            run_dir = Path(run.get("workspace") or "")
+            if run_dir:
+                (run_dir / ".workflow").mkdir(parents=True, exist_ok=True)
+                write_text(run_dir / ".workflow" / "state.json", json.dumps(run, indent=2, ensure_ascii=False))
+                previous = read_text(run_dir / ".workflow" / "run-log.md")
+                write_text(
+                    run_dir / ".workflow" / "run-log.md",
+                    previous + ("\n" if previous.strip() else "") + f"{utc_now()} workflow: interrupted by server restart; run marked failed and retryable.\n",
+                )
+            clear_project_lock(run)
+        except Exception:
+            # Startup recovery must never prevent the API from booting.
+            continue
 
 def validate_spec(output_dir: Path) -> None:
     return function_service.validate_spec(output_dir)
@@ -270,4 +285,4 @@ def action_for_step(run: dict[str, Any], step_record: dict[str, Any], output_dir
 
 
 async def execute_workflow(run_id: str, start_index: int = 0) -> None:
-    return await workflow_executor.execute(run_id, start_index)
+    return await workflow_kernel.execute(run_id, start_index)

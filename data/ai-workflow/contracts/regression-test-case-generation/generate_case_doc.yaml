@@ -1,0 +1,28 @@
+id: generate_case_doc
+key: generate_case_doc
+name: Generate Markdown Test Case
+description: Generate Markdown Test Case for Regression Test Framework package generation.
+enabled: true
+type: python
+skill: steps/regression-test-case-generation/generate_case_doc.md
+command: ''
+agent: qwen
+outputs:
+- regression-test-case.md
+function: generate_regression_case_doc
+retry: 5
+failAction: same_step
+retryFromStepKey: generate_case_doc
+keepSameSession: true
+injectFailureFeedback: true
+stopAfterFailures: 5
+allowInteraction: false
+timeoutEnabled: true
+timeoutMinutes: 1.0
+reviewMode: none
+path: contracts/regression-test-case-generation/generate_case_doc.yaml
+functions:
+- generate_regression_case_doc
+retryPolicy:
+  defaultRetryTo: generate_case_doc
+  maxRetries: 5

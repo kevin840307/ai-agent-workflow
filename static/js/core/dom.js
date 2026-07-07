@@ -14,6 +14,7 @@ export const UI = {
     addGuidance: "addGuidance",
     artifactContent: "artifactContent",
     artifacts: "artifacts",
+    advancedMode: "advancedMode",
     artifactSearch: "artifactSearch",
     composerMode: "composerMode",
     currentStep: "currentStep",
@@ -37,12 +38,16 @@ export const UI = {
     resizeProjects: "resizeProjects",
     retryRun: "retryRun",
     runMeta: "runMeta",
+    runResultPanel: "runResultPanel",
+    runProfile: "runProfile",
+    runDetail: "runDetail",
     runStatusMeta: "runStatusMeta",
     runWorkflow: "runWorkflow",
     saveRequirement: "saveRequirement",
     sessionTitle: "sessionTitle",
     settingsMenu: "settingsMenu",
     steps: "steps",
+    stepDetails: "stepDetails",
     toggleDetails: "toggleDetails",
     toggleProjects: "toggleProjects",
     toggleSettings: "toggleSettings",
@@ -86,5 +91,17 @@ export const UI = {
 
   shortPath(path = "") {
     return path.replace(/^C:\\Users\\kevin\\/i, "~/");
+  },
+
+  emptyState(title = "Nothing to show", message = "No data is available yet.", level = "info") {
+    return `<div class="ui-empty-state ${UI.escapeHtml(level)}"><strong>${UI.escapeHtml(title)}</strong><span>${UI.escapeHtml(message)}</span></div>`;
+  },
+
+  safeText(value, fallback = "-") {
+    if (value === null || value === undefined || value === "") return fallback;
+    if (typeof value === "object") {
+      try { return JSON.stringify(value); } catch (_err) { return fallback; }
+    }
+    return String(value);
   },
 };

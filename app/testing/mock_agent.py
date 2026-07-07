@@ -3,6 +3,8 @@ from __future__ import annotations
 import os
 from collections import defaultdict
 
+from app.testing.self_prompt_sorting_agent import self_prompt_sorting_response
+
 
 _SCENARIO_COUNTS: dict[str, int] = defaultdict(int)
 
@@ -21,6 +23,10 @@ def mock_qwen_response(prompt: str) -> str:
     """
     normalized = prompt.lower()
     scenario = os.environ.get("QWEN_MOCK_SCENARIO", "").strip().lower()
+
+    sorting_response = self_prompt_sorting_response(prompt, scenario)
+    if sorting_response is not None:
+        return sorting_response
 
     if "# compact reuse retry" in normalized and "step: generate_task_prompts" in normalized:
         import json

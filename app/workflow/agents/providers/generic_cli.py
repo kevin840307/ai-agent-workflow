@@ -67,6 +67,8 @@ class GenericCliAdapter:
             env=env,
             on_output=on_output,
             timeout_sec=self.timeout_sec,
+            run_id=request.run_id,
+            input_text=request.prompt if self.prompt_mode == "stdin" else None,
         )
         output = stdout or stderr
         return AgentResult(output=output, session_id=request.session_id, raw_output="\n".join(x for x in [stdout, stderr] if x))

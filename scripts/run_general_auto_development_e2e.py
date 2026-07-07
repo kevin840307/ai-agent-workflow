@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import json
 import os
 import shutil
@@ -7,7 +8,13 @@ import sys
 import time
 from pathlib import Path
 
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
 from fastapi.testclient import TestClient
+
+from e2e_log_utils import iter_project_snapshot_files
 
 
 def wait_for_terminal_run(client: TestClient, run: dict, timeout_sec: float = 45.0) -> dict:
@@ -31,12 +38,8 @@ def copy_run_logs(project_dir: Path, run: dict, output_root: Path, label: str) -
         shutil.copytree(workspace, dest / "run-workspace", dirs_exist_ok=True)
     project_snapshot = dest / "project-snapshot"
     project_snapshot.mkdir(parents=True, exist_ok=True)
-    for path in sorted(project_dir.rglob("*")):
-        if not path.is_file():
-            continue
+    for path in iter_project_snapshot_files(project_dir):
         rel = path.relative_to(project_dir)
-        if rel.parts and rel.parts[0] in {".ai-workflow", ".qwen", ".qwen-workflow", ".git", "__pycache__"}:
-            continue
         target = project_snapshot / rel
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(path, target)
@@ -90,9 +93,16 @@ def run_case(client: TestClient, output_root: Path, label: str, *, scenario: str
     return {"case": label, "status": run.get("status"), "error": run.get("error"), "workspace": run.get("workspace")}
 
 
+def _parse_output_root(default: str) -> Path:
+    parser = argparse.ArgumentParser(description="Run workflow E2E scenarios and export logs.")
+    parser.add_argument("output", nargs="?", help="Output directory (legacy positional).")
+    parser.add_argument("--output", dest="output_option", help="Output directory.")
+    args = parser.parse_args()
+    return Path(args.output_option or args.output or default).resolve()
+
+
 def main() -> int:
-    output_root = Path(sys.argv[1]) if len(sys.argv) > 1 else Path("general-auto-development-e2e-logs")
-    output_root = output_root.resolve()
+    output_root = _parse_output_root("general-auto-development-e2e-logs")
     if output_root.exists():
         shutil.rmtree(output_root)
     output_root.mkdir(parents=True, exist_ok=True)
@@ -117,7 +127,9 @@ def main() -> int:
     # creating one isolated project and session per scenario.
     with TestClient(app) as client:
         for label, scenario, with_validation in cases:
+            print(f"running {label}...", flush=True)
             results.append(run_case(client, output_root, label, scenario=scenario, with_validation=with_validation))
+            print(f"done {label}: {results[-1].get('status')}", flush=True)
 
     summary = {"status": "PASS" if all(item["status"] == "done" for item in results) else "FAIL", "results": results}
     (output_root / "summary.json").write_text(json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8")

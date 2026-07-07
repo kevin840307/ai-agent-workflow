@@ -1,0 +1,1 @@
+validation.py is the acceptance oracle.

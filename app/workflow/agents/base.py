@@ -1,12 +1,8 @@
 from __future__ import annotations
 
-import asyncio
-import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Awaitable, Callable, Protocol
-
-from app.runtime_modules.errors import WorkflowError
 
 AgentOutputCallback = Callable[[str, str], Awaitable[None]]
 
@@ -49,98 +45,27 @@ async def run_process_stream(
     env: dict[str, str] | None = None,
     on_output: AgentOutputCallback | None = None,
     timeout_sec: int | None = None,
+    run_id: str | None = None,
+    process_registry: dict[str, Any] | None = None,
+    input_text: str | None = None,
 ) -> tuple[str, str]:
-    """Run an external CLI and stream stdout/stderr separately."""
-    try:
-        proc = await asyncio.create_subprocess_exec(
-            *command,
-            cwd=str(cwd),
-            env=env,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-    except NotImplementedError:
-        return await _run_process_threaded(command, cwd, env=env, on_output=on_output, timeout_sec=timeout_sec)
-    except FileNotFoundError as exc:
-        raise WorkflowError(f"Agent CLI not found: {command[0]}. Set the matching *_MOCK=1 env var for demo mode.") from exc
-    stdout_chunks: list[str] = []
-    stderr_chunks: list[str] = []
+    """Run an external CLI through the shared process supervisor."""
+    from app.agents.process_supervisor import run_agent_command
 
-    async def drain(stream_name: str, stream: asyncio.StreamReader | None, chunks: list[str]) -> None:
-        if stream is None:
-            return
-        while True:
-            data = await stream.readline()
-            if not data:
-                break
-            text = data.decode(errors="replace")
-            chunks.append(text)
-            if on_output:
-                await on_output(stream_name, text)
-
-    try:
-        await asyncio.wait_for(
-            asyncio.gather(
-                drain("stdout", proc.stdout, stdout_chunks),
-                drain("stderr", proc.stderr, stderr_chunks),
-                proc.wait(),
-            ),
-            timeout=timeout_sec,
-        )
-    except asyncio.TimeoutError as exc:
-        proc.terminate()
+    if run_id and process_registry is None:
         try:
-            await asyncio.wait_for(proc.wait(), timeout=5)
-        except asyncio.TimeoutError:
-            proc.kill()
-            await proc.wait()
-        raise WorkflowError(f"Agent process timed out after {timeout_sec} seconds: {' '.join(command)}") from exc
-    code = proc.returncode
-    stdout = "".join(stdout_chunks).strip()
-    stderr = "".join(stderr_chunks).strip()
-    if code != 0:
-        detail = stderr or stdout or "no stdout/stderr"
-        raise WorkflowError(f"Agent process failed with exit code {code}: {' '.join(command)}\n{detail}".strip())
-    return stdout, stderr
+            from app.runtime_modules import api as runtime_api
 
-
-async def _run_process_threaded(
-    command: list[str],
-    cwd: Path,
-    *,
-    env: dict[str, str] | None = None,
-    on_output: AgentOutputCallback | None = None,
-    timeout_sec: int | None = None,
-) -> tuple[str, str]:
-    """Fallback for event loops that cannot spawn asyncio subprocesses on Windows."""
-
-    def execute() -> subprocess.CompletedProcess[str]:
-        return subprocess.run(
-            command,
-            cwd=str(cwd),
-            env=env,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            timeout=timeout_sec,
-        )
-
-    try:
-        proc = await asyncio.to_thread(execute)
-    except FileNotFoundError as exc:
-        raise WorkflowError(f"Agent CLI not found: {command[0]}. Set the matching *_MOCK=1 env var for demo mode.") from exc
-    except subprocess.TimeoutExpired as exc:
-        raise WorkflowError(f"Agent process timed out after {exc.timeout} seconds: {' '.join(command)}") from exc
-
-    stdout = (proc.stdout or "").strip()
-    stderr = (proc.stderr or "").strip()
-    if on_output:
-        for line in stdout.splitlines():
-            await on_output("stdout", line)
-        for line in stderr.splitlines():
-            await on_output("stderr", line)
-    if proc.returncode != 0:
-        detail = stderr or stdout or "no stdout/stderr"
-        raise WorkflowError(f"Agent process failed with exit code {proc.returncode}: {' '.join(command)}\n{detail}".strip())
-    return stdout, stderr
+            process_registry = runtime_api.running_processes
+        except Exception:
+            process_registry = None
+    return await run_agent_command(
+        command,
+        cwd,
+        env=env,
+        input_text=input_text,
+        on_output=on_output,
+        timeout_sec=timeout_sec,
+        run_id=run_id,
+        process_registry=process_registry,
+    )

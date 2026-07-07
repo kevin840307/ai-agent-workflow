@@ -8,6 +8,12 @@ from typing import Any
 
 from app.core.paths import read_text, write_text
 from .failure_diagnosis import diagnose_agent_failure
+from .failure_classifier import classify_failure
+from .run_diff import write_run_diff_artifacts
+from .run_console import build_run_console
+from .patch_approval import write_patch_artifacts
+from .versioning import build_version_metadata
+from .run_artifacts import write_standard_run_artifacts
 
 
 def write_run_trace_artifacts(run: dict[str, Any], run_dir: Path) -> None:
@@ -18,6 +24,12 @@ def write_run_trace_artifacts(run: dict[str, Any], run_dir: Path) -> None:
     write_text(workflow_dir / "run-summary.md", render_run_summary(trace))
     write_text(workflow_dir / "gate-report.json", json.dumps(build_gate_report(trace), indent=2, ensure_ascii=False))
     write_text(workflow_dir / "gate-report.md", render_gate_report(trace))
+    write_text(workflow_dir / "run-console.json", json.dumps(build_run_console(run), indent=2, ensure_ascii=False))
+    write_text(workflow_dir / "version-metadata.json", json.dumps(build_version_metadata(run), indent=2, ensure_ascii=False))
+    write_run_diff_artifacts(run, run_dir)
+    if run.get("patch_mode") in {"review", "dry_run"}:
+        write_patch_artifacts(run)
+    write_standard_run_artifacts(run, run_dir)
 
 
 def build_run_trace(run: dict[str, Any], run_dir: Path) -> dict[str, Any]:
@@ -127,7 +139,7 @@ def build_gate_report(trace: dict[str, Any]) -> dict[str, Any]:
         "total_retries": trace.get("total_retries", 0),
         "validation_status": validation_status,
         "review_status": review_status,
-        "failed_steps": [{"key": s.get("key"), "title": s.get("title"), "error": s.get("error"), "diagnosis": diagnose_agent_failure(s.get("error"), step_key=s.get("key"), error_code=s.get("error_code"))} for s in failed_steps],
+        "failed_steps": [{"key": s.get("key"), "title": s.get("title"), "error": s.get("error"), "diagnosis": diagnose_agent_failure(s.get("error"), step_key=s.get("key"), error_code=s.get("error_code")), "failure_class": classify_failure(s.get("error"), step_key=s.get("key"), error_code=s.get("error_code"))} for s in failed_steps],
         "changed_files": trace.get("project_changes") or [],
         "artifacts": trace.get("artifacts") or [],
     }
@@ -238,6 +250,7 @@ def _step_trace(step: dict[str, Any], run_dir: Path) -> dict[str, Any]:
         "error": step.get("error"),
         "error_code": step.get("error_code"),
         "failure_diagnosis": diagnose_agent_failure(step.get("error"), step_key=key, error_code=step.get("error_code")) if step.get("error") else {},
+        "failure_class": classify_failure(step.get("error"), step_key=key, error_code=step.get("error_code")) if step.get("error") else {},
         "prompt_path": prompt_path if (run_dir / prompt_path).exists() else "",
         "prompt_chars": _file_chars(run_dir / prompt_path),
         "effective_prompt_path": effective_prompt_path if (run_dir / effective_prompt_path).exists() else "",

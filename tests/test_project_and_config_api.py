@@ -93,7 +93,7 @@ class ProjectAndConfigApiTests(unittest.TestCase):
 
         fake_agent = FakeAgent()
         with tempfile.TemporaryDirectory() as tmp, TestClient(app) as client, patch(
-            "app.services.project_service.runtime.agent_manager.resolve",
+            "app.services.chat_service.runtime.agent_manager.resolve",
             return_value=fake_agent,
         ) as resolve:
             session = client.post("/api/sessions", json={"title": "Chat Agent", "project_path": tmp}).json()
@@ -131,7 +131,7 @@ class ProjectAndConfigApiTests(unittest.TestCase):
 
         fake_agent = FakeAgent()
         with tempfile.TemporaryDirectory() as tmp, TestClient(app) as client, patch(
-            "app.services.project_service.runtime.agent_manager.resolve",
+            "app.services.chat_service.runtime.agent_manager.resolve",
             return_value=fake_agent,
         ):
             session = client.post("/api/sessions", json={"title": "Chat Repair", "project_path": tmp}).json()
@@ -156,7 +156,7 @@ class ProjectAndConfigApiTests(unittest.TestCase):
 
         fake_agent = FakeAgent()
         with tempfile.TemporaryDirectory() as tmp, TestClient(app) as client, patch(
-            "app.services.project_service.runtime.agent_manager.resolve",
+            "app.services.chat_service.runtime.agent_manager.resolve",
             return_value=fake_agent,
         ):
             session = client.post("/api/sessions", json={"title": "Chat Boundary", "project_path": tmp}).json()
@@ -183,7 +183,7 @@ class ProjectAndConfigApiTests(unittest.TestCase):
 
         fake_agent = FakeAgent()
         with tempfile.TemporaryDirectory() as tmp, TestClient(app) as client, patch(
-            "app.services.project_service.runtime.agent_manager.resolve",
+            "app.services.chat_service.runtime.agent_manager.resolve",
             return_value=fake_agent,
         ):
             session = client.post("/api/sessions", json={"title": "Idempotent Chat", "project_path": tmp}).json()

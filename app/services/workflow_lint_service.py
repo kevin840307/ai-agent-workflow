@@ -14,7 +14,7 @@ VALID_STEP_TYPES = {"ai", "agent", "qwen", "review", "validation", "python", "te
 VALID_FAIL_ACTIONS = {"same_step", "previous_step", "selected_step", "stop"}
 VALID_REVIEW_MODES = {"", "none", "disabled", "current_session", "new_agent", "multi_agent"}
 VALID_AGGREGATORS = {"", "keyword_confidence", "majority_vote", "all_must_pass"}
-FUNCTIONS_REQUIRING_ARTIFACT = {"require_status_pass", "validate_security_candidates", "validate_security_report"}
+FUNCTIONS_REQUIRING_ARTIFACT = {"validate_security_candidates", "validate_security_report"}
 
 
 def lint_workflow(workflow: dict[str, Any]) -> list[dict[str, Any]]:
@@ -57,7 +57,7 @@ def lint_workflow(workflow: dict[str, Any]) -> list[dict[str, Any]]:
                 known_asset = workflow_asset_service.resolve_function_reference(function_id)
                 if function_id not in PYTHON_FUNCTIONS and not known_asset:
                     errors.append(_issue(f"{location}.functions", f"Unknown Python function: {function_id}"))
-            if function_id in FUNCTIONS_REQUIRING_ARTIFACT and not (step.get("outputFile") or step.get("filename")):
+            if function_id in FUNCTIONS_REQUIRING_ARTIFACT and not (step.get("outputFile") or step.get("filename") or step.get("artifact")):
                 errors.append(_issue(f"{location}.outputFile", f"{function_id} requires an output filename/artifact."))
 
         review_mode = str(step.get("reviewMode") or "")

@@ -221,3 +221,13 @@ Plain marker names for documentation contract tests:
 QWEN_MOCK_SCENARIO=fail_final_review_once
 QWEN_MOCK_SCENARIO=generate_tests_no_files
 ```
+
+## Self-prompt workflow E2E
+
+Run the self-prompt sorting benchmark and keep the logs:
+
+```bash
+python scripts/run_self_prompt_workflow_e2e.py ./selfprompt-logs --timeout-sec 120
+```
+
+The script runs both `general-auto-development` and `adaptive-auto-workflow` through the real FastAPI workflow API while a deterministic self-prompt mock agent acts as Qwen/OpenCode. Each workflow directory includes `run.json`, `steps.json`, `timeline.txt`, `case-summary.json`, and `stability-report.md`.

@@ -7,3 +7,30 @@
 @import url("./css/modal.css?v=20260704-direct-edit-gad");
 @import url("./css/workflow-designer.css?v=20260704-direct-edit-gad");
 @import url("./css/responsive.css?v=20260704-direct-edit-gad");
+
+
+.workflow-console-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+  min-width: 0;
+}
+.workflow-console-head .eyebrow {
+  display: block;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.72;
+}
+.workflow-console-head strong {
+  display: block;
+  margin-top: 2px;
+  overflow-wrap: anywhere;
+}
+.workflow-console {
+  min-width: 0;
+}

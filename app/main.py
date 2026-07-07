@@ -10,7 +10,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.runtime_modules import api as runtime
 from app.api.errors import http_exception_handler, validation_exception_handler
-from app.api.routes import artifacts, config, maintenance, projects, workflow_assets, workflow_runs, workflows
+from app.api.routes import artifacts, config, maintenance, projects, workflow_assets, workflow_runs, workflows, workflow_cases, validation_scripts, context_packs, workflow_productization
 from app.core.metrics import metrics
 from app.services import workflow_asset_service, workflow_config_service
 
@@ -31,6 +31,8 @@ async def startup() -> None:
     workflow_asset_service.ensure_asset_dirs()
     workflow_config_service.ensure_system_workflow()
     workflow_config_service.ensure_sample_workflow()
+    context_pack_service = __import__("app.services.context_pack_service", fromlist=["ensure_context_pack_dirs"])
+    context_pack_service.ensure_context_pack_dirs()
 
 
 @app.get("/")
@@ -79,7 +81,11 @@ app.mount("/static", StaticFiles(directory=runtime.STATIC_DIR), name="static")
 
 app.include_router(config.router)
 app.include_router(projects.router)
+app.include_router(workflow_productization.router)
 app.include_router(workflows.router)
+app.include_router(workflow_cases.router)
+app.include_router(validation_scripts.router)
+app.include_router(context_packs.router)
 app.include_router(workflow_assets.router)
 app.include_router(workflow_runs.router)
 app.include_router(artifacts.router)

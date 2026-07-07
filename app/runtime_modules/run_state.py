@@ -4,7 +4,11 @@ from pathlib import Path
 from typing import Any
 
 from app.workflow_runtime.failure_diagnosis import diagnose_agent_failure, summarize_failure_diagnosis
+from app.workflow_runtime.failure_classifier import classify_failure
+from app.workflow_runtime.repair_policy import policy_for_failure, render_repair_prompt, write_repair_policy_artifact
 from app.core.paths import read_text, utc_now, write_text
+from app.workflow_runtime.event_log import append_event as append_workflow_event
+from app.stores import FileArtifactStore, FileEventStore, FileRunStore, FileStepStore
 
 MAX_RUN_LOG_CHARS = 250_000
 
@@ -112,24 +116,56 @@ class RunState:
     def __init__(self, store, bus) -> None:
         self.store = store
         self.bus = bus
+        self._store_facade_source = None
+        self._sync_store_facades()
+
+    def _sync_store_facades(self) -> None:
+        # Tests and CLI instances may swap `runtime.store` / `run_state.store` at
+        # runtime.  Keep Store facades bound to the current backend so state
+        # transitions do not accidentally write to a stale JSON/SQLite backend.
+        if self._store_facade_source is self.store:
+            return
+        self.run_store = FileRunStore(read=self.store.read, mutate=self.store.mutate)
+        self.step_store = FileStepStore(self.run_store)
+        self.artifact_store = FileArtifactStore(self.run_store)
+        self.event_store = FileEventStore(self.run_store)
+        self._store_facade_source = self.store
 
     async def update_run(self, run_id: str, fn) -> dict[str, Any] | None:
-        def mut(data):
-            for run in data["runs"]:
-                if run["id"] == run_id:
-                    fn(run)
-                    return run
-            return None
-
-        return await self.store.mutate(mut)
+        self._sync_store_facades()
+        return await self.run_store.mutate_run(run_id, fn)
 
     async def get_run_record(self, run_id: str) -> dict[str, Any]:
         from fastapi import HTTPException
 
-        data = await self.store.read()
-        run = next((item for item in data["runs"] if item["id"] == run_id), None)
+        self._sync_store_facades()
+        run = await self.run_store.get(run_id)
         if not run:
             raise HTTPException(status_code=404, detail="Run not found")
+        return run
+
+    async def transition_run_status(
+        self,
+        run_id: str,
+        status: str,
+        *,
+        error: str | None = None,
+        error_code: str | None = None,
+        ended: bool = False,
+        extra: dict[str, Any] | None = None,
+    ) -> dict[str, Any] | None:
+        self._sync_store_facades()
+        run = await self.run_store.transition_status(
+            run_id,
+            status,
+            error=error,
+            error_code=error_code,
+            ended=ended,
+            extra=extra,
+        )
+        if run:
+            await self.event_store.append(run_id, {"type": f"run.{status}", "status": status, "message": error or f"run {status}", "error_code": error_code})
+            await self.bus.publish(run_id, {"type": "run", "run": run})
         return run
 
     async def append_session_message(
@@ -186,6 +222,10 @@ class RunState:
         if len(content) > MAX_RUN_LOG_CHARS:
             content = "# Log rotated: keeping latest entries only.\n" + content[-MAX_RUN_LOG_CHARS:]
         write_text(log_path, content)
+        try:
+            append_workflow_event(run, "run.log", message=message)
+        except Exception:
+            pass
         await self.bus.publish(run["id"], {"type": "log", "message": line})
 
     async def set_step(
@@ -196,76 +236,42 @@ class RunState:
         error: str | None = None,
         error_code: str | None = None,
     ) -> None:
-        def apply(run):
-            for step in run["steps"]:
-                if step["key"] == key:
-                    step["status"] = status
-                    if status == "running":
-                        step["started_at"] = utc_now()
-                        step["error"] = None
-                        step["error_code"] = None
-                    if status in {"passed", "failed", "skipped", "waiting_input", "cancelled"}:
-                        step["ended_at"] = utc_now()
-                        step["error"] = error
-                        step["error_code"] = error_code
-            run["updated_at"] = utc_now()
-
-        run = await self.update_run(run_id, apply)
+        self._sync_store_facades()
+        run = await self.step_store.mark(run_id, key, status, error=error, error_code=error_code)
         if run:
+            try:
+                append_workflow_event(run, f"step.{status}", step_key=key, message=error or f"{key}: {status}", status=status, error_code=error_code)
+            except Exception:
+                pass
             await self.bus.publish(run_id, {"type": "run", "run": run})
 
     async def reset_steps_from(self, run_id: str, start_index: int) -> dict[str, Any] | None:
-        def apply(run):
-            for index, step in enumerate(run["steps"]):
-                if index >= start_index:
-                    step["status"] = "pending"
-                    step["started_at"] = None
-                    step["ended_at"] = None
-                    step["error"] = None
-                    step["error_code"] = None
-            run["status"] = "queued"
-            run["error"] = None
-            run["error_code"] = None
-            run["ended_at"] = None
-            run["updated_at"] = utc_now()
-
-        return await self.update_run(run_id, apply)
+        self._sync_store_facades()
+        run = await self.step_store.reset_from(run_id, start_index)
+        if run:
+            await self.event_store.append(run_id, {"type": "steps.reset", "start_index": start_index, "message": f"steps reset from {start_index}"})
+            await self.bus.publish(run_id, {"type": "run", "run": run})
+        return run
 
     async def reset_retry_counts_from(self, run_id: str, start_index: int) -> dict[str, Any] | None:
-        def apply(run):
-            for index, step in enumerate(run["steps"]):
-                if index >= start_index:
-                    step["retry_count"] = 0
-                    step["manual_retry_started_at"] = utc_now()
-            run["updated_at"] = utc_now()
-
-        return await self.update_run(run_id, apply)
+        self._sync_store_facades()
+        run = await self.step_store.reset_retry_counts_from(run_id, start_index)
+        if run:
+            await self.event_store.append(run_id, {"type": "retry.reset", "start_index": start_index, "message": f"retry counts reset from {start_index}"})
+            await self.bus.publish(run_id, {"type": "run", "run": run})
+        return run
 
     async def get_step_retry_count(self, run_id: str, key: str) -> int:
-        data = await self.store.read()
-        run = next((item for item in data["runs"] if item["id"] == run_id), None)
-        if not run:
-            return 0
-        step = next((item for item in run.get("steps", []) if item.get("key") == key), None)
+        self._sync_store_facades()
+        step = await self.step_store.get(run_id, key)
         return int((step or {}).get("retry_count", 0) or 0)
 
     async def increment_step_retry(self, run_id: str, key: str) -> int:
-        def apply(run):
-            for step in run["steps"]:
-                if step["key"] == key:
-                    step["retry_count"] = int(step.get("retry_count", 0)) + 1
-                    return step["retry_count"]
-            return 0
-
-        def mutate(data):
-            run = next((item for item in data["runs"] if item["id"] == run_id), None)
-            if not run:
-                return 0
-            return apply(run)
-
-        result = await self.store.mutate(mutate)
-        run = await self.get_run_record(run_id)
-        await self.bus.publish(run_id, {"type": "run", "run": run})
+        self._sync_store_facades()
+        run, result = await self.step_store.increment_retry(run_id, key)
+        if run:
+            await self.event_store.append(run_id, {"type": "retry.incremented", "step_key": key, "retry_count": result, "message": f"{key} retry {result}"})
+            await self.bus.publish(run_id, {"type": "run", "run": run})
         return int(result or 0)
 
     async def append_failure_feedback(
@@ -282,6 +288,8 @@ class RunState:
         previous = read_text(feedback_path)
         error = str(exc).strip()
         notes = retry_recovery_notes(source_key, target_key, error)
+        repair_policy = policy_for_failure(error, step_key=source_key, retry_count=retry_count)
+        write_repair_policy_artifact(run, target_key, error, retry_count=retry_count)
         entry = (
             f"## Retry Feedback for {target_key}\n\n"
             f"Submitted at: {utc_now()}\n\n"
@@ -289,6 +297,7 @@ class RunState:
             f"- Retry target: {target_key}\n"
             f"- Retry attempt: {retry_count}/{max_retries}\n"
             f"- Error class: {classify_repair_error(source_key, target_key, error)}\n"
+            f"- Failure classifier: {classify_failure(error, step_key=source_key).get('code')}\n"
             f"- Agent diagnosis: {summarize_failure_diagnosis(error, step_key=source_key)}\n"
             f"- Stop condition: retry continues through repeated errors until {target_key} reaches {max_retries}/{max_retries} attempts or all downstream gates pass.\n"
             f"- Strategy shift: if this same class repeats 3+ times, try a different implementation approach rather than reusing the same output.\n\n"
@@ -310,7 +319,9 @@ class RunState:
                 "max_retries": max_retries,
                 "error": error,
                 "error_class": classify_repair_error(source_key, target_key, error),
+                "failure_class": classify_failure(error, step_key=source_key),
                 "agent_diagnosis": diagnose_agent_failure(error, step_key=source_key),
+                "repair_policy": repair_policy,
             },
         )
         await self.refresh_artifacts(run["id"])
@@ -323,31 +334,26 @@ class RunState:
         message: str,
         extra: dict[str, Any] | None = None,
     ) -> None:
-        def apply(run):
-            ts = utc_now()
-            event = {
-                "time": ts,
-                "ts": ts,
-                "step_key": step_key,
-                "stepKey": step_key,
-                "kind": kind,
-                "type": kind,
-                "message": message,
-            }
-            if extra:
-                event.update(extra)
-            run.setdefault("timeline", []).append(event)
-            for step in run.get("steps", []):
-                if step.get("key") == step_key:
-                    step.setdefault("events", []).append(event)
-                    step["last_event"] = message
-                    if kind == "retry":
-                        step.setdefault("retry_history", []).append(event)
-                    break
-            run["updated_at"] = utc_now()
-
-        run = await self.update_run(run_id, apply)
+        ts = utc_now()
+        event = {
+            "time": ts,
+            "ts": ts,
+            "step_key": step_key,
+            "stepKey": step_key,
+            "kind": kind,
+            "type": kind,
+            "message": message,
+        }
+        if extra:
+            event.update(extra)
+        self._sync_store_facades()
+        run = await self.step_store.append_event(run_id, step_key, event)
         if run:
+            try:
+                append_workflow_event(run, kind, step_key=step_key, message=message, extra=extra)
+            except Exception:
+                pass
+            await self.event_store.append(run_id, {"type": kind, "step_key": step_key, "message": message, **(extra or {})})
             await self.bus.publish(run_id, {"type": "run", "run": run})
 
     async def refresh_artifacts(self, run_id: str) -> None:
@@ -365,7 +371,15 @@ class RunState:
                 ".workflow/run-trace.json",
                 ".workflow/gate-report.md",
                 ".workflow/gate-report.json",
+                ".workflow/run-diff.md",
+                ".workflow/run-diff.json",
+                ".workflow/project-snapshot-before.json",
                 ".workflow/state.json",
+                ".workflow/events.jsonl",
+                ".workflow/artifacts/index.json",
+                ".workflow/artifacts/README.md",
+                ".workflow/artifacts/reports/agent-safety-report.md",
+                ".workflow/artifacts/reports/agent-safety-report.json",
             ]
 
             def add_rel(value):
@@ -403,9 +417,11 @@ class RunState:
                         add_rel(str(path.relative_to(run_dir)).replace("\\", "/"))
 
             deduped = list(dict.fromkeys(rels))
-            run["artifacts"] = [artifact_record(run["id"], run_dir, rel) for rel in deduped if (run_dir / rel).exists()]
-            run["updated_at"] = utc_now()
+            run["_artifact_refresh_candidates"] = [artifact_record(run["id"], run_dir, rel) for rel in deduped if (run_dir / rel).exists()]
 
         run = await self.update_run(run_id, apply)
         if run:
+            artifacts = list(run.pop("_artifact_refresh_candidates", []))
+            self._sync_store_facades()
+            run = await self.artifact_store.replace_for_run(run_id, artifacts) or run
             await self.bus.publish(run_id, {"type": "run", "run": run})

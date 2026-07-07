@@ -83,6 +83,26 @@ class StaticArchitectureContractTests(unittest.TestCase):
         self.assertIn('designerAssetList', assets)
         self.assertIn('data-page="ai-workflow-assets"', assets)
 
+
+    def test_workflow_runner_ui_keys_are_registered(self):
+        ids_source = (ROOT / "static/js/core/dom.js").read_text(encoding="utf-8")
+        registered = set(re.findall(r"\n\s*([A-Za-z0-9_]+):\s*\"[^\"]+\"", ids_source))
+        refs = set()
+        for path in (ROOT / "static/js").rglob("*.js"):
+            refs.update(re.findall(r"ui\.byKey\(\"([A-Za-z0-9_]+)\"\)", path.read_text(encoding="utf-8")))
+        self.assertFalse(refs - registered, f"Missing UI.ids entries: {sorted(refs - registered)}")
+
+    def test_workflow_runner_tabs_and_tokens_fit_current_ui(self):
+        css = (ROOT / "static/css/workflow-runner.css").read_text(encoding="utf-8")
+        styles = (ROOT / "static/styles.css").read_text(encoding="utf-8")
+        html = (ROOT / "static/index.html").read_text(encoding="utf-8")
+        tab_count = len(re.findall(r'class="tab(?: active)?" data-tab=', html))
+        self.assertGreaterEqual(tab_count, 5)
+        self.assertNotIn("grid-template-columns: repeat(4, 1fr)", css)
+        self.assertIn("grid-template-columns: repeat(5, minmax(0, 1fr))", css)
+        self.assertNotIn("var(--border)", css + styles)
+        self.assertIn("Run detail stability / overflow hardening", css)
+
     def test_static_cache_version_is_consistent(self):
         versions = set()
         for path in (ROOT / "static").rglob("*"):

@@ -17,6 +17,9 @@ from .error_codes import classify_exception
 from .retry_policy import retry_target_for_failure
 from .step_utils import bool_config, expected_file_candidates, expected_files, format_exception, step_config, timeout_seconds
 from .trace import write_run_trace_artifacts
+from .agent_safety import write_agent_safety_report
+from .event_log import append_event as append_workflow_event
+from .run_lifecycle import cancel_requested, write_project_lock
 
 
 class WorkflowExecutor:
@@ -35,6 +38,7 @@ class WorkflowExecutor:
         refresh_artifacts: Callable[[str], Awaitable[Any]],
         log: Callable[[dict[str, Any], str], Awaitable[None]],
         record_step_event: Callable[..., Awaitable[Any]] | None = None,
+        transition_run_status: Callable[..., Awaitable[dict[str, Any] | None]] | None = None,
     ) -> None:
         self.store = store
         self.bus = bus
@@ -48,6 +52,7 @@ class WorkflowExecutor:
         self.refresh_artifacts = refresh_artifacts
         self.log = log
         self.record_step_event = record_step_event
+        self.transition_run_status = transition_run_status
 
     async def execute(self, run_id: str, start_index: int = 0) -> None:
         data = await self.store.read()
@@ -58,19 +63,29 @@ class WorkflowExecutor:
         output_dir = run_dir / "output"
         run_started = now()
         try:
-            await self.update_run(
-                run_id,
-                lambda r: r.update(
-                    {
-                        "status": "running",
-                        "run_owner": current_run_owner(),
-                        "started_at": r.get("started_at") or utc_now(),
-                        "ended_at": None,
-                        "error": None,
-                        "updated_at": utc_now(),
-                    }
-                ),
-            )
+            if self.transition_run_status:
+                running_run = await self.transition_run_status(
+                    run_id,
+                    "running",
+                    extra={"run_owner": current_run_owner(), "started_at": run.get("started_at") or utc_now(), "ended_at": None},
+                )
+            else:
+                running_run = await self.update_run(
+                    run_id,
+                    lambda r: r.update(
+                        {
+                            "status": "running",
+                            "run_owner": current_run_owner(),
+                            "started_at": r.get("started_at") or utc_now(),
+                            "ended_at": None,
+                            "error": None,
+                            "updated_at": utc_now(),
+                        }
+                    ),
+                )
+            if running_run:
+                run = running_run
+                write_project_lock(run)
             await self.log(run, "workflow: started")
 
             step_records = [item for item in run.get("steps", []) if item.get("status") != "disabled"]
@@ -82,8 +97,10 @@ class WorkflowExecutor:
             index = start_index
             while index < len(action_records):
                 key, action, step_record = action_records[index]
+                await self._raise_if_cancel_requested(run_id)
                 try:
                     await self._run_step(run_id, run, key, action)
+                    await self._raise_if_cancel_requested(run_id)
                     index += 1
                 except UserInputRequired:
                     raise
@@ -150,6 +167,13 @@ class WorkflowExecutor:
             await self._mark_failed(run_id, run, run_dir, exc)
             metrics.increment("workflow.failed")
             metrics.observe("workflow.durationSec", now() - run_started)
+
+
+    async def _raise_if_cancel_requested(self, run_id: str) -> None:
+        data = await self.store.read()
+        current = next((item for item in data.get("runs", []) if item.get("id") == run_id), None)
+        if cancel_requested(current or {}):
+            raise asyncio.CancelledError("Workflow cancellation requested by user.")
 
     async def _run_step(self, run_id: str, run: dict[str, Any], key: str, action: Callable[[], Awaitable[None]]) -> None:
         step_record = next((item for item in run.get("steps", []) if item.get("key") == key), {})
@@ -267,12 +291,14 @@ class WorkflowExecutor:
             r["ended_at"] = utc_now()
             r["updated_at"] = utc_now()
 
-        final_run = await self.update_run(run_id, finish)
+        final_run = await self.transition_run_status(run_id, "done", ended=True) if self.transition_run_status else await self.update_run(run_id, finish)
         if not final_run:
             final_run = dict(run)
             finish(final_run)
         write_text(run_dir / ".workflow" / "state.json", json.dumps(final_run, indent=2, ensure_ascii=False))
         write_run_trace_artifacts(final_run, run_dir)
+        write_agent_safety_report(final_run)
+        append_workflow_event(final_run, "run.completed", message="workflow: done", status="done")
         await self.refresh_artifacts(run_id)
         await self.log(run, "workflow: done")
         await self.bus.publish(run_id, {"type": "done"})
@@ -287,12 +313,14 @@ class WorkflowExecutor:
             r["ended_at"] = utc_now()
             r["updated_at"] = utc_now()
 
-        waiting_run = await self.update_run(run_id, wait)
+        waiting_run = await self.transition_run_status(run_id, "waiting_input", error=str(exc), error_code=classify_exception(exc), ended=True) if self.transition_run_status else await self.update_run(run_id, wait)
         if not waiting_run:
             waiting_run = dict(run)
             wait(waiting_run)
         write_text(run_dir / ".workflow" / "state.json", json.dumps(waiting_run, indent=2, ensure_ascii=False))
         write_run_trace_artifacts(waiting_run, run_dir)
+        write_agent_safety_report(waiting_run)
+        append_workflow_event(waiting_run, "run.waiting_input", message=str(exc), status="waiting_input", error_code=waiting_run.get("error_code"))
         await self.refresh_artifacts(run_id)
         await self.bus.publish(run_id, {"type": "waiting_input", "error": str(exc)})
 
@@ -311,13 +339,23 @@ class WorkflowExecutor:
                     step["error"] = r["error"]
                     step["ended_at"] = utc_now()
 
-        cancelled_run = await self.update_run(run_id, cancel)
+        cancelled_run = await self.transition_run_status(run_id, "cancelled", error="Workflow cancelled by user.", error_code=classify_exception(WorkflowCancelled("Workflow cancelled by user.")), ended=True) if self.transition_run_status else await self.update_run(run_id, cancel)
+        if cancelled_run:
+            def cancel_running_steps(r: dict[str, Any]) -> None:
+                for step in r.get("steps", []):
+                    if step.get("status") == "running":
+                        step["status"] = "cancelled"
+                        step["error"] = r.get("error")
+                        step["ended_at"] = utc_now()
+            cancelled_run = await self.update_run(run_id, cancel_running_steps) or cancelled_run
         if not cancelled_run:
             fallback_run = dict(run)
             cancel(fallback_run)
             cancelled_run = fallback_run
         write_text(run_dir / ".workflow" / "state.json", json.dumps(cancelled_run, indent=2, ensure_ascii=False))
         write_run_trace_artifacts(cancelled_run, run_dir)
+        write_agent_safety_report(cancelled_run)
+        append_workflow_event(cancelled_run, "run.cancelled", message="Workflow cancelled by user.", status="cancelled", error_code=cancelled_run.get("error_code"))
         await self.refresh_artifacts(run_id)
         await self.bus.publish(run_id, {"type": "cancelled", "error": "Workflow cancelled by user."})
 
@@ -333,11 +371,13 @@ class WorkflowExecutor:
             r["ended_at"] = utc_now()
             r["updated_at"] = utc_now()
 
-        failed_run = await self.update_run(run_id, fail)
+        failed_run = await self.transition_run_status(run_id, "failed", error=str(error), error_code=error_code, ended=True) if self.transition_run_status else await self.update_run(run_id, fail)
         if not failed_run:
             failed_run = dict(run)
             fail(failed_run)
         write_text(run_dir / ".workflow" / "state.json", json.dumps(failed_run, indent=2, ensure_ascii=False))
         write_run_trace_artifacts(failed_run, run_dir)
+        write_agent_safety_report(failed_run)
+        append_workflow_event(failed_run, "run.failed", message=str(error), status="failed", error_code=error_code)
         await self.refresh_artifacts(run_id)
         await self.bus.publish(run_id, {"type": "failed", "error": str(error)})

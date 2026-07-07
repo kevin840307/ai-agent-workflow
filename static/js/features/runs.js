@@ -13,6 +13,7 @@ export function createRuns(ctx) {
       ui.byKey("artifacts").innerHTML = "";
       ui.byKey("artifactContent").textContent = "";
       if (ui.byKey("stepDetails")) ui.byKey("stepDetails").innerHTML = "";
+      if (ui.byKey("runDetail")) ui.byKey("runDetail").innerHTML = ui.emptyState("No run selected", "Start or select a workflow run to inspect details.");
       if (ui.byKey("runResultPanel")) {
         ui.byKey("runResultPanel").hidden = true;
         ui.byKey("runResultPanel").innerHTML = "";
@@ -68,6 +69,7 @@ export function createRuns(ctx) {
       runs.renderStepDetails(run, selectedStep);
       ctx.features.artifacts.render(run.artifacts || []);
       runs.renderResultPanel(run);
+      runs.renderRunDetail(run);
       ctx.features.interactions.render(run);
       ctx.features.workflows?.renderPreview?.();
     },
@@ -184,7 +186,7 @@ export function createRuns(ctx) {
           <div class="step-detail-actions" aria-label="Step actions">
             ${promptArtifact ? `<button class="mini-button step-detail-open-prompt" type="button">Prompt</button>` : ""}
             ${effectivePromptArtifact ? `<button class="mini-button step-detail-open-effective-prompt" type="button">Effective</button>` : ""}
-            ${state.advancedMode ? `<button class="mini-button step-detail-export-run" type="button">Export Run</button><button class="mini-button step-detail-replay-run" type="button">Replay</button>` : ""}
+            ${state.advancedMode ? `<button class="mini-button step-detail-export-run" type="button">Export Run</button><button class="mini-button step-detail-replay-run" type="button">Replay</button><button class="mini-button step-detail-run-console" type="button">Console</button><button class="mini-button step-detail-run-diff" type="button">Run Diff</button><button class="mini-button step-detail-patch" type="button">Patch</button><button class="mini-button step-detail-version" type="button">Version</button>` : ""}
             ${promptMetaArtifact ? `<button class="mini-button step-detail-open-prompt-meta" type="button">Meta</button>` : ""}
             <button class="mini-button step-detail-open-drawer" type="button">Details</button>
             ${relatedArtifacts.length ? `<button class="mini-button step-detail-open-files" type="button">Files ${relatedArtifacts.length}</button>` : ""}
@@ -202,6 +204,12 @@ export function createRuns(ctx) {
       target.querySelector(".step-detail-open-prompt")?.addEventListener("click", () => ctx.features.artifacts.open(promptArtifact.id));
       target.querySelector(".step-detail-open-effective-prompt")?.addEventListener("click", () => ctx.features.artifacts.open(effectivePromptArtifact.id));
       target.querySelector(".step-detail-open-prompt-meta")?.addEventListener("click", () => ctx.features.artifacts.open(promptMetaArtifact.id));
+      target.querySelector(".step-detail-export-run")?.addEventListener("click", () => runs.exportRun());
+      target.querySelector(".step-detail-replay-run")?.addEventListener("click", () => runs.replayRun());
+      target.querySelector(".step-detail-run-console")?.addEventListener("click", () => runs.openRunConsole(run));
+      target.querySelector(".step-detail-run-diff")?.addEventListener("click", () => runs.openRunDiff(run));
+      target.querySelector(".step-detail-patch")?.addEventListener("click", () => runs.openPatchPreview(run));
+      target.querySelector(".step-detail-version")?.addEventListener("click", () => runs.openVersionMeta(run));
       target.querySelector(".step-detail-guide")?.addEventListener("click", () => runs.addGuidance(step.key));
       target.querySelector(".step-detail-retry")?.addEventListener("click", () => runs.retry(step.key));
       target.querySelector(".step-detail-resume")?.addEventListener("click", () => runs.resume(step.key));
@@ -223,6 +231,7 @@ export function createRuns(ctx) {
       const summary = (run.artifacts || []).find((artifact) => artifact.path === ".workflow/run-summary.md");
       const trace = (run.artifacts || []).find((artifact) => artifact.path === ".workflow/run-trace.json");
       const gateReport = (run.artifacts || []).find((artifact) => artifact.path === ".workflow/gate-report.md");
+      const runDiff = (run.artifacts || []).find((artifact) => artifact.path === ".workflow/run-diff.md");
       const failed = (run.steps || []).find((step) => ["failed", "waiting_input", "cancelled"].includes(step.status));
       const passed = (run.steps || []).filter((step) => step.status === "passed").length;
       const retries = (run.steps || []).reduce((total, step) => total + Number(step.retry_count || 0), 0);
@@ -238,6 +247,7 @@ export function createRuns(ctx) {
             ${gateReport ? `<button class="mini-button" data-result-artifact="${ui.escapeHtml(gateReport.id)}">Gate Report</button>` : ""}
             ${summary ? `<button class="mini-button" data-result-artifact="${ui.escapeHtml(summary.id)}">Summary</button>` : ""}
             ${trace ? `<button class="mini-button" data-result-artifact="${ui.escapeHtml(trace.id)}">Trace</button>` : ""}
+            ${runDiff ? `<button class="mini-button" data-result-artifact="${ui.escapeHtml(runDiff.id)}">Diff</button>` : ""}
             <button class="mini-button" data-result-tab="logsPanel">Logs</button>
           </div>
         </div>
@@ -259,6 +269,84 @@ export function createRuns(ctx) {
         button.addEventListener("click", () => ctx.features.artifacts.open(button.dataset.resultArtifact));
       });
       panel.querySelector("[data-result-tab]")?.addEventListener("click", () => ctx.features.layout.activateTab("logsPanel"));
+    },
+
+
+    renderRunDetail(run) {
+      const target = ui.byKey("runDetail");
+      if (!target) return;
+      if (!run || !run.id) {
+        target.innerHTML = ui.emptyState("No run selected", "Start or select a workflow run to inspect details.");
+        return;
+      }
+      const steps = run.steps || [];
+      const passed = steps.filter((step) => step.status === "passed").length;
+      const retries = steps.reduce((total, step) => total + Number(step.retry_count || 0), 0);
+      const failed = steps.find((step) => ["failed", "waiting_input", "cancelled"].includes(step.status));
+      const artifacts = run.artifacts || [];
+      const artifactIndex = artifacts.find((artifact) => artifact.path === ".workflow/artifacts/index.json");
+      const runConsole = artifacts.find((artifact) => artifact.path === ".workflow/artifacts/console/run-console.json" || artifact.path === ".workflow/run-console.json");
+      const repairPolicy = artifacts.find((artifact) => String(artifact.path || "").includes(".workflow/repair-policy/"));
+      target.innerHTML = `
+        <article class="run-detail-card">
+          <div class="run-result-head">
+            <div>
+              <span class="run-result-eyebrow">DETAIL</span>
+              <h2>${ui.escapeHtml(ui.safeText(run.workflow_name || run.workflow_id, "Workflow"))}</h2>
+              <p>${ui.escapeHtml(ui.safeText(run.error || failed?.error, "Inspect timeline, artifacts, diff, patch, and repair policy from one place."))}</p>
+            </div>
+            <div class="run-result-actions">
+              <button class="mini-button" data-run-detail-console="1">Console</button>
+              <button class="mini-button" data-run-detail-diff="1">Diff</button>
+              <button class="mini-button" data-run-detail-patch="1">Patch</button>
+              <button class="mini-button" data-run-detail-artifacts="1">Artifact Index</button>
+              <button class="mini-button" data-run-detail-debug-bundle="1">Copy Debug Bundle</button>
+              ${repairPolicy ? `<button class="mini-button" data-run-detail-artifact="${ui.escapeHtml(repairPolicy.id)}">Repair Policy</button>` : ""}
+            </div>
+          </div>
+          <div class="run-result-grid">
+            <div><span>Status</span><strong>${ui.escapeHtml(String(run.status || "-").toUpperCase())}</strong></div>
+            <div><span>Steps</span><strong>${passed} / ${steps.length}</strong></div>
+            <div><span>Retries</span><strong>${retries}</strong></div>
+            <div><span>Patch</span><strong>${ui.escapeHtml(run.patch_mode || "auto_apply")}</strong></div>
+            <div><span>Profile</span><strong>${ui.escapeHtml(run.run_profile || "normal")}</strong></div>
+            <div><span>Artifacts</span><strong>${artifacts.length}</strong></div>
+          </div>
+          <div class="run-timeline-inline">
+            ${(run.timeline || []).slice(-10).reverse().map((event) => `
+              <div class="run-timeline-item">
+                <span>${ui.escapeHtml(event.step_key || event.stepKey || "run")}</span>
+                <strong>${ui.escapeHtml(event.kind || event.type || "event")}</strong>
+                <small>${ui.escapeHtml(event.message || "")}</small>
+              </div>`).join("") || `<div class="run-timeline-item empty"><span>timeline</span><strong>empty</strong><small>No events yet.</small></div>`}
+          </div>
+        </article>
+      `;
+      target.querySelector("[data-run-detail-console]")?.addEventListener("click", () => runs.openRunConsole(run));
+      target.querySelector("[data-run-detail-diff]")?.addEventListener("click", () => runs.openRunDiff(run));
+      target.querySelector("[data-run-detail-patch]")?.addEventListener("click", () => runs.openPatchPreview(run));
+      target.querySelector("[data-run-detail-artifacts]")?.addEventListener("click", async () => {
+        if (artifactIndex) { ctx.features.artifacts.open(artifactIndex.id); return; }
+        try {
+          const index = await api.request(`/api/workflow-runs/${run.id}/artifact-index`);
+          ctx.features.console.append("logs", `Artifact index: ${(index.records || []).length} standardized records.`);
+          ctx.features.layout.activateTab("logsPanel");
+        } catch (err) {
+          ctx.features.console.append("logs", `Artifact index failed: ${err.message}`);
+        }
+      });
+      target.querySelector("[data-run-detail-debug-bundle]")?.addEventListener("click", async () => {
+        try {
+          const bundle = await api.request(`/api/workflow-runs/${run.id}/debug-bundle`);
+          const text = JSON.stringify(bundle, null, 2);
+          if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(text);
+          ctx.features.console.append("logs", `Debug bundle copied for run ${bundle.runId || run.id}: status=${bundle.status}, failedStep=${bundle.failedStep || "-"}`);
+          ctx.features.layout.activateTab("logsPanel");
+        } catch (err) {
+          ctx.features.console.append("logs", `Debug bundle failed: ${err.message}`);
+        }
+      });
+      target.querySelectorAll("[data-run-detail-artifact]").forEach((button) => button.addEventListener("click", () => ctx.features.artifacts.open(button.dataset.runDetailArtifact)));
     },
 
     async openStepDetailModal(run, step) {
@@ -557,6 +645,60 @@ export function createRuns(ctx) {
       }
     },
 
+
+    async openRunConsole(run = null) {
+      if (!state.activeRunId && !run?.id) return;
+      const runId = run?.id || state.activeRunId;
+      try {
+        const consoleView = await api.request(`/api/workflow-runs/${runId}/console`);
+        ctx.features.console.append("logs", `Console: ${consoleView.summary?.steps_passed || 0}/${consoleView.summary?.steps_total || 0} passed, retries ${consoleView.summary?.retry_total || 0}.`);
+        if (ui.byKey("runDetail")) ctx.features.layout.activateTab("runDetailPanel"); else ctx.features.layout.activateTab("logsPanel");
+      } catch (err) {
+        ctx.features.console.append("logs", `Console failed: ${err.message}`);
+      }
+    },
+
+    async openPatchPreview(run = null) {
+      if (!state.activeRunId && !run?.id) return;
+      const runId = run?.id || state.activeRunId;
+      try {
+        const patch = await api.request(`/api/workflow-runs/${runId}/patch`);
+        ctx.features.console.append("logs", `Patch ${patch.status || "preview"}: ${(patch.changed_files || []).length} changed file(s).`);
+        ctx.features.layout.activateTab("logsPanel");
+      } catch (err) {
+        ctx.features.console.append("logs", `Patch preview failed: ${err.message}`);
+      }
+    },
+
+    async openVersionMeta(run = null) {
+      if (!state.activeRunId && !run?.id) return;
+      const runId = run?.id || state.activeRunId;
+      try {
+        const meta = await api.request(`/api/workflow-runs/${runId}/version-meta`);
+        ctx.features.console.append("logs", `Version: workflow=${meta.workflow_version || "current"}, prompt=${meta.prompt_version || "current"}, contract=${meta.contract_version || "current"}.`);
+        ctx.features.layout.activateTab("logsPanel");
+      } catch (err) {
+        ctx.features.console.append("logs", `Version meta failed: ${err.message}`);
+      }
+    },
+
+    async openRunDiff(run = null) {
+      const source = run || (state.activeRunId ? await api.request(`/api/workflow-runs/${state.activeRunId}`).catch(() => null) : null);
+      const artifact = (source?.artifacts || []).find((item) => item.path === ".workflow/run-diff.md");
+      if (artifact) {
+        ctx.features.artifacts.open(artifact.id);
+        return;
+      }
+      if (!state.activeRunId) return;
+      try {
+        const diff = await api.request(`/api/workflow-runs/${state.activeRunId}/diff`);
+        ctx.features.console.append("logs", `Run diff: ${diff.file_count || 0} changed text file(s).`);
+        ctx.features.layout.activateTab("logsPanel");
+      } catch (err) {
+        ctx.features.console.append("logs", `Run diff failed: ${err.message}`);
+      }
+    },
+
     async exportRun() {
       if (!state.activeRunId) return;
       window.open(`/api/workflow-runs/${state.activeRunId}/export`, "_blank", "noopener");
@@ -566,7 +708,7 @@ export function createRuns(ctx) {
       if (!state.activeRunId) return;
       const confirmText = await ctx.features.modal.openInput({
         title: "Replay Run",
-        description: "Create a new run using the same requirement, workflow, project, validation script, and model profile.",
+        description: "Create a new run using the same requirement, workflow, project, validation script, and run profile.",
         label: "Reason",
         placeholder: "Optional replay note",
         hint: "This starts a fresh run. Existing artifacts stay unchanged.",

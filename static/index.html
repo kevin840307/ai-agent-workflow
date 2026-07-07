@@ -133,15 +133,15 @@
                 </button>
               </div>
             </div>
-            <div class="profile-picker" id="profilePicker" title="Tune workflow prompts and retry behavior for model capability.">
-              <span class="workflow-picker-label">Model</span>
+            <div class="profile-picker" id="profilePicker" title="Tune workflow prompts and retry behavior for agent capability.">
+              <span class="workflow-picker-label">Profile</span>
               <select id="runProfile" class="workflow-native-select">
                 <option value="small">Small</option>
                 <option value="normal" selected>Normal</option>
                 <option value="strong">Strong</option>
               </select>
             </div>
-            <label class="advanced-mode-toggle" title="Show advanced prompt, trace, and manual controller details.">
+            <label class="advanced-mode-toggle" title="Show advanced tools such as prompt metadata, replay, export, run diff, patch approval, and console.">
               <input id="advancedMode" type="checkbox" />
               <span>Advanced</span>
             </label>
@@ -168,13 +168,20 @@
       </section>
     </main>
 
-    <!-- App region: Workflow details console -->
-    <aside class="details">
+    <!-- App region: Workflow Console -->
+    <aside class="details workflow-console" aria-label="Workflow Console">
+      <div class="workflow-console-head">
+        <div>
+          <span class="eyebrow">Workflow Console</span>
+          <strong>Run Summary / Timeline / Detail / Artifacts</strong>
+        </div>
+      </div>
       <div class="tabs">
         <button class="tab active" data-tab="stepsPanel">Steps</button>
         <button class="tab" data-tab="qwenPanel">Agent</button>
         <button class="tab" data-tab="logsPanel">Logs</button>
         <button class="tab" data-tab="artifactsPanel">Artifacts</button>
+        <button class="tab" data-tab="runDetailPanel">Detail</button>
       </div>
 
       <section id="stepsPanel" class="panel active">
@@ -193,6 +200,9 @@
         <input id="artifactSearch" class="artifact-search" placeholder="Search artifacts..." />
         <div id="artifacts" class="artifacts"></div>
         <pre id="artifactContent" class="artifact-content"></pre>
+      </section>
+      <section id="runDetailPanel" class="panel">
+        <div id="runDetail" class="run-detail-view">No run selected.</div>
       </section>
     </aside>
 

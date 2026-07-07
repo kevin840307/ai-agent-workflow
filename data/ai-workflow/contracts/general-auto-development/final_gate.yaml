@@ -12,7 +12,7 @@ outputs:
 - final-review.md
 retry: 99
 failAction: selected_step
-retryFromStepKey: implementation_review
+retryFromStepKey: final_review
 retryEscalationEvery: 3
 retryEscalationStepKey: plan_tasks
 keepSameSession: true
@@ -41,7 +41,7 @@ functions:
 - require_status_pass
 approval: false
 retryPolicy:
-  defaultRetryTo: implementation_review
+  defaultRetryTo: final_review
   escalateEvery: 3
   escalateTo: plan_tasks
   maxRetries: 99

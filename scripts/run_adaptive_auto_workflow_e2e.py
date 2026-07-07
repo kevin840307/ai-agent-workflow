@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import json
 import os
 import shutil
@@ -8,7 +9,13 @@ import sys
 import time
 from pathlib import Path
 
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
 from fastapi.testclient import TestClient
+
+from e2e_log_utils import iter_project_snapshot_files
 
 CASES = [
     ("01-normal-pass", "", False),
@@ -39,12 +46,8 @@ def copy_run_logs(project_dir: Path, run: dict, output_root: Path, label: str) -
         shutil.copytree(workspace, dest / "run-workspace", dirs_exist_ok=True)
     project_snapshot = dest / "project-snapshot"
     project_snapshot.mkdir(parents=True, exist_ok=True)
-    for path in sorted(project_dir.rglob("*")):
-        if not path.is_file():
-            continue
+    for path in iter_project_snapshot_files(project_dir):
         rel = path.relative_to(project_dir)
-        if rel.parts and rel.parts[0] in {".ai-workflow", ".qwen", ".qwen-workflow", ".git", "__pycache__", ".pytest_cache"}:
-            continue
         target = project_snapshot / rel
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(path, target)
@@ -129,9 +132,16 @@ def run_child(output_root: Path, label: str, scenario: str, with_validation: boo
     return 0 if result and result["status"] == "done" and result["ai_review_prompt_had_validation_result"] else 1
 
 
+def _parse_output_root(default: str) -> Path:
+    parser = argparse.ArgumentParser(description="Run workflow E2E scenarios and export logs.")
+    parser.add_argument("output", nargs="?", help="Output directory (legacy positional).")
+    parser.add_argument("--output", dest="output_option", help="Output directory.")
+    args = parser.parse_args()
+    return Path(args.output_option or args.output or default).resolve()
+
+
 def main() -> int:
-    output_root = Path(sys.argv[1]) if len(sys.argv) > 1 else Path("adaptive-auto-workflow-e2e-logs")
-    output_root = output_root.resolve()
+    output_root = _parse_output_root("adaptive-auto-workflow-e2e-logs")
     if os.environ.get("AIWF_E2E_CHILD") == "1":
         label = os.environ["AIWF_E2E_LABEL"]
         scenario = os.environ.get("AIWF_E2E_SCENARIO", "")
@@ -149,7 +159,9 @@ def main() -> int:
     # deterministic and avoids child-process cleanup issues in constrained CI.
     with TestClient(app) as client:
         for label, scenario, with_validation in CASES:
+            print(f"running {label}...", flush=True)
             result = run_case(client, output_root, label, scenario=scenario, with_validation=with_validation)
+            print(f"done {label}: {result.get('status')}", flush=True)
             (output_root / label / "case-summary.json").write_text(json.dumps(result, indent=2, ensure_ascii=False), encoding="utf-8")
             results.append(result)
     all_done = all(item["status"] == "done" for item in results)

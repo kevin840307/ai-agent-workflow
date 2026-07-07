@@ -15,3 +15,5 @@ This directory contains the English documentation for Agent Workflow Web.
 9. `TESTING.md` - run daily checks and opt-in manual scenarios.
 
 Traditional Chinese docs are in `../zh-TW/`.
+
+See also: `doc/WORKFLOW_STABILITY_PLAN.md` for the stability score, failure-injection matrix, and isolated-workspace guard pattern.

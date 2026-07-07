@@ -24,6 +24,12 @@ class CreateRunRequest(BaseModel):
     agent: str | None = None
     run_profile: str | None = Field(default=None, alias="runProfile")
     thinking_level: str | None = Field(default=None, alias="thinkingLevel")
+    run_timeout_sec: int | None = Field(default=None, alias="runTimeoutSec")
+    patch_mode: str | None = Field(default=None, alias="patchMode")
+    workflow_version: str | None = Field(default=None, alias="workflowVersion")
+    prompt_version: str | None = Field(default=None, alias="promptVersion")
+    contract_version: str | None = Field(default=None, alias="contractVersion")
+    context_pack: str | None = Field(default=None, alias="contextPack")
 
 
 class CreateSessionRequest(BaseModel):
@@ -62,6 +68,16 @@ class StepControlRequest(BaseModel):
     step_key: str
     reason: str | None = None
 
+class PatchApplyRequest(BaseModel):
+    files: list[str] | None = None
+
+
+class RerunStepRequest(BaseModel):
+    step_key: str | None = None
+    mode: str | None = Field(default="from_step", description="from_step, current_step, or validation_only")
+    reason: str | None = None
+
+
 __all__ = [
     "CreateMessageRequest",
     "CreateRunRequest",
@@ -71,4 +87,6 @@ __all__ = [
     "SubmitAnswersRequest",
     "SubmitGuidanceRequest",
     "StepControlRequest",
+    "PatchApplyRequest",
+    "RerunStepRequest",
 ]

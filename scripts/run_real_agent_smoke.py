@@ -10,6 +10,8 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
+from e2e_log_utils import iter_project_snapshot_files
+
 SMOKE_CASES = {
     "sort": {
         "requirement": "Create sort_utils.py with bubble_sort(data) returning a sorted list without mutating the input. Add focused tests when useful.",
@@ -58,11 +60,9 @@ def copy_logs(project: Path, run: dict, out: Path) -> None:
         shutil.copytree(workspace, out / "run-workspace", dirs_exist_ok=True)
     snap = out / "project-snapshot"
     snap.mkdir(exist_ok=True)
-    ignored = {".ai-workflow", ".qwen", ".qwen-workflow", "__pycache__", ".pytest_cache"}
-    for path in project.rglob("*"):
-        if not path.is_file() or path.relative_to(project).parts[0] in ignored:
-            continue
-        target = snap / path.relative_to(project)
+    for path in iter_project_snapshot_files(project):
+        rel = path.relative_to(project)
+        target = snap / rel
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(path, target)
 
@@ -95,17 +95,43 @@ def self_prompt_review(payload: dict) -> dict:
     }
 
 
+def write_markdown_report(output: Path, summary: dict) -> None:
+    lines = [
+        "# Real Agent Smoke Report",
+        "",
+        f"- Status: {summary.get('status')}",
+        f"- Workflow: {summary.get('workflow')}",
+        f"- Agent: {summary.get('agent')}",
+        f"- Case: {summary.get('case')}",
+        f"- Run ID: {summary.get('run_id', '-')}",
+        f"- Error: {summary.get('error') or '-'}",
+        "",
+        "## Self-prompt Review",
+    ]
+    review = summary.get("self_prompt_review") or summary.get("review") or {}
+    lines.append(f"- Review Status: {review.get('status', '-')}")
+    for item in review.get("problems") or []:
+        lines.append(f"- Problem: {item}")
+    output.mkdir(parents=True, exist_ok=True)
+    (output / "real-agent-smoke-report.md").write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run a manually-triggered real Qwen/OpenCode smoke workflow against tiny fixture projects.")
     parser.add_argument("--agent", choices=["qwen", "opencode"], default="qwen")
     parser.add_argument("--workflow", choices=["adaptive-auto-workflow", "general-auto-development"], default="adaptive-auto-workflow")
     parser.add_argument("--case", choices=sorted(SMOKE_CASES), default="sort")
     parser.add_argument("--output", default="real-agent-smoke-logs")
+    parser.add_argument("--list-cases", action="store_true", help="List available real-agent smoke cases and exit.")
     parser.add_argument("--timeout-sec", type=float, default=180)
     parser.add_argument("--allow-mock", action="store_true", help="Allow QWEN_MOCK=1 for local dry-runs. By default mock mode is rejected.")
     parser.add_argument("--dry-run", action="store_true", help="Only create the fixture and print the payload; do not start a workflow run.")
     parser.add_argument("--self-prompt-test", action="store_true", help="Validate and print the smoke prompt first, before starting a real agent run.")
     args = parser.parse_args()
+
+    if args.list_cases:
+        print(json.dumps({"cases": sorted(SMOKE_CASES)}, indent=2, ensure_ascii=False))
+        return 0
 
     if os.environ.get("QWEN_MOCK") == "1" and not args.allow_mock and not args.dry_run and not args.self_prompt_test:
         print("Refusing to run real-agent smoke while QWEN_MOCK=1. Use --allow-mock for dry-run only.", file=sys.stderr)
@@ -132,11 +158,13 @@ def main() -> int:
     if args.self_prompt_test:
         summary = {"status": review["status"], "mode": "SELF_PROMPT_TEST", "workflow": args.workflow, "agent": args.agent, "case": args.case, "payload": payload, "review": review}
         (output / "summary.json").write_text(json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8")
+        write_markdown_report(output, summary)
         print(json.dumps(summary, indent=2, ensure_ascii=False))
         return 0 if review["status"] == "PASS" else 1
     if args.dry_run:
         summary = {"status": "DRY_RUN", "workflow": args.workflow, "agent": args.agent, "case": args.case, "project_path": str(project), "payload": payload, "self_prompt_review": review}
         (output / "summary.json").write_text(json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8")
+        write_markdown_report(output, summary)
         print(json.dumps(summary, indent=2, ensure_ascii=False))
         return 0
 
@@ -150,6 +178,7 @@ def main() -> int:
     copy_logs(project, run, output)
     summary = {"status": "PASS" if run.get("status") == "done" else "FAIL", "workflow": args.workflow, "agent": args.agent, "case": args.case, "run_id": run.get("id"), "error": run.get("error"), "output": str(output), "self_prompt_review": review}
     (output / "summary.json").write_text(json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8")
+    write_markdown_report(output, summary)
     print(json.dumps(summary, indent=2, ensure_ascii=False))
     return 0 if summary["status"] == "PASS" else 1
 

@@ -42,6 +42,12 @@ class WorkflowFunctionRefactorContractTests(unittest.TestCase):
             "run_pytest",
             "validate_general_auto_plan",
             "validate_general_auto_final",
+            "collect_regression_context",
+            "generate_regression_sop_sql",
+            "generate_regression_runtime_sql",
+            "generate_regression_validation",
+            "generate_regression_case_doc",
+            "validate_regression_case_package",
         }
         self.assertEqual(expected_registry_names, set(PYTHON_FUNCTIONS))
 

@@ -101,7 +101,7 @@ body.run-failed .summary > div:last-child {
 .run-result-grid,
 .step-drawer-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(108px, 1fr));
   gap: 8px;
   margin-top: 10px;
 }
@@ -664,7 +664,7 @@ body.chat-mode .composer-box {
 /* Details panels */
 .tabs {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 1px;
   background: var(--line);
   border-bottom: 1px solid var(--line);
@@ -2358,14 +2358,14 @@ body.chat-mode .thinking-picker {
   font-size: 12px;
 }
 .profile-picker select {
-  border: 1px solid var(--border);
+  border: 1px solid var(--line);
   border-radius: 10px;
   padding: 6px 8px;
   background: var(--panel);
   color: var(--text);
 }
 .advanced-mode-toggle {
-  border: 1px solid var(--border);
+  border: 1px solid var(--line);
   border-radius: 999px;
   padding: 6px 10px;
   cursor: pointer;
@@ -2378,10 +2378,80 @@ body.novice-mode .step-detail-actions .step-detail-export-run,
 body.novice-mode .step-detail-actions .step-detail-replay-run {
   display: none;
 }
-body.advanced-mode .workflow-preview-card::after {
-  content: "Advanced controller view";
-  display: inline-block;
-  margin-top: 8px;
-  font-size: 11px;
+body.advanced-mode .advanced-mode-toggle {
+  border-color: var(--accent);
+  color: var(--text);
+  background: var(--panel-2);
+}
+body.advanced-mode .step-detail-card {
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.03);
+}
+
+/* Run detail stability / overflow hardening */
+.run-detail-view {
+  min-width: 0;
+  padding: 0;
+}
+
+.run-detail-card {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 14px;
+  background: var(--panel);
+  box-shadow: var(--shadow-sm);
+}
+
+.run-result-head > div:first-child {
+  min-width: 0;
+}
+
+.run-result-head h2,
+.run-result-head p,
+.step-detail-error span {
+  overflow-wrap: anywhere;
+}
+
+.run-result-actions .mini-button {
+  white-space: nowrap;
+}
+
+@media (max-width: 520px) {
+  .tabs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .tab {
+    min-height: 38px;
+    padding: 8px 6px;
+  }
+}
+
+.ui-empty-state {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px dashed var(--line);
+  border-radius: 10px;
+  background: var(--panel);
   color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.ui-empty-state strong {
+  color: var(--text);
+  font-size: 13px;
+}
+
+.ui-empty-state span {
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.ui-empty-state.error {
+  border-color: rgba(231, 76, 60, 0.35);
+  color: var(--fail);
 }
