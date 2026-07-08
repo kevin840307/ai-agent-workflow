@@ -28,6 +28,8 @@ from app.workflow_runtime.benchmark import summarize_runs
 from app.workflow_runtime.patch_approval import patch_preview, write_patch_artifacts, apply_patch
 from app.workflow_runtime.versioning import build_version_metadata
 from app.workflow_runtime.run_artifacts import read_run_artifact_index
+from app.workflow_runtime.run_consistency import check_run_consistency
+from app.workflow_runtime.artifact_repair import repair_run_artifacts
 from app.workflow_runtime.repair_policy import policy_for_failure
 from app.workflow_runtime.run_lifecycle import (
     ACTIVE_RUN_STATUSES,
@@ -42,6 +44,7 @@ from app.workflow_runtime.run_lifecycle import (
 from app.security.isolated_workspace import create_isolated_project_copy
 from app.services.context_pack_service import render_context_pack_prompt
 from app.stores import FileArtifactStore, FileLockStore, FileRunStore, FileStepStore
+from app.agents.process_supervisor import terminate_async_process_tree
 
 
 _RUN_CREATION_LOCKS: dict[int, asyncio.Lock] = {}
@@ -123,11 +126,7 @@ async def _execute_with_run_timeout(run_id: str, start_index: int = 0) -> None:
         except asyncio.TimeoutError:
             proc = runtime.running_processes.get(run_id)
             if proc and proc.returncode is None:
-                proc.terminate()
-                with contextlib.suppress(asyncio.TimeoutError, ProcessLookupError):
-                    await asyncio.wait_for(proc.wait(), timeout=2)
-                if proc.returncode is None:
-                    proc.kill()
+                await terminate_async_process_tree(proc, grace_sec=2.0)
             message = f"Workflow timed out after {timeout} seconds."
             await runtime.update_run(
                 run_id,
@@ -585,11 +584,7 @@ async def terminate_run(run_id: str) -> dict:
     task = runtime.running_tasks.get(run_id)
     proc = runtime.running_processes.get(run_id)
     if proc and proc.returncode is None:
-        proc.terminate()
-        with contextlib.suppress(asyncio.TimeoutError, ProcessLookupError):
-            await asyncio.wait_for(proc.wait(), timeout=2)
-        if proc.returncode is None:
-            proc.kill()
+        await terminate_async_process_tree(proc, grace_sec=2.0)
     if task and not task.done():
         task.cancel()
         try:
@@ -930,6 +925,17 @@ async def apply_run_patch(run_id: str, body: runtime.PatchApplyRequest | None = 
 async def get_run_artifact_index(run_id: str) -> dict:
     return read_run_artifact_index(await get_run(run_id))
 
+
+async def get_run_consistency(run_id: str) -> dict:
+    run = await get_run(run_id)
+    return check_run_consistency(run)
+
+
+async def repair_run_artifacts_service(run_id: str) -> dict:
+    run = await get_run(run_id)
+    result = repair_run_artifacts(run)
+    await runtime.refresh_artifacts(run_id)
+    return result
 
 async def get_run_repair_policy(run_id: str) -> dict:
     run = await get_run(run_id)

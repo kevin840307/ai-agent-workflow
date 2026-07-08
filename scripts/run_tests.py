@@ -23,6 +23,9 @@ import time
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(REPO_ROOT))
+
+from app.agents.process_supervisor import terminate_popen_tree
 LOG_DIR = REPO_ROOT / "test-results"
 TEST_RUN_ID = f"{int(time.time())}-{os.getpid()}"
 
@@ -79,6 +82,7 @@ PYTEST_GROUPS: list[tuple[str, list[str]]] = [
             "tests/test_production_hardening_round2.py",
             "tests/test_production_hardening_round3.py",
             "tests/test_full_system_optimization_round4.py",
+            "tests/test_reliability_hardening_round5.py",
         ],
     ),
     (
@@ -120,6 +124,14 @@ E2E_GROUPS = {
     "J_workflow_quality_resilience",
 }
 
+TEST_TIERS: dict[str, set[str]] = {
+    "unit": {"A_core_cli_api", "B_general_project_prompt"},
+    "contract": {"C_productization_features", "E_runtime_safety_contracts", "H_workflow_core_contracts"},
+    "integration": {"D_manual_run_state", "F_workflow_assets_stability", "I_workflow_integration"},
+    "e2e": {"G_self_prompt_e2e", "J_workflow_quality_resilience"},
+    "soak": {"G_self_prompt_e2e"},
+}
+
 
 def discover_test_files() -> list[str]:
     return sorted(path.relative_to(REPO_ROOT).as_posix() for path in (REPO_ROOT / "tests").glob("test_*.py"))
@@ -147,7 +159,13 @@ def coverage_report() -> dict[str, object]:
     }
 
 
-def selected_groups(mode: str) -> list[tuple[str, list[str]]]:
+def selected_groups(mode: str, tier: str | None = None) -> list[tuple[str, list[str]]]:
+    if tier:
+        names = TEST_TIERS.get(tier)
+        if names is None:
+            available = ", ".join(sorted(TEST_TIERS))
+            raise SystemExit(f"Unknown tier: {tier}. Available tiers: {available}")
+        return [(name, files) for name, files in PYTEST_GROUPS if name in names]
     if mode == "fast":
         return [(name, files) for name, files in PYTEST_GROUPS if name in FAST_GROUPS]
     if mode == "e2e":
@@ -193,27 +211,7 @@ def _tail(text: str, max_lines: int = 40) -> str:
 
 
 def _terminate_process_tree(process: subprocess.Popen) -> None:
-    if process.poll() is not None:
-        return
-    try:
-        if os.name == "nt":
-            process.terminate()
-        else:
-            os.killpg(process.pid, signal.SIGTERM)
-    except ProcessLookupError:
-        return
-    deadline = time.monotonic() + 2.0
-    while time.monotonic() < deadline:
-        if process.poll() is not None:
-            return
-        time.sleep(0.05)
-    try:
-        if os.name == "nt":
-            process.kill()
-        else:
-            os.killpg(process.pid, signal.SIGKILL)
-    except ProcessLookupError:
-        pass
+    terminate_popen_tree(process, grace_sec=2.0)
 
 
 def run_pytest(label: str, test_files: list[str], timeout_seconds: int, *, extra_args: list[str] | None = None) -> dict[str, object]:
@@ -356,6 +354,7 @@ def write_shell_pipeline(groups: list[tuple[str, list[str]]], group_timeout: int
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run all tests in deterministic groups.")
     parser.add_argument("--mode", choices=["all", "fast", "e2e"], default="all", help="test subset to run")
+    parser.add_argument("--tier", choices=sorted(TEST_TIERS), help="run a stability tier: unit, contract, integration, e2e, or soak")
     parser.add_argument("--group", help="run one deterministic test group and exec directly into pytest")
     parser.add_argument("--list-groups", action="store_true", help="print available test groups and exit")
     parser.add_argument("--group-timeout", type=int, default=240, help="timeout seconds per group")
@@ -385,12 +384,13 @@ def main() -> int:
     group_results: list[dict[str, object]] = []
     isolated_results: dict[str, list[dict[str, object]]] = {}
     started = time.monotonic()
-    groups = selected_groups(args.mode)
+    groups = selected_groups(args.mode, args.tier)
     if not args.execute_all:
         commands = [f"python scripts/run_tests.py --group {group_name}" for group_name, _files in groups]
         lines = [
             "status: PLAN",
             f"mode: {args.mode}",
+            f"tier: {args.tier or 'none'}",
             f"coverage_ok: {coverage['ok']} ({coverage['grouped_count']}/{coverage['discovered_count']} files)",
             "",
             "Run these CI matrix commands:",

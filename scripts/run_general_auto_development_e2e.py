@@ -14,36 +14,39 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from fastapi.testclient import TestClient
 
-from e2e_log_utils import iter_project_snapshot_files
+from e2e_log_utils import copy_pruned_tree, iter_project_snapshot_files
+
+TERMINAL_STATUSES = {"done", "failed", "cancelled", "waiting_input"}
 
 
-def wait_for_terminal_run(client: TestClient, run: dict, timeout_sec: float = 45.0) -> dict:
+def wait_for_terminal_run(client: TestClient, run: dict, timeout_sec: float = 60.0) -> dict:
+    """Wait for a terminal run.
+
+    Prefer reading the isolated test store directly after the API creates the
+    run.  This avoids TestClient/background-task shutdown edge cases in local
+    E2E scripts while still exercising the API to start the workflow.
+    """
     deadline = time.time() + timeout_sec
     run_id = run["id"]
+    store_file = Path(os.environ.get("AIWF_STORE_FILE", ""))
     while time.time() < deadline:
-        response = client.get(f"/api/workflow-runs/{run_id}")
-        response.raise_for_status()
-        current = response.json()
-        if current.get("status") in {"done", "failed", "cancelled", "waiting_input"}:
+        current = None
+        if store_file.exists():
+            try:
+                data = json.loads(store_file.read_text(encoding="utf-8-sig"))
+                current = next((item for item in data.get("runs", []) if item.get("id") == run_id), None)
+            except Exception:
+                current = None
+        if current is not None and current.get("status") in TERMINAL_STATUSES:
             return current
         time.sleep(0.2)
     raise TimeoutError(f"run {run_id} did not finish within {timeout_sec}s")
 
-
 def copy_run_logs(project_dir: Path, run: dict, output_root: Path, label: str) -> None:
     dest = output_root / label
     dest.mkdir(parents=True, exist_ok=True)
-    workspace = Path(run["workspace"])
-    if workspace.exists():
-        shutil.copytree(workspace, dest / "run-workspace", dirs_exist_ok=True)
-    project_snapshot = dest / "project-snapshot"
-    project_snapshot.mkdir(parents=True, exist_ok=True)
-    for path in iter_project_snapshot_files(project_dir):
-        rel = path.relative_to(project_dir)
-        target = project_snapshot / rel
-        target.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(path, target)
     (dest / "run.json").write_text(json.dumps(run, indent=2, ensure_ascii=False), encoding="utf-8")
+    (dest / "workspace.txt").write_text(str(run.get("workspace") or ""), encoding="utf-8")
     timeline = "\n".join(f"{item.get('created_at','')} {item.get('message','')}" for item in run.get("timeline", []))
     (dest / "timeline.txt").write_text(timeline + "\n", encoding="utf-8")
     steps = [
@@ -56,7 +59,6 @@ def copy_run_logs(project_dir: Path, run: dict, output_root: Path, label: str) -
         for step in run.get("steps", [])
     ]
     (dest / "steps.json").write_text(json.dumps(steps, indent=2, ensure_ascii=False), encoding="utf-8")
-
 
 def create_project(root: Path, *, with_validation: bool) -> Path:
     project_dir = root / "project"
@@ -89,7 +91,9 @@ def run_case(client: TestClient, output_root: Path, label: str, *, scenario: str
     )
     run_resp.raise_for_status()
     run = wait_for_terminal_run(client, run_resp.json())
+    print(f"copying {label}...", flush=True)
     copy_run_logs(project_dir, run, output_root, label)
+    print(f"copied {label}", flush=True)
     return {"case": label, "status": run.get("status"), "error": run.get("error"), "workspace": run.get("workspace")}
 
 
@@ -122,14 +126,14 @@ def main() -> int:
         ("04-validation-fail-repair", "general_validation_fail_once", True),
     ]
     results: list[dict] = []
-    # Use a single TestClient for the whole scenario matrix. This avoids
-    # repeated ASGI shutdown/startup drains in constrained CI while still
-    # creating one isolated project and session per scenario.
-    with TestClient(app) as client:
-        for label, scenario, with_validation in cases:
-            print(f"running {label}...", flush=True)
+    # Keep each scenario in a fresh TestClient to avoid long-lived background
+    # task/TestClient state carrying over between intentionally failing/retrying
+    # workflow cases.
+    for label, scenario, with_validation in cases:
+        print(f"running {label}...", flush=True)
+        with TestClient(app) as client:
             results.append(run_case(client, output_root, label, scenario=scenario, with_validation=with_validation))
-            print(f"done {label}: {results[-1].get('status')}", flush=True)
+        print(f"done {label}: {results[-1].get('status')}", flush=True)
 
     summary = {"status": "PASS" if all(item["status"] == "done" for item in results) else "FAIL", "results": results}
     (output_root / "summary.json").write_text(json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8")

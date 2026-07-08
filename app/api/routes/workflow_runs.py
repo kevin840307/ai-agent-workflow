@@ -102,6 +102,16 @@ async def get_run_artifact_index(run_id: str):
     return await workflow_service.get_run_artifact_index(run_id)
 
 
+@router.get("/api/workflow-runs/{run_id}/consistency")
+async def get_run_consistency(run_id: str):
+    return await workflow_service.get_run_consistency(run_id)
+
+
+@router.post("/api/workflow-runs/{run_id}/repair-artifacts")
+async def repair_run_artifacts(run_id: str):
+    return await workflow_service.repair_run_artifacts_service(run_id)
+
+
 @router.get("/api/workflow-runs/{run_id}/debug-bundle")
 async def get_run_debug_bundle(run_id: str):
     return await workflow_service.get_run_debug_bundle(run_id)

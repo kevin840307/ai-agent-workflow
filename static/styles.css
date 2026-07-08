@@ -34,3 +34,20 @@
 .workflow-console {
   min-width: 0;
 }
+
+.ui-empty-state {
+  display: grid;
+  gap: 4px;
+  padding: 14px;
+  border: 1px dashed var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.ui-empty-state strong {
+  color: var(--text);
+}
+.ui-empty-state.error {
+  border-style: solid;
+}

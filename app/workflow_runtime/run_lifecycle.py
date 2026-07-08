@@ -202,7 +202,7 @@ def mark_interrupted_store_runs(data: dict[str, Any]) -> list[dict[str, Any]]:
     owner = current_run_owner()
     changed: list[dict[str, Any]] = []
     for run in data.get("runs", []):
-        if run.get("status") not in {"queued", "running", "cancelling"}:
+        if run.get("status") not in {"queued", "running", "waiting_input", "cancelling"}:
             continue
         run_owner = run.get("run_owner")
         if run_owner and not owner_matches_current_process(run_owner) and owner_process_is_alive(run_owner):

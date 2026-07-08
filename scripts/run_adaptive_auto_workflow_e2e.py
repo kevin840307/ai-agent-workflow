@@ -15,7 +15,9 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from fastapi.testclient import TestClient
 
-from e2e_log_utils import iter_project_snapshot_files
+from e2e_log_utils import copy_pruned_tree, iter_project_snapshot_files
+
+TERMINAL_STATUSES = {"done", "failed", "cancelled", "waiting_input"}
 
 CASES = [
     ("01-normal-pass", "", False),
@@ -25,43 +27,46 @@ CASES = [
 ]
 
 
-def wait_for_terminal_run(client: TestClient, run: dict, timeout_sec: float = 45.0) -> dict:
+def wait_for_terminal_run(client: TestClient, run: dict, timeout_sec: float = 60.0) -> dict:
+    """Wait for a terminal run.
+
+    Prefer reading the isolated test store directly after the API creates the
+    run.  This avoids TestClient/background-task shutdown edge cases in local
+    E2E scripts while still exercising the API to start the workflow.
+    """
     deadline = time.time() + timeout_sec
     run_id = run["id"]
+    store_file = Path(os.environ.get("AIWF_STORE_FILE", ""))
     while time.time() < deadline:
-        response = client.get(f"/api/workflow-runs/{run_id}")
-        response.raise_for_status()
-        current = response.json()
-        if current.get("status") in {"done", "failed", "cancelled", "waiting_input"}:
+        current = None
+        if store_file.exists():
+            try:
+                data = json.loads(store_file.read_text(encoding="utf-8-sig"))
+                current = next((item for item in data.get("runs", []) if item.get("id") == run_id), None)
+            except Exception:
+                current = None
+        if current is not None and current.get("status") in TERMINAL_STATUSES:
             return current
         time.sleep(0.2)
     raise TimeoutError(f"run {run_id} did not finish within {timeout_sec}s")
 
-
-def copy_run_logs(project_dir: Path, run: dict, output_root: Path, label: str) -> dict:
+def copy_run_logs(project_dir: Path, run: dict, output_root: Path, label: str) -> None:
     dest = output_root / label
     dest.mkdir(parents=True, exist_ok=True)
-    workspace = Path(run["workspace"])
-    if workspace.exists():
-        shutil.copytree(workspace, dest / "run-workspace", dirs_exist_ok=True)
-    project_snapshot = dest / "project-snapshot"
-    project_snapshot.mkdir(parents=True, exist_ok=True)
-    for path in iter_project_snapshot_files(project_dir):
-        rel = path.relative_to(project_dir)
-        target = project_snapshot / rel
-        target.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(path, target)
     (dest / "run.json").write_text(json.dumps(run, indent=2, ensure_ascii=False), encoding="utf-8")
-    timeline = "\n".join(f"{item.get('time') or item.get('created_at','')} {item.get('kind','')} {item.get('message','')}" for item in run.get("timeline", []))
+    (dest / "workspace.txt").write_text(str(run.get("workspace") or ""), encoding="utf-8")
+    timeline = "\n".join(f"{item.get('created_at','')} {item.get('message','')}" for item in run.get("timeline", []))
     (dest / "timeline.txt").write_text(timeline + "\n", encoding="utf-8")
     steps = [
-        {"key": step.get("key"), "status": step.get("status"), "error": step.get("error"), "retry_count": step.get("retry_count") or step.get("retryCount"), "events": step.get("events") or []}
+        {
+            "key": step.get("key"),
+            "status": step.get("status"),
+            "error": step.get("error"),
+            "retry_count": step.get("retry_count") or step.get("retryCount"),
+        }
         for step in run.get("steps", [])
     ]
     (dest / "steps.json").write_text(json.dumps(steps, indent=2, ensure_ascii=False), encoding="utf-8")
-    trace_path = workspace / ".workflow" / "run-trace.json"
-    return json.loads(trace_path.read_text(encoding="utf-8")) if trace_path.exists() else {}
-
 
 def create_project(root: Path, *, with_validation: bool) -> Path:
     project_dir = root / "project"

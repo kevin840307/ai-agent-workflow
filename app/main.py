@@ -12,7 +12,7 @@ from app.runtime_modules import api as runtime
 from app.api.errors import http_exception_handler, validation_exception_handler
 from app.api.routes import artifacts, config, maintenance, projects, workflow_assets, workflow_runs, workflows, workflow_cases, validation_scripts, context_packs, workflow_productization
 from app.core.metrics import metrics
-from app.services import workflow_asset_service, workflow_config_service
+from app.services import workflow_asset_service, workflow_config_service, health_service
 
 
 app = FastAPI(title="Agent Workflow Web MVP")
@@ -52,8 +52,14 @@ async def ai_workflow_assets():
 
 
 @app.get("/health")
+@app.get("/api/health")
 async def health():
-    return {"ok": True, "status": "healthy"}
+    return await health_service.health_summary(deep=False)
+
+
+@app.get("/api/health/deep")
+async def deep_health():
+    return await health_service.health_summary(deep=True)
 
 
 @app.get("/ready")

@@ -103,8 +103,9 @@ def main() -> int:
         checks.append(run_cmd(f"node-check-{index}", cmd, timeout=30))
     checks.append(run_cmd("workflow-assets", [sys.executable, "scripts/validate_workflow_assets.py"], timeout=120))
     checks.append(run_cmd("browser-ui-smoke", [sys.executable, "scripts/run_browser_ui_smoke.py"], timeout=60))
+    checks.append(run_cmd("crash-recovery-simulation", [sys.executable, "scripts/run_crash_recovery_test.py"], timeout=120))
     if not args.quick:
-        checks.append(run_cmd("pytest-targeted-hardening", [sys.executable, "-m", "pytest", "-q", "tests/test_production_hardening_round2.py", "tests/test_production_hardening_round3.py"], timeout=240))
+        checks.append(run_cmd("pytest-targeted-hardening", [sys.executable, "-m", "pytest", "-q", "tests/test_production_hardening_round2.py", "tests/test_production_hardening_round3.py", "tests/test_reliability_hardening_round5.py"], timeout=300))
         checks.append(run_cmd("ci-matrix-fast", [sys.executable, "scripts/run_tests.py", "--mode", "fast", "--execute-all"], timeout=900))
         checks.append(run_cmd("self-prompt-e2e", [sys.executable, "scripts/run_self_prompt_workflow_e2e.py", str(Path(args.output) / "self-prompt")], timeout=300))
         checks.append(run_cmd("regression-workflow-e2e", [sys.executable, "scripts/run_regression_workflow_e2e.py", str(Path(args.output) / "regression")], timeout=300))

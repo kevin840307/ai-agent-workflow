@@ -20,6 +20,7 @@ from .trace import write_run_trace_artifacts
 from .agent_safety import write_agent_safety_report
 from .event_log import append_event as append_workflow_event
 from .run_lifecycle import cancel_requested, write_project_lock
+from .retry_guard import should_stop_retry
 
 
 class WorkflowExecutor:
@@ -143,11 +144,27 @@ class WorkflowExecutor:
                         await self.set_step(run_id, key, "failed", message, error_code=classify_exception(message))
                         await self.log(run, f"{key}: max retries reached for {retry_key}: {exc}")
                         raise WorkflowError(message) from exc
+                    # Reliability guard: stop deterministic retry loops before local runs
+                    # burn the whole retry budget on the same failure text.  The
+                    # history is stored on the run so crash/restart/debug bundles
+                    # can explain why a retry stopped.
+                    guard_payload: dict[str, Any] = {}
+                    def update_retry_guard_history(item: dict[str, Any]) -> None:
+                        nonlocal guard_payload
+                        stop, stop_reason, attempt = should_stop_retry(item, step_key=retry_key, error=exc)
+                        attempt["stop"] = stop
+                        attempt["stop_reason"] = stop_reason
+                        guard_payload = attempt
+                    latest_for_guard = await self.update_run(run_id, update_retry_guard_history)
+                    if latest_for_guard:
+                        run = latest_for_guard
+                    if guard_payload.get("stop"):
+                        message = str(guard_payload.get("stop_reason") or f"Retry loop guard stopped {retry_key}.")
+                        await self.set_step(run_id, key, "failed", message, error_code="RETRY_LOOP_DETECTED")
+                        await self.log(run, message)
+                        raise WorkflowError(message) from exc
                     if self._same_failure_repeated(run, retry_key, exc):
-                        await self.log(
-                            run,
-                            f"{key}: same failure observed again for {retry_key}; continuing retry because small/local models may recover on a later attempt: {exc}",
-                        )
+                        await self.log(run, f"{key}: same failure observed again for {retry_key}; retry guard count={guard_payload.get('same_failure_count')}: {exc}")
                     retry_count = await self.increment_step_retry(run_id, retry_key)
                     target_index = key_to_index[retry_key]
                     await self.append_failure_feedback(run, key, retry_key, exc, retry_count, max_retries)

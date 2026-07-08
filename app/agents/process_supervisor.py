@@ -4,6 +4,7 @@ import asyncio
 import os
 import signal
 import subprocess
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Awaitable, Callable, Mapping, MutableMapping
@@ -52,6 +53,17 @@ def _creation_kwargs() -> dict[str, Any]:
 
 
 async def _terminate_process_tree(proc: asyncio.subprocess.Process, *, grace_sec: float = 5.0) -> None:
+    await terminate_async_process_tree(proc, grace_sec=grace_sec)
+
+
+async def terminate_async_process_tree(proc: asyncio.subprocess.Process, *, grace_sec: float = 5.0) -> None:
+    """Terminate an async subprocess and its children.
+
+    Windows CLI agents often spawn child processes under cmd.exe/node.exe.
+    `Process.terminate()` can leave those children alive, so use taskkill /T /F
+    after a graceful attempt.  Unix processes are started in a new session and
+    killed by process group.
+    """
     if proc.returncode is not None:
         return
     try:
@@ -71,11 +83,41 @@ async def _terminate_process_tree(proc: asyncio.subprocess.Process, *, grace_sec
         pass
     with contextlib_suppress_process_errors():
         if os.name == "nt":
-            proc.kill()
+            subprocess.run(["taskkill", "/PID", str(proc.pid), "/T", "/F"], capture_output=True, text=True, timeout=5)
         else:
             os.killpg(proc.pid, signal.SIGKILL)
     with contextlib_suppress_process_errors():
-        await proc.wait()
+        await asyncio.wait_for(proc.wait(), timeout=2)
+
+
+def terminate_popen_tree(process: subprocess.Popen, *, grace_sec: float = 2.0) -> None:
+    """Synchronous process-tree terminator for test runner and legacy paths."""
+    if process.poll() is not None:
+        return
+    try:
+        if os.name == "nt":
+            process.terminate()
+        else:
+            os.killpg(process.pid, signal.SIGTERM)
+    except ProcessLookupError:
+        return
+    deadline = time.monotonic() + grace_sec
+    while time.monotonic() < deadline:
+        if process.poll() is not None:
+            return
+        time.sleep(0.05)
+    try:
+        if os.name == "nt":
+            subprocess.run(["taskkill", "/PID", str(process.pid), "/T", "/F"], capture_output=True, text=True, timeout=5)
+        else:
+            os.killpg(process.pid, signal.SIGKILL)
+    except (ProcessLookupError, OSError, subprocess.SubprocessError):
+        pass
+    try:
+        process.wait(timeout=2)
+    except subprocess.TimeoutExpired:
+        with contextlib_suppress_process_errors():
+            process.kill()
 
 
 class contextlib_suppress_process_errors:
@@ -290,4 +332,6 @@ __all__ = [
     "run_agent_command_sync",
     "run_supervised_process",
     "run_supervised_process_sync",
+    "terminate_async_process_tree",
+    "terminate_popen_tree",
 ]

@@ -10,7 +10,7 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-from e2e_log_utils import iter_project_snapshot_files
+from e2e_log_utils import copy_pruned_tree, iter_project_snapshot_files
 
 
 def wait_for_terminal_run(client: TestClient, run: dict, timeout_sec: float = 30.0) -> dict:
@@ -31,7 +31,7 @@ def copy_run_logs(project_dir: Path, run: dict, output_root: Path, label: str) -
     dest.mkdir(parents=True, exist_ok=True)
     workspace = Path(run["workspace"])
     if workspace.exists():
-        shutil.copytree(workspace, dest / "run-workspace", dirs_exist_ok=True)
+        (dest / "run-workspace.txt").write_text(str(workspace), encoding="utf-8")
     project_snapshot = dest / "project-snapshot"
     project_snapshot.mkdir(parents=True, exist_ok=True)
     for path in iter_project_snapshot_files(project_dir):

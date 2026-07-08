@@ -9,6 +9,9 @@ import time
 from pathlib import Path
 
 from fastapi.testclient import TestClient
+from e2e_log_utils import copy_pruned_tree
+
+TERMINAL_STATUSES = {"done", "failed", "cancelled", "waiting_input"}
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
@@ -63,7 +66,7 @@ def main() -> int:
         artifact_index = client.get(f"/api/workflow-runs/{run_id}/artifact-index").json()
         repair = client.post("/api/small-model-repair-policy", json={"message": "validation failed", "retry_count": 1}).json()
     workspace = Path(run["workspace"])
-    shutil.copytree(workspace, output / "run-workspace", dirs_exist_ok=True)
+    (output / "run-workspace.txt").write_text(str(workspace), encoding="utf-8")
     summary = {
         "status": "PASS" if run.get("status") == "done" else "FAIL",
         "run_id": run_id,

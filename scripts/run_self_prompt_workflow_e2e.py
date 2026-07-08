@@ -16,7 +16,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from fastapi.testclient import TestClient
 
-from e2e_log_utils import iter_project_snapshot_files
+from e2e_log_utils import copy_pruned_tree, iter_project_snapshot_files
 
 from app.testing.self_prompt_sorting_agent import SORT_FUNCTIONS, SORTING_PROMPT, validation_script
 from app.workflow_runtime.stability_score import compute_workflow_stability_score, write_stability_report
@@ -24,43 +24,28 @@ from app.workflow_runtime.stability_score import compute_workflow_stability_scor
 TERMINAL_STATUSES = {"done", "failed", "cancelled", "waiting_input"}
 
 
-def wait_for_terminal_run(client: TestClient, run: dict[str, Any], timeout_sec: float = 60.0) -> dict[str, Any]:
+def wait_for_terminal_run(client: TestClient, run: dict, timeout_sec: float = 60.0) -> dict:
+    """Wait for a terminal run.
+
+    Prefer reading the isolated test store directly after the API creates the
+    run.  This avoids TestClient/background-task shutdown edge cases in local
+    E2E scripts while still exercising the API to start the workflow.
+    """
     deadline = time.time() + timeout_sec
     run_id = run["id"]
+    store_file = Path(os.environ.get("AIWF_STORE_FILE", ""))
     while time.time() < deadline:
-        response = client.get(f"/api/workflow-runs/{run_id}")
-        response.raise_for_status()
-        current = response.json()
-        if current.get("status") in TERMINAL_STATUSES:
+        current = None
+        if store_file.exists():
+            try:
+                data = json.loads(store_file.read_text(encoding="utf-8-sig"))
+                current = next((item for item in data.get("runs", []) if item.get("id") == run_id), None)
+            except Exception:
+                current = None
+        if current is not None and current.get("status") in TERMINAL_STATUSES:
             return current
         time.sleep(0.2)
     raise TimeoutError(f"run {run_id} did not finish within {timeout_sec}s")
-
-
-def configure_env(output_root: Path) -> None:
-    os.environ["QWEN_MOCK"] = "1"
-    os.environ["QWEN_MOCK_SCENARIO"] = "self_prompt_sorting_algorithms"
-    os.environ["QWEN_USE_SERVE"] = "0"
-    os.environ["QWEN_WORKFLOW_SHOW_AGENT_STDOUT"] = "0"
-    os.environ["QWEN_WORKFLOW_MOCK_FILE_BLOCK_NORMALIZATION"] = "1"
-    os.environ.setdefault("WORKFLOW_TEST_TIMEOUT_SEC", "20")
-    os.environ["AIWF_STORE_FILE"] = str(output_root / "store.json")
-
-
-def create_project(output_root: Path, workflow_id: str) -> Path:
-    project_dir = output_root / "projects" / workflow_id / "project"
-    if project_dir.exists():
-        shutil.rmtree(project_dir)
-    project_dir.mkdir(parents=True, exist_ok=True)
-    (project_dir / "README.md").write_text(
-        "# Self-Prompt Sorting Workflow E2E\n\n"
-        f"Workflow: `{workflow_id}`\n\n"
-        f"Prompt: `{SORTING_PROMPT}`\n",
-        encoding="utf-8",
-    )
-    (project_dir / "validation.py").write_text(validation_script(), encoding="utf-8")
-    return project_dir
-
 
 def copy_run_logs(project_dir: Path, run: dict[str, Any], output_root: Path, workflow_id: str) -> None:
     dest = output_root / workflow_id
@@ -69,7 +54,7 @@ def copy_run_logs(project_dir: Path, run: dict[str, Any], output_root: Path, wor
 
     workspace = Path(run.get("workspace") or "")
     if workspace.exists():
-        shutil.copytree(workspace, dest / "run-workspace", dirs_exist_ok=True)
+        (dest / "run-workspace.txt").write_text(str(workspace), encoding="utf-8")
 
     project_snapshot = dest / "project-snapshot"
     project_snapshot.mkdir(parents=True, exist_ok=True)

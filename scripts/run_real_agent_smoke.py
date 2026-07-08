@@ -10,7 +10,7 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-from e2e_log_utils import iter_project_snapshot_files
+from e2e_log_utils import copy_pruned_tree, iter_project_snapshot_files
 
 SMOKE_CASES = {
     "sort": {
@@ -57,7 +57,7 @@ def copy_logs(project: Path, run: dict, out: Path) -> None:
     (out / "run.json").write_text(json.dumps(run, indent=2, ensure_ascii=False), encoding="utf-8")
     workspace = Path(run.get("workspace") or "")
     if workspace.exists():
-        shutil.copytree(workspace, out / "run-workspace", dirs_exist_ok=True)
+        (out / "run-workspace.txt").write_text(str(workspace), encoding="utf-8")
     snap = out / "project-snapshot"
     snap.mkdir(exist_ok=True)
     for path in iter_project_snapshot_files(project):

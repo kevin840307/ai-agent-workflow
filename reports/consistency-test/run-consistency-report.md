@@ -1,0 +1,496 @@
+# Run Consistency Report
+
+- Schema: aiwf.store-consistency.v1
+- Status: FAIL
+- Run Count: 71
+- Errors: 142
+- Warnings: 274
+
+## Runs
+- `eed7eca2-fab0-4c9b-8067-d244a071d1af`: FAIL (2 errors, 4 warnings)
+  - ERROR: workspace_missing
+  - ERROR: state_json_missing_or_invalid
+  - WARNING: events_jsonl_missing_or_empty
+  - WARNING: terminal_event_missing
+  - WARNING: artifact_index_missing
+  - WARNING: done_run_missing_final_report
+- `3ab44ffe-0a86-43c3-91b2-b5a285586685`: FAIL (2 errors, 4 warnings)
+  - ERROR: workspace_missing
+  - ERROR: state_json_missing_or_invalid
+  - WARNING: events_jsonl_missing_or_empty
+  - WARNING: terminal_event_missing
+  - WARNING: artifact_index_missing
+  - WARNING: done_run_missing_final_report
+- `7df83b2c-2620-4cb0-9872-36c2ced13af2`: FAIL (2 errors, 4 warnings)
+  - ERROR: workspace_missing
+  - ERROR: state_json_missing_or_invalid
+  - WARNING: events_jsonl_missing_or_empty
+  - WARNING: terminal_event_missing
+  - WARNING: artifact_index_missing
+  - WARNING: done_run_missing_final_report
+- `8e2ca429-2d8d-412f-85f4-c2505a1ef984`: FAIL (2 errors, 4 warnings)
+  - ERROR: workspace_missing
+  - ERROR: state_json_missing_or_invalid
+  - WARNING: events_jsonl_missing_or_empty
+  - WARNING: terminal_event_missing
+  - WARNING: artifact_index_missing
+  - WARNING: done_run_missing_final_report
+- `64e0a07d-56e7-4a4f-8ebb-58d78a2ed318`: FAIL (2 errors, 4 warnings)
+  - ERROR: workspace_missing
+  - ERROR: state_json_missing_or_invalid
+  - WARNING: events_jsonl_missing_or_empty
+  - WARNING: terminal_event_missing
+  - WARNING: artifact_index_missing
+  - WARNING: done_run_missing_final_report
+- `08466124-6b88-40c5-9575-8789ca6e5e10`: FAIL (2 errors, 4 warnings)
+  - ERROR: workspace_missing
+  - ERROR: state_json_missing_or_invalid
+  - WARNING: events_jsonl_missing_or_empty
+  - WARNING: terminal_event_missing
+  - WARNING: artifact_index_missing
+  - WARNING: done_run_missing_final_report
+- `a8252dc5-c2c7-4078-b1cf-2b2f07df0f0f`: FAIL (2 errors, 4 warnings)
+  - ERROR: workspace_missing
+  - ERROR: state_json_missing_or_invalid
+  - WARNING: events_jsonl_missing_or_empty
+  - WARNING: terminal_event_missing
+  - WARNING: artifact_index_missing
+  - WARNING: done_run_missing_final_report
+- `b023b314-12f9-4027-b83c-9517a89363f4`: FAIL (2 errors, 4 warnings)
+  - ERROR: workspace_missing
+  - ERROR: state_json_missing_or_invalid
+  - WARNING: events_jsonl_missing_or_empty
+  - WARNING: terminal_event_missing
+  - WARNING: artifact_index_missing
+  - WARNING: done_run_missing_final_report
+- `1eec31a2-26c8-4fe9-8322-5935a45e3642`: FAIL (2 errors, 4 warnings)
+  - ERROR: workspace_missing
+  - ERROR: state_json_missing_or_invalid
+  - WARNING: events_jsonl_missing_or_empty
+  - WARNING: terminal_event_missing
+  - WARNING: artifact_index_missing
+  - WARNING: done_run_missing_final_report
+- `07f15087-490e-4793-bdf6-854ae9633265`: FAIL (2 errors, 4 warnings)
+  - ERROR: workspace_missing
+  - ERROR: state_json_missing_or_invalid
+  - WARNING: events_jsonl_missing_or_empty
+  - WARNING: terminal_event_missing
+  - WARNING: artifact_index_missing
+  - WARNING: done_run_missing_final_report
+- `0f5dea5d-def9-472a-8353-fe53f76d2868`: FAIL (2 errors, 4 warnings)
+  - ERROR: workspace_missing
+  - ERROR: state_json_missing_or_invalid
+  - WARNING: events_jsonl_missing_or_empty
+  - WARNING: terminal_event_missing
+  - WARNING: artifact_index_missing
+  - WARNING: done_run_missing_final_report
+- `d136ee5e-4d80-4a3f-9c7b-4dba931dfc2c`: FAIL (2 errors, 3 warnings)
+  - ERROR: workspace_missing
+  - ERROR: state_json_missing_or_invalid
+  - WARNING: events_jsonl_missing_or_empty
+  - WARNING: terminal_event_missing
+  - WARNING: artifact_index_missing
+- `678511d1-77cd-4923-9ca2-31664b88106c`: FAIL (2 errors, 4 warnings)
+  - ERROR: workspace_missing
+  - ERROR: state_json_missing_or_invalid
+  - WARNING: events_jsonl_missing_or_empty
+  - WARNING: terminal_event_missing
+  - WARNING: artifact_index_missing
+  - WARNING: done_run_missing_final_report
+- `fcd945e5-09e7-42f9-8a62-613829a3bf2a`: FAIL (2 errors, 3 warnings)
+  - ERROR: workspace_missing
+  - ERROR: state_json_missing_or_invalid
+  - WARNING: events_jsonl_missing_or_empty
+  - WARNING: terminal_event_missing
+  - WARNING: artifact_index_missing
+- `f889a62d-46ba-4299-8a4a-a171e10628ec`: FAIL (2 errors, 4 warnings)
+  - ERROR: workspace_missing
+  - ERROR: state_json_missing_or_invalid
+  - WARNING: events_jsonl_missing_or_empty
+  - WARNING: terminal_event_missing
+  - WARNING: artifact_index_missing
+  - WARNING: done_run_missing_final_report
+- `c488abe3-70e1-42a3-b9ca-67d79a7180aa`: FAIL (2 errors, 4 warnings)
+  - ERROR: workspace_missing
+  - ERROR: state_json_missing_or_invalid
+  - WARNING: events_jsonl_missing_or_empty
+  - WARNING: terminal_event_missing
+  - WARNING: artifact_index_missing
+  - WARNING: done_run_missing_final_report
+- `c746e914-27e2-42bd-80c7-7827223dd113`: FAIL (2 errors, 4 warnings)
+  - ERROR: workspace_missing
+  - ERROR: state_json_missing_or_invalid
+  - WARNING: events_jsonl_missing_or_empty
+  - WARNING: terminal_event_missing
+  - WARNING: artifact_index_missing
+  - WARNING: done_run_missing_final_report
+- `2be600d2-0423-4e58-bbb0-2a873b6c3713`: FAIL (2 errors, 4 warnings)
+  - ERROR: workspace_missing
+  - ERROR: state_json_missing_or_invalid
+  - WARNING: events_jsonl_missing_or_empty
+  - WARNING: terminal_event_missing
+  - WARNING: artifact_index_missing
+  - WARNING: done_run_missing_final_report
+- `f39cfdcc-b8fc-4b7d-b15b-23bf96af8998`: FAIL (2 errors, 4 warnings)
+  - ERROR: workspace_missing
+  - ERROR: state_json_missing_or_invalid
+  - WARNING: events_jsonl_missing_or_empty
+  - WARNING: terminal_event_missing
+  - WARNING: artifact_index_missing
+  - WARNING: done_run_missing_final_report
+- `165de414-b4a2-46e8-88bb-816427e65b94`: FAIL (2 errors, 4 warnings)
+  - ERROR: workspace_missing
+  - ERROR: state_json_missing_or_invalid
+  - WARNING: events_jsonl_missing_or_empty
+  - WARNING: terminal_event_missing
+  - WARNING: artifact_index_missing
+  - WARNING: done_run_missing_final_report
+- `dc22c25f-4ff6-4c0e-89fa-46765b013702`: FAIL (2 errors, 4 warnings)
+  - ERROR: workspace_missing
+  - ERROR: state_json_missing_or_invalid
+  - WARNING: events_jsonl_missing_or_empty
+  - WARNING: terminal_event_missing
+  - WARNING: artifact_index_missing
+  - WARNING: done_run_missing_final_report
+- `142807de-124e-4094-aa6b-366686fe71dd`: FAIL (2 errors, 4 warnings)
+  - ERROR: workspace_missing
+  - ERROR: state_json_missing_or_invalid
+  - WARNING: events_jsonl_missing_or_empty
+  - WARNING: terminal_event_missing
+  - WARNING: artifact_index_missing
+  - WARNING: done_run_missing_final_report
+- `ee93dd15-9d88-474b-b6df-07741c51ec07`: FAIL (2 errors, 4 warnings)
+  - ERROR: workspace_missing
+  - ERROR: state_json_missing_or_invalid
+  - WARNING: events_jsonl_missing_or_empty
+  - WARNING: terminal_event_missing
+  - WARNING: artifact_index_missing
+  - WARNING: done_run_missing_final_report
+- `ae8896f1-b257-4d3d-ac3e-23b5669af833`: FAIL (2 errors, 3 warnings)
+  - ERROR: workspace_missing
+  - ERROR: state_json_missing_or_invalid
+  - WARNING: events_jsonl_missing_or_empty
+  - WARNING: terminal_event_missing
+  - WARNING: artifact_index_missing
+- `3e79fb34-8f39-4fe4-a296-d23d99f297bd`: FAIL (2 errors, 4 warnings)
+  - ERROR: workspace_missing
+  - ERROR: state_json_missing_or_invalid
+  - WARNING: events_jsonl_missing_or_empty
+  - WARNING: terminal_event_missing
+  - WARNING: artifact_index_missing
+  - WARNING: done_run_missing_final_report
+- `200e80d0-d904-4ab1-a362-645f0e5902eb`: FAIL (2 errors, 4 warnings)
+  - ERROR: workspace_missing
+  - ERROR: state_json_missing_or_invalid
+  - WARNING: events_jsonl_missing_or_empty
+  - WARNING: terminal_event_missing
+  - WARNING: artifact_index_missing
+  - WARNING: done_run_missing_final_report
+- `950ac07a-c040-4a71-bd08-86a8f0bd7a9f`: FAIL (2 errors, 4 warnings)
+  - ERROR: workspace_missing
+  - ERROR: state_json_missing_or_invalid
+  - WARNING: events_jsonl_missing_or_empty
+  - WARNING: terminal_event_missing
+  - WARNING: artifact_index_missing
+  - WARNING: done_run_missing_final_report
+- `a62bb057-5fdb-4754-8407-03f80a3e29fe`: FAIL (2 errors, 4 warnings)
+  - ERROR: workspace_missing
+  - ERROR: state_json_missing_or_invalid
+  - WARNING: events_jsonl_missing_or_empty
+  - WARNING: terminal_event_missing
+  - WARNING: artifact_index_missing
+  - WARNING: done_run_missing_final_report
+- `64e8f129-7b16-40cf-b201-ac595071efa4`: FAIL (2 errors, 4 warnings)
+  - ERROR: workspace_missing
+  - ERROR: state_json_missing_or_invalid
+  - WARNING: events_jsonl_missing_or_empty
+  - WARNING: terminal_event_missing
+  - WARNING: artifact_index_missing
+  - WARNING: done_run_missing_final_report
+- `8e314215-9f81-43d8-8125-21e044e3d4ec`: FAIL (2 errors, 4 warnings)
+  - ERROR: workspace_missing
+  - ERROR: state_json_missing_or_invalid
+  - WARNING: events_jsonl_missing_or_empty
+  - WARNING: terminal_event_missing
+  - WARNING: artifact_index_missing
+  - WARNING: done_run_missing_final_report
+- `dac491c9-88f9-4666-98f6-de5d7aafa1f8`: FAIL (2 errors, 4 warnings)
+  - ERROR: workspace_missing
+  - ERROR: state_json_missing_or_invalid
+  - WARNING: events_jsonl_missing_or_empty
+  - WARNING: terminal_event_missing
+  - WARNING: artifact_index_missing
+  - WARNING: done_run_missing_final_report
+- `63c25f44-c2f6-471b-85d1-69c3a57946c8`: FAIL (2 errors, 4 warnings)
+  - ERROR: workspace_missing
+  - ERROR: state_json_missing_or_invalid
+  - WARNING: events_jsonl_missing_or_empty
+  - WARNING: terminal_event_missing
+  - WARNING: artifact_index_missing
+  - WARNING: done_run_missing_final_report
+- `81fa5c6b-35fb-455d-a0c7-e97e676e2a84`: FAIL (2 errors, 4 warnings)
+  - ERROR: workspace_missing
+  - ERROR: state_json_missing_or_invalid
+  - WARNING: events_jsonl_missing_or_empty
+  - WARNING: terminal_event_missing
+  - WARNING: artifact_index_missing
+  - WARNING: done_run_missing_final_report
+- `a7bffcab-eabd-4bb4-bed7-ea2b00a2f8f9`: FAIL (2 errors, 4 warnings)
+  - ERROR: workspace_missing
+  - ERROR: state_json_missing_or_invalid
+  - WARNING: events_jsonl_missing_or_empty
+  - WARNING: terminal_event_missing
+  - WARNING: artifact_index_missing
+  - WARNING: done_run_missing_final_report
+- `54b28012-f49d-4d63-9ece-7511d162df77`: FAIL (2 errors, 4 warnings)
+  - ERROR: workspace_missing
+  - ERROR: state_json_missing_or_invalid
+  - WARNING: events_jsonl_missing_or_empty
+  - WARNING: terminal_event_missing
+  - WARNING: artifact_index_missing
+  - WARNING: done_run_missing_final_report
+- `5f4e53fa-74f3-4466-bcc0-d6b14fd6f2ff`: FAIL (2 errors, 4 warnings)
+  - ERROR: workspace_missing
+  - ERROR: state_json_missing_or_invalid
+  - WARNING: events_jsonl_missing_or_empty
+  - WARNING: terminal_event_missing
+  - WARNING: artifact_index_missing
+  - WARNING: done_run_missing_final_report
+- `676dc511-06b3-4020-b65a-4aea1d07b328`: FAIL (2 errors, 4 warnings)
+  - ERROR: workspace_missing
+  - ERROR: state_json_missing_or_invalid
+  - WARNING: events_jsonl_missing_or_empty
+  - WARNING: terminal_event_missing
+  - WARNING: artifact_index_missing
+  - WARNING: done_run_missing_final_report
+- `9ff2eda0-d588-4907-af43-c6faae547ec4`: FAIL (2 errors, 3 warnings)
+  - ERROR: workspace_missing
+  - ERROR: state_json_missing_or_invalid
+  - WARNING: events_jsonl_missing_or_empty
+  - WARNING: terminal_event_missing
+  - WARNING: artifact_index_missing
+- `7e3660e1-75a8-4b9d-95e1-d93dc0dcd925`: FAIL (2 errors, 3 warnings)
+  - ERROR: workspace_missing
+  - ERROR: state_json_missing_or_invalid
+  - WARNING: events_jsonl_missing_or_empty
+  - WARNING: terminal_event_missing
+  - WARNING: artifact_index_missing
+- `b9890226-3b5c-4906-8976-684ce6931f35`: FAIL (2 errors, 4 warnings)
+  - ERROR: workspace_missing
+  - ERROR: state_json_missing_or_invalid
+  - WARNING: events_jsonl_missing_or_empty
+  - WARNING: terminal_event_missing
+  - WARNING: artifact_index_missing
+  - WARNING: done_run_missing_final_report
+- `2355a294-e818-4198-bdca-0c0449cc7f04`: FAIL (2 errors, 4 warnings)
+  - ERROR: workspace_missing
+  - ERROR: state_json_missing_or_invalid
+  - WARNING: events_jsonl_missing_or_empty
+  - WARNING: terminal_event_missing
+  - WARNING: artifact_index_missing
+  - WARNING: done_run_missing_final_report
+- `87720cf4-5e47-4c0d-a5c8-4fa551994812`: FAIL (2 errors, 4 warnings)
+  - ERROR: workspace_missing
+  - ERROR: state_json_missing_or_invalid
+  - WARNING: events_jsonl_missing_or_empty
+  - WARNING: terminal_event_missing
+  - WARNING: artifact_index_missing
+  - WARNING: done_run_missing_final_report
+- `dafac760-8ccb-4cea-8dea-e9b29dd4439f`: FAIL (2 errors, 4 warnings)
+  - ERROR: workspace_missing
+  - ERROR: state_json_missing_or_invalid
+  - WARNING: events_jsonl_missing_or_empty
+  - WARNING: terminal_event_missing
+  - WARNING: artifact_index_missing
+  - WARNING: done_run_missing_final_report
+- `c509ab37-2018-4d45-b1b3-3b38ce339c8b`: FAIL (2 errors, 4 warnings)
+  - ERROR: workspace_missing
+  - ERROR: state_json_missing_or_invalid
+  - WARNING: events_jsonl_missing_or_empty
+  - WARNING: terminal_event_missing
+  - WARNING: artifact_index_missing
+  - WARNING: done_run_missing_final_report
+- `193e336f-43b0-4446-94e8-687d17b0ec19`: FAIL (2 errors, 4 warnings)
+  - ERROR: workspace_missing
+  - ERROR: state_json_missing_or_invalid
+  - WARNING: events_jsonl_missing_or_empty
+  - WARNING: terminal_event_missing
+  - WARNING: artifact_index_missing
+  - WARNING: done_run_missing_final_report
+- `560c4bba-7a1b-46ed-a9a4-79a377ffa660`: FAIL (2 errors, 4 warnings)
+  - ERROR: workspace_missing
+  - ERROR: state_json_missing_or_invalid
+  - WARNING: events_jsonl_missing_or_empty
+  - WARNING: terminal_event_missing
+  - WARNING: artifact_index_missing
+  - WARNING: done_run_missing_final_report
+- `46386e4e-664c-4bb7-9eff-9f11ab10935d`: FAIL (2 errors, 3 warnings)
+  - ERROR: workspace_missing
+  - ERROR: state_json_missing_or_invalid
+  - WARNING: events_jsonl_missing_or_empty
+  - WARNING: terminal_event_missing
+  - WARNING: artifact_index_missing
+- `de84989e-7ec2-43d4-b96f-fd577d2f279a`: FAIL (2 errors, 4 warnings)
+  - ERROR: workspace_missing
+  - ERROR: state_json_missing_or_invalid
+  - WARNING: events_jsonl_missing_or_empty
+  - WARNING: terminal_event_missing
+  - WARNING: artifact_index_missing
+  - WARNING: done_run_missing_final_report
+- `2fd6edfa-cb6e-4665-9fa9-adbc84dc8258`: FAIL (2 errors, 4 warnings)
+  - ERROR: workspace_missing
+  - ERROR: state_json_missing_or_invalid
+  - WARNING: events_jsonl_missing_or_empty
+  - WARNING: terminal_event_missing
+  - WARNING: artifact_index_missing
+  - WARNING: done_run_missing_final_report
+- `7e3ea844-1e55-4285-9ed2-fb0f75efe182`: FAIL (2 errors, 4 warnings)
+  - ERROR: workspace_missing
+  - ERROR: state_json_missing_or_invalid
+  - WARNING: events_jsonl_missing_or_empty
+  - WARNING: terminal_event_missing
+  - WARNING: artifact_index_missing
+  - WARNING: done_run_missing_final_report
+- `3d38ea0c-2ec1-4932-8fc4-c837eb44c6b8`: FAIL (2 errors, 3 warnings)
+  - ERROR: workspace_missing
+  - ERROR: state_json_missing_or_invalid
+  - WARNING: events_jsonl_missing_or_empty
+  - WARNING: terminal_event_missing
+  - WARNING: artifact_index_missing
+- `a713ab45-6bb2-44b4-b9af-eee5c2e1f920`: FAIL (2 errors, 4 warnings)
+  - ERROR: workspace_missing
+  - ERROR: state_json_missing_or_invalid
+  - WARNING: events_jsonl_missing_or_empty
+  - WARNING: terminal_event_missing
+  - WARNING: artifact_index_missing
+  - WARNING: done_run_missing_final_report
+- `d4ec6964-a3f9-42f1-a82a-9ef9a707a1bc`: FAIL (2 errors, 4 warnings)
+  - ERROR: workspace_missing
+  - ERROR: state_json_missing_or_invalid
+  - WARNING: events_jsonl_missing_or_empty
+  - WARNING: terminal_event_missing
+  - WARNING: artifact_index_missing
+  - WARNING: done_run_missing_final_report
+- `8780ac0e-3b3e-4c9a-8556-2969d2f490e3`: FAIL (2 errors, 4 warnings)
+  - ERROR: workspace_missing
+  - ERROR: state_json_missing_or_invalid
+  - WARNING: events_jsonl_missing_or_empty
+  - WARNING: terminal_event_missing
+  - WARNING: artifact_index_missing
+  - WARNING: done_run_missing_final_report
+- `a28e51d2-8ea8-4bc5-bfe4-da9b92c6d9b2`: FAIL (2 errors, 4 warnings)
+  - ERROR: workspace_missing
+  - ERROR: state_json_missing_or_invalid
+  - WARNING: events_jsonl_missing_or_empty
+  - WARNING: terminal_event_missing
+  - WARNING: artifact_index_missing
+  - WARNING: done_run_missing_final_report
+- `65e05036-bbfa-4836-ace8-04ea44112318`: FAIL (2 errors, 4 warnings)
+  - ERROR: workspace_missing
+  - ERROR: state_json_missing_or_invalid
+  - WARNING: events_jsonl_missing_or_empty
+  - WARNING: terminal_event_missing
+  - WARNING: artifact_index_missing
+  - WARNING: done_run_missing_final_report
+- `fc506ccc-327a-4194-aaa5-2ecffa5ba1a3`: FAIL (2 errors, 4 warnings)
+  - ERROR: workspace_missing
+  - ERROR: state_json_missing_or_invalid
+  - WARNING: events_jsonl_missing_or_empty
+  - WARNING: terminal_event_missing
+  - WARNING: artifact_index_missing
+  - WARNING: done_run_missing_final_report
+- `3ca040f6-c512-4bf4-aa6b-c669fe572447`: FAIL (2 errors, 4 warnings)
+  - ERROR: workspace_missing
+  - ERROR: state_json_missing_or_invalid
+  - WARNING: events_jsonl_missing_or_empty
+  - WARNING: terminal_event_missing
+  - WARNING: artifact_index_missing
+  - WARNING: done_run_missing_final_report
+- `db64dc34-280e-40af-874c-7cc48325380b`: FAIL (2 errors, 4 warnings)
+  - ERROR: workspace_missing
+  - ERROR: state_json_missing_or_invalid
+  - WARNING: events_jsonl_missing_or_empty
+  - WARNING: terminal_event_missing
+  - WARNING: artifact_index_missing
+  - WARNING: done_run_missing_final_report
+- `16fb98e8-76e3-4152-8b97-b9629629d663`: FAIL (2 errors, 4 warnings)
+  - ERROR: workspace_missing
+  - ERROR: state_json_missing_or_invalid
+  - WARNING: events_jsonl_missing_or_empty
+  - WARNING: terminal_event_missing
+  - WARNING: artifact_index_missing
+  - WARNING: done_run_missing_final_report
+- `475230fb-5776-4a26-98fe-007556124b27`: FAIL (2 errors, 4 warnings)
+  - ERROR: workspace_missing
+  - ERROR: state_json_missing_or_invalid
+  - WARNING: events_jsonl_missing_or_empty
+  - WARNING: terminal_event_missing
+  - WARNING: artifact_index_missing
+  - WARNING: done_run_missing_final_report
+- `064aa2ba-1066-4102-8186-d13294cafec0`: FAIL (2 errors, 4 warnings)
+  - ERROR: workspace_missing
+  - ERROR: state_json_missing_or_invalid
+  - WARNING: events_jsonl_missing_or_empty
+  - WARNING: terminal_event_missing
+  - WARNING: artifact_index_missing
+  - WARNING: done_run_missing_final_report
+- `42615715-05d4-499b-8e56-6d23437f82f8`: FAIL (2 errors, 4 warnings)
+  - ERROR: workspace_missing
+  - ERROR: state_json_missing_or_invalid
+  - WARNING: events_jsonl_missing_or_empty
+  - WARNING: terminal_event_missing
+  - WARNING: artifact_index_missing
+  - WARNING: done_run_missing_final_report
+- `7089468b-d90b-41c7-ada0-a2326a948593`: FAIL (2 errors, 4 warnings)
+  - ERROR: workspace_missing
+  - ERROR: state_json_missing_or_invalid
+  - WARNING: events_jsonl_missing_or_empty
+  - WARNING: terminal_event_missing
+  - WARNING: artifact_index_missing
+  - WARNING: done_run_missing_final_report
+- `db4fbac9-a01a-4592-9c0e-e1b8e0e132c3`: FAIL (2 errors, 4 warnings)
+  - ERROR: workspace_missing
+  - ERROR: state_json_missing_or_invalid
+  - WARNING: events_jsonl_missing_or_empty
+  - WARNING: terminal_event_missing
+  - WARNING: artifact_index_missing
+  - WARNING: done_run_missing_final_report
+- `b9a4f1b7-7843-42bb-a884-eb675030dce4`: FAIL (2 errors, 4 warnings)
+  - ERROR: workspace_missing
+  - ERROR: state_json_missing_or_invalid
+  - WARNING: events_jsonl_missing_or_empty
+  - WARNING: terminal_event_missing
+  - WARNING: artifact_index_missing
+  - WARNING: done_run_missing_final_report
+- `90125125-94eb-4537-b79d-2fc4822c9474`: FAIL (2 errors, 4 warnings)
+  - ERROR: workspace_missing
+  - ERROR: state_json_missing_or_invalid
+  - WARNING: events_jsonl_missing_or_empty
+  - WARNING: terminal_event_missing
+  - WARNING: artifact_index_missing
+  - WARNING: done_run_missing_final_report
+- `92488107-3f5e-4d3b-9486-4999b77ecae7`: FAIL (2 errors, 4 warnings)
+  - ERROR: workspace_missing
+  - ERROR: state_json_missing_or_invalid
+  - WARNING: events_jsonl_missing_or_empty
+  - WARNING: terminal_event_missing
+  - WARNING: artifact_index_missing
+  - WARNING: done_run_missing_final_report
+- `f0c6adf0-0aa2-4837-b29c-f685e767c50c`: FAIL (2 errors, 3 warnings)
+  - ERROR: workspace_missing
+  - ERROR: state_json_missing_or_invalid
+  - WARNING: events_jsonl_missing_or_empty
+  - WARNING: terminal_event_missing
+  - WARNING: artifact_index_missing
+- `a7ff70aa-631a-43a6-b8d0-fb486119ca82`: FAIL (2 errors, 3 warnings)
+  - ERROR: workspace_missing
+  - ERROR: state_json_missing_or_invalid
+  - WARNING: events_jsonl_missing_or_empty
+  - WARNING: terminal_event_missing
+  - WARNING: artifact_index_missing
+- `063a01c2-337e-4df3-8884-24d6d31931b7`: FAIL (2 errors, 3 warnings)
+  - ERROR: workspace_missing
+  - ERROR: state_json_missing_or_invalid
+  - WARNING: events_jsonl_missing_or_empty
+  - WARNING: terminal_event_missing
+  - WARNING: artifact_index_missing
