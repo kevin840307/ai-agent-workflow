@@ -169,7 +169,9 @@ export function createLayout(ctx) {
         tab.classList.toggle("active", tab.dataset.tab === panelId);
       });
       document.querySelectorAll(".panel").forEach((panel) => {
-        panel.classList.toggle("active", panel.id === panelId);
+        const active = panel.id === panelId;
+        panel.classList.toggle("active", active);
+        panel.hidden = !active;
       });
     },
   };

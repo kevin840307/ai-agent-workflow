@@ -59,15 +59,77 @@ from app.workflow_runtime.step_config import initial_steps, step_kind_from_type
 from app.workflow_runtime.step_utils import format_exception, step_artifact_name, step_prompt_name, step_function_name
 
 
+SQLITE_STORE_SUFFIXES = {".sqlite", ".sqlite3", ".db"}
+
+
+def _resolve_store_backend() -> str:
+    """Resolve the persistence backend without surprising existing CLI tests.
+
+    Production/dev runs default to SQLite.  A legacy explicit JSON
+    AIWF_STORE_FILE still means file-backed persistence unless the operator also
+    sets AIWF_STORE_BACKEND=sqlite.
+    """
+    configured = os.environ.get("AIWF_STORE_BACKEND")
+    if configured:
+        backend = configured.strip().lower()
+        return "sqlite" if backend in {"sqlite", "sqlite3"} else "file"
+    configured_file = os.environ.get("AIWF_STORE_FILE")
+    if configured_file:
+        suffix = Path(configured_file).suffix.lower()
+        return "sqlite" if suffix in SQLITE_STORE_SUFFIXES else "file"
+    return "sqlite"
+
+
+def _store_paths_for_backend(backend: str) -> tuple[Path, Path | None]:
+    configured_file = os.environ.get("AIWF_STORE_FILE")
+    if backend == "sqlite":
+        raw_path = Path(configured_file) if configured_file else DATA_DIR / "store.sqlite3"
+        legacy_json_path: Path | None = STORE_FILE if not configured_file else None
+        if raw_path.suffix.lower() not in SQLITE_STORE_SUFFIXES:
+            if raw_path.suffix.lower() == ".json":
+                legacy_json_path = raw_path
+            raw_path = raw_path.with_suffix(".sqlite3")
+        elif configured_file:
+            legacy_candidate = raw_path.with_suffix(".json")
+            legacy_json_path = legacy_candidate if legacy_candidate.exists() else None
+        return raw_path, legacy_json_path
+    return Path(configured_file) if configured_file else STORE_FILE, None
+
+
+def _has_persisted_state(data: dict[str, Any]) -> bool:
+    return any(data.get(key) for key in ("sessions", "messages", "runs", "workflow_configs"))
+
+
+def _migrate_legacy_json_store(sqlite_store: SQLiteStore, legacy_json_path: Path | None) -> None:
+    if legacy_json_path is None or not legacy_json_path.exists():
+        return
+    if _has_persisted_state(sqlite_store.load_sync()):
+        return
+    try:
+        legacy_data = json.loads(legacy_json_path.read_text(encoding="utf-8-sig"))
+    except (OSError, json.JSONDecodeError):
+        return
+    if isinstance(legacy_data, dict) and _has_persisted_state(legacy_data):
+        sqlite_store.save_sync(legacy_data)
+
+
 def _create_store_backend():
-    backend = os.environ.get("AIWF_STORE_BACKEND", "file").strip().lower()
-    path = Path(os.environ.get("AIWF_STORE_FILE") or STORE_FILE)
+    backend = _resolve_store_backend()
+    path, legacy_json_path = _store_paths_for_backend(backend)
     default_project = lambda: load_settings()["qwen"].get("project_path") or str(ROOT)
-    if backend in {"sqlite", "sqlite3"}:
-        if path.suffix.lower() not in {".sqlite", ".sqlite3", ".db"}:
-            path = path.with_suffix(".sqlite3")
-        return SQLiteStore(path, default_project_path=default_project, default_steps=lambda: [])
+    if backend == "sqlite":
+        sqlite_store = SQLiteStore(path, default_project_path=default_project, default_steps=lambda: [])
+        _migrate_legacy_json_store(sqlite_store, legacy_json_path)
+        return sqlite_store
     return Store(path, default_project_path=default_project, default_steps=lambda: [])
+
+
+def store_backend_name() -> str:
+    return "sqlite" if isinstance(store, SQLiteStore) else "file"
+
+
+def store_path() -> Path:
+    return Path(store.path)
 
 
 store = _create_store_backend()

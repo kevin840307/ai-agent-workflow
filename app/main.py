@@ -64,9 +64,12 @@ async def deep_health():
 
 @app.get("/ready")
 async def ready():
+    store_path = runtime.store_path()
     checks = {
-        "storeReadable": runtime.STORE_FILE.exists(),
-        "storeWritable": os.access(runtime.STORE_FILE.parent, os.W_OK),
+        "storeBackend": runtime.store_backend_name(),
+        "storePath": str(store_path),
+        "storeReadable": store_path.exists(),
+        "storeWritable": os.access(store_path.parent, os.W_OK),
         "dataWritable": os.access(runtime.DATA_DIR, os.W_OK),
         "staticAvailable": (runtime.STATIC_DIR / "index.html").exists(),
         "designerAvailable": (runtime.STATIC_DIR / "workflow-designer.html").exists(),

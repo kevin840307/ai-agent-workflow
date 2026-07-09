@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import importlib
+import json
 import os
 from pathlib import Path
 import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 
 class RuntimeRefactorContractTests(unittest.TestCase):
@@ -87,6 +89,35 @@ class RuntimeRefactorContractTests(unittest.TestCase):
                 check=True,
             )
             self.assertEqual(Path(completed.stdout.strip()), store_path)
+
+
+    def test_runtime_store_defaults_to_sqlite_but_keeps_explicit_json_override(self) -> None:
+        runtime_api = importlib.import_module("app.runtime_modules.api")
+        with patch.dict(os.environ, {}, clear=True):
+            self.assertEqual(runtime_api._resolve_store_backend(), "sqlite")
+        with tempfile.TemporaryDirectory() as tmp:
+            env = {"AIWF_STORE_FILE": str(Path(tmp) / "isolated-store.json")}
+            with patch.dict(os.environ, env, clear=True):
+                self.assertEqual(runtime_api._resolve_store_backend(), "file")
+        with tempfile.TemporaryDirectory() as tmp:
+            env = {"AIWF_STORE_FILE": str(Path(tmp) / "isolated-store.sqlite3")}
+            with patch.dict(os.environ, env, clear=True):
+                self.assertEqual(runtime_api._resolve_store_backend(), "sqlite")
+
+    def test_runtime_sqlite_backend_migrates_legacy_json_store(self) -> None:
+        runtime_api = importlib.import_module("app.runtime_modules.api")
+        with tempfile.TemporaryDirectory() as tmp:
+            legacy = Path(tmp) / "legacy-store.json"
+            legacy.write_text(
+                json.dumps({"sessions": [{"id": "s1"}], "messages": [], "runs": [], "workflow_configs": []}),
+                encoding="utf-8",
+            )
+            env = {"AIWF_STORE_BACKEND": "sqlite", "AIWF_STORE_FILE": str(legacy)}
+            with patch.dict(os.environ, env, clear=True):
+                store = runtime_api._create_store_backend()
+            self.assertEqual(store.path, legacy.with_suffix(".sqlite3"))
+            self.assertEqual(store.load_sync()["sessions"][0]["id"], "s1")
+            self.assertTrue(store.path.exists())
 
     def test_compatibility_facades_point_to_new_core_modules(self) -> None:
         checks = [

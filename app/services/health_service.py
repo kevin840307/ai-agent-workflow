@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 from pathlib import Path
 from typing import Any
 
@@ -21,9 +20,12 @@ def _writable(path: Path) -> bool:
 
 
 async def health_summary(*, deep: bool = False) -> dict[str, Any]:
+    store_path = runtime.store_path()
     checks: dict[str, Any] = {
-        "storeBackend": os.environ.get("AIWF_STORE_BACKEND", "file"),
+        "storeBackend": runtime.store_backend_name(),
+        "storePath": str(store_path),
         "storeReadable": True,
+        "storeFileExists": store_path.exists(),
         "dataWritable": _writable(runtime.DATA_DIR),
         "artifactRootWritable": _writable(runtime.DATA_DIR),
         "staticAvailable": (runtime.STATIC_DIR / "index.html").exists(),

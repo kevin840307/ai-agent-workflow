@@ -103,6 +103,16 @@ class StaticArchitectureContractTests(unittest.TestCase):
         self.assertNotIn("var(--border)", css + styles)
         self.assertIn("Run detail stability / overflow hardening", css)
 
+
+    def test_workflow_runner_inactive_panels_are_hidden_before_js_loads(self):
+        html = (ROOT / "static/index.html").read_text(encoding="utf-8")
+        for panel_id in ["qwenPanel", "logsPanel", "artifactsPanel", "runDetailPanel"]:
+            with self.subTest(panel_id=panel_id):
+                self.assertRegex(html, rf'<section id="{panel_id}" class="panel" hidden>')
+
+        layout = (ROOT / "static/js/features/layout.js").read_text(encoding="utf-8")
+        self.assertIn("panel.hidden = !active;", layout)
+
     def test_static_cache_version_is_consistent(self):
         versions = set()
         for path in (ROOT / "static").rglob("*"):
