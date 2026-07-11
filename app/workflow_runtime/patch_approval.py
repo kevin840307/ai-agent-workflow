@@ -32,6 +32,11 @@ def patch_preview(run: dict[str, Any]) -> dict[str, Any]:
         "original_project_path": original,
         "isolated_project_path": isolated,
         "changed_files": changed,
+        "approval": {
+            "mode": run.get("approval_mode") or "fully_automatic",
+            "state": run.get("approval_state") or "not_required",
+            "required": (run.get("approval_state") or "not_required") == "pending",
+        },
         "diff": diff,
         "markdown": render_run_diff_markdown(diff),
     }

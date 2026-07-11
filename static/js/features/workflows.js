@@ -1,4 +1,4 @@
-import { LocalStore, StorageKeys } from "../core/storage.js?v=20260704-direct-edit-gad";
+import { LocalStore, StorageKeys } from "../core/storage.js?v=20260711-ui-v12";
 
 export function createWorkflows(ctx) {
   const { api, state, ui } = ctx;
@@ -142,7 +142,7 @@ export function createWorkflows(ctx) {
       const payload = await api.request("/api/workflows");
       state.workflows = flattenWorkflows(payload);
       if (!state.workflows.some((workflow) => workflow.id === state.selectedWorkflowId)) {
-        state.selectedWorkflowId = state.workflows[0]?.id || "system-controlled-qwen";
+        state.selectedWorkflowId = state.workflows[0]?.id || "general-auto-development";
         LocalStore.setString(StorageKeys.selectedWorkflowId, state.selectedWorkflowId);
       }
       workflows.render();
@@ -309,7 +309,7 @@ export function createWorkflows(ctx) {
         workflows.renderLockState();
         return;
       }
-      state.selectedWorkflowId = workflowId || "system-controlled-qwen";
+      state.selectedWorkflowId = workflowId || "general-auto-development";
       LocalStore.setString(StorageKeys.selectedWorkflowId, state.selectedWorkflowId);
       workflows.render();
       workflows.toggleDropdown(false);

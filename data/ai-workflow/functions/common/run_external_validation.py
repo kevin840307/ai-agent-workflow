@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import subprocess
 import sys
 from pathlib import Path
 from typing import Any
+
+from app.workflow_runtime.validation_contract import ValidationContractError, verify_validation_contract
 
 FUNCTION_META = {
     "id": "run_external_validation",
@@ -33,64 +36,107 @@ def run(context: Any, artifact: str | None = None) -> str:
     artifact_name = artifact or "external-validation-result.md"
     workspace = Path(context.run.get("workspace") or output_dir.parent).expanduser().resolve()
 
+    contract = context.run.get("validation_contract") if isinstance(getattr(context, "run", None), dict) else None
     configured_script = str(context.run.get("validation_script") or "").strip()
-    fallback_scripts = _fallback_validation_scripts(context)
-    script = _find_validation_script(project_dir, configured_script, fallback_scripts)
-    if script is None:
-        expected = configured_script or ", ".join(fallback_scripts) or "no fallback scripts configured"
-        if not configured_script and not _requires_validation_script(context):
-            result = _format_result(
-                status="PASS",
-                script="",
-                cwd=project_dir,
-                command="",
-                return_code=0,
-                stdout="No validation script was configured or found; external validation skipped by workflow setting.",
-                stderr="",
-            )
-            _write(output_dir / artifact_name, result)
-            return result
+    required = bool((contract or {}).get("required")) or _requires_validation_script(context)
+    timeout_seconds = int((contract or {}).get("timeout_seconds") or 300)
+    source_hash = str((contract or {}).get("sha256") or "")
+
+    try:
+        if contract:
+            verified_contract, script = verify_validation_contract(context.run)
+            timeout_seconds = int(verified_contract.get("timeout_seconds") or timeout_seconds)
+            source_hash = str(verified_contract.get("sha256") or source_hash)
+        else:
+            fallback_scripts = _fallback_validation_scripts(context)
+            script = _find_validation_script(project_dir, configured_script, fallback_scripts)
+    except ValidationContractError as exc:
         result = _format_result(
-            status="FAIL",
-            script="",
-            cwd=project_dir,
-            command="",
-            return_code=None,
-            stdout="",
-            stderr=f"No validation script found. Expected: {expected}",
+            status="BLOCKED", script=configured_script, cwd=project_dir, command="",
+            return_code=None, stdout="", stderr=str(exc), source_hash=source_hash,
         )
         _write(output_dir / artifact_name, result)
-        raise ExternalValidationError(f"No validation script found. Expected: {expected}")
+        _record_validation(context.run, "BLOCKED", None, str(exc), source_hash=source_hash)
+        raise ExternalValidationError(str(exc)) from exc
+
+    if script is None:
+        fallback_scripts = _fallback_validation_scripts(context)
+        expected = configured_script or ", ".join(fallback_scripts) or "no fallback scripts configured"
+        if not required:
+            result = _format_result(
+                status="NOT_CONFIGURED", script="", cwd=project_dir, command="",
+                return_code=None,
+                stdout="Optional user validation was not configured. No PASS evidence was fabricated.",
+                stderr="", source_hash="",
+            )
+            _write(output_dir / artifact_name, result)
+            _record_validation(context.run, "NOT_CONFIGURED", None, "Optional validation not configured")
+            return result
+        message = f"VALIDATION_FILE_NOT_FOUND: No validation script found. Expected: {expected}"
+        result = _format_result(
+            status="BLOCKED", script="", cwd=project_dir, command="",
+            return_code=None, stdout="", stderr=message, source_hash=source_hash,
+        )
+        _write(output_dir / artifact_name, result)
+        _record_validation(context.run, "BLOCKED", None, message, source_hash=source_hash)
+        raise ExternalValidationError(message)
 
     command = [
-        sys.executable,
-        str(script),
-        "--project",
-        str(project_dir),
-        "--workspace",
-        str(workspace),
-        "--output",
-        str(output_dir),
+        sys.executable, str(script), "--project", str(project_dir),
+        "--workspace", str(workspace), "--output", str(output_dir),
     ]
-    completed = _run(command, project_dir)
-    if completed.returncode != 0 and _looks_like_argument_error(completed.stderr):
-        command = [sys.executable, str(script)]
-        completed = _run(command, project_dir)
+    try:
+        completed = _run(command, project_dir, timeout_seconds=timeout_seconds)
+        if completed.returncode != 0 and _looks_like_argument_error(completed.stderr):
+            command = [sys.executable, str(script)]
+            completed = _run(command, project_dir, timeout_seconds=timeout_seconds)
+    except subprocess.TimeoutExpired as exc:
+        message = f"External validation timed out after {timeout_seconds} seconds: {script.name}"
+        result = _format_result(
+            status="ERROR", script=_display_script(project_dir, script), cwd=project_dir,
+            command=" ".join(_quote(part) for part in command), return_code=None,
+            stdout=str(exc.stdout or ""), stderr=message, source_hash=source_hash,
+        )
+        _write(output_dir / artifact_name, result)
+        _record_validation(context.run, "ERROR", None, message, source_hash=source_hash)
+        raise ExternalValidationError(message) from exc
 
     status = "PASS" if completed.returncode == 0 else "FAIL"
     result = _format_result(
-        status=status,
-        script=_display_script(project_dir, script),
-        cwd=project_dir,
-        command=" ".join(_quote(part) for part in command),
-        return_code=completed.returncode,
-        stdout=completed.stdout,
-        stderr=completed.stderr,
+        status=status, script=_display_script(project_dir, script), cwd=project_dir,
+        command=" ".join(_quote(part) for part in command), return_code=completed.returncode,
+        stdout=completed.stdout, stderr=completed.stderr, source_hash=source_hash,
     )
     _write(output_dir / artifact_name, result)
+    _record_validation(
+        context.run, status, completed.returncode,
+        (completed.stdout or completed.stderr or status)[:4000], source_hash=source_hash,
+        command=command,
+    )
     if completed.returncode != 0:
         raise ExternalValidationError(_summary_failure(completed, script))
     return result
+
+
+def _record_validation(
+    run: dict[str, Any], status: str, exit_code: int | None, message: str,
+    *, source_hash: str = "", command: list[str] | None = None,
+) -> None:
+    rows = run.setdefault("validation_results", [])
+    if not isinstance(rows, list):
+        rows = []
+        run["validation_results"] = rows
+    record = {
+        "key": "user_validation",
+        "status": status.lower(),
+        "exit_code": exit_code,
+        "message": message,
+        "source_hash": source_hash,
+        "command": list(command or []),
+        "required": bool((run.get("validation_contract") or {}).get("required")),
+    }
+    rows[:] = [row for row in rows if not (isinstance(row, dict) and row.get("key") == "user_validation")]
+    rows.append(record)
 
 
 def _find_validation_script(project_dir: Path, configured_script: str = "", fallback_scripts: list[str] | None = None) -> Path | None:
@@ -151,8 +197,8 @@ def _display_script(project_dir: Path, script: Path) -> str:
         return str(script)
 
 
-def _run(command: list[str], cwd: Path) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(command, cwd=str(cwd), text=True, capture_output=True, timeout=None)
+def _run(command: list[str], cwd: Path, *, timeout_seconds: int = 300) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(command, cwd=str(cwd), text=True, capture_output=True, timeout=max(1, timeout_seconds))
 
 
 def _looks_like_argument_error(stderr: str) -> bool:
@@ -169,6 +215,7 @@ def _format_result(
     return_code: int | None,
     stdout: str,
     stderr: str,
+    source_hash: str = "",
 ) -> str:
     return "\n".join(
         [
@@ -179,6 +226,7 @@ def _format_result(
             f"Cwd: {cwd}",
             f"Command: {command or 'NONE'}",
             f"Exit Code: {return_code if return_code is not None else 'N/A'}",
+            f"Source SHA-256: {source_hash or 'N/A'}",
             "",
             "## Stdout",
             "```",

@@ -20,11 +20,11 @@ from app.persistence.json_store import Store
 from app.services import workflow_config_service, workflow_service
 
 
+# Production artifacts are compact-first.  Intermediate spec/todo review mirrors
+# were intentionally removed; the final review and deterministic evidence remain.
 SYSTEM_ARTIFACT_SECTIONS = {
-    "spec.md": ["## Goal", "## Scope", "## Acceptance Criteria"],
-    "todo.md": ["## Todo List", "## Test Plan", "## Done Criteria"],
-    "spec-review.md": ["Status: PASS"],
-    "todo-review.md": ["Status: PASS"],
+    "spec.md": ["## Goal", "## Acceptance Criteria", "## Test Expectations"],
+    "todo.md": ["## Task Index", "Acceptance Criteria"],
     "final-review.md": ["Status: PASS"],
     "test-result.md": ["ExitCode: 0"],
     "build-result.md": ["# Build Direct Edit Result", "`workflow_mock_feature.py`"],

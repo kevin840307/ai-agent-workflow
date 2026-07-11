@@ -67,12 +67,26 @@ def _load_baseline(run_dir: Path) -> dict[str, str]:
     return files if isinstance(files, dict) else {}
 
 
+def _line_change_counts(old_lines: list[str], new_lines: list[str]) -> tuple[int, int]:
+    matcher = difflib.SequenceMatcher(a=old_lines, b=new_lines, autojunk=False)
+    added = 0
+    removed = 0
+    for tag, i1, i2, j1, j2 in matcher.get_opcodes():
+        if tag in {"insert", "replace"}:
+            added += j2 - j1
+        if tag in {"delete", "replace"}:
+            removed += i2 - i1
+    return added, removed
+
+
 def build_run_diff(run: dict[str, Any], run_dir: Path) -> dict[str, Any]:
     before = _load_baseline(run_dir)
     after = snapshot_project_text(Path(run.get("project_path") or run_dir))
     paths = sorted(set(before) | set(after))
     files: list[dict[str, Any]] = []
     patch_chunks: list[str] = []
+    total_added = 0
+    total_removed = 0
     for rel in paths:
         old = before.get(rel)
         new = after.get(rel)
@@ -83,17 +97,36 @@ def build_run_diff(run: dict[str, Any], run_dir: Path) -> dict[str, Any]:
             status = "added"
         elif new is None:
             status = "deleted"
-        old_lines = (old or "").splitlines(keepends=True)
-        new_lines = (new or "").splitlines(keepends=True)
-        diff = "".join(difflib.unified_diff(old_lines, new_lines, fromfile=f"a/{rel}", tofile=f"b/{rel}", lineterm=""))
-        files.append({"path": rel, "status": status, "added_lines": max(0, len(new_lines) - len(old_lines)), "deleted_lines": max(0, len(old_lines) - len(new_lines))})
-        if diff:
-            patch_chunks.append(diff)
+        old_lines = (old or "").splitlines()
+        new_lines = (new or "").splitlines()
+        added, removed = _line_change_counts(old_lines, new_lines)
+        patch = "\n".join(
+            difflib.unified_diff(
+                old_lines, new_lines, fromfile=f"a/{rel}", tofile=f"b/{rel}", lineterm=""
+            )
+        )
+        item = {
+            "path": rel,
+            "status": status,
+            "added": added,
+            "removed": removed,
+            "added_lines": added,
+            "deleted_lines": removed,
+            "old_line_count": len(old_lines),
+            "new_line_count": len(new_lines),
+            "patch": patch,
+        }
+        files.append(item)
+        total_added += added
+        total_removed += removed
+        if patch:
+            patch_chunks.append(patch)
     return {
-        "schema": "aiwf.run-diff.v1",
+        "schema": "aiwf.run-diff.v2",
         "run_id": run.get("id"),
         "project_path": run.get("project_path"),
         "file_count": len(files),
+        "summary": {"files": len(files), "added": total_added, "removed": total_removed},
         "files": files,
         "patch": "\n".join(patch_chunks),
     }
@@ -112,7 +145,7 @@ def render_run_diff_markdown(diff: dict[str, Any]) -> str:
     files = diff.get("files") or []
     if files:
         for item in files:
-            lines.append(f"- `{item.get('path')}` - {item.get('status')} (+{item.get('added_lines', 0)} / -{item.get('deleted_lines', 0)})")
+            lines.append(f"- `{item.get('path')}` - {item.get('status')} (+{item.get('added', item.get('added_lines', 0))} / -{item.get('removed', item.get('deleted_lines', 0))})")
     else:
         lines.append("- No text file changes detected outside workflow internals.")
     if diff.get("patch"):

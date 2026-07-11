@@ -1,8 +1,8 @@
 id: run_external_validation
 key: run_external_validation
 name: External Validation
-description: Run user validation.py/validate.py/verify.py/check.py when provided or
-  present. If no validation script exists, record skipped PASS.
+description: Run the immutable user validation contract when configured. Required
+  validation must execute and exit 0; optional missing validation is NOT_CONFIGURED.
 enabled: true
 type: python
 skill: steps/general-auto-development/04_run_external_validation.md
@@ -10,14 +10,13 @@ command: ''
 agent: qwen
 outputs:
 - external-validation-result.md
-retry: 99
+retry: 3
 failAction: selected_step
 retryFromStepKey: build
-retryEscalationEvery: 3
-retryEscalationStepKey: plan_tasks
+retryEscalationEvery: 0
 keepSameSession: true
 injectFailureFeedback: true
-stopAfterFailures: 99
+stopAfterFailures: 3
 allowInteraction: false
 requiresValidationScript: false
 fallbackValidationScripts:
@@ -47,6 +46,6 @@ functions:
 approval: false
 retryPolicy:
   defaultRetryTo: build
-  escalateEvery: 3
-  escalateTo: plan_tasks
-  maxRetries: 99
+  escalateEvery: 0
+  maxRetries: 3
+maxRetries: 3

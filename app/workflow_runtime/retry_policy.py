@@ -5,6 +5,7 @@ from typing import Any
 
 from app.runtime_modules.files import classify_test_retry_target
 from app.core.paths import ROOT, read_text
+from .failure_classifier import classify_failure
 
 
 def _retry_policy(step_record: dict[str, Any]) -> dict[str, Any]:
@@ -91,15 +92,40 @@ def retry_target_for_failure(
     output_dir: Path,
     *,
     next_retry_count: int | None = None,
+    error: BaseException | str | None = None,
 ) -> str | None:
-    key = step_record.get("key")
+    key = str(step_record.get("key") or "")
     configured = retry_target_for_step(step_record, steps, current_index)
-    if next_retry_count is not None:
-        escalated = escalated_retry_target_for_step(step_record, steps, next_retry_count=next_retry_count)
-        if escalated:
-            return escalated
+    failure = classify_failure(error or "", step_key=key)
+    failure_code = str(failure.get("code") or "UNKNOWN")
+    message = str(error or "").lower()
+
+    # Invalid structured review output is a reviewer-format problem, not an
+    # implementation or planning failure. Repair the same review step first.
+    if str(step_record.get("type") or "").lower() == "review" and (
+        failure_code == "INVALID_OUTPUT" or "invalid_review_output" in message or "review_mutated_project" in message
+    ):
+        return key
+
+    if failure_code == "TEST_DEFINITION_INVALID":
+        return "generate_tests" if "generate_tests" in {step.get("key") for step in steps} else configured
+
     if key == "run_test":
         test_result = read_text(output_dir / "test-result.md")
         classified = classify_test_retry_target(Path(run.get("project_path") or ROOT), test_result)
         return classified if classified in {step.get("key") for step in steps} else configured
+
+    # Replanning is expensive and does not fix write/parser/test failures. Only
+    # jump to an earlier planner when the failure explicitly says the plan/spec
+    # itself is invalid or contradictory.
+    allow_escalation = any(marker in message for marker in (
+        "replan_required",
+        "plan_invalid",
+        "spec_conflict",
+        "task definition is incomplete",
+    ))
+    if next_retry_count is not None and allow_escalation:
+        escalated = escalated_retry_target_for_step(step_record, steps, next_retry_count=next_retry_count)
+        if escalated:
+            return escalated
     return configured

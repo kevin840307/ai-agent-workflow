@@ -667,6 +667,44 @@ async def run_prompt_via_serve(
         return output
 
 
+
+def shutdown_qwen_serve() -> dict[str, Any]:
+    """Stop only qwen serve daemons started by this controller.
+
+    Externally managed daemons are never terminated. The function is safe to
+    call repeatedly during FastAPI shutdown and test teardown.
+    """
+    global qwen_serve_process, qwen_serve_status
+    stopped = 0
+    errors: list[str] = []
+    for key, daemon in list(qwen_serve_daemons.items()):
+        process = daemon.process
+        if daemon.external or process is None:
+            continue
+        try:
+            if process.poll() is None:
+                process.terminate()
+                try:
+                    process.wait(timeout=3)
+                except subprocess.TimeoutExpired:
+                    process.kill()
+                    process.wait(timeout=2)
+            stopped += 1
+        except Exception as exc:
+            errors.append(f"{key}: {exc}")
+    qwen_serve_daemons.clear()
+    qwen_serve_session_locks.clear()
+    qwen_serve_process = None
+    qwen_serve_status = {
+        "enabled": not qwen_serve_disabled(),
+        "running": False,
+        "started": False,
+        "error": "; ".join(errors) or None,
+        "base_url": None,
+        "workspace": None,
+    }
+    return {"stopped": stopped, "errors": errors}
+
 def qwen_runtime_config() -> dict[str, Any]:
     client = QwenCliClient()
     settings = load_settings()["qwen"]

@@ -12,11 +12,38 @@ from app.testing.mock_agent import mock_qwen_response
 from app.runtime_modules.errors import WorkflowError
 from app.security.workspace_guard import apply_workspace_env
 from app.workflow_runtime.agent_stream_events import AgentJsonStreamParser
-from app.agents.process_supervisor import ProcessSupervisorOptions, run_agent_command_sync, run_supervised_process
+from app.agents.process_supervisor import (
+    ProcessSupervisorOptions,
+    run_agent_command_sync,
+    run_supervised_process,
+    run_supervised_process_sync,
+)
 
 
 _CREATED_SESSION_KEYS: set[str] = set()
 _CREATED_SESSION_LOCK = threading.Lock()
+
+_SESSION_EXISTS_MARKERS = (
+    "already exists",
+    "active or archived",
+    "delete or unarchive",
+)
+_SESSION_MISSING_MARKERS = (
+    "session not found",
+    "invalid session",
+    "unknown session",
+    "could not find session",
+    "no session found",
+    # Qwen Code 0.19.x uses this wording when --resume receives an id
+    # that has never been recorded.  It does not contain the contiguous
+    # phrase "no session found", so keep the exact diagnostic here.
+    "no saved session found",
+)
+_SESSION_BUSY_MARKERS = (
+    "already in use",
+    "session is already in use",
+    "session is busy",
+)
 
 
 class QwenCliClient:
@@ -46,7 +73,15 @@ class QwenCliClient:
             return None
         key = self._session_key(cwd, qwen_session_id)
         with _CREATED_SESSION_LOCK:
-            return "resume" if key in _CREATED_SESSION_KEYS else "create"
+            if key in _CREATED_SESSION_KEYS:
+                return "resume"
+
+        # App session ids are persisted across controller restarts, while this
+        # process-local registry is not.  Starting unknown ids with --session-id
+        # therefore produces a noisy "already exists" error for every existing
+        # Qwen conversation after a restart.  Probe with --resume first and fall
+        # back to --session-id only when Qwen confirms that no history exists.
+        return "resume"
 
     def _mark_session_created(self, cwd: Path, qwen_session_id: str | None) -> None:
         if not qwen_session_id:
@@ -80,7 +115,7 @@ class QwenCliClient:
         if self.bare:
             cmd.append("--bare")
         if self.reuse_session and qwen_session_id:
-            mode = session_mode or (self._session_mode(cwd or Path.cwd(), qwen_session_id) if cwd else "create")
+            mode = session_mode or self._session_mode(cwd or Path.cwd(), qwen_session_id)
             if mode == "resume":
                 cmd.extend(["--resume", qwen_session_id, "--chat-recording"])
             else:
@@ -163,7 +198,7 @@ class QwenCliClient:
             if recovered:
                 retry_id, retry_mode = recovered
                 if on_output:
-                    await on_output("stderr", f"Qwen session recovered; retrying with {'no session' if retry_id is None else retry_mode} mode.")
+                    await on_output("status", self._recovery_message(retry_id, retry_mode))
                 retry_proc = await self._execute_stream(prompt, cwd, retry_id, retry_mode, timeout_sec, process_env, run_id=run_id, on_output=on_output)
                 stdout = (retry_proc.stdout or "").strip()
                 stderr = (retry_proc.stderr or "").strip()
@@ -221,7 +256,7 @@ class QwenCliClient:
                         await on_output(parsed_stream, parsed_text)
                 return
             stderr_chunks.append(text)
-            if on_output:
+            if on_output and not self._is_recoverable_session_diagnostic(text):
                 await on_output("stderr", text)
 
         try:
@@ -261,14 +296,16 @@ class QwenCliClient:
         command = self.command(qwen_session_id, include_prompt_flag=False, cwd=cwd, session_mode=session_mode, stream_json=True)
 
         def execute() -> tuple[str, str, int]:
-            result_stdout, result_stderr = run_agent_command_sync(
-                command,
-                cwd,
-                env=env,
-                input_text=prompt,
-                timeout_sec=timeout_sec or self.timeout_sec,
+            result = run_supervised_process_sync(
+                ProcessSupervisorOptions(
+                    command=command,
+                    cwd=cwd,
+                    env=env,
+                    input_text=prompt,
+                    timeout_sec=timeout_sec or self.timeout_sec,
+                )
             )
-            return result_stdout, result_stderr, 0
+            return result.stdout, result.stderr, result.returncode
 
         stdout, stderr, returncode = await asyncio.to_thread(execute)
         parser = AgentJsonStreamParser()
@@ -277,7 +314,8 @@ class QwenCliClient:
                 for stream, text in parser.feed_line(line):
                     await on_output(stream, text)
             for line in (stderr or "").splitlines():
-                await on_output("stderr", line)
+                if not self._is_recoverable_session_diagnostic(line):
+                    await on_output("stderr", line)
         else:
             for line in (stdout or "").splitlines():
                 parser.feed_line(line)
@@ -286,10 +324,26 @@ class QwenCliClient:
     @staticmethod
     def _recoverable_retry_args(stderr: str, mode: str | None, qwen_session_id: str | None) -> tuple[str | None, str | None] | None:
         lower = (stderr or "").lower()
-        if qwen_session_id and any(marker in lower for marker in ["already exists", "active or archived", "delete or unarchive"]):
+        if qwen_session_id and any(marker in lower for marker in _SESSION_EXISTS_MARKERS):
             return qwen_session_id, "resume"
-        if qwen_session_id and any(marker in lower for marker in ["session not found", "invalid session", "unknown session", "could not find session", "no session found"]):
+        if qwen_session_id and any(marker in lower for marker in _SESSION_MISSING_MARKERS):
             return qwen_session_id, "create"
-        if qwen_session_id and any(marker in lower for marker in ["already in use", "session is already in use", "busy"]):
+        if qwen_session_id and any(marker in lower for marker in _SESSION_BUSY_MARKERS):
             return None, None
         return None
+
+    @staticmethod
+    def _is_recoverable_session_diagnostic(text: str) -> bool:
+        lower = (text or "").lower()
+        return any(
+            marker in lower
+            for marker in (*_SESSION_EXISTS_MARKERS, *_SESSION_MISSING_MARKERS, *_SESSION_BUSY_MARKERS)
+        )
+
+    @staticmethod
+    def _recovery_message(qwen_session_id: str | None, mode: str | None) -> str:
+        if qwen_session_id is None:
+            return "Qwen session is currently busy; continuing without reused session context."
+        if mode == "create":
+            return "No existing Qwen session history was found; creating the session now."
+        return "Existing Qwen session detected; resuming it now."

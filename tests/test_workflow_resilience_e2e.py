@@ -64,9 +64,15 @@ def _step(
     max_retries: int = 0,
     fail_action: str = "same_step",
     timeout_minutes: float | None = None,
-    template_path: str = "prompts/01_spec.md",
+    template_path: str = "steps/general-auto-development/03_build.md",
     review_mode: str = "none",
 ) -> dict:
+    prompt_markers = {
+        "generate_spec": "You are generating the workflow artifact `output/spec.md`.",
+        "review_spec": "You are reviewing `output/spec.md`.",
+        "generate_tests": "You are generating automated tests and `test-plan.md`.",
+        "build": "Build implementation and write `build-result.md`.",
+    }
     return {
         "id": f"test-{key}",
         "key": key,
@@ -74,6 +80,7 @@ def _step(
         "type": step_type,
         "enabled": True,
         "templatePath": template_path,
+        "templateContent": prompt_markers.get(key, f"Workflow test step: {key}. Produce the expected artifact."),
         "filename": output or "",
         "outputFile": output or "",
         "maxRetries": max_retries,
@@ -95,7 +102,7 @@ def _workflow(workflow_id: str, steps: list[dict]) -> dict:
         "id": workflow_id,
         "kind": "custom",
         "name": workflow_id,
-        "folderName": "system-controlled-qwen",
+        "folderName": "general-auto-development",
         "skillRoot": "",
         "steps": steps,
     }
@@ -232,11 +239,11 @@ class WorkflowResilienceE2ETests(unittest.TestCase):
                     max_retries=1,
                     fail_action="selected_step",
                     function="",
-                    template_path="prompts/02_review_spec.md",
+                    template_path="steps/general-auto-development/02_implementation_review.md",
                     review_mode="current_session",
                 ),
                 _step("spec_gate", step_type="gate", function="require_status_pass", retry_from="generate_spec"),
-                _step("after_gate", output="after.md", expected=["after.md"], template_path="prompts/00_reason_requirement.md"),
+                _step("after_gate", output="after.md", expected=["after.md"], template_path="steps/general-auto-development/03_build.md"),
             ],
         )
         calls = {"generate_spec": 0, "review_spec": 0, "after_gate": 0}
@@ -267,7 +274,9 @@ class WorkflowResilienceE2ETests(unittest.TestCase):
                 self.assertEqual(statuses, {"generate_spec": "passed", "review_spec": "passed", "spec_gate": "passed", "after_gate": "passed"})
                 self.assertEqual(calls["review_spec"], 2)
                 self.assertEqual(calls["generate_spec"], 2)
-                self.assertEqual(next(step for step in run["steps"] if step["key"] == "generate_spec")["retry_count"], 1)
+                # Retry accounting belongs to the step that actually failed, not the recovery target.
+                self.assertEqual(next(step for step in run["steps"] if step["key"] == "generate_spec")["retry_count"], 0)
+                self.assertEqual(next(step for step in run["steps"] if step["key"] == "review_spec")["retry_count"], 1)
                 self.assertEqual(calls["after_gate"], 1)
 
                 client.delete(f"/api/sessions/{session['id']}")
@@ -509,8 +518,8 @@ class WorkflowResilienceE2ETests(unittest.TestCase):
         workflow = _workflow(
             "build-path-traversal-workflow",
             [
-                _step("generate_tests", output="test-plan.md", expected=["test-plan.md"], template_path="prompts/07_test.md"),
-                _step("build", output="build-result.md", expected=["build-result.md"], template_path="prompts/05_build.md"),
+                _step("generate_tests", output="test-plan.md", expected=["test-plan.md"], template_path="steps/general-auto-development/03_generate_tests.md"),
+                _step("build", output="build-result.md", expected=["build-result.md"], template_path="steps/general-auto-development/03_build.md"),
             ],
         )
 

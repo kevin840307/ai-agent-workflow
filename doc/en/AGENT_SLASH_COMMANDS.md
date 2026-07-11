@@ -14,14 +14,14 @@ This project provides custom slash-command templates so the agent TUI can call t
 
 | Command | Purpose | Backend call |
 |---|---|---|
-| `/wf` | Run a saved `.workflow` by workflow id | `python -m app.cli.aiwf /wf ... --wait` |
-| `/wstep` | Run one ad-hoc step from a skill/slash command plus contract | `python -m app.cli.aiwf /wstep ... --wait` |
+| `/wf` | Run a saved `.workflow` by workflow id | `<pinned Python> scripts/aiwf_agent_command.py /wf ... --wait` |
+| `/wstep` | Run one ad-hoc step from a skill/slash command plus contract | `<pinned Python> scripts/aiwf_agent_command.py /wstep ... --wait` |
 
 The command is only a thin entry point. The real execution still happens in Python/FastAPI workflow code, so retry, validation, artifact output, and workspace protection stay consistent with the Web UI.
 
 ## Install command templates
 
-Install both Qwen Code and OpenCode command templates into the current project:
+Install both Qwen Code and OpenCode command templates into the current project. The installer renders absolute paths to the current Python and stable launcher, then executes non-mutating `/wf` and `/wstep` dry-runs from the target project:
 
 ```bash
 python scripts/install_agent_commands.py --target all --scope project
@@ -58,6 +58,8 @@ OpenCode: ~/.config/opencode/commands/
 ```
 
 ## Verify
+
+A successful install prints `aiwf.agent-command-verification.v1`, proving routing, arguments, and cross-directory controller loading.
 
 Qwen Code:
 
@@ -99,8 +101,8 @@ Run one ad-hoc step by delegating to an agent slash command and contract:
 - The slash commands execute a shell command from inside the agent CLI.
 - Qwen Code supports project commands under `.qwen/commands/` and user commands under `~/.qwen/commands/`; project commands have higher priority.
 - OpenCode supports project commands under `.opencode/commands/` and global commands under `~/.config/opencode/commands/`.
-- Start Qwen/OpenCode from the project root so `python -m app.cli.aiwf` can import the local `app` package.
-- Keep the Python virtual environment active before starting the agent CLI.
+- After installation, Qwen/OpenCode can be started from any target project; the generated command uses the absolute stable launcher.
+- The Python/virtual environment used during installation must remain available. Reinstall the commands after moving the controller or rebuilding the venv.
 - Quote requirements that contain spaces.
 - Do not install these commands globally unless you want every project to see `/wf` and `/wstep`.
 - Shell execution may require confirmation inside the agent CLI. This is expected.
@@ -110,7 +112,7 @@ Run one ad-hoc step by delegating to an agent slash command and contract:
 | Problem | Check |
 |---|---|
 | `/wf` does not appear | Confirm the command file was copied to `.qwen/commands/` or `.opencode/commands/`, then restart the agent CLI. |
-| `ModuleNotFoundError: app` | Start the agent CLI from this repository root, or run with the correct project directory. |
+| `ModuleNotFoundError: app` | The installed command is stale or the controller/venv moved. Re-run `install_agent_commands.py` instead of retaining the old command. |
 | `python` is not found | Activate `.venv`, or use a shell where Python is already in PATH. |
 | Workflow starts but never finishes | Use `--wait` only when you want the agent session to wait for workflow completion; long workflows may take time. |
 | OpenCode uses a custom config dir | Pass `--destination <dir>/commands` or set `OPENCODE_CONFIG_DIR` according to your environment. |

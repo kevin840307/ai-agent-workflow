@@ -31,20 +31,12 @@ from app.workflow_runtime.step_utils import expected_file_candidates, expected_f
 
 
 SYSTEM_STEP_ORDER = [
-    "prepare_project",
-    "reason_requirement",
-    "generate_spec",
-    "validate_spec",
-    "review_spec",
-    "spec_gate",
-    "generate_todo",
-    "validate_todo",
-    "review_todo",
-    "todo_gate",
-    "generate_tests",
-    "reason_build",
+    "plan_tasks",
     "build",
+    "generate_tests",
     "run_test",
+    "implementation_review",
+    "run_external_validation",
     "final_review",
     "final_gate",
 ]
@@ -183,10 +175,13 @@ class WorkflowDefinitionIntegrityTests(unittest.TestCase):
         workflow = workflow_config_service.system_workflow_with_folder()
         self.assertEqual([step["key"] for step in workflow["steps"]], SYSTEM_STEP_ORDER)
         gates = {step["key"]: step for step in workflow["steps"] if step.get("type") == "gate"}
-        self.assertEqual(set(gates), {"spec_gate", "todo_gate", "final_gate"})
-        for gate in gates.values():
-            self.assertEqual(gate.get("function"), "require_status_pass")
-            self.assertTrue(gate.get("retryFromStepKey"))
+        self.assertEqual(set(gates), {"final_gate"})
+        self.assertEqual(gates["final_gate"].get("function"), "require_status_pass")
+        self.assertEqual(gates["final_gate"].get("retryFromStepKey"), "final_review")
+        functions = {step["key"]: step.get("function") for step in workflow["steps"] if step.get("type") == "python"}
+        self.assertEqual(functions["run_test"], "run_pytest")
+        self.assertEqual(functions["run_external_validation"], "run_external_validation")
+        self.assertEqual(functions["final_review"], "validate_general_auto_final")
 
 
 class StoreAndStateMachineTests(unittest.IsolatedAsyncioTestCase):
@@ -299,7 +294,7 @@ class QwenRunnerUnitTests(unittest.TestCase):
             client = QwenCliClient({"reuse_session": False})
             self.assertEqual(
                 client.command("abc", include_prompt_flag=True),
-                ["qwen-test", "--bare", "--session-id", "abc", "--chat-recording", "--auth-type", "oauth", "-p"],
+                ["qwen-test", "--bare", "--resume", "abc", "--chat-recording", "--auth-type", "oauth", "-p"],
             )
 
     def test_qwen_runner_timeout_and_non_zero_exit(self) -> None:
@@ -329,31 +324,70 @@ class QwenRunnerUnitTests(unittest.TestCase):
             with patch("app.runtime_modules.qwen.shutil.which", return_value="/bin/qwen-test"), patch("app.runtime_modules.qwen.subprocess.run", side_effect=fake_run):
                 self.assertEqual(client.run("prompt", Path(tmp), qwen_session_id="s1"), "ok")
 
-        self.assertIn("--session-id", calls[0])
+        self.assertIn("--resume", calls[0])
         self.assertNotIn("--session-id", calls[1])
+        self.assertNotIn("--resume", calls[1])
+
+    def test_qwen_runner_creates_session_only_after_resume_reports_missing_history(self) -> None:
+        calls: list[list[str]] = []
+
+        def fake_run(cmd, **kwargs):
+            calls.append(cmd)
+            if len(calls) == 1:
+                return subprocess.CompletedProcess(
+                    args=cmd,
+                    returncode=1,
+                    stdout="",
+                    stderr=(
+                        "No saved session found with ID new-session. "
+                        "Run `qwen --resume` without an ID to choose from existing sessions."
+                    ),
+                )
+            return subprocess.CompletedProcess(args=cmd, returncode=0, stdout="ok", stderr="")
+
+        with tempfile.TemporaryDirectory() as tmp, self._with_env(QWEN_BIN="qwen-test", QWEN_MOCK="0", QWEN_REUSE_SESSION="1"):
+            client = QwenCliClient({})
+            with patch("app.runtime_modules.qwen.shutil.which", return_value="/bin/qwen-test"), patch("app.runtime_modules.qwen.subprocess.run", side_effect=fake_run):
+                self.assertEqual(client.run("prompt", Path(tmp), qwen_session_id="new-session"), "ok")
+
+        self.assertIn("--resume", calls[0])
+        self.assertIn("--session-id", calls[1])
+        self.assertNotIn("--resume", calls[1])
+
+    def test_qwen_recoverable_session_diagnostics_are_not_user_errors(self) -> None:
+        self.assertTrue(QwenCliClient._is_recoverable_session_diagnostic(
+            "Error: Session Id abc already exists (active or archived). Delete or unarchive it first."
+        ))
+        self.assertTrue(QwenCliClient._is_recoverable_session_diagnostic("Session not found"))
+        self.assertTrue(QwenCliClient._is_recoverable_session_diagnostic(
+            "No saved session found with ID abc. Run `qwen --resume` without an ID to choose from existing sessions."
+        ))
+        self.assertFalse(QwenCliClient._is_recoverable_session_diagnostic("Authentication failed"))
+        self.assertEqual(
+            QwenCliClient._recovery_message("abc", "resume"),
+            "Existing Qwen session detected; resuming it now.",
+        )
 
 
 class PromptAndArtifactFunctionTests(unittest.TestCase):
     def test_prompt_templates_require_expected_outputs_and_context(self) -> None:
-        prompts = Path("data/ai-workflow/steps/system-controlled-qwen")
-        spec_prompt = (prompts / "01_spec.md").read_text(encoding="utf-8")
-        todo_prompt = (prompts / "03_todo.md").read_text(encoding="utf-8")
-        build_prompt = (prompts / "05_build.md").read_text(encoding="utf-8")
-        review_prompt = (prompts / "02_review_spec.md").read_text(encoding="utf-8")
-        final_prompt = (prompts / "06_final_review.md").read_text(encoding="utf-8")
+        prompts = Path("data/ai-workflow/steps/general-auto-development")
+        plan_prompt = (prompts / "01_plan_tasks.md").read_text(encoding="utf-8")
+        build_prompt = (prompts / "03_build.md").read_text(encoding="utf-8")
+        tests_prompt = (prompts / "03_generate_tests.md").read_text(encoding="utf-8")
+        review_prompt = (prompts / "02_implementation_review.md").read_text(encoding="utf-8")
+        final_prompt = (prompts / "05_final_review.md").read_text(encoding="utf-8")
 
-        self.assertIn("output/spec.md", spec_prompt)
-        self.assertIn("## Acceptance Criteria", spec_prompt)
-        self.assertIn("{{requirement}}", spec_prompt)
-        self.assertIn("output/todo.md", todo_prompt)
-        self.assertIn("TODO-001", todo_prompt)
-        self.assertIn("TEST-001", todo_prompt)
-        self.assertIn("Project Path: {{project_path}}", build_prompt)
-        self.assertIn("Output only FILE/CONTENT/END_FILE blocks", build_prompt)
-        self.assertIn("Do not create tests in this step", build_prompt)
-        self.assertIn("Status: PASS", review_prompt)
-        self.assertIn("Status: FAIL", review_prompt)
-        self.assertIn("Status: PASS", final_prompt)
+        self.assertIn('"spec"', plan_prompt)
+        self.assertIn('"tasks"', plan_prompt)
+        self.assertIn("Acceptance Criteria", plan_prompt)
+        self.assertIn("{{requirement_brief}}", plan_prompt)
+        self.assertIn("Directly edit real files", build_prompt)
+        self.assertIn("Do not create or modify tests in Build", build_prompt)
+        self.assertIn("Do not return tool-call JSON", build_prompt)
+        self.assertIn("Write tests directly under `tests/` only", tests_prompt)
+        self.assertIn('"status": "PASS or FAIL"', review_prompt)
+        self.assertIn("Status: PASS or FAIL", final_prompt)
 
     def test_prompt_builder_injects_requirement_project_profile_and_failure_feedback(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -368,26 +402,33 @@ class PromptAndArtifactFunctionTests(unittest.TestCase):
             (run_dir / "input" / "answers.md").write_text("", encoding="utf-8")
             (run_dir / "input" / "guidance.md").write_text("", encoding="utf-8")
             (run_dir / "input" / "failure-feedback.md").write_text(
-                "## Retry Feedback for generate_spec\n\nError message to fix:\n\nmissing AC-001\n", encoding="utf-8"
+                "## Retry Feedback for plan_tasks\n\nError message to fix:\n\nmissing AC-001\n", encoding="utf-8"
             )
             workflow = workflow_config_service.system_workflow_with_folder()
             run = {
                 "id": "r1",
                 "workspace": str(run_dir),
                 "project_path": str(project_dir),
-                "workflow_id": "system-controlled-qwen",
-                "workflow_folder": "system-controlled-qwen",
+                "workflow_id": "general-auto-development",
+                "workflow_folder": "general-auto-development",
                 "skill_root": "",
                 "steps": initial_steps(workflow["steps"]),
             }
 
-            result = PromptBuilder().build(run, "generate_spec", "01_spec.md", allow_interaction=False, agent_name="qwen")
+            result = PromptBuilder().build(
+                run,
+                "plan_tasks",
+                "steps/general-auto-development/01_plan_tasks.md",
+                allow_interaction=False,
+                agent_name="qwen",
+            )
             self.assertIn("新增 hello feature", result.prompt)
-            self.assertIn(f"Project Path: {project_dir}", result.prompt)
+            self.assertIn("## Project Path", result.prompt)
+            self.assertIn(str(project_dir), result.prompt)
             self.assertIn("Detected project profile", result.prompt)
-            self.assertIn("Previous Failure Feedback", result.prompt)
+            self.assertIn("Retry feedback, if any:", result.prompt)
             self.assertIn("missing AC-001", result.prompt)
-            self.assertTrue((run_dir / "prompts" / "generate_spec.md").exists())
+            self.assertTrue((run_dir / "prompts" / "plan_tasks.md").exists())
 
     def test_build_prompt_hardening_blocks_test_file_generation(self) -> None:
         hardened = AgentStepRunner._harden_prompt_for_step("build", "Base prompt")
@@ -455,7 +496,7 @@ class ApiWorkflowContractTests(unittest.TestCase):
             "id": workflow_id,
             "kind": "custom",
             "name": workflow_id,
-            "folderName": "system-controlled-qwen",
+            "folderName": "general-auto-development",
             "skillRoot": "",
             "steps": [
                 {
@@ -464,7 +505,8 @@ class ApiWorkflowContractTests(unittest.TestCase):
                     "name": "Raw Artifact",
                     "type": "ai",
                     "enabled": True,
-                    "templatePath": "prompts/01_spec.md",
+                    "templatePath": "steps/general-auto-development/03_build.md",
+                    "templateContent": "Workflow test step: raw_artifact. Produce the requested artifact.",
                     "filename": "raw.md",
                     "outputFile": "raw.md",
                     "expectedFiles": ["raw.md"],

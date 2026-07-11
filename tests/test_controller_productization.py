@@ -106,7 +106,8 @@ class ControllerProductizationTests(unittest.TestCase):
         css = (root / "static/css/workflow-runner.css").read_text(encoding="utf-8")
         self.assertIn("runProfile", index)
         self.assertIn("advancedMode", index)
-        self.assertIn("Export Run", runs)
+        self.assertIn("async exportRun", runs)
+        self.assertIn("匯出 Run", index)
         self.assertIn("Replay Run", runs)
         self.assertIn("novice-mode", css)
 

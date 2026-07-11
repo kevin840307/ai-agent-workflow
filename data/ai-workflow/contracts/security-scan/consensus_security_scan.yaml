@@ -20,7 +20,7 @@ innerValidator: validate_security_candidates
 artifactPattern: security-candidates-agent-{index}.md
 agentCount: 3
 agentMaxRetries: 5
-retry: 30
+retry: 3
 failAction: same_step
 retryFromStepKey: consensus_security_scan
 keepSameSession: false
@@ -43,3 +43,4 @@ sources:
   value: code-review-and-quality
 agentOptions: {}
 path: contracts/security-scan/consensus_security_scan.yaml
+maxRetries: 3

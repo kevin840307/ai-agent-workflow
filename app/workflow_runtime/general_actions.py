@@ -39,6 +39,7 @@ from app.runtime_modules.files import (
     validate_build_files_are_not_tests,
     validate_generated_code_files_are_clean,
     validate_generated_test_files,
+    is_pytest_file_name,
     validate_test_code_is_separate,
 )
 from app.core.paths import ROOT, read_text, write_text
@@ -46,6 +47,7 @@ from app.security.workspace_guard import resolve_project_relative_write
 from app.security.agent_project_config import ensure_agent_project_configs
 from app.workflow_runtime.builtin_functions.registry import PYTHON_FUNCTIONS
 from app.workflow_runtime.builtin_functions.base import WorkflowFunctionError
+from app.workflow_runtime.validators import execute_validator_plan, primary_validator
 
 from .actions_registry import builtin_action_for_step
 from .action_helpers import (
@@ -56,6 +58,8 @@ from .action_helpers import (
     is_general_auto_development_workflow,
 )
 from .agent_step_runner import AgentStepRunner
+from .complexity import classify_workflow_complexity
+from .task_checkpoints import create_task_checkpoint
 from .step_utils import (
     bool_config,
     normalize_artifact_name,
@@ -137,7 +141,12 @@ class GeneralDevelopmentActionsMixin:
                 agent_name=agent_name,
                 fresh_session=self._fresh_session_for_step(run, step_key),
             )
+            requirement = read_text(Path(run["workspace"]) / "requirement.md")
+            complexity = classify_workflow_complexity(requirement, project_dir)
+            self._max_planned_tasks = int(complexity["max_tasks"])
+            self._current_complexity_profile = str(complexity["profile"])
             manifest = self._parse_ai_task_prompt_manifest(output, step_key="plan_tasks")
+            manifest["complexity_profile"] = self._current_complexity_profile
             tasks = manifest.get("tasks") or []
             self._current_project_dir = project_dir
             self._write_ai_task_prompt_manifest(output_dir, manifest, source_label="AI-generated General Auto Development SOP plan")
@@ -198,6 +207,10 @@ class GeneralDevelopmentActionsMixin:
             )
         except UserInputRequired:
             raise
+        if str(config.get("reviewOutputFormat") or "").lower() == "json" and self._review_json_decision(output) is None:
+            raise WorkflowError(
+                f"{step_key}: INVALID_REVIEW_OUTPUT: reviewer must return only the required JSON object and must not edit files."
+            )
         decision = self._review_decision(output, config)
         if not decision["passed"]:
             raise WorkflowError(f"{step_key}: review strategy {mode} failed: {decision['reason']}")
@@ -304,8 +317,29 @@ class GeneralDevelopmentActionsMixin:
         )
 
     async def run_tests(self, run: dict[str, Any]) -> None:
+        project_dir = Path(run.get("project_path") or ROOT)
+        plan = primary_validator(project_dir)
         try:
-            await PYTHON_FUNCTIONS["run_pytest"](self.functions.context(run))
+            if not plan or plan.get("id") == "python":
+                await PYTHON_FUNCTIONS["run_pytest"](self.functions.context(run))
+                return
+            result = await execute_validator_plan(project_dir, validator_id=str(plan.get("id")), timeout_sec=900)
+            output_dir = Path(run["workspace"]) / "output"
+            write_text(output_dir / "test-result.md", json.dumps(result, indent=2, ensure_ascii=False))
+            run.setdefault("validation_results", []).append(
+                {
+                    "key": plan.get("id"),
+                    "status": result.get("status"),
+                    "command": plan.get("command_text"),
+                    "exit_code": result.get("exit_code"),
+                    "summary": (result.get("stderr") or result.get("stdout") or result.get("reason") or "")[-1200:],
+                }
+            )
+            await self.refresh_artifacts(run["id"])
+            if result.get("status") not in {"passed", "skipped"}:
+                raise WorkflowFunctionError(
+                    f"{str(plan.get('id')).upper()}_VALIDATION_FAILED: {result.get('reason') or result.get('stderr') or 'validator failed'}"
+                )
         except WorkflowFunctionError as exc:
             raise WorkflowError(str(exc)) from exc
 
@@ -317,6 +351,7 @@ class GeneralDevelopmentActionsMixin:
 
         before = project_file_snapshot(project_dir)
         attempt_snapshot = project_content_snapshot(project_dir)
+        direct_files: list[tuple[str, str]] = []
         try:
             await self.run_agent_step(
                 run,
@@ -327,36 +362,60 @@ class GeneralDevelopmentActionsMixin:
                 fresh_session=self._fresh_session_for_step(run, "generate_tests"),
             )
         except Exception as exc:
-            await self._restore_failed_project_attempt(run, project_dir, attempt_snapshot, "generate_tests", exc)
-            raise
+            direct_files = self._candidate_files_after_agent_failure(project_dir, before, exc)
+            if direct_files:
+                direct_files, rejected = self._enforce_phase_file_ownership(
+                    project_dir, attempt_snapshot, direct_files, phase="generate_tests"
+                )
+                if rejected:
+                    await self.log(run, "generate_tests: restored non-test file(s) written by the test phase: " + ", ".join(rejected))
+            if direct_files:
+                await self.log(run, f"generate_tests: accepted filesystem candidate tests despite agent summary failure: {str(exc)[:300]}")
+            else:
+                await self._restore_failed_project_attempt(run, project_dir, attempt_snapshot, "generate_tests", exc)
+                raise
 
         try:
-            direct_files = self._direct_edit_files_from_snapshot(
+            direct_files = direct_files or self._direct_edit_files_from_snapshot(
                 project_dir,
                 before,
                 project_file_snapshot(project_dir),
-                require_test_files=True,
             )
+            if direct_files:
+                direct_files, rejected = self._enforce_phase_file_ownership(
+                    project_dir, attempt_snapshot, direct_files, phase="generate_tests"
+                )
+                if rejected:
+                    await self.log(run, "generate_tests: restored non-test file(s) written by the test phase: " + ", ".join(rejected))
             if not direct_files:
                 direct_files = self._apply_file_blocks_for_direct_edit(
                     project_dir,
                     read_text(output_dir / artifact),
                     run=run,
                     step_key="generate_tests",
-                    require_test_files=True,
                     validation_script=run.get("validation_script"),
                     fallback_scripts=self._fallback_validation_scripts(run),
                     output_label="agent generate_tests file block direct edit",
                 )
+            if direct_files:
+                direct_files, rejected = self._enforce_phase_file_ownership(
+                    project_dir, attempt_snapshot, direct_files, phase="generate_tests"
+                )
+                if rejected:
+                    await self.log(run, "generate_tests: restored non-test file(s) materialized from agent output: " + ", ".join(rejected))
             if not direct_files:
                 direct_files = self._existing_project_test_files(project_dir)
             if not direct_files:
                 raise WorkflowError(
-                    f"generate_tests did not directly create or modify pytest files under {project_dir / 'tests'}. "
-                    "Use Qwen/OpenCode file edit/write tools to directly create project-specific tests under tests/."
+                    "generate_tests did not directly create or modify pytest files recognized by the project. "
+                    "Create new tests under tests/, or update an existing pytest-discoverable test file already present in the project."
                 )
 
-            validate_generated_test_files(direct_files)
+            validate_generated_test_files(
+                direct_files,
+                project_dir=project_dir,
+                existing_paths=attempt_snapshot.keys(),
+            )
         except Exception as exc:
             await self._restore_failed_project_attempt(run, project_dir, attempt_snapshot, "generate_tests", exc)
             raise
@@ -374,17 +433,29 @@ class GeneralDevelopmentActionsMixin:
 
     @staticmethod
     def _existing_project_test_files(project_dir: Path) -> list[tuple[str, str]]:
-        tests_dir = project_dir / "tests"
-        if not tests_dir.is_dir():
-            return []
+        """Return pytest files already present in the selected project.
+
+        New files are still expected under ``tests/``.  The fallback also
+        recognizes an established root-level ``test_*.py``/``*_test.py``
+        layout so legacy projects do not enter a retry loop after a valid edit.
+        Controller-owned directories are excluded.
+        """
         files: list[tuple[str, str]] = []
-        for path in sorted(tests_dir.rglob("*")):
-            if not path.is_file() or path.suffix.lower() != ".py":
+        ignored_roots = {".ai-workflow", ".workflow", ".git", "__pycache__"}
+        for path in sorted(project_dir.rglob("*.py")):
+            if not path.is_file():
                 continue
             try:
                 rel_path = path.relative_to(project_dir).as_posix()
+            except ValueError:
+                continue
+            if any(part in ignored_roots for part in Path(rel_path).parts):
+                continue
+            if not is_pytest_file_name(rel_path):
+                continue
+            try:
                 content = path.read_text(encoding="utf-8")
-            except (OSError, UnicodeDecodeError, ValueError):
+            except (OSError, UnicodeDecodeError):
                 continue
             files.append((rel_path, content.rstrip("\n") + "\n"))
         return files
@@ -450,7 +521,7 @@ class GeneralDevelopmentActionsMixin:
                 attempt_snapshot = project_content_snapshot(project_dir)
                 await self.log(run, f"build: task loop {index}/{total} {task_id} - {task_title}")
                 try:
-                    await self.run_agent_step(
+                    await self._run_task_agent_step(
                         scoped_run,
                         "build",
                         prompt_name,
@@ -463,19 +534,29 @@ class GeneralDevelopmentActionsMixin:
                         project_dir,
                         task_before,
                         project_file_snapshot(project_dir),
-                        forbid_test_files=not allow_test_files_in_task_loop,
                     )
+                    if direct_files and not allow_test_files_in_task_loop:
+                        direct_files, rejected = self._enforce_phase_file_ownership(
+                            project_dir, attempt_snapshot, direct_files, phase="build"
+                        )
+                        if rejected:
+                            await self.log(run, f"build/{task_id}: restored test file(s) written by Build: " + ", ".join(rejected))
                     if not direct_files:
                         direct_files = self._apply_file_blocks_for_direct_edit(
                             project_dir,
                             read_text(task_artifact_path),
                             run=run,
                             step_key="build",
-                            forbid_test_files=not allow_test_files_in_task_loop,
                             validation_script=run.get("validation_script"),
                             fallback_scripts=self._fallback_validation_scripts(run),
                             output_label=f"agent build task {task_id} file block direct edit",
                         )
+                    if direct_files and not allow_test_files_in_task_loop:
+                        direct_files, rejected = self._enforce_phase_file_ownership(
+                            project_dir, attempt_snapshot, direct_files, phase="build"
+                        )
+                        if rejected:
+                            await self.log(run, f"build/{task_id}: restored test file(s) materialized from agent output: " + ", ".join(rejected))
                     if not direct_files:
                         raise WorkflowError(
                             f"build task {task_id} did not directly create or modify project files under Project Path: {project_dir}. "
@@ -501,15 +582,53 @@ class GeneralDevelopmentActionsMixin:
                         phase="build",
                     )
                 except Exception as exc:
-                    await self._restore_failed_project_attempt(run, project_dir, attempt_snapshot, f"build/{task_id}", exc)
-                    if isinstance(exc, UserInputRequired):
-                        raise
-                    raise WorkflowError(f"{task_id}: {exc}") from exc
+                    candidate_files = self._candidate_files_after_agent_failure(
+                        project_dir,
+                        task_before,
+                        exc,
+                    )
+                    if candidate_files and not allow_test_files_in_task_loop:
+                        candidate_files, rejected = self._enforce_phase_file_ownership(
+                            project_dir, attempt_snapshot, candidate_files, phase="build"
+                        )
+                        if rejected:
+                            await self.log(run, f"build/{task_id}: restored test file(s) written by Build after agent failure: " + ", ".join(rejected))
+                    if candidate_files:
+                        direct_files = candidate_files
+                        if not allow_test_files_in_task_loop:
+                            validate_build_files_are_not_tests(direct_files)
+                        self._validate_build_direct_files_are_substantive(run, direct_files)
+                        validate_build_files_do_not_overwrite_validation_scripts(
+                            project_dir,
+                            direct_files,
+                            validation_script=run.get("validation_script"),
+                            fallback_scripts=self._fallback_validation_scripts(run),
+                        )
+                        validate_generated_code_files_are_clean(direct_files)
+                        self._write_task_direct_state(output_dir, project_dir, task_id, "build", direct_files)
+                        self._validate_previous_direct_task_states_preserved(
+                            output_dir,
+                            project_dir,
+                            current_index=index,
+                            current_task_id=task_id,
+                            phase="build",
+                        )
+                        await self.log(
+                            run,
+                            f"build/{task_id}: accepted filesystem candidate edits despite agent summary failure: {str(exc)[:300]}",
+                        )
+                    else:
+                        await self._restore_failed_project_attempt(run, project_dir, attempt_snapshot, f"build/{task_id}", exc)
+                        if isinstance(exc, UserInputRequired):
+                            raise
+                        raise WorkflowError(f"{task_id}: {exc}") from exc
                 task_result = self._render_direct_edit_summary("Build Direct Edit Result", task_id, task_title, direct_files)
                 write_text(task_artifact_path, task_result)
                 task_artifacts.append((task_id, task_title, task_result))
                 any_task_changed = True
                 await self.log(run, f"build/{task_id}: accepted direct agent production edit(s): " + ", ".join(rel_path for rel_path, _ in direct_files))
+                checkpoint = create_task_checkpoint(run, task_id=task_id, step_key="build", project_dir=project_dir, changed_files=direct_files)
+                await self.log(run, f"build/{task_id}: task checkpoint created: {checkpoint['id']}")
                 if await self._external_validation_passes_now(run, output_dir):
                     break
 
@@ -539,19 +658,29 @@ class GeneralDevelopmentActionsMixin:
                 project_dir,
                 before,
                 project_file_snapshot(project_dir),
-                forbid_test_files=True,
             )
+            if direct_files:
+                direct_files, rejected = self._enforce_phase_file_ownership(
+                    project_dir, attempt_snapshot, direct_files, phase="build"
+                )
+                if rejected:
+                    await self.log(run, "build: restored test file(s) written by Build: " + ", ".join(rejected))
             if not direct_files:
                 direct_files = self._apply_file_blocks_for_direct_edit(
                     project_dir,
                     read_text(output_dir / artifact),
                     run=run,
                     step_key="build",
-                    forbid_test_files=True,
                     validation_script=run.get("validation_script"),
                     fallback_scripts=self._fallback_validation_scripts(run),
                     output_label="agent build file block direct edit",
                 )
+            if direct_files:
+                direct_files, rejected = self._enforce_phase_file_ownership(
+                    project_dir, attempt_snapshot, direct_files, phase="build"
+                )
+                if rejected:
+                    await self.log(run, "build: restored test file(s) materialized from agent output: " + ", ".join(rejected))
             if not direct_files:
                 raise WorkflowError(
                     f"build did not directly create or modify project files under Project Path: {project_dir}. "
@@ -567,8 +696,26 @@ class GeneralDevelopmentActionsMixin:
             )
             validate_generated_code_files_are_clean(direct_files)
         except Exception as exc:
-            await self._restore_failed_project_attempt(run, project_dir, attempt_snapshot, "build", exc)
-            raise
+            candidate_files = self._candidate_files_after_agent_failure(project_dir, before, exc)
+            if candidate_files:
+                candidate_files, rejected = self._enforce_phase_file_ownership(
+                    project_dir, attempt_snapshot, candidate_files, phase="build"
+                )
+                if rejected:
+                    await self.log(run, "build: restored test file(s) written by Build after agent failure: " + ", ".join(rejected))
+            if candidate_files:
+                direct_files = candidate_files
+                validate_build_files_are_not_tests(direct_files)
+                self._validate_build_direct_files_are_substantive(run, direct_files)
+                validate_build_files_do_not_overwrite_validation_scripts(
+                    project_dir, direct_files, validation_script=run.get("validation_script"),
+                    fallback_scripts=self._fallback_validation_scripts(run),
+                )
+                validate_generated_code_files_are_clean(direct_files)
+                await self.log(run, f"build: accepted filesystem candidate edits despite agent summary failure: {str(exc)[:300]}")
+            else:
+                await self._restore_failed_project_attempt(run, project_dir, attempt_snapshot, "build", exc)
+                raise
         summary = self._render_direct_edit_summary("Build Direct Edit Result", "BUILD", "Production changes", direct_files)
         write_text(output_dir / artifact, summary)
         self._write_task_direct_state(output_dir, project_dir, "BUILD", "build", direct_files)

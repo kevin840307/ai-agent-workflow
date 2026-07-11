@@ -132,9 +132,11 @@ class ProductionGateAndDebugBundleTests(unittest.TestCase):
     def test_debug_bundle_route_and_ui_contract_exist(self) -> None:
         routes = {getattr(route, "path", "") for route in app.routes}
         self.assertIn("/api/workflow-runs/{run_id}/debug-bundle", routes)
-        runs_js = Path("static/js/features/runs.js").read_text(encoding="utf-8")
-        self.assertIn("Copy Debug Bundle", runs_js)
-        self.assertIn("debug-bundle", runs_js)
+        diagnostics_js = Path("static/js/features/diagnostics.js").read_text(encoding="utf-8")
+        index = Path("static/index.html").read_text(encoding="utf-8")
+        self.assertIn("downloadDebugBundle", diagnostics_js)
+        self.assertIn("debug-bundle", diagnostics_js)
+        self.assertIn("匯出技術診斷", index)
 
 
 class ActionsSplitAndLimitationsTests(unittest.TestCase):

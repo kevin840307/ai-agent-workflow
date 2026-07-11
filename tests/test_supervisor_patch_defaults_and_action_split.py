@@ -72,13 +72,13 @@ class ProcessSupervisorAndPatchDefaultTests(unittest.TestCase):
             result = asyncio.run(adapter.run_stream(request))
             self.assertIn("hello from stdin", result.output)
 
-    def test_real_agents_default_to_patch_review_but_mocks_keep_auto_apply(self) -> None:
+    def test_real_agents_write_to_selected_project_by_default_and_allow_isolation_override(self) -> None:
         with patch.dict(os.environ, {}, clear=True):
-            self.assertEqual(default_patch_mode_for_agent("qwen"), "review")
-            self.assertEqual(default_patch_mode_for_agent("opencode"), "review")
-        with patch.dict(os.environ, {"QWEN_MOCK": "1", "OPENCODE_MOCK": "true"}, clear=True):
             self.assertEqual(default_patch_mode_for_agent("qwen"), "auto_apply")
             self.assertEqual(default_patch_mode_for_agent("opencode"), "auto_apply")
+            self.assertEqual(default_patch_mode_for_agent("generic"), "auto_apply")
+        with patch.dict(os.environ, {"AIWF_DEFAULT_PATCH_MODE": "review"}, clear=True):
+            self.assertEqual(default_patch_mode_for_agent("qwen"), "review")
         with patch.dict(os.environ, {"AIWF_DEFAULT_PATCH_MODE": "dry-run"}, clear=True):
             self.assertEqual(default_patch_mode_for_agent("qwen"), "dry_run")
 

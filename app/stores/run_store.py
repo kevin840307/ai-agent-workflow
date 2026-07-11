@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any, Awaitable, Callable, Protocol
 
 from app.core.paths import utc_now
+from app.workflow_engine.state_machine import append_transition, validate_transition
 
 ReadFn = Callable[[], Awaitable[dict[str, Any]]]
 MutateFn = Callable[[Callable[[dict[str, Any]], Any]], Awaitable[Any]]
@@ -72,6 +73,9 @@ class FileRunStore:
         extra: dict[str, Any] | None = None,
     ) -> dict[str, Any] | None:
         def apply(run: dict[str, Any]) -> None:
+            previous = str(run.get("status") or "")
+            validate_transition("run", previous, status, strict=True)
+            append_transition(run, kind="run", source=previous, target=status, reason=(extra or {}).get("transition_reason") if extra else None)
             run["status"] = status
             run["updated_at"] = utc_now()
             if ended:

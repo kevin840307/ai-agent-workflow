@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import asyncio
 import os
+from contextlib import asynccontextmanager, suppress
 
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
@@ -10,17 +12,13 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.runtime_modules import api as runtime
 from app.api.errors import http_exception_handler, validation_exception_handler
-from app.api.routes import artifacts, config, maintenance, projects, workflow_assets, workflow_runs, workflows, workflow_cases, validation_scripts, context_packs, workflow_productization
+from app.api.routes import artifacts, config, maintenance, projects, workflow_assets, workflow_runs, workflows, workflow_cases, validation_scripts, context_packs, workflow_productization, setup, analytics, optimization, productization_v9
 from app.core.metrics import metrics
 from app.services import workflow_asset_service, workflow_config_service, health_service
+from app.agents.process_supervisor import terminate_async_process_tree
+from app.workflow_runtime.qwen_serve import shutdown_qwen_serve
 
 
-app = FastAPI(title="Agent Workflow Web MVP")
-app.add_exception_handler(StarletteHTTPException, http_exception_handler)
-app.add_exception_handler(RequestValidationError, validation_exception_handler)
-
-
-@app.on_event("startup")
 async def startup() -> None:
     workers = os.environ.get("WEB_CONCURRENCY") or os.environ.get("UVICORN_WORKERS")
     if workers and workers != "1":
@@ -30,9 +28,47 @@ async def startup() -> None:
     runtime.mark_interrupted_runs()
     workflow_asset_service.ensure_asset_dirs()
     workflow_config_service.ensure_system_workflow()
-    workflow_config_service.ensure_sample_workflow()
     context_pack_service = __import__("app.services.context_pack_service", fromlist=["ensure_context_pack_dirs"])
     context_pack_service.ensure_context_pack_dirs()
+
+
+async def shutdown() -> None:
+    """Gracefully stop controller-owned work before the event loop closes."""
+    tasks = [task for task in runtime.running_tasks.values() if not task.done()]
+    for task in tasks:
+        task.cancel()
+    if tasks:
+        with suppress(asyncio.TimeoutError):
+            await asyncio.wait_for(asyncio.gather(*tasks, return_exceptions=True), timeout=8)
+    runtime.running_tasks.clear()
+
+    processes = list(runtime.running_processes.values())
+    for process in processes:
+        if process.returncode is None:
+            with suppress(Exception):
+                await terminate_async_process_tree(process, grace_sec=1.5)
+    runtime.running_processes.clear()
+
+    # Persist active runs as recoverable and release their project locks before
+    # the process exits. This also keeps TestClient teardown deterministic.
+    with suppress(Exception):
+        runtime.mark_interrupted_runs()
+    with suppress(Exception):
+        await asyncio.to_thread(shutdown_qwen_serve)
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    await startup()
+    try:
+        yield
+    finally:
+        await shutdown()
+
+
+app = FastAPI(title="Agent Workflow Web MVP", lifespan=lifespan)
+app.add_exception_handler(StarletteHTTPException, http_exception_handler)
+app.add_exception_handler(RequestValidationError, validation_exception_handler)
 
 
 @app.get("/")
@@ -89,6 +125,10 @@ async def get_metrics():
 app.mount("/static", StaticFiles(directory=runtime.STATIC_DIR), name="static")
 
 app.include_router(config.router)
+app.include_router(setup.router)
+app.include_router(analytics.router)
+app.include_router(optimization.router)
+app.include_router(productization_v9.router)
 app.include_router(projects.router)
 app.include_router(workflow_productization.router)
 app.include_router(workflows.router)

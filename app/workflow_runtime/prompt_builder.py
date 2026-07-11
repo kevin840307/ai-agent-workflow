@@ -13,6 +13,8 @@ from app.runtime_modules.skills import load_skill_context
 from app.services.workflow_asset_service import GLOBAL_ASSET_ROOT, PROJECT_ASSET_DIR
 from app.auto_workflow import orchestrator
 from app.workflow_runtime.thinking import render_thinking_guidance, step_thinking_level
+from app.workflow_runtime.complexity import classify_workflow_complexity
+from app.workflow_runtime.model_capabilities import resolve_model_capability
 
 from .questions import interaction_instruction
 from .step_utils import bool_config
@@ -183,6 +185,7 @@ class PromptBuilder:
             prompt = self._wrap_with_agent_profile(prompt, f"{selected}\n\n{skill_context.strip()}", agent_name)
             write_text(Path(run["workspace"]) / "prompts" / "skill-context.md", skill_context)
 
+        prompt = self._enforce_model_prompt_budget(run, step_key, prompt)
         relative_prompt_path = f"prompts/{step_key}.md"
         write_text(Path(run["workspace"]) / "prompts" / f"{step_key}.md", prompt)
         return PromptBuildResult(
@@ -192,6 +195,35 @@ class PromptBuilder:
             skill_context=skill_context,
             relative_prompt_path=relative_prompt_path,
         )
+
+    @staticmethod
+    def _enforce_model_prompt_budget(run: dict[str, Any], step_key: str, prompt: str) -> str:
+        capability = run.get("model_capability") or resolve_model_capability(run.get("run_profile"))
+        budget = max(4000, int(capability.get("prompt_budget_chars") or 35000))
+        if len(prompt) <= budget:
+            return prompt
+        # Preserve the instruction header and the most recent failure/interaction
+        # context at the tail. Large generated project indexes in the middle are
+        # the safest content to compact when a local model has a smaller window.
+        head_size = int(budget * 0.60)
+        tail_size = max(1000, budget - head_size - 220)
+        compacted = (
+            prompt[:head_size].rstrip()
+            + "\n\n[Context compacted by Model Capability Profile for "
+            + str(step_key)
+            + ". Re-read project files when more detail is required.]\n\n"
+            + prompt[-tail_size:].lstrip()
+        )
+        run.setdefault("prompt_compactions", []).append(
+            {
+                "step_key": step_key,
+                "original_chars": len(prompt),
+                "effective_chars": len(compacted),
+                "profile": capability.get("id") or run.get("run_profile") or "normal",
+            }
+        )
+        run["prompt_compactions"] = run["prompt_compactions"][-50:]
+        return compacted
 
     def _template_values(
         self,
@@ -244,9 +276,13 @@ class PromptBuilder:
         project_index = read_text(output_dir / "project-index.md")
         architecture_contract = self._architecture_contract(run, requirement, project_dir, output_dir)
         validation_script_content = self._validation_script_content(run, project_dir, include_content=step_key in {"run_external_validation", "python_gate"})
+        complexity = classify_workflow_complexity(requirement, project_dir)
         return {
             "requirement": requirement,
             "requirement_brief": self._compact_text(requirement, max_chars=2000),
+            "complexity_profile": str(complexity["profile"]),
+            "max_planned_tasks": str(complexity["max_tasks"]),
+            "recommended_task_count": str(complexity["recommended_tasks"]),
             "architecture": architecture,
             "architecture_brief": self._compact_text(architecture, max_chars=2200),
             "project_profile": profile,

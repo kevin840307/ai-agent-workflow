@@ -10,16 +10,14 @@ agent: qwen
 outputs:
 - build-result.md
 function: ''
-retry: 99
+retry: 3
 failAction: same_step
 retryFromStepKey: build
-retryEscalationEvery: 3
-retryEscalationStepKey: plan_tasks
 keepSameSession: true
 injectFailureFeedback: true
-stopAfterFailures: 99
+stopAfterFailures: 3
 requireSubstantiveBuild: true
-allowTestFilesInTaskLoop: true
+allowTestFilesInTaskLoop: false
 allowInteraction: false
 thinking: true
 thinkingLevel: medium
@@ -41,3 +39,5 @@ enableTaskLoop: true
 repromptOnToolCallJson: false
 includeSkillContext: false
 compactRetryPromptWhenReusingSession: true
+
+taskTimeoutSec: 300

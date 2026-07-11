@@ -127,6 +127,10 @@ def build_gate_report(trace: dict[str, Any]) -> dict[str, Any]:
     review_steps = [step for step in steps if _is_review_step(step)]
     failed_steps = [step for step in steps if step.get("status") in {"failed", "waiting_input", "cancelled"}]
     validation_status = _aggregate_status(validation_steps)
+    if validation_status == "SKIPPED":
+        validation_status = _artifact_status(
+            Path(str(trace.get("workspace") or "")) / "output" / "external-validation-result.md"
+        )
     review_status = _aggregate_status(review_steps)
     final_status = "PASS" if str(trace.get("status") or "").lower() == "done" and not failed_steps else "FAIL"
     return {
@@ -182,6 +186,19 @@ def render_gate_report(trace: dict[str, Any]) -> str:
     lines.append("- Effective prompts: `prompts/*.effective.md`")
     lines.append("- Prompt metadata: `prompts/*.prompt-meta.json`")
     return "\n".join(lines).rstrip() + "\n"
+
+
+def _artifact_status(path: Path) -> str:
+    text = read_text(path).lower()
+    if not text.strip():
+        return "SKIPPED"
+    if "status: fail" in text or "exit code: 1" in text or "exitcode: 1" in text:
+        return "FAIL"
+    if "status: pass" in text or "exit code: 0" in text or "exitcode: 0" in text:
+        return "PASS"
+    if "status: skipped" in text:
+        return "SKIPPED"
+    return "UNKNOWN"
 
 
 def _aggregate_status(steps: list[dict[str, Any]]) -> str:

@@ -1,9 +1,13 @@
-# Final Gate / Report
+# Final Completion Gate / Report
 
-This Python gate checks the AI Implementation Review result.
+This deterministic Python gate decides whether the run may become `COMPLETED`.
 
-Pass condition:
+Required conditions:
 - `output/final-review.md` contains `Status: PASS`.
-- `output/external-validation-result.md` must already be PASS or skipped by the External Validation step.
+- All required tasks are accepted.
+- Required user validation has immutable execution evidence with exit code 0.
+- Optional validation may be `NOT_CONFIGURED`; it must never be represented as a fake PASS.
+- Required tests and validators have successful execution evidence.
+- No unresolved failed/blocked step, policy violation, scope decision, or checkpoint inconsistency remains.
 
 This step does not generate code, repair files, or replace Qwen/OpenCode behavior.

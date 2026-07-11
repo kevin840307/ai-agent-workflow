@@ -170,7 +170,7 @@ class WorkflowIntegrationTests(unittest.TestCase):
                     run_response = client.post(
                         f"/api/sessions/{session['id']}/workflow-runs",
                         json={
-                            "workflow_id": "system-controlled-qwen",
+                            "workflow_id": workflow_config_service.SYSTEM_WORKFLOW_ID,
                             "requirement": "新增一個 deterministic workflow greeting helper，並完整跑 system workflow mock e2e。",
                             "project_path": str(project_dir),
                             "test_command": "python -m unittest discover -s tests",
@@ -183,20 +183,12 @@ class WorkflowIntegrationTests(unittest.TestCase):
                     self.assertEqual(
                         [step["key"] for step in run["steps"]],
                         [
-                            "prepare_project",
-                            "reason_requirement",
-                            "generate_spec",
-                            "validate_spec",
-                            "review_spec",
-                            "spec_gate",
-                            "generate_todo",
-                            "validate_todo",
-                            "review_todo",
-                            "todo_gate",
-                            "generate_tests",
-                            "reason_build",
+                            "plan_tasks",
                             "build",
+                            "generate_tests",
                             "run_test",
+                            "implementation_review",
+                            "run_external_validation",
                             "final_review",
                             "final_gate",
                         ],
@@ -205,14 +197,9 @@ class WorkflowIntegrationTests(unittest.TestCase):
 
                     artifact_names = {artifact["name"]: artifact for artifact in run["artifacts"]}
                     for name in [
-                        "architecture.md",
-                        "reasoning.md",
                         "spec.md",
-                        "spec-review.md",
                         "todo.md",
-                        "todo-review.md",
                         "test-plan.md",
-                        "build-reasoning.md",
                         "build-result.md",
                         "test-result.md",
                         "final-review.md",

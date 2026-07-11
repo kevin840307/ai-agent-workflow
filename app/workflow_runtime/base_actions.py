@@ -28,6 +28,7 @@ from app.runtime_modules.files import (
     should_ask_for_spec_input,
     snapshot_changed,
     restore_project_content_snapshot,
+    restore_selected_project_paths,
     spec_input_questions,
     split_build_files,
     render_generic_spec_from_requirement,
@@ -40,12 +41,15 @@ from app.runtime_modules.files import (
     validate_generated_code_files_are_clean,
     validate_generated_test_files,
     validate_test_code_is_separate,
+    is_test_file_path,
+    is_owned_test_file_path,
 )
 from app.core.paths import ROOT, read_text, write_text
 from app.security.workspace_guard import resolve_project_relative_write
 from app.security.agent_project_config import ensure_agent_project_configs
 from app.workflow_runtime.builtin_functions.registry import PYTHON_FUNCTIONS
 from app.workflow_runtime.builtin_functions.base import WorkflowFunctionError
+from app.workflow_runtime.failure_classifier import classify_failure
 
 from .actions_registry import builtin_action_for_step
 from .action_helpers import (
@@ -91,6 +95,34 @@ class BaseAgentActionsMixin:
             fresh_session=fresh_session,
         )
 
+    async def _run_task_agent_step(
+        self,
+        run: dict[str, Any],
+        step_key: str,
+        prompt_name: str,
+        artifact: str,
+        *,
+        agent_name: str | None = None,
+        fresh_session: bool = False,
+    ) -> str:
+        config = self._config_for_step(run, step_key)
+        raw = config.get("taskTimeoutSec") or config.get("task_timeout_sec") or 300
+        try:
+            timeout = max(30.0, float(raw))
+        except (TypeError, ValueError):
+            timeout = 300.0
+        return await asyncio.wait_for(
+            self.run_agent_step(
+                run,
+                step_key,
+                prompt_name,
+                artifact,
+                agent_name=agent_name,
+                fresh_session=fresh_session,
+            ),
+            timeout=timeout,
+        )
+
     async def run_qwen_step(
         self,
         run: dict[str, Any],
@@ -133,9 +165,65 @@ class BaseAgentActionsMixin:
             return []
         files = files_from_changed_snapshot(project_dir, changed)
         if require_test_files:
-            validate_generated_test_files(files)
+            validate_generated_test_files(files, project_dir=project_dir)
         if forbid_test_files:
             validate_build_files_are_not_tests(files)
+        return files
+
+    def _enforce_phase_file_ownership(
+        self,
+        project_dir: Path,
+        before_content: dict[str, bytes],
+        files: list[tuple[str, str]],
+        *,
+        phase: str,
+    ) -> tuple[list[tuple[str, str]], list[str]]:
+        """Keep only files owned by the current workflow phase.
+
+        Build owns production/config/source files. Generate Tests owns canonical
+        pytest files under tests/. Files written by the wrong phase are restored
+        individually from the pre-step snapshot, preserving valid edits from the
+        same agent attempt.
+        """
+        if phase == "build":
+            accepted, rejected = split_build_files(files)
+        elif phase == "generate_tests":
+            existing_paths = before_content.keys()
+            accepted = [
+                item for item in files
+                if is_owned_test_file_path(item[0], existing_paths=existing_paths)
+            ]
+            rejected = [
+                item for item in files
+                if not is_owned_test_file_path(item[0], existing_paths=existing_paths)
+            ]
+        else:
+            return files, []
+        rejected_paths = [rel_path for rel_path, _ in rejected]
+        restored = restore_selected_project_paths(project_dir, before_content, rejected_paths) if rejected_paths else []
+        return accepted, restored
+
+    def _candidate_files_after_agent_failure(
+        self,
+        project_dir: Path,
+        before: dict[str, tuple[int, int]],
+        exc: Exception,
+        *,
+        require_test_files: bool = False,
+        forbid_test_files: bool = False,
+    ) -> list[tuple[str, str]]:
+        if isinstance(exc, UserInputRequired):
+            return []
+        # The filesystem is the source of truth. A provider can return malformed
+        # summary text or time out after its edit tool already completed. Preserve
+        # and validate those candidate edits instead of declaring the task failed.
+        files = self._direct_edit_files_from_snapshot(
+            project_dir,
+            before,
+            project_file_snapshot(project_dir),
+            require_test_files=require_test_files,
+            forbid_test_files=forbid_test_files,
+        )
         return files
 
     @staticmethod
@@ -198,8 +286,28 @@ class BaseAgentActionsMixin:
         label: str,
         exc: Exception,
     ) -> None:
+        failure = classify_failure(exc, step_key=label)
+        code = str(failure.get("code") or "UNKNOWN")
+        rollback_codes = {
+            "VALIDATION_FAILED",
+            "TEST_FAILED",
+            "PROJECT_GUARD_BLOCKED",
+            "EXPECTED_FILES_MISSING",
+        }
+        # Agent output/session/parser failures can happen after the CLI already
+        # completed valid edits. Preserve those candidate files and let the
+        # deterministic diff/test gates decide whether repair is needed.
+        if code not in rollback_codes:
+            await self.log(
+                run,
+                f"{label}: preserved candidate project files after {code}; deterministic validation will decide acceptance: {str(exc)[:500]}",
+            )
+            return
         restore_project_content_snapshot(project_dir, snapshot)
-        await self.log(run, f"{label}: restored project files after failed attempt: {str(exc)[:500]}")
+        # A rolled-back filesystem no longer matches the model's conversation.
+        # Force exactly the next agent call onto a fresh session.
+        run["_fresh_agent_session_once"] = True
+        await self.log(run, f"{label}: restored project files after deterministic {code} failure: {str(exc)[:500]}")
 
     def _apply_file_blocks_for_direct_edit(
         self,
@@ -220,7 +328,7 @@ class BaseAgentActionsMixin:
         if not files:
             return []
         if require_test_files:
-            validate_generated_test_files(files)
+            validate_generated_test_files(files, project_dir=project_dir)
         if forbid_test_files:
             validate_build_files_are_not_tests(files)
         validate_build_files_do_not_overwrite_validation_scripts(

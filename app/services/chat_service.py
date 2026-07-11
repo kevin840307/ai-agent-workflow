@@ -161,6 +161,12 @@ async def chat(session_id: str, body: runtime.CreateMessageRequest) -> dict:
             async def publish_chat_output(stream: str, text: str) -> None:
                 if not text:
                     return
+                if stream == "status":
+                    await runtime.bus.publish(
+                        chat_stream_id,
+                        {"type": "agent_status", "agent": agent.name, "step": "chat", "message": text},
+                    )
+                    return
                 await runtime.bus.publish(
                     chat_stream_id,
                     {"type": "agent_output", "agent": agent.name, "step": "chat", "stream": stream, "text": text},

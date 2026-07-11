@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import asyncio
 import os
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
+from app.agents.process_supervisor import SupervisedProcessResult
 from app.runtime_modules.errors import WorkflowError
 from app.runtime_modules.files import (
     apply_extracted_files,
@@ -370,7 +372,7 @@ def test_run():
             command = client.command("session-1", include_prompt_flag=False)
 
             self.assertIn("--bare", command)
-            self.assertIn("--session-id", command)
+            self.assertIn("--resume", command)
             self.assertIn("session-1", command)
             self.assertIn("--auth-type", command)
             self.assertIn("openai", command)
@@ -379,6 +381,116 @@ def test_run():
             _restore_env("QWEN_MOCK", old_mock)
             _restore_env("QWEN_BARE", old_bare)
             _restore_env("QWEN_AUTH_TYPE", old_auth)
+
+    def test_qwen_stream_recovers_missing_session_without_showing_error_diagnostics(self) -> None:
+        commands: list[list[str]] = []
+        streamed: list[tuple[str, str]] = []
+
+        async def fake_supervisor(options):
+            commands.append(options.command)
+            if len(commands) == 1:
+                diagnostic = (
+                    "No saved session found with ID new-session. "
+                    "Run `qwen --resume` without an ID to choose from existing sessions.\n"
+                )
+                if options.on_output:
+                    await options.on_output("stderr", diagnostic)
+                return SupervisedProcessResult(
+                    command=options.command,
+                    cwd=options.cwd,
+                    returncode=1,
+                    stdout="",
+                    stderr=diagnostic,
+                )
+            payload = '{"type":"result","result":"ok"}\n'
+            if options.on_output:
+                await options.on_output("stdout", payload)
+            return SupervisedProcessResult(
+                command=options.command,
+                cwd=options.cwd,
+                returncode=0,
+                stdout=payload,
+                stderr="",
+            )
+
+        async def capture(stream: str, text: str) -> None:
+            streamed.append((stream, text))
+
+        with tempfile.TemporaryDirectory() as tmp, patch.dict(
+            os.environ,
+            {"QWEN_BIN": "qwen-test", "QWEN_MOCK": "0", "QWEN_REUSE_SESSION": "1"},
+            clear=False,
+        ):
+            client = QwenCliClient({})
+            with patch("app.runtime_modules.qwen.shutil.which", return_value="/bin/qwen-test"), patch(
+                "app.runtime_modules.qwen.run_supervised_process", side_effect=fake_supervisor
+            ):
+                output = asyncio.run(
+                    client.run_stream(
+                        "prompt",
+                        Path(tmp),
+                        qwen_session_id="new-session",
+                        on_output=capture,
+                    )
+                )
+
+        self.assertEqual(output, "ok")
+        self.assertIn("--resume", commands[0])
+        self.assertIn("--session-id", commands[1])
+        self.assertFalse(any(stream == "stderr" for stream, _text in streamed))
+        self.assertIn(
+            ("status", "No existing Qwen session history was found; creating the session now."),
+            streamed,
+        )
+
+    def test_qwen_threaded_fallback_preserves_session_recovery_on_windows(self) -> None:
+        commands: list[list[str]] = []
+        streamed: list[tuple[str, str]] = []
+
+        def fake_sync(options):
+            commands.append(options.command)
+            if len(commands) == 1:
+                return SupervisedProcessResult(
+                    command=options.command,
+                    cwd=options.cwd,
+                    returncode=1,
+                    stdout="",
+                    stderr="Session not found",
+                )
+            payload = '{"type":"result","result":"ok"}\n'
+            return SupervisedProcessResult(
+                command=options.command,
+                cwd=options.cwd,
+                returncode=0,
+                stdout=payload,
+                stderr="",
+            )
+
+        async def capture(stream: str, text: str) -> None:
+            streamed.append((stream, text))
+
+        with tempfile.TemporaryDirectory() as tmp, patch.dict(
+            os.environ,
+            {"QWEN_BIN": "qwen-test", "QWEN_MOCK": "0", "QWEN_REUSE_SESSION": "1"},
+            clear=False,
+        ):
+            client = QwenCliClient({})
+            with patch("app.runtime_modules.qwen.shutil.which", return_value="/bin/qwen-test"), patch.object(
+                client, "_execute_stream_async", new=AsyncMock(side_effect=NotImplementedError)
+            ), patch("app.runtime_modules.qwen.run_supervised_process_sync", side_effect=fake_sync):
+                output = asyncio.run(
+                    client.run_stream(
+                        "prompt",
+                        Path(tmp),
+                        qwen_session_id="new-session",
+                        on_output=capture,
+                    )
+                )
+
+        self.assertEqual(output, "ok")
+        self.assertIn("--resume", commands[0])
+        self.assertIn("--session-id", commands[1])
+        self.assertFalse(any(stream == "stderr" for stream, _text in streamed))
 
     def test_qwen_adapter_defaults_to_cli_unless_serve_is_enabled(self) -> None:
         old_mock = os.environ.get("QWEN_MOCK")

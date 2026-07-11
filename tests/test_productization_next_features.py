@@ -16,10 +16,10 @@ from app.main import app
 class ProductizationNextFeatureTests(unittest.TestCase):
     def test_advanced_label_and_model_word_removed_from_composer(self) -> None:
         html = Path("static/index.html").read_text(encoding="utf-8")
-        self.assertIn(">Advanced<", html)
-        self.assertNotIn("Debug tools", html)
-        self.assertNotIn(">Model<", html)
-        self.assertIn(">Profile<", html)
+        self.assertIn(">Options<", html)
+        self.assertIn("composerAdvancedSettings", html)
+        self.assertIn("Model Profile", html)
+        self.assertIn("技術診斷", html)
         runs_js = Path("static/js/features/runs.js").read_text(encoding="utf-8")
         self.assertIn("/console", runs_js)
         self.assertIn("/patch", runs_js)

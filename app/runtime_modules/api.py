@@ -194,6 +194,7 @@ agent_step_runner = AgentStepRunner(
     log=log,
     refresh_artifacts=refresh_artifacts,
     append_session_message=append_session_message,
+    update_run=update_run,
 )
 workflow_actions = WorkflowActions(
     agent_runner=agent_step_runner,
@@ -224,6 +225,8 @@ def mark_interrupted_runs() -> None:
     changed_runs = mark_interrupted_store_runs(data)
     if not changed_runs:
         return
+    for run in changed_runs:
+        run["project_lock"] = None
     store.save_sync(data)
     for run in changed_runs:
         try:
@@ -234,7 +237,7 @@ def mark_interrupted_runs() -> None:
                 previous = read_text(run_dir / ".workflow" / "run-log.md")
                 write_text(
                     run_dir / ".workflow" / "run-log.md",
-                    previous + ("\n" if previous.strip() else "") + f"{utc_now()} workflow: interrupted by server restart; run marked failed and retryable.\n",
+                    previous + ("\n" if previous.strip() else "") + f"{utc_now()} workflow: interrupted by server restart; recovery checkpoint is available.\n",
                 )
             clear_project_lock(run)
         except Exception:

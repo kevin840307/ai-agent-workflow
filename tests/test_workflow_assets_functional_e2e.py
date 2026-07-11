@@ -48,7 +48,8 @@ class WorkflowAssetsFunctionalE2ETests(unittest.TestCase):
             self.assertEqual(listed.status_code, 200)
             self.assertIn("workflows/e2e.workflow", {item["path"] for item in listed.json()["assets"]})
 
-            workflow = asyncio.run(workflow_config_service.get_workflow("e2e"))
+            workflow = workflow_asset_service.load_workflow_asset("e2e")
+            workflow = workflow_config_service.read_prompt_files(workflow, workflow.get("folderName") or workflow.get("id"))
 
         self.assertEqual(workflow["id"], "e2e")
         self.assertEqual(workflow["steps"][0]["skillPath"], "steps/e2e/spec.md")
@@ -61,7 +62,8 @@ class WorkflowAssetsFunctionalE2ETests(unittest.TestCase):
         workflow_asset_service.write_asset("contracts/shared.yaml", "id: shared\nskill: steps/shared.md\n", scope="global")
         workflow_asset_service.write_asset("workflows/shared.workflow", "contract: shared\n", scope="global")
 
-        workflow = asyncio.run(workflow_config_service.get_workflow("shared", project_path=str(self.project_root)))
+        workflow = workflow_asset_service.load_workflow_asset("shared", project_path=str(self.project_root))
+        workflow = workflow_config_service.read_prompt_files(workflow, workflow.get("folderName") or workflow.get("id"))
 
         self.assertEqual(workflow["steps"][0]["templateContent"], "project prompt")
 

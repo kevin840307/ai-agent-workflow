@@ -7,19 +7,22 @@ from pathlib import Path
 from typing import Any, Awaitable, Callable
 
 from app.runtime_modules.errors import UserInputRequired, WorkflowError
-from app.runtime_modules.files import failure_feedback_for_step
+from app.runtime_modules.files import failure_feedback_for_step, project_content_snapshot, restore_project_content_snapshot, project_overview
 from app.core.paths import read_text, write_text
 from app.security.agent_project_config import ensure_agent_project_configs
 from app.security.workspace_guard import resolve_project_relative_write
+from app.services.agent_session_manager import AgentSessionManager
 
 from .agents import AgentManager, AgentRequest
-from .error_codes import is_recoverable_session_error
+from .error_codes import is_recoverable_session_error, is_context_limit_error
 from .prompt_builder import PromptBuilder
 from .questions import extract_user_questions
+from .context_handoff import write_context_handoff
 
 LogFn = Callable[[dict[str, Any], str], Awaitable[None]]
 RefreshArtifactsFn = Callable[[str], Awaitable[Any]]
 AppendSessionMessageFn = Callable[[str, str, str], Awaitable[Any]]
+UpdateRunFn = Callable[[str, Callable[[dict[str, Any]], Any]], Awaitable[dict[str, Any] | None]]
 
 
 class AgentStepRunner:
@@ -32,6 +35,7 @@ class AgentStepRunner:
         log: LogFn,
         refresh_artifacts: RefreshArtifactsFn,
         append_session_message: AppendSessionMessageFn,
+        update_run: UpdateRunFn | None = None,
     ) -> None:
         self.agent_manager = agent_manager
         self.prompt_builder = prompt_builder
@@ -39,6 +43,8 @@ class AgentStepRunner:
         self.log = log
         self.refresh_artifacts = refresh_artifacts
         self.append_session_message = append_session_message
+        self.update_run = update_run
+        self.session_manager = AgentSessionManager()
 
     async def run(
         self,
@@ -64,27 +70,23 @@ class AgentStepRunner:
             allow_interaction=allow_interaction,
             agent_name=agent_name,
         )
-        cwd = Path(run.get("project_path") or run["workspace"]).expanduser().resolve()
+        cwd = self._execution_project_dir(run)
         ensure_agent_project_configs(cwd)
         workspace_path = Path(run["workspace"]).expanduser().resolve()
-        base_session_id = self._session_id_for_agent(run, agent_name)
-        # Qwen serve normally keeps one Qwen session per project/app session.
-        # Review / multi-agent review steps intentionally need independent Qwen
-        # sessions so reviewers are not contaminated by the build session.
-        if agent_name == "qwen":
-            # Controller mode keeps Qwen/OpenCode behavior close to a normal CLI
-            # session: retries continue the same session and send only concise
-            # failure feedback.  Fresh sessions are opt-in workflow settings, not
-            # an implicit review/task-loop default.
-            isolated = bool(
-                config.get("forceFreshQwenSession")
-                or config.get("isolatedQwenSession")
-                or config.get("freshSessionPerAgent")
-                or run.get("_force_fresh_qwen_session")
-            )
-            session_id = None if (fresh_session and isolated) else base_session_id
-        else:
-            session_id = None if fresh_session else base_session_id
+        run["_current_step_key"] = step_key
+        # Session reuse is decided centrally by role (planning/build/validation/review).
+        # A requested fresh session must be fresh for every provider. Review and
+        # rollback recovery cannot safely reuse build conversation state.
+        fresh_once = bool(run.pop("_fresh_agent_session_once", False))
+        force_fresh = bool(run.get("_force_fresh_qwen_session"))
+        session_decision = self.session_manager.resolve(
+            run,
+            step_key=step_key,
+            agent=agent_name,
+            fresh=bool(fresh_session or fresh_once or force_fresh),
+            reason="review_or_recovery" if (fresh_session or fresh_once or force_fresh) else None,
+        )
+        session_id = session_decision.session_id
         prompt_text = self._harden_prompt_for_step(
             step_key,
             self._compact_retry_prompt_if_reusing_session(
@@ -138,9 +140,14 @@ class AgentStepRunner:
         await self.log(run, f"{step_key}: prompt saved to {prompt_result.relative_prompt_path}")
         await self.refresh_artifacts(run["id"])
         await self._publish_status(run["id"], agent_name, step_key, self._running_status(run, step_config, agent_name, step_key, artifact))
+        read_only_step = self._is_read_only_step(step_key, step_config)
+        read_only_snapshot = project_content_snapshot(cwd) if read_only_step else None
 
         async def publish_agent_output(stream: str, text: str) -> None:
             if not text:
+                return
+            if stream == "status":
+                await self._publish_status(run["id"], agent_name, step_key, text)
                 return
             if stream == "stdout" and not self._show_agent_stdout():
                 # Agent stdout is the artifact body.  It is still captured and
@@ -156,18 +163,29 @@ class AgentStepRunner:
         try:
             result = await agent.run_stream(request, on_output=publish_agent_output)
         except WorkflowError as exc:
-            if not request.session_id or not is_recoverable_session_error(exc):
+            recover_session = bool(request.session_id and is_recoverable_session_error(exc))
+            recover_context = is_context_limit_error(exc)
+            if not (recover_session or recover_context):
                 raise
-            await self.log(run, f"{step_key}: {agent_name} session failed; retrying once with a fresh session: {exc}")
-            await self._publish_status(run["id"], agent_name, step_key, f"{agent_name} session recovered; retrying...")
+            if recover_context:
+                handoff = self._write_session_handoff(run, step_key, cwd, workspace_path, str(exc))
+                recovery_prompt = handoff + "\n\n---\n\n" + prompt_text
+                status_message = f"{agent_name} context was full; continuing in a fresh session with a compact handoff..."
+                await self.log(run, f"{step_key}: context limit reached; retrying once with session handoff")
+            else:
+                recovery_prompt = prompt_text
+                status_message = f"{agent_name} session recovered; retrying..."
+                await self.log(run, f"{step_key}: {agent_name} session failed; retrying once with a fresh session: {exc}")
+            await self._publish_status(run["id"], agent_name, step_key, status_message)
             fresh_request = AgentRequest(
                 run_id=run["id"],
                 step_key=step_key,
-                prompt=prompt_text,
+                prompt=recovery_prompt,
                 cwd=cwd,
                 session_id=None,
                 metadata={
                     "recovered_from_session_id": request.session_id,
+                    "recovery_reason": "context_limit" if recover_context else "session_error",
                     "project_path": str(cwd),
                     "workspace_path": str(workspace_path),
                     "prompt_file": str(effective_prompt_path),
@@ -177,6 +195,55 @@ class AgentStepRunner:
                 },
             )
             result = await agent.run_stream(fresh_request, on_output=publish_agent_output)
+            self.session_manager.invalidate(run, step_key=step_key, agent=agent_name, reason="context_limit" if recover_context else "session_error")
+            self.session_manager.record(
+                run,
+                role=session_decision.role,
+                agent=agent_name,
+                session_id=result.session_id,
+                recovery_reason="context_limit" if recover_context else "session_error",
+            )
+        else:
+            self.session_manager.record(
+                run,
+                role=session_decision.role,
+                agent=agent_name,
+                session_id=result.session_id or request.session_id,
+            )
+        if self.update_run is not None:
+            role_sessions_snapshot = json.loads(json.dumps(run.get("role_session_ids") or {}))
+            provider_sessions_snapshot = json.loads(json.dumps(run.get("agent_session_ids") or {}))
+            records_snapshot = list(run.get("session_records") or [])[-100:]
+            invalidations_snapshot = list(run.get("session_invalidations") or [])[-50:]
+            qwen_session_snapshot = run.get("qwen_session_id")
+            def persist_session_state(item: dict[str, Any]) -> None:
+                item["role_session_ids"] = role_sessions_snapshot
+                item["agent_session_ids"] = provider_sessions_snapshot
+                item["session_records"] = records_snapshot
+                item["session_invalidations"] = invalidations_snapshot
+                if qwen_session_snapshot:
+                    item["qwen_session_id"] = qwen_session_snapshot
+            persisted = await self.update_run(run["id"], persist_session_state)
+            if persisted:
+                # Session persistence may return an older serialized Run snapshot.
+                # Only merge session-owned fields so freshly produced validation,
+                # task, checkpoint, retry, and evidence state cannot be overwritten.
+                for field in (
+                    "role_session_ids",
+                    "agent_session_ids",
+                    "session_records",
+                    "session_invalidations",
+                    "qwen_session_id",
+                ):
+                    if field in persisted:
+                        run[field] = persisted[field]
+        if read_only_snapshot is not None:
+            current_snapshot = project_content_snapshot(cwd)
+            if current_snapshot != read_only_snapshot:
+                restore_project_content_snapshot(cwd, read_only_snapshot)
+                raise WorkflowError(
+                    f"{step_key}: REVIEW_MUTATED_PROJECT: planning/review steps are read-only; project changes were reverted."
+                )
         output = result.output
         if not output.strip():
             raise WorkflowError(f"{step_key}: {agent_name} returned empty stdout.")
@@ -638,6 +705,15 @@ Workspace safety guard:
 - If tool use would be returned as JSON such as `{"name": "edit_file"}`, do not emit that JSON; use the CLI's real file edit/write capability or report the concrete blocker in the artifact.
 - Real Qwen/OpenCode runs must not depend on platform FILE/CONTENT/END_FILE materialization. The platform verifies actual project file diffs.
 """
+        if step_key in {"plan_tasks", "generate_task_prompts", "implementation_review", "ai_review", "final_review", "diff_review"}:
+            step_guard = """
+
+Read-only planning/review guard:
+- Do not create, edit, delete, or rename any project file.
+- Inspect the current project and return only the requested structured artifact/JSON response.
+- The controller will reject and revert any project mutation from this step.
+"""
+            return prompt.rstrip() + base_guard + step_guard
         if step_key == "build":
             step_guard = """
 
@@ -675,13 +751,56 @@ Generate Tests output guard:
             return prompt.rstrip() + base_guard + step_guard
         return prompt.rstrip() + base_guard
 
+    @staticmethod
+    def _is_read_only_step(step_key: str, step_record: dict[str, Any]) -> bool:
+        step_type = str(step_record.get("type") or (step_record.get("config") or {}).get("type") or "").lower()
+        return step_type == "review" or step_key in {
+            "plan_tasks",
+            "generate_task_prompts",
+            "implementation_review",
+            "ai_review",
+            "final_review",
+            "diff_review",
+        }
+
+    @staticmethod
+    def _execution_project_dir(run: dict[str, Any]) -> Path:
+        patch_mode = str(run.get("patch_mode") or "auto_apply").lower().replace("-", "_")
+        project = Path(run.get("project_path") or run["workspace"]).expanduser().resolve()
+        original_value = run.get("original_project_path")
+        original = Path(original_value).expanduser().resolve() if original_value else project
+        # auto_apply always executes in the exact user-selected project. This
+        # prevents C:\...\sort2 from silently becoming a run-local
+        # .ai-workflow/.../isolated-workspace directory.
+        if patch_mode == "auto_apply":
+            project = original
+            workflow_root = original / ".ai-workflow"
+            try:
+                project.relative_to(workflow_root)
+            except ValueError:
+                pass
+            else:
+                raise WorkflowError("auto_apply Project Path cannot be inside .ai-workflow")
+        project.mkdir(parents=True, exist_ok=True)
+        return project
+
     def _session_id_for_agent(self, run: dict[str, Any], agent_name: str) -> str | None:
-        provider_sessions = run.get("agent_session_ids") or {}
-        if isinstance(provider_sessions, dict) and provider_sessions.get(agent_name):
-            return provider_sessions.get(agent_name)
-        if agent_name == "qwen":
-            return run.get("qwen_session_id")
-        return run.get("agent_session_id")
+        step_key = str(run.get("_current_step_key") or "")
+        return self.session_manager.resolve(run, step_key=step_key, agent=agent_name).session_id
+
+    @staticmethod
+    def _session_role(step_key: str) -> str:
+        return AgentSessionManager.role_for_step(step_key)
+
+    def _write_session_handoff(self, run: dict[str, Any], step_key: str, cwd: Path, workspace_path: Path, error: str) -> str:
+        _payload, markdown = write_context_handoff(
+            run,
+            step_key=step_key,
+            project_dir=cwd,
+            workspace_path=workspace_path,
+            error=error,
+        )
+        return markdown
 
     async def _publish_status(self, run_id: str, agent_name: str, step_key: str, message: str) -> None:
         await self.bus.publish(run_id, {"type": "agent_status", "agent": agent_name, "step": step_key, "message": message})

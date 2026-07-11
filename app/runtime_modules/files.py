@@ -155,6 +155,8 @@ def classify_test_retry_target(project_dir: Path, test_result: str) -> str:
         for marker in [
             "error collecting",
             "importerror while importing test module",
+            "import file mismatch",
+            "is not the same as the test file",
             "syntaxerror",
         ]
     )
@@ -235,6 +237,65 @@ def project_content_snapshot(project_dir: Path) -> dict[str, bytes]:
         except OSError:
             continue
     return snapshot
+
+
+def restore_selected_project_paths(
+    project_dir: Path,
+    snapshot: dict[str, bytes],
+    rel_paths: Iterable[str],
+) -> list[str]:
+    """Restore or remove selected project paths using a pre-step snapshot.
+
+    This is intentionally narrower than ``restore_project_content_snapshot``. It
+    lets the controller reject files that belong to the wrong workflow phase
+    (for example Build-created tests) while preserving valid source edits from
+    the same agent attempt. Paths absent from the snapshot are deleted; paths
+    present in the snapshot are restored byte-for-byte.
+    """
+    project_root = project_dir.expanduser().resolve()
+    restored: list[str] = []
+    normalized_paths = sorted({normalized_rel_path(value) for value in rel_paths if str(value).strip()})
+    for rel_path in normalized_paths:
+        target = (project_root / rel_path).resolve()
+        try:
+            target.relative_to(project_root)
+        except ValueError:
+            continue
+        if rel_path in snapshot:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            try:
+                target.write_bytes(snapshot[rel_path])
+                restored.append(rel_path)
+            except OSError:
+                continue
+        else:
+            try:
+                if target.is_file():
+                    target.unlink()
+                    restored.append(rel_path)
+            except OSError:
+                continue
+
+    # Remove empty directories left by newly-created rejected files, but never
+    # walk above the selected Project Path.
+    candidate_dirs = sorted(
+        {(project_root / rel).parent for rel in normalized_paths},
+        key=lambda path: len(path.parts),
+        reverse=True,
+    )
+    for directory in candidate_dirs:
+        current = directory
+        while current != project_root:
+            try:
+                current.relative_to(project_root)
+            except ValueError:
+                break
+            try:
+                current.rmdir()
+            except OSError:
+                break
+            current = current.parent
+    return restored
 
 
 def restore_project_content_snapshot(project_dir: Path, snapshot: dict[str, bytes]) -> None:
@@ -780,14 +841,53 @@ def is_test_file_path(rel_path: str) -> bool:
     return name == "conftest.py" or (name.startswith("test_") and name.endswith(".py"))
 
 
-def validate_generated_test_files(files: list[tuple[str, str]]) -> None:
+def is_pytest_file_name(rel_path: str) -> bool:
+    """Return whether *rel_path* has a pytest-discoverable Python filename.
+
+    Pytest's default discovery accepts ``test_*.py`` and ``*_test.py``.  The
+    controller still prefers ``tests/`` for newly created files, but existing
+    projects are allowed to keep an established root-level test layout.
+    """
+    name = Path(normalized_rel_path(rel_path)).name.lower()
+    return name == "conftest.py" or (
+        name.endswith(".py") and (name.startswith("test_") or name.endswith("_test.py"))
+    )
+
+
+def is_owned_test_file_path(rel_path: str, *, existing_paths: Iterable[str] | None = None) -> bool:
+    """Return whether Generate Tests may own the path.
+
+    New tests must use the canonical ``tests/`` layout.  A pre-existing
+    root-level pytest file is also accepted so the workflow can extend legacy
+    projects without restoring a valid edit and entering a pointless retry
+    loop.  This intentionally does *not* permit creating a new root test when a
+    canonical test layout is available.
+    """
+    normalized = normalized_rel_path(rel_path)
+    if is_test_file_path(normalized):
+        return True
+    existing = {normalized_rel_path(item) for item in (existing_paths or [])}
+    return normalized in existing and is_pytest_file_name(normalized)
+
+
+def validate_generated_test_files(
+    files: list[tuple[str, str]],
+    *,
+    project_dir: Path | None = None,
+    existing_paths: Iterable[str] | None = None,
+) -> None:
     if not files:
         raise WorkflowError("generate_tests did not directly create any test files under tests/. Use Qwen/OpenCode edit/write tools; the platform checks the project diff.")
-    invalid = [rel_path for rel_path, _ in files if not is_test_file_path(rel_path)]
+    invalid = [
+        rel_path
+        for rel_path, _ in files
+        if not is_owned_test_file_path(rel_path, existing_paths=existing_paths)
+    ]
     if invalid:
         raise WorkflowError(
-            "generate_tests can only write pytest files under tests/ "
-            f"(tests/test_*.py or tests/conftest.py). Invalid file(s): {', '.join(invalid)}"
+            "generate_tests can only write new pytest files under tests/, or modify an existing "
+            "pytest-discoverable file already present in the project. "
+            f"Invalid file(s): {', '.join(invalid)}"
         )
     syntax_errors: list[str] = []
     for rel_path, content in files:
@@ -823,7 +923,7 @@ def validate_generated_test_files(files: list[tuple[str, str]]) -> None:
     ]
     if files_without_tests and len(files_without_tests) == len(concrete_test_files):
         raise WorkflowError("generate_tests produced pytest files without test functions or Test* classes: " + ", ".join(files_without_tests))
-    fixture_errors = _test_functions_with_unresolved_required_args(files)
+    fixture_errors = _test_functions_with_unresolved_required_args(files, project_dir=project_dir)
     if fixture_errors:
         raise WorkflowError(
             "generate_tests produced pytest functions with unresolved required fixture arguments: "
@@ -831,17 +931,42 @@ def validate_generated_test_files(files: list[tuple[str, str]]) -> None:
         )
 
 
-def _test_functions_with_unresolved_required_args(files: list[tuple[str, str]]) -> list[str]:
-    fixture_names: set[str] = set()
+PYTEST_BUILTIN_FIXTURES = {
+    "cache", "capfd", "capfdbinary", "caplog", "capsys", "capsysbinary",
+    "doctest_namespace", "monkeypatch", "pytestconfig", "record_property",
+    "record_testsuite_property", "record_xml_attribute", "recwarn", "request",
+    "tmp_path", "tmp_path_factory", "tmpdir", "tmpdir_factory",
+}
+
+
+def _test_functions_with_unresolved_required_args(
+    files: list[tuple[str, str]], *, project_dir: Path | None = None
+) -> list[str]:
+    fixture_names: set[str] = set(PYTEST_BUILTIN_FIXTURES)
     parsed_files: list[tuple[str, ast.AST]] = []
-    for rel_path, content in files:
+
+    sources: list[tuple[str, str]] = list(files)
+    if project_dir is not None:
+        root = Path(project_dir).expanduser().resolve()
+        for conftest in root.rglob("conftest.py"):
+            if ".ai-workflow" in conftest.parts or "__pycache__" in conftest.parts:
+                continue
+            try:
+                rel = conftest.relative_to(root).as_posix()
+                if not any(Path(path).as_posix() == rel for path, _content in sources):
+                    sources.append((rel, conftest.read_text(encoding="utf-8-sig")))
+            except (OSError, UnicodeError, ValueError):
+                continue
+
+    for rel_path, content in sources:
         if Path(rel_path).suffix.lower() != ".py":
             continue
         try:
             tree = ast.parse(content, filename=rel_path)
         except SyntaxError:
             continue
-        parsed_files.append((rel_path, tree))
+        if any(Path(path).as_posix() == Path(rel_path).as_posix() for path, _content in files):
+            parsed_files.append((rel_path, tree))
         for node in ast.walk(tree):
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and _is_pytest_fixture(node):
                 fixture_names.add(node.name)
@@ -851,10 +976,32 @@ def _test_functions_with_unresolved_required_args(files: list[tuple[str, str]]) 
         for node in ast.walk(tree):
             if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) or not node.name.startswith("test_"):
                 continue
+            parametrized = _pytest_parametrize_names(node)
             for arg in _required_test_args(node):
-                if arg not in fixture_names:
+                if arg not in fixture_names and arg not in parametrized:
                     errors.append(f"{rel_path}:{node.name}({arg})")
     return errors
+
+
+def _pytest_parametrize_names(node: ast.FunctionDef | ast.AsyncFunctionDef) -> set[str]:
+    names: set[str] = set()
+    for decorator in node.decorator_list:
+        if not isinstance(decorator, ast.Call):
+            continue
+        target = decorator.func
+        is_parametrize = (
+            isinstance(target, ast.Attribute) and target.attr == "parametrize"
+        ) or (isinstance(target, ast.Name) and target.id == "parametrize")
+        if not is_parametrize or not decorator.args:
+            continue
+        raw = decorator.args[0]
+        if isinstance(raw, ast.Constant) and isinstance(raw.value, str):
+            names.update(item.strip() for item in raw.value.split(",") if item.strip())
+        elif isinstance(raw, (ast.List, ast.Tuple)):
+            for item in raw.elts:
+                if isinstance(item, ast.Constant) and isinstance(item.value, str):
+                    names.add(item.value.strip())
+    return names
 
 
 def _is_pytest_fixture(node: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:

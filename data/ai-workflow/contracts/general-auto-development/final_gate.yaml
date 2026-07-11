@@ -1,8 +1,8 @@
 id: final_gate
 key: final_gate
 name: Final Gate / Report
-description: Final controller gate. Requires AI implementation review to PASS and
-  external validation to PASS or SKIPPED.
+description: Atomic controller completion gate. Requires executed tests, required
+  user validation, accepted tasks, and no unresolved policy violations.
 enabled: true
 type: gate
 skill: steps/general-auto-development/06_final_gate.md
@@ -10,14 +10,13 @@ command: ''
 agent: qwen
 outputs:
 - final-review.md
-retry: 99
+retry: 2
 failAction: selected_step
 retryFromStepKey: final_review
-retryEscalationEvery: 3
-retryEscalationStepKey: plan_tasks
+retryEscalationEvery: 0
 keepSameSession: true
 injectFailureFeedback: true
-stopAfterFailures: 99
+stopAfterFailures: 2
 allowInteraction: false
 requiresValidationScript: false
 thinking: false
@@ -42,6 +41,6 @@ functions:
 approval: false
 retryPolicy:
   defaultRetryTo: final_review
-  escalateEvery: 3
-  escalateTo: plan_tasks
-  maxRetries: 99
+  escalateEvery: 0
+  maxRetries: 2
+maxRetries: 2

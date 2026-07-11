@@ -24,6 +24,26 @@ from app.workflow_runtime.stability_score import compute_workflow_stability_scor
 TERMINAL_STATUSES = {"done", "failed", "cancelled", "waiting_input"}
 
 
+def configure_env(output_root: Path) -> None:
+    """Configure a deterministic isolated mock-agent environment for this E2E."""
+    os.environ["QWEN_MOCK"] = "1"
+    os.environ["QWEN_USE_SERVE"] = "0"
+    os.environ["QWEN_WORKFLOW_SHOW_AGENT_STDOUT"] = "0"
+    os.environ["QWEN_WORKFLOW_MOCK_FILE_BLOCK_NORMALIZATION"] = "1"
+    os.environ["QWEN_MOCK_SCENARIO"] = "self_prompt_sorting_algorithms"
+    os.environ.setdefault("WORKFLOW_TEST_TIMEOUT_SEC", "20")
+    os.environ["AIWF_STORE_FILE"] = str(output_root / "store.json")
+
+
+def create_project(output_root: Path, workflow_id: str) -> Path:
+    """Create one clean real Project Path per workflow under the E2E output root."""
+    project_dir = output_root / "projects" / workflow_id
+    project_dir.mkdir(parents=True, exist_ok=True)
+    (project_dir / "README.md").write_text("# Self-Prompt Sorting Project\n", encoding="utf-8")
+    (project_dir / "validation.py").write_text(validation_script(), encoding="utf-8")
+    return project_dir
+
+
 def wait_for_terminal_run(client: TestClient, run: dict, timeout_sec: float = 60.0) -> dict:
     """Wait for a terminal run.
 
@@ -218,11 +238,16 @@ def main() -> int:
     from app.main import app
 
     results: list[dict[str, Any]] = []
-    with TestClient(app) as client:
-        for workflow_id in workflows:
-            result = run_workflow_case(client, output_root, workflow_id, timeout_sec=args.timeout_sec)
-            print(json.dumps(result, indent=2, ensure_ascii=False), flush=True)
-            results.append(result)
+    # This is a dedicated subprocess E2E helper. Enter TestClient explicitly and
+    # let the __main__ os._exit close the process after durable reports are
+    # written; waiting for ASGI/background-task shutdown can keep captured pipes
+    # open indefinitely on some Python/Windows combinations.
+    client = TestClient(app)
+    client.__enter__()
+    for workflow_id in workflows:
+        result = run_workflow_case(client, output_root, workflow_id, timeout_sec=args.timeout_sec)
+        print(json.dumps(result, indent=2, ensure_ascii=False), flush=True)
+        results.append(result)
 
     def passed(result: dict[str, Any]) -> bool:
         checks = result.get("checks") or {}
@@ -249,4 +274,10 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    exit_code = main()
+    # TestClient/agent worker threads may outlive the completed E2E run and keep
+    # captured stdout pipes open. The summary and logs are already durable here,
+    # so terminate the helper process deterministically.
+    sys.stdout.flush()
+    sys.stderr.flush()
+    os._exit(exit_code)

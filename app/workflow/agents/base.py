@@ -25,6 +25,26 @@ class AgentResult:
     raw_output: str | None = None
 
 
+@dataclass(slots=True)
+class AgentCapabilities:
+    streaming: bool = True
+    tool_calling: bool = True
+    session_resume: bool = False
+    read_only: bool = False
+    structured_output: str = "unknown"
+    cancellation: bool = True
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "streaming": self.streaming,
+            "tool_calling": self.tool_calling,
+            "session_resume": self.session_resume,
+            "read_only": self.read_only,
+            "structured_output": self.structured_output,
+            "cancellation": self.cancellation,
+        }
+
+
 class AgentClient(Protocol):
     name: str
 
@@ -35,6 +55,12 @@ class AgentClient(Protocol):
         ...
 
     def health(self) -> dict[str, Any]:
+        ...
+
+    def capabilities(self) -> AgentCapabilities:
+        ...
+
+    def classify_error(self, error: Any) -> dict[str, Any]:
         ...
 
 

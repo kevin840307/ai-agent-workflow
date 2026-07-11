@@ -11,6 +11,9 @@ export const StorageKeys = Object.freeze({
   thinkingLevel: "ui.thinkingLevel",
   runProfile: "ui.runProfile",
   advancedMode: "ui.advancedMode",
+  setupNoticeDismissed: "ui.setupNoticeDismissed",
+  recommendationNoticeDismissed: "ui.recommendationNoticeDismissed",
+  resultDockDismissedRun: "ui.resultDockDismissedRun",
 });
 
 export const LocalStore = {

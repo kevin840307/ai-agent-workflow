@@ -153,11 +153,11 @@ export function createWorkflowNotification(ctx) {
       els.secondary.onclick = () => notification.close();
       els.logs.onclick = () => {
         notification.close();
-        ctx.features.layout.activateTab("logsPanel");
+        ctx.features.diagnostics.open("diagnosticLogs");
       };
       els.artifacts.onclick = () => {
         notification.close();
-        ctx.features.layout.activateTab("artifactsPanel");
+        ctx.features.diagnostics.open("diagnosticArtifacts");
       };
       els.retry.onclick = () => {
         notification.close();

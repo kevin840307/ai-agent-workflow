@@ -99,7 +99,14 @@ class ReviewActionsMixin:
             reason = str(json_decision.get("reason") or json_decision.get("summary") or status or "json review decision").strip()
             if status == "PASS":
                 threshold = float(config.get("confidenceThreshold") or 0)
-                effective_confidence = confidence if confidence is not None else 1.0
+                effective_confidence = confidence if confidence is not None else 0.85
+                criteria = json_decision.get("criteria")
+                has_evidence_map = isinstance(criteria, list) and bool(criteria) and all(
+                    isinstance(item, dict) and str(item.get("evidence") or "").strip()
+                    for item in criteria
+                )
+                if not has_evidence_map:
+                    effective_confidence = min(effective_confidence, 0.90)
                 if effective_confidence < threshold:
                     return {"passed": False, "confidence": effective_confidence, "reason": f"confidence {effective_confidence:.2f} < threshold {threshold:.2f}"}
                 return {"passed": True, "confidence": effective_confidence, "reason": reason}

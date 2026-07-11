@@ -2455,3 +2455,1097 @@ body.advanced-mode .step-detail-card {
   border-color: rgba(231, 76, 60, 0.35);
   color: var(--fail);
 }
+
+/* ========================================================================== 
+   V8 product experience: Run Center + lazy technical diagnostics
+   ========================================================================== */
+.setup-status-card {
+  margin: 10px 16px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(154, 91, 0, 0.28);
+  border-radius: var(--radius-md);
+  background: #fff9eb;
+}
+.setup-status-card > div { display: grid; gap: 3px; min-width: 0; }
+.setup-status-card strong { font-size: 13px; }
+.setup-status-card span { color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
+
+.simple-composer-topbar {
+  align-items: flex-start;
+  position: relative;
+}
+.composer-options-button {
+  margin-left: auto;
+  padding: 7px 10px;
+  border-radius: 999px;
+  color: var(--muted);
+  background: var(--panel-2);
+}
+.composer-options-button.active { color: var(--accent); border-color: var(--accent); }
+.composer-advanced-settings {
+  position: absolute;
+  z-index: 45;
+  top: calc(100% + 8px);
+  right: 0;
+  width: min(440px, calc(100vw - 32px));
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--panel);
+  box-shadow: var(--shadow-popover);
+}
+.composer-advanced-settings[hidden] { display: none !important; }
+
+.run-center-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.run-center-head strong { display: block; max-width: 330px; font-size: 13px; }
+.diagnostics-button {
+  white-space: nowrap;
+  padding: 7px 10px;
+  border-radius: 999px;
+  color: var(--muted);
+  background: var(--panel-2);
+}
+.diagnostics-button:hover { color: var(--accent); }
+.run-center-tabs { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+#overviewPanel { display: none; gap: 12px; align-content: start; }
+#overviewPanel.active { display: grid; }
+.current-action-card {
+  display: grid;
+  gap: 5px;
+  padding: 14px;
+  border: 1px solid rgba(29, 78, 216, 0.18);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(145deg, #f5f8ff, #ffffff);
+  box-shadow: var(--shadow-sm);
+}
+.current-action-card.phase-completed { border-color: rgba(20, 122, 63, 0.28); background: linear-gradient(145deg, #f1fbf5, #ffffff); }
+.current-action-card.phase-failed { border-color: rgba(180, 35, 24, 0.28); background: linear-gradient(145deg, #fff4f2, #ffffff); }
+.current-action-card.phase-waiting_input { border-color: rgba(154, 91, 0, 0.28); background: linear-gradient(145deg, #fff9eb, #ffffff); }
+.current-action-phase {
+  width: fit-content;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: rgba(29, 78, 216, 0.08);
+  color: var(--blue);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.current-action-card h2 { margin: 0; font-size: 17px; line-height: 1.3; }
+.current-action-card p { color: var(--text); font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
+.current-action-card small { color: var(--muted); font-size: 11px; }
+.overview-metrics,
+.changes-summary,
+.validation-summary,
+.diagnostic-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+.overview-metrics > div,
+.changes-summary > div,
+.validation-summary > div,
+.diagnostic-summary-grid > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--panel-2);
+}
+.overview-metrics span,
+.changes-summary span,
+.validation-summary span,
+.diagnostic-summary-grid span { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .05em; }
+.overview-metrics strong,
+.changes-summary strong,
+.validation-summary strong,
+.diagnostic-summary-grid strong { font-size: 14px; overflow-wrap: anywhere; }
+.overview-metrics small { color: var(--muted); font-size: 10px; }
+.overview-section-head { display: flex; justify-content: space-between; align-items: center; color: var(--muted); font-size: 12px; }
+.overview-section-head strong { color: var(--text); }
+.overview-step-layout { max-height: min(46vh, 560px); overflow: auto; padding-right: 2px; }
+.overview-run-detail { padding-bottom: 12px; }
+.simplified-step-detail { gap: 10px; }
+.simple-step-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.simple-step-facts > div { display: grid; gap: 2px; padding: 8px; border-radius: 8px; background: var(--panel-2); }
+.simple-step-facts span { color: var(--muted); font-size: 10px; text-transform: uppercase; }
+.simple-step-facts strong { font-size: 13px; }
+.user-run-summary { margin-top: 2px; }
+.user-actions { justify-content: flex-start; }
+.primary-action { background: var(--accent); border-color: var(--accent); color: #fff; }
+.danger-action { color: var(--fail); border-color: rgba(180, 35, 24, .35); }
+
+.changes-list,
+.validation-list { display: grid; gap: 8px; margin-top: 12px; }
+.change-file-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  text-align: left;
+  background: var(--panel);
+}
+.change-file-row strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+.change-file-row small { color: var(--muted); font-size: 10px; }
+.change-kind { min-width: 58px; padding: 3px 6px; border-radius: 999px; text-align: center; font-size: 9px; font-weight: 800; text-transform: uppercase; background: #eef2f7; }
+.change-kind.added, .change-kind.new { color: var(--pass); background: #eaf7ef; }
+.change-kind.deleted, .change-kind.removed { color: var(--fail); background: #fff0ee; }
+.change-kind.modified, .change-kind.changed { color: var(--blue); background: #eef4ff; }
+.change-preview { margin-top: 12px; min-height: 110px; max-height: 260px; overflow: auto; border: 1px solid var(--line); border-radius: var(--radius-md); padding: 12px; background: #101827; color: #dfe7f3; font-size: 11px; white-space: pre-wrap; }
+.validation-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: start; padding: 11px; border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--panel); }
+.validation-row strong { font-size: 12px; }
+.validation-row p { margin-top: 3px; color: var(--muted); font-size: 11px; line-height: 1.45; overflow-wrap: anywhere; }
+.validation-row small { color: var(--muted); font-size: 10px; }
+.validation-status { padding: 4px 7px; border-radius: 999px; background: #eef2f7; color: var(--muted); font-size: 9px; font-weight: 800; }
+.validation-row.status-passed .validation-status { color: var(--pass); background: #eaf7ef; }
+.validation-row.status-failed .validation-status { color: var(--fail); background: #fff0ee; }
+.validation-row.status-running .validation-status { color: var(--blue); background: #eef4ff; }
+
+.diagnostics-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  display: flex;
+  justify-content: flex-end;
+  background: rgba(15, 23, 42, .42);
+  backdrop-filter: blur(2px);
+}
+.diagnostics-backdrop[hidden] { display: none !important; }
+.diagnostics-drawer {
+  width: min(760px, 92vw);
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  background: var(--panel);
+  box-shadow: -18px 0 48px rgba(15, 23, 42, .22);
+}
+.diagnostics-head { display: flex; justify-content: space-between; gap: 12px; padding: 18px; border-bottom: 1px solid var(--line); }
+.diagnostics-head h2 { margin: 3px 0; font-size: 18px; }
+.diagnostics-head p { color: var(--muted); font-size: 12px; }
+.diagnostics-nav { display: flex; gap: 4px; overflow-x: auto; padding: 8px 12px; border-bottom: 1px solid var(--line); background: var(--panel-2); }
+.diagnostic-nav-button { flex: 0 0 auto; padding: 7px 10px; border-radius: 999px; font-size: 11px; }
+.diagnostic-nav-button.active { color: #fff; border-color: var(--accent); background: var(--accent); }
+.diagnostic-section { min-height: 0; overflow: auto; padding: 14px; }
+.diagnostic-section.active { display: block; }
+.diagnostic-card { display: grid; gap: 12px; }
+.diagnostic-card details { border: 1px solid var(--line); border-radius: var(--radius-md); padding: 10px; background: var(--panel-2); }
+.diagnostic-card summary { cursor: pointer; font-weight: 700; font-size: 12px; }
+.diagnostic-card pre { max-height: 380px; overflow: auto; white-space: pre-wrap; font-size: 10px; }
+.diagnostic-toolbar { display: flex; gap: 8px; margin-bottom: 10px; }
+.diagnostic-toolbar .artifact-search { flex: 1; }
+.diagnostics-footer { display: flex; justify-content: flex-end; gap: 8px; padding: 10px 14px; border-top: 1px solid var(--line); background: var(--panel-2); }
+.repair-policy-list { display: grid; gap: 10px; }
+.repair-policy-list article { padding: 12px; border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--panel-2); }
+.repair-policy-list p { margin: 5px 0; font-size: 12px; line-height: 1.45; }
+.repair-policy-list small { color: var(--muted); }
+body.diagnostics-open { overflow: hidden; }
+
+@media (max-width: 900px) {
+  .overview-metrics,
+  .changes-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .validation-summary { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .composer-advanced-settings { left: 0; right: auto; }
+}
+
+@media (max-width: 520px) {
+  .run-center-tabs { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .overview-metrics,
+  .changes-summary,
+  .validation-summary { grid-template-columns: 1fr 1fr; }
+  .change-file-row { grid-template-columns: auto minmax(0, 1fr); }
+  .change-file-row small { grid-column: 2; }
+  .diagnostics-drawer { width: 100vw; }
+}
+
+.planning-recommendation {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  margin: 8px 0 4px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--accent, #5b7cfa) 30%, var(--line));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--accent, #5b7cfa) 7%, var(--panel));
+}
+.planning-recommendation-main,
+.planning-recommendation-actions { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.planning-recommendation-main span:last-child,
+.planning-recommendation-actions small { color: var(--muted); overflow-wrap: anywhere; }
+.planning-recommendation-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
+.planning-recommendation-actions { justify-content: flex-end; }
+@media (max-width: 900px) {
+  .planning-recommendation { grid-template-columns: 1fr; }
+  .planning-recommendation-actions { justify-content: space-between; }
+}
+
+/* ========================================================================== 
+   V9 information hierarchy: non-blocking notices and review-first changes
+   ========================================================================== */
+.workspace { position: relative; }
+
+/* Environment readiness is a dismissible status pill, not a full grid row. */
+.setup-status-card.compact-notice {
+  position: absolute;
+  z-index: 120;
+  top: 58px;
+  right: 14px;
+  width: min(360px, calc(100% - 28px));
+  margin: 0;
+  padding: 4px;
+  gap: 2px;
+  border-color: rgba(154, 91, 0, .28);
+  border-radius: 999px;
+  background: rgba(255, 249, 235, .97);
+  box-shadow: var(--shadow-popover);
+  backdrop-filter: blur(10px);
+}
+.compact-notice-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+  padding: 5px 7px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+}
+.compact-notice-main > span:last-child { display: grid; min-width: 0; gap: 1px; }
+.compact-notice-main strong { font-size: 11px; }
+.compact-notice-main small { overflow: hidden; color: var(--muted); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.notice-dot { width: 8px; height: 8px; flex: 0 0 auto; border-radius: 50%; background: var(--muted); }
+.notice-dot.warning { background: #d99000; box-shadow: 0 0 0 4px rgba(217, 144, 0, .12); }
+.notice-close { width: 26px; height: 26px; flex: 0 0 auto; display: grid; place-items: center; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--muted); font-size: 17px; }
+.notice-close:hover { background: rgba(15, 23, 42, .07); color: var(--text); }
+
+/* Recommendation stays in the composer toolbar as a small expandable chip. */
+.recommendation-chip {
+  position: relative;
+  display: inline-flex;
+  min-width: 0;
+  max-width: min(430px, 46vw);
+  margin: 0 0 0 auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.recommendation-chip[hidden] { display: none !important; }
+.recommendation-details { position: relative; min-width: 0; }
+.recommendation-details > summary {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 32px;
+  max-width: 390px;
+  padding: 0 10px;
+  border: 1px solid color-mix(in srgb, var(--accent) 26%, var(--line));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 6%, var(--panel));
+  cursor: pointer;
+}
+.recommendation-details > summary::-webkit-details-marker { display: none; }
+.recommendation-icon { flex: 0 0 auto; color: var(--accent); }
+.recommendation-summary { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
+.recommendation-summary strong { overflow: hidden; max-width: 155px; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; }
+.recommendation-summary small { overflow: hidden; color: var(--muted); text-overflow: ellipsis; white-space: nowrap; font-size: 10px; }
+.recommendation-popover {
+  position: absolute;
+  z-index: 180;
+  top: calc(100% + 8px);
+  right: 0;
+  width: min(380px, calc(100vw - 32px));
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--panel);
+  box-shadow: var(--shadow-popover);
+}
+.recommendation-popover span { color: var(--muted); font-size: 10px; font-weight: 800; text-transform: uppercase; }
+.recommendation-popover p { margin-top: 3px; font-size: 12px; line-height: 1.45; }
+.recommendation-facts { display: flex; gap: 8px; }
+.recommendation-facts > span { padding: 5px 7px; border-radius: 999px; background: var(--panel-2); text-transform: none; }
+.recommendation-facts strong { color: var(--text); }
+.recommendation-actions { display: flex; justify-content: flex-end; gap: 6px; }
+
+/* Completion status floats as a compact, closable dock. It no longer consumes a grid row. */
+.run-result-panel.result-dock {
+  position: absolute;
+  z-index: 110;
+  top: 58px;
+  left: 50%;
+  width: min(620px, calc(100% - 32px));
+  margin: 0;
+  padding: 0;
+  transform: translateX(-50%);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, .98);
+  box-shadow: 0 12px 35px rgba(15, 23, 42, .16);
+  backdrop-filter: blur(12px);
+  overflow: hidden;
+}
+.result-dock-line { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 8px; min-height: 44px; padding: 6px 8px 6px 10px; }
+.result-dock-line.status-done { border-left: 4px solid var(--pass); }
+.result-dock-line.status-failed, .result-dock-line.status-cancelled { border-left: 4px solid var(--fail); }
+.result-dock-line.status-waiting_input { border-left: 4px solid #d99000; }
+.result-dock-icon { width: 24px; height: 24px; display: grid; place-items: center; border-radius: 50%; background: var(--panel-2); font-weight: 900; }
+.result-dock-summary { display: grid; gap: 1px; min-width: 0; padding: 0; border: 0; background: transparent; text-align: left; }
+.result-dock-summary strong { font-size: 12px; }
+.result-dock-summary small { overflow: hidden; color: var(--muted); text-overflow: ellipsis; white-space: nowrap; font-size: 10px; }
+.result-dock-detail { padding: 0 12px 12px; border-top: 1px solid var(--line); }
+.result-dock-detail[hidden] { display: none; }
+.result-dock-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.result-dock.expanded { max-height: min(50vh, 360px); overflow: auto; }
+
+/* Changes is the normal user review flow. */
+.changes-panel-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+.change-filter-group, .patch-view-switch { display: flex; gap: 4px; flex-wrap: wrap; }
+.change-filter-group .mini-button.active, .patch-view-switch .mini-button.active { color: #fff; border-color: var(--accent); background: var(--accent); }
+.change-file-row { transition: border-color .14s ease, background .14s ease; }
+.change-file-row:hover, .change-file-row.active { border-color: rgba(15, 118, 110, .5); background: color-mix(in srgb, var(--accent) 5%, var(--panel)); }
+.change-owner { display: block; margin-top: 2px; color: var(--muted); font-size: 9px; }
+.change-preview-shell { display: grid; min-height: 0; border: 1px solid var(--line); border-radius: var(--radius-md); overflow: hidden; }
+.change-preview-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid var(--line); background: var(--panel-2); }
+.change-preview-head strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; }
+.change-preview { margin: 0; border: 0; border-radius: 0; max-height: min(44vh, 520px); }
+
+/* Patch review is file-first instead of raw JSON-first. */
+.patch-review-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 10px; }
+.patch-review-head > div:first-child { display: grid; gap: 2px; }
+.patch-review-head small { color: var(--muted); font-size: 10px; }
+.patch-review { display: grid; grid-template-columns: minmax(190px, .42fr) minmax(0, 1fr); gap: 10px; min-height: 0; }
+.patch-file-list { display: grid; align-content: start; gap: 6px; max-height: calc(100vh - 270px); overflow: auto; }
+.patch-file-option { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px; align-items: center; padding: 8px; border: 1px solid var(--line); border-radius: 9px; background: var(--panel); }
+.patch-file-option:hover, .patch-file-option.active { border-color: var(--accent); }
+.patch-file-option span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; }
+.patch-preview-pane { min-width: 0; min-height: 240px; max-height: calc(100vh - 270px); overflow: auto; border: 1px solid var(--line); border-radius: 9px; background: #101827; }
+.patch-preview-pane pre { margin: 0; padding: 12px; color: #dfe7f3; white-space: pre-wrap; font-size: 10px; }
+.patch-actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-top: 10px; }
+.patch-actions span { color: var(--muted); font-size: 10px; }
+
+@media (max-width: 900px) {
+  .recommendation-chip { max-width: 42vw; }
+  .result-dock-open { display: none; }
+  .patch-review { grid-template-columns: 1fr; }
+  .patch-file-list { max-height: 180px; }
+  .patch-preview-pane { max-height: 45vh; }
+}
+@media (max-width: 620px) {
+  .setup-status-card.compact-notice { top: 52px; right: 8px; width: calc(100% - 16px); }
+  .recommendation-chip { order: 3; width: 100%; max-width: none; margin: 6px 0 0; }
+  .recommendation-details > summary { width: 100%; max-width: none; }
+  .simple-composer-topbar { flex-wrap: wrap; }
+  .run-result-panel.result-dock { top: 52px; width: calc(100% - 16px); }
+}
+.patch-split { display: grid; grid-template-columns: 1fr 1fr; min-height: 100%; }
+.patch-split section { min-width: 0; }
+.patch-split section + section { border-left: 1px solid rgba(255,255,255,.12); }
+.patch-split header { position: sticky; top: 0; z-index: 2; padding: 6px 9px; background: #182235; color: #aebcd1; font-size: 9px; font-weight: 800; text-transform: uppercase; }
+.patch-split pre { min-height: 100%; }
+@media (max-width: 700px) { .patch-split { grid-template-columns: 1fr; } .patch-split section + section { border-left: 0; border-top: 1px solid rgba(255,255,255,.12); } }
+
+/* V9 run timeline and readable repair summary. */
+.run-timeline-card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--panel);
+  overflow: hidden;
+}
+.run-timeline-card > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 11px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+}
+.run-timeline-card > summary small { color: var(--muted); font-size: 10px; font-weight: 600; }
+.run-timeline { display: grid; gap: 0; max-height: 260px; margin: 0; padding: 0 10px 10px; overflow: auto; list-style: none; }
+.run-timeline li { display: grid; grid-template-columns: 62px 12px minmax(0, 1fr); gap: 8px; align-items: start; padding: 7px 0; border-top: 1px solid color-mix(in srgb, var(--line) 72%, transparent); }
+.run-timeline time { color: var(--muted); font-size: 9px; line-height: 17px; }
+.timeline-dot { width: 8px; height: 8px; margin-top: 4px; border-radius: 50%; background: var(--muted); box-shadow: 0 0 0 3px color-mix(in srgb, var(--muted) 14%, transparent); }
+.timeline-dot.status-passed, .timeline-dot.status-done, .timeline-dot.status-completed { background: var(--pass); }
+.timeline-dot.status-failed, .timeline-dot.status-error { background: var(--fail); }
+.timeline-dot.status-running, .timeline-dot.status-started { background: var(--accent); }
+.run-timeline strong { display: block; font-size: 11px; }
+.run-timeline p { margin: 2px 0 0; color: var(--muted); font-size: 10px; line-height: 1.45; overflow-wrap: anywhere; }
+.timeline-empty { display: block !important; color: var(--muted); font-size: 11px; }
+.human-retry { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 8px; margin-top: 5px; padding: 8px 9px; border-radius: 9px; background: color-mix(in srgb, #d99000 8%, var(--panel)); }
+.human-retry strong { color: #9a5b00; font-size: 10px; }
+.human-retry span { font-size: 11px; }
+.human-retry small { grid-column: 2; color: var(--muted); font-size: 10px; }
+
+/* Prevent the two floating notices from covering each other on medium widths. */
+@media (max-width: 1180px) and (min-width: 621px) {
+  body:has(.setup-status-card:not([hidden])) .run-result-panel.result-dock { top: 104px; }
+}
+@media (max-width: 620px) {
+  body:has(.setup-status-card:not([hidden])) .run-result-panel.result-dock { top: 98px; }
+  .run-result-panel.result-dock { left: 8px; transform: none; }
+  .result-dock-line { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .result-dock-open { display: none; }
+}
+.patch-approval-callout { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 10px 0; padding: 10px 12px; border: 1px solid rgba(217,144,0,.32); border-radius: 10px; background: #fff9eb; }
+.patch-approval-callout > div { display: grid; gap: 2px; }
+.patch-approval-callout strong { font-size: 11px; }
+.patch-approval-callout span { color: var(--muted); font-size: 10px; }
+.scope-warning { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; padding: 9px 11px; border: 1px solid rgba(217,144,0,.28); border-radius: 10px; background: #fff9eb; }
+.scope-warning strong { font-size: 11px; }
+.scope-warning span { color: var(--muted); font-size: 10px; }
+.changes-summary small { color: var(--muted); font-size: 9px; }
+/* Result toast stays near the composer edge instead of covering the conversation. */
+.run-result-panel.result-dock {
+  top: auto;
+  left: auto;
+  right: 14px;
+  bottom: 126px;
+  width: min(460px, calc(100% - 28px));
+  transform: none;
+}
+@media (max-width: 1180px) and (min-width: 621px) {
+  body:has(.setup-status-card:not([hidden])) .run-result-panel.result-dock { top: auto; }
+}
+@media (max-width: 620px) {
+  body:has(.setup-status-card:not([hidden])) .run-result-panel.result-dock,
+  .run-result-panel.result-dock { top: auto; left: 8px; right: 8px; bottom: 122px; width: auto; transform: none; }
+}
+
+/* V9.1 final UX pass: compact overlays and readable file review. */
+.setup-status-card.compact-notice {
+  width: min(270px, calc(100% - 28px));
+  opacity: .94;
+}
+.setup-status-card.compact-notice:hover,
+.setup-status-card.compact-notice:focus-within { opacity: 1; }
+
+.run-result-panel.result-dock {
+  position: fixed;
+  z-index: 210;
+  top: auto;
+  left: auto;
+  right: calc(var(--rail-right, 380px) + 16px);
+  bottom: 116px;
+  width: min(360px, calc(100vw - 32px));
+  max-height: min(46vh, 320px);
+  transform: none;
+}
+.result-dock-line { min-height: 40px; padding-block: 4px; }
+.result-dock.expanded { width: min(440px, calc(100vw - 32px)); }
+body.details-collapsed .run-result-panel.result-dock { right: 16px; }
+
+.change-review-empty {
+  display: grid;
+  place-items: center;
+  min-height: 220px;
+  color: var(--muted);
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-md);
+  background: var(--panel);
+}
+.change-review-card {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--panel);
+  overflow: hidden;
+}
+.change-review-head,
+.change-approval-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.change-review-head {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel-2);
+}
+.change-review-head > div:first-child { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.change-review-head > div:first-child > div { display: grid; min-width: 0; gap: 2px; }
+.change-review-head strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+.change-review-head small { color: var(--muted); font-size: 9px; }
+.change-review-stats { display: flex; gap: 7px; flex: 0 0 auto; font: 700 10px/1.2 ui-monospace, SFMono-Regular, Consolas, monospace; }
+.change-review-stats .added { color: #137a45; }
+.change-review-stats .removed { color: #b42318; }
+.change-review-explanation {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--line);
+  background: color-mix(in srgb, var(--accent) 3%, var(--panel));
+}
+.change-review-explanation strong { flex: 0 0 auto; font-size: 10px; }
+.change-review-explanation span { color: var(--muted); font-size: 10px; line-height: 1.45; }
+.diff-code {
+  max-height: min(52vh, 620px);
+  overflow: auto;
+  color: #dce6f5;
+  background: #0f1724;
+  font: 10px/1.55 ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+.diff-code-row {
+  display: grid;
+  grid-template-columns: 42px 42px minmax(max-content, 1fr);
+  min-width: max-content;
+  border-bottom: 1px solid rgba(255,255,255,.025);
+}
+.diff-code-row > span {
+  padding: 1px 7px;
+  color: #708096;
+  border-right: 1px solid rgba(255,255,255,.06);
+  text-align: right;
+  user-select: none;
+}
+.diff-code-row code { display: block; min-height: 17px; padding: 1px 10px; color: inherit; white-space: pre; }
+.diff-code-row.added { background: rgba(35, 134, 78, .18); }
+.diff-code-row.added code::before { content: "+"; color: #64d391; margin-right: 8px; }
+.diff-code-row.removed { background: rgba(191, 55, 55, .18); }
+.diff-code-row.removed code::before { content: "−"; color: #ff8585; margin-right: 8px; }
+.diff-code-row.hunk { position: sticky; top: 0; z-index: 1; background: #1a2a43; color: #9fc5ff; }
+.diff-code-row.hunk code { grid-column: 1 / -1; }
+.diff-code-row.truncated { color: #ffd27a; background: rgba(217,144,0,.12); }
+.diff-empty { display: grid; gap: 5px; min-height: 180px; place-content: center; padding: 20px; text-align: center; }
+.diff-empty span { color: #9aa8bc; font-size: 10px; }
+.change-approval-bar {
+  margin-bottom: 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(217,144,0,.28);
+  border-radius: 10px;
+  background: #fff9eb;
+}
+.change-approval-bar > div { display: grid; gap: 2px; }
+.change-approval-bar strong { font-size: 11px; }
+.change-approval-bar span { color: var(--muted); font-size: 10px; }
+.change-approval-bar.status-approved { border-color: rgba(19,122,69,.28); background: #f1fbf5; }
+.scope-warning > div { display: grid; gap: 2px; }
+
+@media (max-width: 1180px) {
+  .run-result-panel.result-dock { right: 14px; }
+}
+@media (max-width: 700px) {
+  .recommendation-chip { order: initial; width: 32px; max-width: 32px; margin: 0 0 0 auto; }
+  .recommendation-details > summary { width: 32px; max-width: 32px; padding: 0; justify-content: center; }
+  .recommendation-summary { display: none; }
+  .recommendation-popover { position: fixed; top: auto; right: 8px; bottom: 92px; left: 8px; width: auto; }
+  .setup-status-card.compact-notice { top: 50px; right: 8px; width: min(230px, calc(100% - 16px)); }
+  .run-result-panel.result-dock,
+  body:has(.setup-status-card:not([hidden])) .run-result-panel.result-dock {
+    top: auto;
+    right: 8px;
+    bottom: 96px;
+    left: 8px;
+    width: auto;
+  }
+  .result-dock-open { display: none; }
+  .change-review-head,
+  .change-approval-bar,
+  .change-review-explanation { align-items: flex-start; flex-direction: column; }
+  .change-review-stats { align-self: flex-end; }
+  .diff-code-row { grid-template-columns: 34px 34px minmax(max-content, 1fr); }
+}
+.patch-file-column { display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 7px; min-height: 0; }
+.patch-file-toolbar { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 5px; }
+.patch-file-toolbar input { min-width: 0; height: 31px; padding: 0 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); }
+.patch-file-option > span { display: grid; min-width: 0; gap: 2px; }
+.patch-file-option strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; }
+.patch-file-option small { color: var(--muted); font-size: 9px; }
+@media (max-width: 700px) { .patch-file-toolbar { grid-template-columns: minmax(0, 1fr) auto; } .patch-file-toolbar [data-patch-select="none"] { display: none; } }
+
+/* V10 production UX: every floating notice/dialog is dismissible and never owns layout space. */
+.setup-status-card[hidden],
+.setup-status-card.compact-notice[hidden],
+.run-result-panel[hidden],
+.diagnostics-backdrop[hidden] { display: none !important; }
+
+.setup-status-card.compact-notice {
+  position: fixed;
+  z-index: 220;
+  top: 58px;
+  right: 14px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 28px;
+  align-items: center;
+  width: min(310px, calc(100vw - 28px));
+  min-height: 42px;
+  padding: 4px 5px 4px 7px;
+  border: 1px solid color-mix(in srgb, var(--warning, #d99000) 28%, var(--line));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--panel) 96%, #fff8e5);
+  box-shadow: 0 8px 24px rgba(18, 28, 45, .14);
+}
+.compact-notice-main { min-width: 0; }
+.notice-close {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  color: var(--muted);
+  background: transparent;
+  cursor: pointer;
+  font-size: 18px;
+}
+.notice-close:hover, .notice-close:focus-visible { color: var(--text); background: var(--panel-2); }
+
+/* Single-layer changes preview. The host is layout only; the selected file card owns the surface. */
+.change-review-stage {
+  min-width: 0;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  overflow: visible;
+  white-space: normal;
+}
+.change-review-stage.change-review-empty {
+  min-height: 180px;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-md);
+  background: var(--panel);
+}
+.change-review-card { box-shadow: none; }
+.change-review-explanation { padding-block: 7px; }
+.diff-code { max-height: min(48vh, 560px); }
+
+/* Patch review: compact header, fixed file rail, one scrollable preview. */
+#diagnosticPatch.diagnostic-section { overflow: hidden; padding: 12px; }
+.patch-review-head { margin: 0 0 8px; min-height: 34px; }
+.patch-review-host {
+  display: block;
+  min-height: 0;
+  max-height: calc(100vh - 220px);
+  overflow: hidden;
+}
+.patch-review-layout {
+  display: grid;
+  grid-template-columns: minmax(220px, 290px) minmax(0, 1fr);
+  gap: 10px;
+  min-height: 320px;
+  max-height: calc(100vh - 330px);
+}
+.patch-review-host > .diagnostic-summary-grid { margin-bottom: 8px; }
+.patch-review-host .patch-approval-callout { margin: 0 0 8px; }
+.patch-file-column {
+  min-height: 0;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel-2);
+  overflow: hidden;
+}
+.patch-file-list { max-height: none; min-height: 0; overflow: auto; padding-right: 2px; }
+.patch-file-option { padding: 7px; background: var(--panel); }
+.patch-preview-pane {
+  min-height: 0;
+  max-height: none;
+  overflow: auto;
+  border-radius: 10px;
+}
+.patch-preview-pane pre { white-space: pre; overflow: visible; }
+.patch-actions { flex: 0 0 auto; padding-top: 8px; }
+
+@media (max-width: 900px) {
+  .patch-review-layout { grid-template-columns: 1fr; max-height: none; }
+  .patch-file-column { max-height: 220px; }
+  .patch-preview-pane { min-height: 280px; max-height: 48vh; }
+  #diagnosticPatch.diagnostic-section { overflow: auto; }
+  .patch-review-host { max-height: none; overflow: visible; }
+}
+@media (max-width: 620px) {
+  .setup-status-card.compact-notice { top: 50px; right: 8px; width: calc(100vw - 16px); }
+  .patch-review-head { align-items: flex-start; flex-direction: column; }
+  .patch-view-switch { align-self: stretch; }
+  .patch-view-switch .mini-button { flex: 1; }
+  .patch-split { grid-template-columns: 1fr; }
+}
+
+/* V11 stability UX: recovery belongs to Current Action, never as a floating error card. */
+.inline-recovery-notice {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  margin: -2px -2px 9px;
+  padding: 8px 9px;
+  border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--line));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--accent) 5%, var(--panel));
+}
+.inline-recovery-notice .recovery-icon {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, var(--panel));
+  font-weight: 900;
+}
+.inline-recovery-notice > div { display: grid; min-width: 0; gap: 1px; }
+.inline-recovery-notice strong { font-size: 11px; }
+.inline-recovery-notice span { color: var(--muted); font-size: 10px; line-height: 1.35; }
+
+/* Changes are a file navigator plus one authoritative preview, not two stacked copies. */
+#changesPanel.active {
+  display: grid;
+  grid-template-columns: minmax(210px, .42fr) minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-areas:
+    "summary summary"
+    "files preview";
+  gap: 10px;
+  overflow: hidden;
+}
+#changesSummary { grid-area: summary; }
+#changesList {
+  grid-area: files;
+  min-width: 0;
+  min-height: 0;
+  margin: 0;
+  overflow: auto;
+}
+#changePreview {
+  grid-area: preview;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+.change-file-list { display: grid; gap: 6px; }
+.change-preview-label {
+  min-width: 48px;
+  padding: 3px 6px;
+  border-radius: 999px;
+  color: var(--muted);
+  background: var(--panel);
+  text-align: center;
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+#changePreview .change-review-card { height: 100%; display: grid; grid-template-rows: auto auto minmax(0, 1fr); }
+#changePreview .diff-code { max-height: none; min-height: 0; height: 100%; }
+
+@media (max-width: 900px) {
+  #changesPanel.active {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto minmax(240px, 1fr);
+    grid-template-areas: "summary" "files" "preview";
+    overflow: auto;
+  }
+  #changesList { max-height: 240px; }
+  #changePreview .change-review-card { min-height: 300px; height: auto; }
+  #changePreview .diff-code { max-height: 48vh; height: auto; }
+}
+
+@media (max-width: 620px) {
+  .inline-recovery-notice { grid-template-columns: 22px minmax(0, 1fr); }
+  .inline-recovery-notice .mini-button { grid-column: 2; justify-self: start; }
+}
+
+
+/* V12 focused review UX: central result modal, stacked changes, reliable patch scrolling. */
+.run-center-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+/* Workflow result is a single dismissible center dialog. It never covers the
+   composer, conversation or Run Center after it is closed. */
+.run-result-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 620;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, .48);
+  backdrop-filter: blur(3px);
+}
+.run-result-modal-backdrop[hidden] { display: none !important; }
+.run-result-modal {
+  width: min(620px, 100%);
+  max-height: min(82vh, 680px);
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--line) 82%, transparent);
+  border-radius: 18px;
+  background: var(--panel);
+  box-shadow: 0 30px 90px rgba(15, 23, 42, .32);
+}
+.run-result-modal-head {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) 34px;
+  align-items: start;
+  gap: 12px;
+  padding: 18px 18px 14px;
+  border-bottom: 1px solid var(--line);
+}
+.run-result-modal-icon {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: #fff;
+  background: var(--accent);
+  font-size: 20px;
+  font-weight: 900;
+}
+.run-result-modal.status-done .run-result-modal-icon { background: var(--pass); }
+.run-result-modal.status-failed .run-result-modal-icon,
+.run-result-modal.status-cancelled .run-result-modal-icon { background: var(--fail); }
+.run-result-modal-head h2 { margin: 3px 0 4px; font-size: 20px; line-height: 1.25; }
+.run-result-modal-head p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.55; overflow-wrap: anywhere; }
+.run-result-modal-head .modal-close { align-self: start; }
+.run-result-modal-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  padding: 14px 18px;
+}
+.run-result-modal-metrics > div {
+  display: grid;
+  gap: 3px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel-2);
+}
+.run-result-modal-metrics span { color: var(--muted); font-size: 9px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
+.run-result-modal-metrics strong { font-size: 14px; }
+.run-result-modal-error {
+  min-height: 0;
+  margin: 0 18px 14px;
+  padding: 11px 12px;
+  overflow: auto;
+  border: 1px solid color-mix(in srgb, var(--fail) 28%, var(--line));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--fail) 5%, var(--panel));
+}
+.run-result-modal-error strong { display: block; margin-bottom: 4px; color: var(--fail); font-size: 11px; }
+.run-result-modal-error span { display: block; font-size: 11px; line-height: 1.5; overflow-wrap: anywhere; }
+.run-result-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 7px;
+  padding: 12px 18px 16px;
+  border-top: 1px solid var(--line);
+  background: var(--panel-2);
+}
+body.run-result-modal-open { overflow: hidden; }
+
+/* Run Center Changes is intentionally stacked. The Run Center is often only
+   360-600 px wide, so a side-by-side navigator/preview is never dependable. */
+#changesPanel.active {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(118px, .32fr) minmax(260px, 1fr);
+  grid-template-areas: "summary" "files" "preview";
+  gap: 9px;
+  min-height: 0;
+  overflow: hidden;
+  padding: 12px;
+}
+#changesSummary {
+  grid-area: summary;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+#changesSummary > div {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 2px 6px;
+  min-height: 48px;
+  padding: 7px 9px;
+  border-radius: 10px;
+}
+#changesSummary span { font-size: 8px; }
+#changesSummary strong { justify-self: end; font-size: 14px; }
+#changesSummary small { grid-column: 1 / -1; font-size: 8px; }
+#changesList {
+  grid-area: files;
+  min-width: 0;
+  min-height: 0;
+  margin: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+#changesList .changes-panel-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  margin: 0 0 7px;
+  padding: 2px 0 7px;
+  background: var(--panel);
+}
+#changesList .change-file-list { gap: 5px; }
+#changesList .change-file-row { min-height: 48px; padding: 7px 9px; border-radius: 9px; }
+#changesList .change-kind { min-width: 48px; }
+#changePreview {
+  grid-area: preview;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: var(--panel);
+}
+#changePreview.change-review-empty { overflow: auto; }
+#changePreview .change-review-card {
+  height: 100%;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  border: 0;
+  border-radius: 0;
+}
+#changePreview .change-review-head { padding: 8px 10px; }
+#changePreview .change-review-explanation { padding: 6px 10px; }
+#changePreview .diff-code {
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  max-height: none;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable both-edges;
+}
+#changePreview .diff-code-row { min-width: max-content; }
+.single-change-toolbar { margin-bottom: 7px; }
+
+/* Patch review is the advanced two-pane flow. The drawer becomes wider only
+   while Patch Review is active, and each pane owns its own scrollbar. */
+.diagnostics-drawer.patch-review-mode { width: min(1120px, 96vw); }
+#diagnosticPatch.diagnostic-section {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  min-height: 0;
+  overflow: hidden;
+  padding: 12px;
+}
+.patch-review-head { margin: 0 0 8px; }
+.patch-review-host {
+  min-width: 0;
+  min-height: 0;
+  max-height: none;
+  overflow: hidden;
+}
+.patch-review-layout {
+  height: 100%;
+  min-height: 0;
+  max-height: none;
+  display: grid;
+  grid-template-columns: minmax(230px, 300px) minmax(0, 1fr);
+  gap: 10px;
+}
+.patch-file-column {
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
+}
+.patch-file-list {
+  min-width: 0;
+  min-height: 0;
+  max-height: none;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+.patch-preview-pane {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  max-height: none;
+  overflow: auto !important;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable both-edges;
+  -webkit-overflow-scrolling: touch;
+}
+.patch-preview-pane > pre {
+  display: block;
+  width: max-content;
+  min-width: 100%;
+  min-height: 100%;
+  box-sizing: border-box;
+  margin: 0;
+  white-space: pre;
+}
+.patch-preview-pane > .patch-split {
+  width: max-content;
+  min-width: 100%;
+  min-height: 100%;
+}
+.patch-preview-pane > .patch-split > section { min-width: 360px; }
+.patch-preview-pane > .patch-split pre {
+  width: max-content;
+  min-width: 100%;
+  white-space: pre;
+}
+.patch-actions { min-height: 38px; }
+
+@media (max-width: 900px) {
+  #changesPanel.active {
+    grid-template-rows: auto minmax(110px, 210px) minmax(280px, 1fr);
+    overflow: hidden;
+  }
+  #changesSummary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .diagnostics-drawer.patch-review-mode { width: 100vw; }
+  #diagnosticPatch.diagnostic-section { overflow: auto; }
+  .patch-review-host { overflow: visible; }
+  .patch-review-layout { height: auto; grid-template-columns: 1fr; }
+  .patch-file-column { height: 210px; }
+  .patch-preview-pane { height: min(52vh, 560px); min-height: 300px; }
+}
+
+@media (max-width: 620px) {
+  .run-result-modal-backdrop { padding: 10px; align-items: end; }
+  .run-result-modal { width: 100%; max-height: 88vh; border-radius: 16px 16px 10px 10px; }
+  .run-result-modal-head { grid-template-columns: 36px minmax(0, 1fr) 30px; gap: 9px; padding: 14px; }
+  .run-result-modal-icon { width: 36px; height: 36px; }
+  .run-result-modal-metrics { padding: 10px 14px; }
+  .run-result-modal-actions { padding: 10px 14px 14px; }
+  .run-result-modal-actions .mini-button { flex: 1 1 120px; }
+  #changesPanel.active { padding: 9px; }
+  #changesSummary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #changesList .change-file-row { grid-template-columns: auto minmax(0, 1fr); }
+  #changesList .change-file-row > small:last-child { grid-column: 2; }
+  #changePreview .change-review-head,
+  #changePreview .change-review-explanation { align-items: flex-start; flex-direction: column; }
+}

@@ -5,6 +5,7 @@ from typing import Any, Callable
 from app.runtime_modules.errors import WorkflowError
 
 from app.workflow.agents import (
+    AgentCapabilities,
     AgentClient,
     AgentOutputCallback,
     AgentRequest,
@@ -155,6 +156,7 @@ def create_agent_manager(settings: dict[str, Any] | None = None) -> AgentManager
 
 
 __all__ = [
+    "AgentCapabilities",
     "AgentClient",
     "AgentManager",
     "AgentOutputCallback",

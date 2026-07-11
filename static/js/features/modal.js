@@ -32,6 +32,7 @@ export function createModal(ctx) {
         cancelText: "Cancel",
         multiline: false,
         required: true,
+        readOnly: false,
       };
       currentOptions = { ...defaults, ...options };
       const els = modal.elements();
@@ -49,10 +50,12 @@ export function createModal(ctx) {
 
       const activeField = currentOptions.multiline ? els.textarea : els.input;
       const inactiveField = currentOptions.multiline ? els.input : els.textarea;
-      activeField.value = currentOptions.defaultValue || "";
+      activeField.value = currentOptions.initialValue ?? currentOptions.defaultValue ?? "";
       activeField.placeholder = currentOptions.placeholder || "";
+      activeField.readOnly = Boolean(currentOptions.readOnly);
       activeField.hidden = false;
       inactiveField.hidden = true;
+      inactiveField.readOnly = false;
 
       els.backdrop.hidden = false;
       document.body.classList.add("modal-open");

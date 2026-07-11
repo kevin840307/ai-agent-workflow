@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any, Protocol
 
 from app.core.paths import utc_now
+from app.workflow_engine.state_machine import append_transition, validate_transition
 
 from .run_store import RunStore
 
@@ -48,6 +49,9 @@ class FileStepStore:
         def apply(run: dict[str, Any]) -> None:
             for step in run.get("steps", []):
                 if step.get("key") == step_key:
+                    previous = str(step.get("status") or "")
+                    validate_transition("step", previous, status, strict=True)
+                    append_transition(step, kind="step", source=previous, target=status, reason=error or error_code or "step status update")
                     step["status"] = status
                     if status == "running":
                         step["started_at"] = utc_now()

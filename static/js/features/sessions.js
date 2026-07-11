@@ -1,4 +1,4 @@
-import { LocalStore } from "../core/storage.js?v=20260704-direct-edit-gad";
+import { LocalStore } from "../core/storage.js?v=20260711-ui-v12";
 
 const COLLAPSED_PROJECTS_KEY = "ui.collapsedProjectKeys";
 

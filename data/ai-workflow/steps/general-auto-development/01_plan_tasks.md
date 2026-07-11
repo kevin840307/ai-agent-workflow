@@ -10,6 +10,10 @@ Project snapshot, brief:
 Validation script, if provided:
 {{validation_script}}
 
+Controller complexity profile: {{complexity_profile}}
+Recommended task count: {{recommended_task_count}}
+Hard maximum task count: {{max_planned_tasks}}
+
 Retry feedback, if any:
 {{latest_failure_feedback}}
 
@@ -23,7 +27,8 @@ Rules:
 - Tasks may include implementation, tests, repair, or assembly work.
 - Do not include review tasks; review is handled by the fixed SOP review step.
 - Do not include shell commands, tool-call JSON, code blocks, absolute paths, or file contents.
-- Keep the task count practical: split stable SOP work, but do not over-split simple requests.
+- Use the minimum sufficient implementation. Do not add unrequested features, duplicate modules, extra examples, or documentation.
+- Respect the controller complexity profile and hard maximum task count. Tiny requests should normally be 1 task, or at most 2 when tests are separate.
 - If retry feedback exists, revise the plan/task prompts to address that concrete failure.
 
 Output one JSON object only:

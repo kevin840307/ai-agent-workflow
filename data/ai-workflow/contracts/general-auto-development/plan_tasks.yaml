@@ -13,12 +13,12 @@ outputs:
 - task-manifest.md
 - task-manifest.json
 function: ''
-retry: 99
+retry: 2
 failAction: same_step
 retryFromStepKey: plan_tasks
 keepSameSession: true
 injectFailureFeedback: true
-stopAfterFailures: 99
+stopAfterFailures: 2
 allowInteraction: false
 thinking: true
 thinkingLevel: medium

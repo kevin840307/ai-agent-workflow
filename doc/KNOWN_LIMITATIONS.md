@@ -10,8 +10,8 @@ This project is suitable for controlled internal pilot usage, but the following 
 
 ## Safe execution mode
 
-- Real agents should use `patchMode=review` by default.
-- Avoid auto-applying patches to production repositories.
+- Real agents use `patchMode=auto_apply` by default so generated files are written to the selected project. Set `AIWF_DEFAULT_PATCH_MODE=review` or pass `patchMode=review` to use an isolated approval workspace.
+- For production repositories that require approval, explicitly use `patchMode=review`.
 - Patch review or dry run mode uses an isolated workspace and requires user approval before applying changes.
 
 ## Storage/backend

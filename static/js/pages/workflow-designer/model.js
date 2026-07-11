@@ -1,5 +1,5 @@
-import { TemplatePresets } from "../workflow-designer-constants.js?v=20260704-direct-edit-gad";
-import { clone, makeId } from "./utils.js?v=20260704-direct-edit-gad";
+import { TemplatePresets } from "../workflow-designer-constants.js?v=20260711-ui-v12";
+import { clone, makeId } from "./utils.js?v=20260711-ui-v12";
 const ThinkingLevels = new Set(["none", "medium", "high", "extreme"]);
 function normalizeThinkingLevel(value, legacyThinking = false) {
   const raw = String(value ?? "").trim().toLowerCase();

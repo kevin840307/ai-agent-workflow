@@ -91,7 +91,7 @@ Validation script examples:
 
 ```text
 tools/check_config.py
-C:\Users\kevin\validators\check_config_diff.py
+C:\Projects\validators\check_config_diff.py
 ```
 
 If `Validation Script` is empty, the workflow searches the project root for these portable default names:
@@ -154,7 +154,7 @@ The validation script must be a Python file. It can be project-relative or absol
 
 ```text
 tools/check_config.py
-C:\Users\kevin\validators\check_config.py
+C:\Projects\validators\check_config.py
 ```
 
 ### Execution Directory

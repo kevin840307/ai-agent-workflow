@@ -119,7 +119,7 @@ Install command templates into the current project:
 python scripts/install_agent_commands.py --target all --scope project
 ```
 
-Then start the agent CLI from this repository root and type `/` to confirm `/wf` and `/wstep` are available.
+The installer performs non-mutating `/wf` and `/wstep` route verification. You may then start the agent CLI from the target project and type `/` to confirm the commands are visible.
 
 See `doc/en/AGENT_SLASH_COMMANDS.md` for details and examples.
 

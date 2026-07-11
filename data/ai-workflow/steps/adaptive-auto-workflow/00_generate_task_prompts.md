@@ -11,6 +11,10 @@ Project snapshot, brief:
 Retry feedback from the last failed run, if any:
 {{latest_failure_feedback}}
 
+Controller complexity profile: {{complexity_profile}}
+Recommended task count: {{recommended_task_count}}
+Hard maximum task count: {{max_planned_tasks}}
+
 Create the SPEC and the short prompts that a human would type next into Qwen/OpenCode.
 
 Rules:
@@ -20,7 +24,8 @@ Rules:
 - Python will only validate JSON shape and task prompt format; you must make the SPEC useful for the later review.
 - Each task prompt must be a short natural-language CLI instruction for the selected project.
 - Do not include shell commands, tool-call JSON, code blocks, absolute paths, or file contents.
-- Prefer 1 task for simple requests. Use 2-3 tasks only when independent chunks are safer.
+- Use the minimum sufficient implementation. Do not add unrequested features, duplicate modules, extra examples, or documentation.
+- Respect the controller complexity profile and hard maximum task count. Prefer 1 task for tiny requests and use additional tasks only for genuinely independent work.
 - If retry feedback exists, revise the SPEC/task prompts to fix that concrete failure.
 
 Output one JSON object only:

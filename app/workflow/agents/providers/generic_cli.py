@@ -8,8 +8,9 @@ from typing import Any
 from app.testing.mock_agent import mock_qwen_response
 from app.runtime_modules.errors import WorkflowError
 from app.security.workspace_guard import apply_workspace_env
+from app.workflow.agents.errors import classify_agent_error
 
-from ..base import AgentOutputCallback, AgentRequest, AgentResult, run_process_stream
+from ..base import AgentCapabilities, AgentOutputCallback, AgentRequest, AgentResult, run_process_stream
 
 
 class GenericCliAdapter:
@@ -82,6 +83,20 @@ class GenericCliAdapter:
             return shlex.join(command)
         command = self._command("<prompt>", request.session_id, include_prompt=True)
         return shlex.join(command)
+
+    def capabilities(self) -> AgentCapabilities:
+        return AgentCapabilities(
+            streaming=True,
+            tool_calling=False,
+            session_resume=bool(getattr(self, "reuse_session", True)),
+            read_only=True,
+            structured_output="unknown",
+            cancellation=True,
+        )
+
+    @staticmethod
+    def classify_error(error: Any) -> dict[str, Any]:
+        return classify_agent_error(error)
 
     def health(self) -> dict[str, Any]:
         return {

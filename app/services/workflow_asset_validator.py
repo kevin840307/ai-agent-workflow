@@ -9,7 +9,7 @@ from app.workflow_runtime.step_utils import parse_function_refs
 from app.workflow_engine.contracts import normalize_step_contract
 from app.workflow_runtime.builtin_functions.registry import PYTHON_FUNCTIONS
 
-VALID_FINAL_KEYS = {"final_gate", "final_review", "finalize_security_report", "dry_run"}
+VALID_FINAL_KEYS = {"final_gate", "final_review", "ai_review", "finalize_security_report", "dry_run"}
 VALID_STEP_TYPES = {"ai", "review", "python", "validation", "check", "gate", "manual", "command", "agent", "qwen"}
 
 

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 from fastapi.responses import FileResponse, StreamingResponse
 
 from app.runtime_modules import api as runtime
@@ -42,6 +42,13 @@ async def retry_run(run_id: str, body: schemas.RetryRunRequest | None = None):
     return await workflow_service.retry_run(run_id, body)
 
 
+
+
+@router.post("/api/workflow-runs/{run_id}/actions")
+async def execute_run_action(run_id: str, body: schemas.RunActionRequest):
+    return await workflow_service.execute_run_action(run_id, body)
+
+
 @router.post("/api/workflow-runs/{run_id}/terminate")
 async def terminate_run(run_id: str):
     return await workflow_service.terminate_run(run_id)
@@ -66,6 +73,22 @@ async def submit_guidance(run_id: str, body: schemas.SubmitGuidanceRequest):
 async def rerun_step(run_id: str, body: schemas.RerunStepRequest | None = None):
     return await workflow_service.rerun_step(run_id, body)
 
+
+
+
+@router.get("/api/workflow-runs/{run_id}/overview")
+async def get_run_overview(run_id: str):
+    return await workflow_service.get_run_overview(run_id)
+
+
+@router.get("/api/workflow-runs/{run_id}/diagnostics")
+async def get_run_diagnostics(run_id: str):
+    return await workflow_service.get_run_diagnostics(run_id)
+
+
+@router.post("/api/workflow-runs/{run_id}/artifacts/compact")
+async def compact_run_artifacts(run_id: str):
+    return await workflow_service.compact_run_artifacts_service(run_id)
 
 @router.get("/api/workflow-runs/{run_id}/console")
 async def get_run_console(run_id: str):
@@ -163,8 +186,8 @@ async def get_steps(run_id: str):
 
 
 @router.get("/api/workflow-runs/{run_id}/artifacts")
-async def get_artifacts(run_id: str):
-    return await workflow_service.get_artifacts(run_id)
+async def get_artifacts(run_id: str, view: str = Query(default="supporting", pattern="^(essential|supporting|all|diagnostic|debug)$")):
+    return await workflow_service.get_artifacts(run_id, view=view)
 
 
 @router.get("/api/workflow-runs/{run_id}/events")

@@ -105,13 +105,16 @@ class LargeProjectFixtureTests(unittest.TestCase):
                 "steps": [
                     {
                         "key": "generate_spec",
-                        "config": {"templatePath": "prompts/01_spec.md", "expectedFiles": ["spec.md"]},
+                        "config": {
+                            "templateContent": "Project Path: {{project_path}}\n\n{{project_profile}}\n\nRequirement: {{requirement}}",
+                            "expectedFiles": ["spec.md"],
+                        },
                         "allow_interaction": False,
                     }
                 ],
             }
 
-            result = PromptBuilder().build(run, "generate_spec", "01_spec.md", allow_interaction=False)
+            result = PromptBuilder().build(run, "generate_spec", "inline.md", allow_interaction=False)
             self.assertIn("Dominant source extensions:", result.prompt)
             self.assertIn(".py", result.prompt)
             self.assertLess(len(result.prompt), 160000)
@@ -122,7 +125,7 @@ class LargeProjectFixtureTests(unittest.TestCase):
             "id": "large-project-minimal",
             "kind": "custom",
             "name": "Large Project Minimal",
-            "folderName": "system-controlled-qwen",
+            "folderName": "large-project-minimal",
             "skillRoot": "",
             "steps": [
                 {
@@ -131,7 +134,7 @@ class LargeProjectFixtureTests(unittest.TestCase):
                     "name": "Raw Artifact",
                     "type": "ai",
                     "enabled": True,
-                    "templatePath": "prompts/01_spec.md",
+                    "templateContent": "Project Path: {{project_path}}\n\nRequirement: {{requirement}}\n\nReturn the requested artifact.",
                     "filename": "raw.md",
                     "outputFile": "raw.md",
                     "expectedFiles": ["raw.md"],

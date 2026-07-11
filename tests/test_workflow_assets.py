@@ -271,10 +271,12 @@ class WorkflowAssetServiceTests(unittest.TestCase):
         )
         workflow_asset_service.write_asset("workflows/demo.workflow", "contract: spec\n", scope="global")
 
-        import asyncio
-
-        listed = asyncio.run(workflow_config_service.list_workflows())
-        workflow = next(item for item in listed["custom"] if item.get("id") == "demo" and item.get("kind") == "asset")
+        # Custom assets remain available to plugins and the internal asset SDK,
+        # while the product workflow catalog exposes only the three approved flows.
+        workflow = workflow_config_service.read_prompt_files(
+            workflow_config_service.normalize_workflow_steps(workflow_asset_service.load_workflow_asset("demo")),
+            "demo",
+        )
         step = workflow["steps"][0]
 
         self.assertEqual(workflow["workflowPath"], "workflows/demo.workflow")
@@ -296,9 +298,12 @@ class WorkflowAssetServiceTests(unittest.TestCase):
         workflow_asset_service.write_asset("contracts/shared.yaml", "id: shared\nskill: steps/shared.md\nagent: opencode\n", project_path=str(self.project_root), scope="project")
         workflow_asset_service.write_asset("workflows/demo.workflow", "contract: shared\n", project_path=str(self.project_root), scope="project")
 
-        import asyncio
-
-        workflow = asyncio.run(workflow_config_service.get_workflow("demo", project_path=str(self.project_root)))
+        workflow = workflow_config_service.read_prompt_files(
+            workflow_config_service.normalize_workflow_steps(
+                workflow_asset_service.load_workflow_asset("demo", project_path=str(self.project_root))
+            ),
+            "demo",
+        )
         step = workflow["steps"][0]
 
         self.assertEqual(workflow["scope"], "project")
@@ -310,9 +315,10 @@ class WorkflowAssetServiceTests(unittest.TestCase):
         workflow_asset_service.write_asset("steps/quick.md", "Quick {{requirement}}", scope="global")
         workflow_asset_service.write_asset("workflows/quick.workflow", "step: steps/quick.md\n", scope="global")
 
-        import asyncio
-
-        workflow = asyncio.run(workflow_config_service.get_workflow("quick"))
+        workflow = workflow_config_service.read_prompt_files(
+            workflow_config_service.normalize_workflow_steps(workflow_asset_service.load_workflow_asset("quick")),
+            "quick",
+        )
         step = workflow["steps"][0]
 
         self.assertEqual(step["contractId"], "quick")

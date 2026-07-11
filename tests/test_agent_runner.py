@@ -113,8 +113,8 @@ class AgentRunnerTests(unittest.TestCase):
     def test_fresh_qwen_consensus_session_omits_project_session_id(self) -> None:
         asyncio.run(self._run_session_case(fresh_session=True, fresh_per_agent=True, expected_session=None))
 
-    def test_fresh_session_without_force_flag_keeps_project_session_id(self) -> None:
-        asyncio.run(self._run_session_case(fresh_session=True, fresh_per_agent=False, expected_session="qwen-session-1"))
+    def test_fresh_session_always_omits_project_session_id(self) -> None:
+        asyncio.run(self._run_session_case(fresh_session=True, fresh_per_agent=False, expected_session=None))
 
     def test_recoverable_session_error_retries_once_without_session_id(self) -> None:
         asyncio.run(self._run_session_recovery_case())

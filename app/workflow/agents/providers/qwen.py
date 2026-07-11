@@ -6,8 +6,9 @@ from typing import Any
 
 from app.workflow_runtime.qwen_serve import QwenCliClient, run_prompt_via_serve
 from app.security.workspace_guard import apply_workspace_env
+from app.workflow.agents.errors import classify_agent_error
 
-from ..base import AgentOutputCallback, AgentRequest, AgentResult
+from ..base import AgentCapabilities, AgentOutputCallback, AgentRequest, AgentResult
 
 
 class QwenAdapter:
@@ -64,6 +65,20 @@ class QwenAdapter:
             *self.client.command(request.session_id, include_prompt_flag=False, cwd=request.cwd, stream_json=True),
             "<prompt via stdin>",
         ])
+
+    def capabilities(self) -> AgentCapabilities:
+        return AgentCapabilities(
+            streaming=True,
+            tool_calling=True,
+            session_resume=bool(self.client.reuse_session),
+            read_only=True,
+            structured_output="medium",
+            cancellation=True,
+        )
+
+    @staticmethod
+    def classify_error(error: Any) -> dict[str, Any]:
+        return classify_agent_error(error)
 
     def health(self) -> dict[str, Any]:
         return {

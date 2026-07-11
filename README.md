@@ -14,22 +14,29 @@ Web UI = operate projects, workflows, assets, runs, and artifacts
 
 | Feature | Description |
 |---|---|
-| Chat-style runner | Project-based chat UI for running controlled workflows |
-| Workflow Runner | Executes selected workflow steps in order |
-| Workflow Designer | Edits workflow steps, prompts, retry policy, review strategy, and validation settings |
-| AI Workflow Assets | CRUD UI for prompts, contracts, and Python functions |
-| Qwen / OpenCode providers | Uses Qwen Code CLI or OpenCode CLI as the external agent worker |
-| Project-local agent guard | Writes `.qwen/settings.json` and `opencode.json` so CLI edit tools stay project-scoped |
-| Retry / repair loop | Sends failed validation or review feedback back to the owner step |
-| External validation | Runs an optional Python validation script; empty script means skipped PASS |
-| Artifacts | Stores run outputs, logs, validation reports, and generated files |
-| Workflow metadata protection | `kind: system`, `protected: true`, and `deletable: false` are enforced by UI and API |
+| Run Center | User-facing Overview / Changes / Validation instead of raw technical tabs |
+| Unified workflow kernel | General and Adaptive share state, session, workspace, retry, validation, and evidence services |
+| Checkpoint recovery | Restarts interrupted runs from the latest successful step |
+| Role-scoped sessions | Planning, build, validation, and review sessions have separate resume/fresh policies |
+| Project lock and path guard | One write run per project; all agent writes remain project-scoped |
+| Filesystem-first acceptance | Actual diff and deterministic validation decide whether an agent attempt succeeded |
+| Typed recovery | Session, context, timeout, test, path, review, and layout failures use explicit strategies |
+| Compact artifacts | Normal users see essential results; verbose diagnostics are packed into one archive |
+| SQLite evidence store | WAL-backed normalized projections for runs, steps, tasks, events, sessions, validation, changes, checkpoints, and locks |
+| Setup and recommendations | Seven readiness checks plus compact, dismissible workflow/agent/profile/time recommendations |
+| Workflow Designer | Simple / Advanced / JSON modes, versioning, import/export, validation, and protection |
+| AI Workflow Assets | CRUD UI for prompts, contracts, Python functions, and reusable metadata |
+| Risk, approval, and scope control | Low-risk automation, high-risk isolated Patch approval, scope-delta evidence |
+| Context handoff and task checkpoints | Fresh-session recovery without replaying completed work |
+| Validator plugins | Python, Java, .NET, Node, YAML/XML, SQL, Docker, Kubernetes, and custom commands |
+| Product benchmarks | Ten fixed reliability and recovery scenarios with versioned results |
+| Qwen / OpenCode providers | Capability-aware adapters with normalized session/context/tool errors |
 
 ## UI overview
 
 ### Workflow runner
 
-The runner is the main operating screen. Select a project, choose Workflow or Chat mode, pick a workflow, send the requirement, and watch steps, agent output, logs, and artifacts update in one place.
+The runner is the main operating screen. Select a project, enter a requirement, optionally open the compact recommendation chip, and run. Environment advice and completion results are dismissible, non-blocking notices. The Run Center keeps the normal experience focused on the current action, readable file changes, and validation evidence. Console, raw logs, full Patch controls, repair policy, all artifacts, and health data are available only from the lazy-loaded Technical Diagnostics drawer.
 
 ![Workflow runner](docs/images/ui-workflow-runner.png)
 
@@ -58,11 +65,15 @@ User requirement
   -> Step 3: AI reviews the result, then Python runs validation/test gates when configured
 ```
 
-Any failure retries from Step 1 using the same agent session with concise failure feedback. The controller does not generate production code or execute agent edit/write JSON.
+Failures are classified before recovery. Deterministic repairs stay in the current validation layer; implementation failures return to the owning task; only actual planning/spec conflicts trigger replanning. The controller does not generate production code or materialize agent edit/write JSON.
 
 ### General Auto Development
 
-An AI-driven engineering controller flow: AI plans tasks, Qwen/OpenCode executes the task loop, test files are ensured, Python runs pytest, AI performs implementation review, Python runs external validation, a deterministic Python final verifier writes final-review.md/verifier-report.json, then the final gate checks PASS.
+A fixed development SOP: plan tasks, execute only the owning task, generate tests, run deterministic validation, perform read-only review, execute the immutable user validation contract when configured, and complete only after the atomic Completion Gate passes.
+
+### Security Vulnerability Scan
+
+A read-mostly security workflow that inventories the project, runs supported dependency/static checks, normalizes findings, and produces a security report without exposing arbitrary custom workflows in the product catalog.
 
 ## Quick start
 
@@ -78,7 +89,7 @@ Open:
 http://127.0.0.1:8000
 ```
 
-For the current MVP, run a single uvicorn process. The local locks, run state, and JSON store are designed for single-machine / single-process usage.
+Run a single uvicorn process (`--workers 1`). Project locks, controller tasks, agent processes, and local SQLite state are designed for a single-machine controller. SQLite is the default store and uses WAL, migrations, normalized projections, and backup support.
 
 ## Basic usage
 
@@ -93,7 +104,7 @@ For the current MVP, run a single uvicorn process. The local locks, run state, a
 tools/validate_config.py
 ```
 
-7. Run the workflow and review the generated artifacts.
+7. Run the workflow and review Overview, Changes, and Validation. Open Technical Diagnostics only when deeper troubleshooting is needed.
 
 Validation scripts may support:
 
@@ -128,7 +139,7 @@ Install command templates into the current project:
 python scripts/install_agent_commands.py --target all --scope project
 ```
 
-This creates project-local commands:
+The installer pins the current Python and stable launcher, then verifies `/wf` and `/wstep` from the target project. This creates project-local commands:
 
 ```text
 .qwen/commands/wf.md
@@ -197,9 +208,12 @@ Resolution order:
 Daily checks:
 
 ```powershell
-python -m compileall app tests
-python -m unittest discover -s tests -v
+python -m compileall -q app tests
+python scripts/validate_workflow_assets.py
+python scripts/run_tests.py --mode all --isolate-all
 ```
+
+The complete matrix is executed in isolated pytest processes because long-running TestClient/workflow fixtures intentionally own background tasks and subprocesses. Real Qwen CLI and Playwright checks are opt-in.
 
 Manual and opt-in checks are documented in:
 
@@ -222,6 +236,10 @@ English documentation is the default entry path. Traditional Chinese documentati
 | Workflow metadata | `doc/en/WORKFLOW_METADATA.md` | `doc/zh-TW/WORKFLOW_METADATA.md` |
 | Frontend structure | `doc/en/FRONTEND_STRUCTURE.md` | `doc/zh-TW/FRONTEND_STRUCTURE.md` |
 | Testing | `doc/en/TESTING.md` | `doc/zh-TW/TESTING.md` |
+| Stability V11 | `doc/en/STABILITY_V11.md` | `doc/zh-TW/STABILITY_V11.md` |
+| Production Readiness V10 | `doc/en/PRODUCTION_READINESS_V10.md` | `doc/zh-TW/PRODUCTION_READINESS_V10.md` |
+| System Productization V9 | `doc/en/SYSTEM_PRODUCTIZATION_V9.md` | `doc/zh-TW/SYSTEM_PRODUCTIZATION_V9.md` |
+| System Optimization V8 | `doc/en/SYSTEM_OPTIMIZATION_V8.md` | `doc/zh-TW/SYSTEM_OPTIMIZATION_V8.md` |
 Root-level `doc/*.md` files are kept as compatibility entry points for existing tests and links.
 
 ---
@@ -242,3 +260,15 @@ Qwen Workflow Web 是一個本機 **AI Agent Workflow Runner**。它不是單純
 
 
 See also: `doc/WORKFLOW_STABILITY_PLAN.md` for the stability score, failure-injection matrix, and isolated-workspace guard pattern.
+
+Latest stability release: `doc/en/STABILITY_V11.md` and `doc/zh-TW/STABILITY_V11.md` document retry object consistency, existing-project pytest ownership, recovery/change UI cleanup, and verified Qwen/OpenCode interactive `/wf` and `/wstep` routing. V10 remains the production validation/completion foundation.
+## Local real Qwen cases
+
+Run one-line Prompt cases against the actual Qwen/OpenCode CLI and verify the final project with a required validation script:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\run_local_qwen_cases.ps1 -Case all -Agent qwen
+```
+
+See `doc/zh-TW/LOCAL_REAL_QWEN_CASES.md`.
+

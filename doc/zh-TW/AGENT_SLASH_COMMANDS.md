@@ -14,8 +14,8 @@
 
 | 指令 | 用途 | 後端實際呼叫 |
 |---|---|---|
-| `/wf` | 依 workflow id 執行已儲存的 `.workflow` | `python -m app.cli.aiwf /wf ... --wait` |
-| `/wstep` | 用 skill/slash command + contract 執行單一步驟 | `python -m app.cli.aiwf /wstep ... --wait` |
+| `/wf` | 依 workflow id 執行已儲存的 `.workflow` | `<安裝時固定的 Python> scripts/aiwf_agent_command.py /wf ... --wait` |
+| `/wstep` | 用 skill/slash command + contract 執行單一步驟 | `<安裝時固定的 Python> scripts/aiwf_agent_command.py /wstep ... --wait` |
 
 這些 slash command 只是薄薄一層入口。真正執行仍然走 Python/FastAPI workflow code，所以 retry、validation、artifact、workspace 保護都會跟 Web UI 保持一致。
 
@@ -59,6 +59,8 @@ OpenCode: ~/.config/opencode/commands/
 
 ## 驗證
 
+安裝器成功時會輸出 `aiwf.agent-command-verification.v1`，代表 `/wf` 與 `/wstep` 的路由、參數與跨目錄載入已通過。
+
 Qwen Code：
 
 ```bash
@@ -99,8 +101,8 @@ opencode
 - 這些 slash command 會在 Agent CLI 裡執行 shell command。
 - Qwen Code 支援專案指令 `.qwen/commands/` 與使用者指令 `~/.qwen/commands/`；專案指令優先。
 - OpenCode 支援專案指令 `.opencode/commands/` 與全域指令 `~/.config/opencode/commands/`。
-- 請從本專案根目錄啟動 Qwen/OpenCode，這樣 `python -m app.cli.aiwf` 才能 import 本地 `app` package。
-- 啟動 Agent CLI 前，請先啟用 Python virtual environment。
+- 安裝完成後可從任意目標專案啟動 Qwen/OpenCode；command 會透過絕對路徑 Launcher 載入 Controller。
+- 安裝時使用的 Python／virtual environment 必須持續存在；搬移 Controller 或重建 venv 後請重新執行安裝器。
 - 需求文字有空白時，請用引號包起來。
 - 不建議一開始就全域安裝，除非你希望所有專案都看得到 `/wf` 與 `/wstep`。
 - Shell execution 可能會在 Agent CLI 內要求確認，這是正常行為。
@@ -110,7 +112,7 @@ opencode
 | 問題 | 檢查 |
 |---|---|
 | `/wf` 沒出現 | 確認 command file 已複製到 `.qwen/commands/` 或 `.opencode/commands/`，然後重開 Agent CLI。 |
-| `ModuleNotFoundError: app` | 請從本 repository root 啟動 Agent CLI，或確認目前工作目錄正確。 |
+| `ModuleNotFoundError: app` | Command 可能是舊版或 Controller/venv 已搬移；重新執行 `install_agent_commands.py`，不要手動保留舊 command。 |
 | 找不到 `python` | 啟用 `.venv`，或使用已把 Python 加入 PATH 的 shell。 |
 | workflow 啟動後等很久 | `--wait` 會等待 workflow 完成；大型 workflow 本來就可能較久。 |
 | OpenCode 使用自訂 config dir | 使用 `--destination <dir>/commands`，或依環境設定 `OPENCODE_CONFIG_DIR`。 |

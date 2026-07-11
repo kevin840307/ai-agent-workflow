@@ -15,15 +15,15 @@ outputs:
 function: adaptive_python_gate
 functions:
 - adaptive_python_gate
-retry: 99
-maxRetries: 99
+retry: 2
+maxRetries: 2
 failAction: selected_step
 retryFromStepKey: auto_generation
 retryEscalationEvery: 3
 retryEscalationStepKey: generate_task_prompts
-keepSameSession: true
+keepSameSession: false
 injectFailureFeedback: true
-stopAfterFailures: 99
+stopAfterFailures: 2
 allowInteraction: false
 requiresValidationScript: false
 fallbackValidationScripts:
@@ -57,4 +57,4 @@ retryPolicy:
   defaultRetryTo: auto_generation
   escalateEvery: 3
   escalateTo: generate_task_prompts
-  maxRetries: 99
+  maxRetries: 2

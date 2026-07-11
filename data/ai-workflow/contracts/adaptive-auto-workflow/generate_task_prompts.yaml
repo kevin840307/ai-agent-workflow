@@ -12,13 +12,13 @@ outputs:
 - task-manifest.md
 - task-manifest.json
 function: ''
-retry: 99
-maxRetries: 99
+retry: 2
+maxRetries: 2
 failAction: same_step
 retryFromStepKey: generate_task_prompts
 keepSameSession: true
 injectFailureFeedback: true
-stopAfterFailures: 99
+stopAfterFailures: 2
 allowInteraction: false
 thinking: true
 thinkingLevel: medium

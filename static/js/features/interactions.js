@@ -61,7 +61,7 @@ export function createInteractions(ctx) {
         await ctx.features.runs.follow(run.id);
       } catch (err) {
         ctx.features.console.append("logs", `Continue failed: ${err.message}`);
-        ctx.features.layout.activateTab("logsPanel");
+        ctx.features.diagnostics.open("diagnosticLogs");
       } finally {
         ui.byKey("runWorkflow").disabled = false;
       }

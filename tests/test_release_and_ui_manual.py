@@ -63,10 +63,10 @@ class AgentSlashCommandDocumentationTests(unittest.TestCase):
         opencode_wf = (ROOT / "data/agent-commands/opencode/commands/wf.md").read_text(encoding="utf-8")
         opencode_wstep = (ROOT / "data/agent-commands/opencode/commands/wstep.md").read_text(encoding="utf-8")
 
-        self.assertIn("!{python -m app.cli.aiwf /wf {{args}} --wait}", qwen_wf)
-        self.assertIn("!{python -m app.cli.aiwf /wstep {{args}} --wait}", qwen_wstep)
-        self.assertIn("!`python -m app.cli.aiwf /wf $ARGUMENTS --wait`", opencode_wf)
-        self.assertIn("!`python -m app.cli.aiwf /wstep $ARGUMENTS --wait`", opencode_wstep)
+        self.assertIn("!{@@AIWF_PYTHON@@ @@AIWF_LAUNCHER@@ /wf {{args}} --wait}", qwen_wf)
+        self.assertIn("!{@@AIWF_PYTHON@@ @@AIWF_LAUNCHER@@ /wstep {{args}} --wait}", qwen_wstep)
+        self.assertIn("!`@@AIWF_PYTHON@@ @@AIWF_LAUNCHER@@ /wf $ARGUMENTS --wait`", opencode_wf)
+        self.assertIn("!`@@AIWF_PYTHON@@ @@AIWF_LAUNCHER@@ /wstep $ARGUMENTS --wait`", opencode_wstep)
 
     def test_install_agent_commands_supports_project_scope(self) -> None:
         import importlib.util

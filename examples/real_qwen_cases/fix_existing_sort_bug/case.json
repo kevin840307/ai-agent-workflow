@@ -1,0 +1,9 @@
+{
+  "id": "fix_existing_sort_bug",
+  "title": "修正既有排序錯誤",
+  "prompt_is_single_line": true,
+  "expected_files": [
+    "sorts.py"
+  ],
+  "required_validation": "validation.py"
+}

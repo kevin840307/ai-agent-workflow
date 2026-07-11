@@ -1,4 +1,4 @@
-import { LocalStore, StorageKeys } from "./storage.js?v=20260704-direct-edit-gad";
+import { LocalStore, StorageKeys } from "./storage.js?v=20260711-ui-v12";
 
 export const AppState = {
   sessions: [],
@@ -18,10 +18,14 @@ export const AppState = {
   chatBusy: false,
   defaultAgent: "agent",
   workflows: [],
-  selectedWorkflowId: LocalStore.getString(StorageKeys.selectedWorkflowId, "system-controlled-qwen") || "system-controlled-qwen",
+  selectedWorkflowId: LocalStore.getString(StorageKeys.selectedWorkflowId, "general-auto-development") || "general-auto-development",
   thinkingLevel: LocalStore.getString(StorageKeys.thinkingLevel, "medium") || "medium",
   runProfile: LocalStore.getString(StorageKeys.runProfile, "normal") || "normal",
   advancedMode: LocalStore.getBoolean(StorageKeys.advancedMode, false),
   validationScript: "",
   workflowActivity: null,
+  activeRunOverview: null,
+  diagnosticsLoadedRunId: null,
+  executionRecommendation: null,
+  appliedExecutionRecommendation: null,
 };

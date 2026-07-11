@@ -59,6 +59,32 @@ def active_run_owner_is_live(run: dict[str, Any] | None) -> bool:
     return owner_process_is_alive(owner)
 
 
+
+
+def build_restart_recovery(run: dict[str, Any]) -> dict[str, Any]:
+    steps = list(run.get("steps") or [])
+    last_completed_index = -1
+    last_completed_key = None
+    resume_index = 0
+    for index, step in enumerate(steps):
+        if step.get("status") in {"passed", "skipped"}:
+            last_completed_index = index
+            last_completed_key = step.get("key")
+            resume_index = index + 1
+        elif step.get("status") in {"running", "waiting_input", "failed", "pending", "queued", "cancelling"}:
+            resume_index = index
+            break
+    checkpoints = list(run.get("checkpoints") or [])
+    return {
+        "available": True,
+        "last_completed_step": last_completed_key,
+        "last_completed_index": last_completed_index,
+        "resume_index": min(resume_index, max(0, len(steps) - 1)) if steps else 0,
+        "checkpoint_id": (checkpoints[-1] or {}).get("id") if checkpoints else "baseline",
+        "recommended_action": "resume",
+        "message": "服務重新啟動中斷執行，可從最近完成的步驟繼續。",
+    }
+
 def mark_stale_active_run_interrupted(run: dict[str, Any], *, reason: str | None = None) -> dict[str, Any]:
     message = reason or "Workflow owner process is no longer alive; run was recovered as interrupted."
     run["status"] = "failed"
@@ -67,6 +93,8 @@ def mark_stale_active_run_interrupted(run: dict[str, Any], *, reason: str | None
     run["ended_at"] = utc_now()
     run["updated_at"] = utc_now()
     run["restart_recoverable"] = True
+    run["recovery"] = build_restart_recovery(run)
+    run["project_lock"] = None
     for step in run.get("steps", []):
         if step.get("status") in {"queued", "running", "cancelling"}:
             step["status"] = "failed"
@@ -208,12 +236,14 @@ def mark_interrupted_store_runs(data: dict[str, Any]) -> list[dict[str, Any]]:
         if run_owner and not owner_matches_current_process(run_owner) and owner_process_is_alive(run_owner):
             continue
         run["status"] = "failed"
-        run["error"] = "Workflow server restarted before this run completed. Resume or retry the run after reviewing artifacts."
+        run["error"] = "Workflow server restarted before this run completed. Resume from the latest checkpoint."
         run["error_code"] = "INTERRUPTED"
         run["ended_at"] = utc_now()
         run["updated_at"] = utc_now()
         run["interrupted_by_owner"] = owner
         run["restart_recoverable"] = True
+        run["recovery"] = build_restart_recovery(run)
+        run["project_lock"] = None
         for step in run.get("steps", []):
             if step.get("status") == "running":
                 step["status"] = "failed"
@@ -226,6 +256,7 @@ def mark_interrupted_store_runs(data: dict[str, Any]) -> list[dict[str, Any]]:
 
 __all__ = [
     "ACTIVE_RUN_STATUSES",
+    "build_restart_recovery",
     "recover_stale_active_runs_for_project",
     "mark_stale_active_run_interrupted",
     "active_run_owner_is_live",

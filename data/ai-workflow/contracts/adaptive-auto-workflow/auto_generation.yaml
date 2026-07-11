@@ -11,15 +11,13 @@ agent: qwen
 outputs:
 - auto-generation-result.md
 function: ''
-retry: 99
-maxRetries: 99
+retry: 3
+maxRetries: 3
 failAction: selected_step
 retryFromStepKey: auto_generation
-retryEscalationEvery: 3
-retryEscalationStepKey: generate_task_prompts
 keepSameSession: true
 injectFailureFeedback: true
-stopAfterFailures: 99
+stopAfterFailures: 3
 allowInteraction: false
 thinking: true
 thinkingLevel: medium
@@ -42,6 +40,6 @@ includeSkillContext: false
 compactRetryPromptWhenReusingSession: true
 retryPolicy:
   defaultRetryTo: auto_generation
-  escalateEvery: 3
-  escalateTo: generate_task_prompts
-  maxRetries: 99
+  maxRetries: 3
+
+taskTimeoutSec: 300

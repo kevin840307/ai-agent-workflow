@@ -1,7 +1,9 @@
 id: final_review
 key: final_review
 name: Final Review
-description: Evidence-based deterministic final verifier. Python checks task manifest, compiled workflow evidence, direct edits, tests, external validation, and writes final-review.md plus verifier-report.json.
+description: Evidence-based deterministic final verifier. Python checks task manifest,
+  compiled workflow evidence, direct edits, tests, external validation, and writes
+  final-review.md plus verifier-report.json.
 enabled: true
 type: python
 skill: steps/general-auto-development/05_final_review.md
@@ -12,12 +14,12 @@ outputs:
 - verifier-report.json
 - diff-context.md
 function: validate_general_auto_final
-retry: 99
+retry: 2
 failAction: selected_step
 retryFromStepKey: build
 keepSameSession: true
 injectFailureFeedback: true
-stopAfterFailures: 3
+stopAfterFailures: 2
 allowInteraction: false
 thinking: true
 thinkingLevel: medium
@@ -37,6 +39,6 @@ path: contracts/general-auto-development/final_review.yaml
 compactPrompt: true
 includeSkillContext: false
 compactRetryPromptWhenReusingSession: true
-
 functions:
 - validate_general_auto_final
+maxRetries: 2

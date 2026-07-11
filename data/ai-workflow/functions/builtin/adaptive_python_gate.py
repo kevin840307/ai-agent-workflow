@@ -3,7 +3,7 @@ from __future__ import annotations
 FUNCTION_META = {
     "id": "adaptive_python_gate",
     "label": "Adaptive Python Gate",
-    "description": "Run a configured validation script, pytest when tests exist, or write a skipped PASS when no Python gate is available.",
+    "description": "Run configured validation, pytest, or run_tests.py; report NOT_CONFIGURED when no optional validator exists and never fabricate PASS evidence.",
     "ui": {"tabs": ["basic", "retry", "advanced"]},
 }
 

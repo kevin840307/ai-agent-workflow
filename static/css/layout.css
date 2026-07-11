@@ -21,7 +21,8 @@
 .details {
   border-left: 1px solid var(--line);
   display: grid;
-  grid-template-rows: auto 1fr;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  overflow: hidden;
 }
 
 .rail-resizer {

@@ -20,6 +20,7 @@ import shutil
 import subprocess
 import sys
 import time
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -81,8 +82,16 @@ PYTEST_GROUPS: list[tuple[str, list[str]]] = [
             "tests/test_hardening_next.py",
             "tests/test_production_hardening_round2.py",
             "tests/test_production_hardening_round3.py",
+            "tests/test_project_path_write_mode.py",
             "tests/test_full_system_optimization_round4.py",
             "tests/test_reliability_hardening_round5.py",
+            "tests/test_workflow_optimization_v6.py",
+            "tests/test_workflow_optimization_v7.py",
+            "tests/test_system_optimization_v8.py",
+            "tests/test_system_productization_v9.py",
+            "tests/test_production_readiness_v10.py",
+            "tests/test_stability_v11.py",
+            "tests/test_ui_and_local_qwen_v12.py",
         ],
     ),
     (
@@ -351,6 +360,75 @@ def write_shell_pipeline(groups: list[tuple[str, list[str]]], group_timeout: int
     return script_path
 
 
+
+def _junit_totals(paths: list[Path]) -> dict[str, int]:
+    totals = {"tests": 0, "failures": 0, "errors": 0, "skipped": 0}
+    for path in paths:
+        if not path.exists():
+            continue
+        root = ET.parse(path).getroot()
+        suites = [root] if root.tag == "testsuite" else list(root.findall("testsuite"))
+        for suite in suites:
+            for key in totals:
+                totals[key] += int(suite.attrib.get(key, "0") or 0)
+    totals["passed"] = totals["tests"] - totals["failures"] - totals["errors"] - totals["skipped"]
+    return totals
+
+
+def run_isolated_matrix(groups: list[tuple[str, list[str]]], file_timeout: int) -> int:
+    """Run every test file in a fresh interpreter and aggregate JUnit evidence.
+
+    This is the production acceptance path. It avoids FastAPI/TestClient or agent
+    subprocess teardown state leaking from one test module into another while
+    still executing the complete assigned matrix.
+    """
+    junit_dir = LOG_DIR / "junit"
+    shutil.rmtree(junit_dir, ignore_errors=True)
+    junit_dir.mkdir(parents=True, exist_ok=True)
+    results: list[dict[str, object]] = []
+    junit_paths: list[Path] = []
+    started = time.monotonic()
+    for group_name, files in groups:
+        for test_file in files:
+            stem = Path(test_file).stem
+            label = f"{group_name}__{stem}"
+            junit_path = junit_dir / f"{label}.xml"
+            junit_paths.append(junit_path)
+            result = run_pytest(label, [test_file], file_timeout, extra_args=[f"--junitxml={junit_path}"])
+            results.append(result)
+    failures = [str(item["name"]) for item in results if int(item["return_code"]) != 0]
+    totals = _junit_totals(junit_paths)
+    coverage = coverage_report()
+    summary = {
+        "schema": "aiwf.test-pipeline.v3",
+        "status": "PASS" if not failures else "FAIL",
+        "mode": "isolated-all",
+        "elapsed_seconds": round(time.monotonic() - started, 2),
+        "coverage": coverage,
+        "files_run": len(results),
+        "failures": failures,
+        "junit_totals": totals,
+        "results": results,
+    }
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
+    (LOG_DIR / "summary.json").write_text(json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8")
+    lines = [
+        f"status: {summary['status']}",
+        "mode: isolated-all",
+        f"elapsed_seconds: {summary['elapsed_seconds']}",
+        f"files_run: {summary['files_run']}",
+        f"coverage_ok: {coverage['ok']} ({coverage['grouped_count']}/{coverage['discovered_count']} files)",
+        f"tests: {totals['tests']}",
+        f"passed: {totals['passed']}",
+        f"skipped: {totals['skipped']}",
+        f"failures: {totals['failures']}",
+        f"errors: {totals['errors']}",
+        f"failed_files: {', '.join(failures) if failures else 'none'}",
+    ]
+    (LOG_DIR / "summary.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    print("\n" + "\n".join(lines), flush=True)
+    return 1 if failures else 0
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run all tests in deterministic groups.")
     parser.add_argument("--mode", choices=["all", "fast", "e2e"], default="all", help="test subset to run")
@@ -364,6 +442,7 @@ def main() -> int:
     parser.add_argument("--no-strict-coverage", dest="strict_coverage", action="store_false")
     parser.add_argument("--python-runner", action="store_true", help="use the in-process Python group launcher instead of the generated shell pipeline")
     parser.add_argument("--execute-all", action="store_true", help="run all selected groups sequentially; CI should prefer --group matrix jobs")
+    parser.add_argument("--isolate-all", action="store_true", help="run every selected test file in its own pytest interpreter and aggregate JUnit evidence")
     args = parser.parse_args()
 
     if args.list_groups:
@@ -385,6 +464,8 @@ def main() -> int:
     isolated_results: dict[str, list[dict[str, object]]] = {}
     started = time.monotonic()
     groups = selected_groups(args.mode, args.tier)
+    if args.isolate_all:
+        return run_isolated_matrix(groups, args.file_timeout)
     if not args.execute_all:
         commands = [f"python scripts/run_tests.py --group {group_name}" for group_name, _files in groups]
         lines = [

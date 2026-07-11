@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import re
 from typing import Any
 
 from app.workflow_runtime.failure_diagnosis import diagnose_agent_failure, summarize_failure_diagnosis
@@ -8,6 +9,7 @@ from app.workflow_runtime.failure_classifier import classify_failure
 from app.workflow_runtime.repair_policy import policy_for_failure, render_repair_prompt, write_repair_policy_artifact
 from app.core.paths import read_text, utc_now, write_text
 from app.workflow_runtime.event_log import append_event as append_workflow_event
+from app.workflow_runtime.artifact_policy import artifact_visibility, enrich_artifact_records
 from app.stores import FileArtifactStore, FileEventStore, FileRunStore, FileStepStore
 
 MAX_RUN_LOG_CHARS = 250_000
@@ -20,6 +22,7 @@ def artifact_record(run_id: str, run_dir: Path, rel_path: str) -> dict[str, Any]
         "name": Path(rel_path).name,
         "path": rel_path,
         "size": path.stat().st_size if path.exists() else 0,
+        "visibility": artifact_visibility(rel_path),
         "updated_at": utc_now(),
     }
 
@@ -47,6 +50,20 @@ def classify_repair_error(source_key: str, target_key: str, error: str) -> str:
     if "tool-call json" in text or "artifact content" in text or "returned empty" in text:
         return "AGENT_OUTPUT_FORMAT"
     return "UNKNOWN"
+
+
+def stop_condition_for_failure(error_class: str) -> str:
+    return {
+        "PATH_VIOLATION": "All changed paths are inside Project Path and the project guard passes.",
+        "TIMEOUT": "The target step completes within its timeout and produces verifiable output.",
+        "NO_FILE_OUTPUT": "The owner step creates or modifies the required project files and the filesystem diff is non-empty.",
+        "NO_TEST_GENERATED": "At least one canonical test file exists under tests/ and can be collected.",
+        "NO_PRODUCTION_CHANGE": "The intended production files are changed and pass the step acceptance checks.",
+        "SYNTAX_ERROR": "The affected source and tests compile/import without syntax errors.",
+        "TEST_FAILED": "The configured deterministic test command exits with code 0.",
+        "VALIDATION_FAILED": "The configured validation script exits with code 0.",
+        "AGENT_OUTPUT_FORMAT": "The step returns the required valid artifact or filesystem result without format errors.",
+    }.get(error_class, "The failed acceptance gate passes with concrete evidence and no unresolved error remains.")
 
 
 def repair_strategy_for_class(error_class: str) -> str:
@@ -286,8 +303,10 @@ class RunState:
         input_dir = Path(run["workspace"]) / "input"
         feedback_path = input_dir / "failure-feedback.md"
         previous = read_text(feedback_path)
-        error = str(exc).strip()
-        notes = retry_recovery_notes(source_key, target_key, error)
+        raw_error = str(exc).strip()
+        error = raw_error[:2000]
+        notes = retry_recovery_notes(source_key, target_key, error)[:4]
+        failure = classify_failure(error, step_key=source_key)
         repair_policy = policy_for_failure(error, step_key=source_key, retry_count=retry_count)
         write_repair_policy_artifact(run, target_key, error, retry_count=retry_count)
         entry = (
@@ -296,17 +315,19 @@ class RunState:
             f"- Failed step: {source_key}\n"
             f"- Retry target: {target_key}\n"
             f"- Retry attempt: {retry_count}/{max_retries}\n"
-            f"- Error class: {classify_repair_error(source_key, target_key, error)}\n"
-            f"- Failure classifier: {classify_failure(error, step_key=source_key).get('code')}\n"
-            f"- Agent diagnosis: {summarize_failure_diagnosis(error, step_key=source_key)}\n"
-            f"- Stop condition: retry continues through repeated errors until {target_key} reaches {max_retries}/{max_retries} attempts or all downstream gates pass.\n"
-            f"- Strategy shift: if this same class repeats 3+ times, try a different implementation approach rather than reusing the same output.\n\n"
+            f"- Failure classifier: {failure.get('code')}\n"
+            f"- Agent diagnosis: {summarize_failure_diagnosis(error, step_key=source_key)[:500]}\n\n"
             "### Recovery analysis\n"
-            + "".join(f"- {note}\n" for note in notes)
+            + "".join(f"- {note[:300]}\n" for note in notes)
+            + f"- Stop condition: {stop_condition_for_failure(classify_repair_error(source_key, target_key, error))}\n"
             + "\n### Error message to fix\n\n"
             f"{error}\n\n"
         )
-        write_text(feedback_path, previous + ("\n" if previous.strip() else "") + entry)
+        # Keep only the latest three compact records. Full transcripts remain in
+        # run-log/events; retry prompts must not grow with repeated source code.
+        blocks = re.findall(r"^## Retry Feedback for .*?(?=^## Retry Feedback for |\Z)", previous, flags=re.MULTILINE | re.DOTALL)
+        compact = "\n".join((blocks[-2:] + [entry]))
+        write_text(feedback_path, compact.rstrip() + "\n")
         await self.record_step_event(
             run["id"],
             target_key,
@@ -421,7 +442,7 @@ class RunState:
 
         run = await self.update_run(run_id, apply)
         if run:
-            artifacts = list(run.pop("_artifact_refresh_candidates", []))
+            artifacts = enrich_artifact_records(list(run.pop("_artifact_refresh_candidates", [])))
             self._sync_store_facades()
             run = await self.artifact_store.replace_for_run(run_id, artifacts) or run
             await self.bus.publish(run_id, {"type": "run", "run": run})

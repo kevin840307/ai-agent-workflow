@@ -5,7 +5,7 @@ import os
 import re
 from typing import Any
 
-from app.runtime_modules.errors import WorkflowError
+from .failure_classifier import classify_failure
 
 DEFAULT_REPEATED_FAILURE_LIMIT = int(os.environ.get("AIWF_RETRY_REPEATED_FAILURE_LIMIT", "3") or 3)
 NO_FILE_CHANGE_LIMIT = int(os.environ.get("AIWF_RETRY_NO_FILE_CHANGE_LIMIT", "2") or 2)
@@ -27,25 +27,54 @@ def is_no_file_change_error(text: str) -> bool:
             "no file change",
             "project changes were required",
             "did not create or modify",
+            "did not directly create or modify",
             "expected file(s) not found",
             "no_file_change",
         ]
     )
 
 
-def record_failure_attempt(run: dict[str, Any], *, step_key: str, error: BaseException | str) -> dict[str, Any]:
+def record_failure_attempt(
+    run: dict[str, Any],
+    *,
+    step_key: str,
+    error: BaseException | str,
+    task_id: str | None = None,
+    retry_target: str | None = None,
+) -> dict[str, Any]:
     text = str(error)
     fp = failure_fingerprint(text)
+    failure_class = str(classify_failure(text, step_key=step_key).get("code") or "UNKNOWN")
+    task = str(task_id or "")
     history = run.setdefault("retry_guard_history", [])
-    entry = {"step_key": step_key, "fingerprint": fp, "message": text[:500]}
+    entry = {
+        "source_step": step_key,
+        "step_key": step_key,  # backwards-compatible field
+        "task_id": task,
+        "retry_target": retry_target or step_key,
+        "failure_class": failure_class,
+        "fingerprint": fp,
+        "message": text[:500],
+    }
     history.append(entry)
-    # Keep run state compact in long local sessions.
     del history[:-50]
-    same_count = sum(1 for item in history if item.get("step_key") == step_key and item.get("fingerprint") == fp)
-    no_file_count = sum(1 for item in history if item.get("step_key") == step_key and is_no_file_change_error(item.get("message") or ""))
+
+    def same_scope(item: dict[str, Any]) -> bool:
+        return (
+            (item.get("source_step") or item.get("step_key")) == step_key
+            and str(item.get("task_id") or "") == task
+            and str(item.get("failure_class") or failure_class) == failure_class
+        )
+
+    same_count = sum(1 for item in history if same_scope(item) and item.get("fingerprint") == fp)
+    no_file_count = sum(1 for item in history if same_scope(item) and is_no_file_change_error(item.get("message") or ""))
     return {
-        "schema": "aiwf.retry-guard-attempt.v1",
+        "schema": "aiwf.retry-guard-attempt.v2",
+        "source_step": step_key,
         "step_key": step_key,
+        "task_id": task,
+        "retry_target": retry_target or step_key,
+        "failure_class": failure_class,
         "fingerprint": fp,
         "same_failure_count": same_count,
         "no_file_change_count": no_file_count,
@@ -53,10 +82,39 @@ def record_failure_attempt(run: dict[str, Any], *, step_key: str, error: BaseExc
     }
 
 
-def should_stop_retry(run: dict[str, Any], *, step_key: str, error: BaseException | str) -> tuple[bool, str | None, dict[str, Any]]:
-    attempt = record_failure_attempt(run, step_key=step_key, error=error)
+def should_stop_retry(
+    run: dict[str, Any],
+    *,
+    step_key: str,
+    error: BaseException | str,
+    task_id: str | None = None,
+    retry_target: str | None = None,
+) -> tuple[bool, str | None, dict[str, Any]]:
+    attempt = record_failure_attempt(
+        run,
+        step_key=step_key,
+        error=error,
+        task_id=task_id,
+        retry_target=retry_target,
+    )
+    scope = step_key + (f"/{task_id}" if task_id else "")
     if attempt["is_no_file_change"] and attempt["no_file_change_count"] >= NO_FILE_CHANGE_LIMIT:
-        return True, f"Retry loop guard stopped {step_key}: NO_FILE_CHANGE repeated {attempt['no_file_change_count']} times.", attempt
+        return True, f"Retry loop guard stopped {scope}: NO_FILE_CHANGE repeated {attempt['no_file_change_count']} times.", attempt
     if attempt["same_failure_count"] >= DEFAULT_REPEATED_FAILURE_LIMIT:
-        return True, f"Retry loop guard stopped {step_key}: same failure repeated {attempt['same_failure_count']} times.", attempt
+        return True, f"Retry loop guard stopped {scope}: same failure repeated {attempt['same_failure_count']} times.", attempt
     return False, None, attempt
+
+
+def clear_retry_history(run: dict[str, Any], *, step_key: str, task_id: str | None = None) -> int:
+    history = list(run.get("retry_guard_history") or [])
+    task = str(task_id or "")
+    kept = [
+        item
+        for item in history
+        if not (
+            (item.get("source_step") or item.get("step_key")) == step_key
+            and (task_id is None or str(item.get("task_id") or "") == task)
+        )
+    ]
+    run["retry_guard_history"] = kept
+    return len(history) - len(kept)

@@ -23,6 +23,8 @@ Retry feedback for this task, if any:
 Do:
 - Directly edit real files inside the selected project.
 - Keep earlier completed work intact.
+- Use the minimum sufficient implementation; do not add unrequested public parameters or parallel/duplicate implementations.
+- Keep one canonical production implementation and one canonical test layout.
 - Add or update tests when the task prompt asks for tests or when needed to prove the change.
 - When this is a repair retry, fix only the concrete failure feedback and preserve working code.
 - Do not edit workflow/run files, validation scripts, `.git`, `.qwen`, `.qwen-workflow`, `.ai-workflow`, or files outside the project.

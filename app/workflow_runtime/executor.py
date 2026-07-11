@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import copy
 import json
 import re
 from pathlib import Path
@@ -14,13 +15,20 @@ from app.runtime_modules.files import project_file_snapshot, snapshot_changed
 
 from .actions import WorkflowActions
 from .error_codes import classify_exception
+from .failure_classifier import classify_failure
 from .retry_policy import retry_target_for_failure
 from .step_utils import bool_config, expected_file_candidates, expected_files, format_exception, step_config, timeout_seconds
 from .trace import write_run_trace_artifacts
 from .agent_safety import write_agent_safety_report
 from .event_log import append_event as append_workflow_event
 from .run_lifecycle import cancel_requested, write_project_lock
-from .retry_guard import should_stop_retry
+from .artifact_policy import compact_run_diagnostics
+from app.workflow_engine.state_machine import phase_for_step
+from .retry_guard import should_stop_retry, clear_retry_history
+from .recovery_counters import increment_recovery_counter, reset_consecutive_failures
+from .run_diff import build_run_diff
+from .scope_control import analyze_scope_delta
+from .completion_gate import evaluate_completion
 
 
 class WorkflowExecutor:
@@ -89,9 +97,13 @@ class WorkflowExecutor:
                 write_project_lock(run)
             await self.log(run, "workflow: started")
 
-            step_records = [item for item in run.get("steps", []) if item.get("status") != "disabled"]
+            # Actions close over this stable run object. Runtime-only flags such
+            # as fresh-session recovery must be written here even when store
+            # updates later return a replacement dict.
+            action_run = run
+            step_records = [item for item in action_run.get("steps", []) if item.get("status") != "disabled"]
             action_records = [
-                (step_record["key"], self.actions.action_for_step(run, step_record, output_dir), step_record)
+                (step_record["key"], self.actions.action_for_step(action_run, step_record, output_dir), step_record)
                 for step_record in step_records
             ]
             key_to_index = {key: index for index, (key, _, _) in enumerate(action_records)}
@@ -100,26 +112,28 @@ class WorkflowExecutor:
                 key, action, step_record = action_records[index]
                 await self._raise_if_cancel_requested(run_id)
                 try:
-                    await self._run_step(run_id, run, key, action)
+                    await self._run_step(run_id, action_run, key, action)
                     await self._raise_if_cancel_requested(run_id)
                     index += 1
                 except UserInputRequired:
                     raise
                 except Exception as exc:
-                    base_retry_key = retry_target_for_failure(run, step_record, step_records, index, output_dir)
+                    base_retry_key = retry_target_for_failure(action_run, step_record, step_records, index, output_dir, error=exc)
                     if base_retry_key is None:
                         raise
                     if base_retry_key not in key_to_index:
                         await self.log(run, f"{key}: retry target {base_retry_key} is not in this workflow")
                         raise
-                    base_retry_count = await self.get_step_retry_count(run_id, base_retry_key)
+                    retry_streaks = action_run.setdefault("retry_streaks", {})
+                    source_retry_streak = int(retry_streaks.get(key, 0) or 0)
                     retry_key = retry_target_for_failure(
-                        run,
+                        action_run,
                         step_record,
                         step_records,
                         index,
                         output_dir,
-                        next_retry_count=base_retry_count + 1,
+                        next_retry_count=source_retry_streak + 1,
+                        error=exc,
                     )
                     if retry_key is None:
                         raise
@@ -129,21 +143,47 @@ class WorkflowExecutor:
                     if retry_key != base_retry_key:
                         await self.log(
                             run,
-                            f"{key}: retry escalation {base_retry_key} -> {retry_key} on attempt {base_retry_count + 1}",
+                            f"{key}: retry escalation {base_retry_key} -> {retry_key} on attempt {source_retry_streak + 1}",
                         )
-                    retry_step_record = next((item for item in step_records if item.get("key") == retry_key), step_record)
-                    retry_policy = retry_step_record.get("retryPolicy") or (retry_step_record.get("config") or {}).get("retryPolicy") or {}
-                    policy_max_retries = retry_policy.get("maxRetries") if isinstance(retry_policy, dict) else None
-                    max_retries = int(policy_max_retries or retry_step_record.get("max_retries", step_record.get("max_retries", 0)) or 0)
-                    current_retry_count = await self.get_step_retry_count(run_id, retry_key)
-                    if current_retry_count >= max_retries:
+                    # Retry budgets belong to the step that actually failed,
+                    # not to the step selected as the repair target. This keeps
+                    # AI Review from inheriting an exhausted Build budget.
+                    source_retry_policy = step_record.get("retryPolicy") or (step_record.get("config") or {}).get("retryPolicy") or {}
+                    policy_max_retries = source_retry_policy.get("maxRetries") if isinstance(source_retry_policy, dict) else None
+                    max_retries = int(policy_max_retries or step_record.get("max_retries", 0) or 0)
+                    if source_retry_streak >= max_retries:
                         message = (
-                            f"Retry stopped: {retry_key} already reached max retries "
-                            f"({current_retry_count}/{max_retries}). Last failure from {key}: {exc}"
+                            f"Retry stopped: {key} already reached its consecutive retry budget "
+                            f"({source_retry_streak}/{max_retries}). Repair target was {retry_key}: {exc}"
                         )
                         await self.set_step(run_id, key, "failed", message, error_code=classify_exception(message))
-                        await self.log(run, f"{key}: max retries reached for {retry_key}: {exc}")
+                        await self.log(action_run, f"{key}: consecutive retry budget reached; repair target={retry_key}: {exc}")
                         raise WorkflowError(message) from exc
+                    failure_code = str(classify_failure(exc, step_key=key).get("code") or "UNKNOWN")
+                    if failure_code == "TIMEOUT":
+                        # Reusing the same timed-out conversation commonly repeats
+                        # the same stalled behavior. Force the next agent call,
+                        # whichever repair step it belongs to, onto a fresh session.
+                        action_run["_fresh_agent_session_once"] = True
+                        await self.log(action_run, f"{key}: timeout recovery will use a fresh agent session")
+
+                    source_retry_streak += 1
+                    retry_streaks[key] = source_retry_streak
+                    def persist_retry_streak(item: dict[str, Any]) -> None:
+                        item.setdefault("retry_streaks", {})[key] = source_retry_streak
+                        increment_recovery_counter(item, "agent_attempts")
+                        increment_recovery_counter(item, "consecutive_failures")
+                        if failure_code == "TIMEOUT":
+                            item["_fresh_agent_session_once"] = True
+                            increment_recovery_counter(item, "session_restarts")
+                        if retry_key != key and any(token in str(retry_key).lower() for token in ("plan", "prompt")):
+                            increment_recovery_counter(item, "replans")
+                        if bool(classify_failure(exc, step_key=key).get("auto_repairable")):
+                            increment_recovery_counter(item, "deterministic_repairs")
+                    latest_streak = await self.update_run(run_id, persist_retry_streak)
+                    if latest_streak:
+                        run = latest_streak
+
                     # Reliability guard: stop deterministic retry loops before local runs
                     # burn the whole retry budget on the same failure text.  The
                     # history is stored on the run so crash/restart/debug bundles
@@ -151,7 +191,13 @@ class WorkflowExecutor:
                     guard_payload: dict[str, Any] = {}
                     def update_retry_guard_history(item: dict[str, Any]) -> None:
                         nonlocal guard_payload
-                        stop, stop_reason, attempt = should_stop_retry(item, step_key=retry_key, error=exc)
+                        stop, stop_reason, attempt = should_stop_retry(
+                            item,
+                            step_key=key,
+                            error=exc,
+                            task_id=self._task_id_from_error(exc),
+                            retry_target=retry_key,
+                        )
                         attempt["stop"] = stop
                         attempt["stop_reason"] = stop_reason
                         guard_payload = attempt
@@ -163,13 +209,23 @@ class WorkflowExecutor:
                         await self.set_step(run_id, key, "failed", message, error_code="RETRY_LOOP_DETECTED")
                         await self.log(run, message)
                         raise WorkflowError(message) from exc
-                    if self._same_failure_repeated(run, retry_key, exc):
-                        await self.log(run, f"{key}: same failure observed again for {retry_key}; retry guard count={guard_payload.get('same_failure_count')}: {exc}")
-                    retry_count = await self.increment_step_retry(run_id, retry_key)
+                    if self._same_failure_repeated(run, key, exc):
+                        await self.log(run, f"{key}: same failure observed again; retry target={retry_key}; retry guard count={guard_payload.get('same_failure_count')}: {exc}")
+                    retry_count = await self.increment_step_retry(run_id, key)
                     target_index = key_to_index[retry_key]
-                    await self.append_failure_feedback(run, key, retry_key, exc, retry_count, max_retries)
-                    await self.log(run, f"{key}: failed, retrying from {retry_key} ({retry_count}/{max_retries}): {exc}")
-                    await self.reset_steps_from(run_id, target_index)
+                    await self.append_failure_feedback(action_run, key, retry_key, exc, retry_count, max_retries)
+                    await self.log(action_run, f"{key}: failed, retrying from {retry_key} ({retry_count}/{max_retries}): {exc}")
+                    reset_run = await self.reset_steps_from(run_id, target_index)
+                    if reset_run:
+                        # Keep the stable object captured by all step actions, but
+                        # refresh it from the authoritative Store after a retry reset.
+                        # Some Store adapters return the exact same dict object. Take
+                        # a deep snapshot before clearing, otherwise the synchronization
+                        # erases the Run itself and the next retry loses workspace/steps.
+                        refreshed_run = copy.deepcopy(reset_run)
+                        action_run.clear()
+                        action_run.update(refreshed_run)
+                        run = action_run
                     index = target_index
 
             await self._mark_done(run_id, run, run_dir)
@@ -202,7 +258,12 @@ class WorkflowExecutor:
             await self.record_step_event(run_id, key, "started", f"{key}: started")
         try:
             timeout = timeout_seconds(step_record)
-            if timeout:
+            config = step_config(step_record)
+            if bool_config(config, "enableTaskLoop", False):
+                # Task-loop actions enforce a fresh timeout per task. A single
+                # outer countdown would unfairly consume later tasks' budgets.
+                await action()
+            elif timeout:
                 await asyncio.wait_for(action(), timeout=timeout)
             else:
                 await action()
@@ -229,6 +290,47 @@ class WorkflowExecutor:
                 await self.record_step_event(run_id, key, "failed", str(exc))
             raise
         await self.set_step(run_id, key, "passed")
+        # Successful completion resets only the consecutive failure streak. The
+        # cumulative retry_count remains available for reports and scoring.
+        run.setdefault("retry_streaks", {})[key] = 0
+        # Actions mutate the stable in-memory Run with validation evidence, task
+        # checkpoints, and session handoff state. Persist those authoritative
+        # fields before a repository snapshot can overwrite them.
+        validation_results_snapshot = json.loads(json.dumps(run.get("validation_results") or []))
+        task_checkpoints_snapshot = json.loads(json.dumps(run.get("task_checkpoints") or []))
+        tasks_snapshot = json.loads(json.dumps(run.get("tasks") or []))
+        last_task_checkpoint_snapshot = run.get("last_task_checkpoint_id")
+        recovery_counters_snapshot = json.loads(json.dumps(run.get("recovery_counters") or {}))
+
+        def clear_guard(item: dict[str, Any]) -> None:
+            item["validation_results"] = validation_results_snapshot
+            item["task_checkpoints"] = task_checkpoints_snapshot
+            item["tasks"] = tasks_snapshot
+            item["last_task_checkpoint_id"] = last_task_checkpoint_snapshot
+            item["recovery_counters"] = recovery_counters_snapshot
+            clear_retry_history(item, step_key=key)
+            item.setdefault("retry_streaks", {})[key] = 0
+            reset_consecutive_failures(item)
+            persisted_step = next((candidate for candidate in item.get("steps", []) if candidate.get("key") == key), None)
+            item["phase"] = phase_for_step(persisted_step, item.get("status"))
+            checkpoints = item.setdefault("checkpoints", [])
+            checkpoints.append(
+                {
+                    "id": f"step-{key}-{len(checkpoints) + 1}",
+                    "kind": "step_completed",
+                    "step_key": key,
+                    "status": "passed",
+                    "created_at": utc_now(),
+                    "retry_count": int((persisted_step or {}).get("retry_count") or 0),
+                    "changed_files": list(item.get("changed_files") or [])[-100:],
+                }
+            )
+            if len(checkpoints) > 100:
+                item["checkpoints"] = checkpoints[-100:]
+            item["last_checkpoint_id"] = item["checkpoints"][-1]["id"]
+        latest = await self.update_run(run_id, clear_guard)
+        if latest:
+            run.update(latest)
         metrics.observe("workflow.step.durationSec", now() - step_started)
         if self.record_step_event:
             await self.record_step_event(run_id, key, "passed", f"{key}: passed")
@@ -272,6 +374,11 @@ class WorkflowExecutor:
                 f"{step_record.get('key')}: project changes were required, but no files changed under Project Path: {project_dir}"
             )
 
+    @staticmethod
+    def _task_id_from_error(exc: BaseException | str) -> str | None:
+        match = re.search(r"\bTASK-\d{3}\b", str(exc), flags=re.IGNORECASE)
+        return match.group(0).upper() if match else None
+
     def _same_failure_repeated(self, run: dict[str, Any], target_key: str, exc: BaseException) -> bool:
         feedback = read_text(Path(run["workspace"]) / "input" / "failure-feedback.md")
         if not feedback.strip():
@@ -300,7 +407,32 @@ class WorkflowExecutor:
         normalized = re.sub(r"\b\d{4}-\d{2}-\d{2}t[^ ]+", "TIMESTAMP", normalized)
         return normalized[:800]
 
+    async def _finalize_artifacts(self, run_id: str, final_run: dict[str, Any]) -> None:
+        """Refresh user-facing artifacts, archive verbose diagnostics, then refresh index."""
+        await self.refresh_artifacts(run_id)
+        compact_run_diagnostics(final_run, force=True)
+        await self.refresh_artifacts(run_id)
+
     async def _mark_done(self, run_id: str, run: dict[str, Any], run_dir: Path) -> None:
+        # Final status is an atomic evidence decision. Always evaluate the latest
+        # persisted Run because retry/reset/session updates may replace the Store
+        # object while actions intentionally retain a stable in-memory reference.
+        data = await self.store.read()
+        latest_run = next((item for item in data.get("runs", []) if item.get("id") == run_id), None)
+        if latest_run:
+            # Store adapters may return the same mutable dict object. Snapshot it
+            # before refreshing the stable in-memory Run or clear() would erase
+            # the authoritative state itself.
+            latest_snapshot = copy.deepcopy(latest_run)
+            run.clear()
+            run.update(latest_snapshot)
+        # A workflow cannot become done when required tests/validation or task
+        # state are missing.
+        completion = evaluate_completion(run, output_dir=run_dir / "output")
+        write_text(run_dir / "output" / "completion-gate.json", json.dumps(completion, indent=2, ensure_ascii=False))
+        if completion.get("status") != "PASS":
+            raise WorkflowError("FINAL_COMPLETION_GATE_FAILED: " + "; ".join(completion.get("errors") or []))
+
         def finish(r: dict[str, Any]) -> None:
             r["status"] = "done"
             r["error"] = None
@@ -312,11 +444,23 @@ class WorkflowExecutor:
         if not final_run:
             final_run = dict(run)
             finish(final_run)
+        try:
+            diff = build_run_diff(final_run, run_dir)
+            files = diff.get("files") or diff.get("changes") or []
+            scope_delta = analyze_scope_delta(
+                read_text(run_dir / "requirement.md"),
+                file_changes=files,
+                planned_tasks=list(final_run.get("tasks") or []),
+            )
+            final_run["scope_delta"] = scope_delta
+            write_text(run_dir / "output" / "scope-delta.json", json.dumps(scope_delta, indent=2, ensure_ascii=False))
+        except Exception as exc:
+            final_run["scope_delta"] = {"status": "unknown", "error": str(exc)}
         write_text(run_dir / ".workflow" / "state.json", json.dumps(final_run, indent=2, ensure_ascii=False))
         write_run_trace_artifacts(final_run, run_dir)
         write_agent_safety_report(final_run)
         append_workflow_event(final_run, "run.completed", message="workflow: done", status="done")
-        await self.refresh_artifacts(run_id)
+        await self._finalize_artifacts(run_id, final_run)
         await self.log(run, "workflow: done")
         await self.bus.publish(run_id, {"type": "done"})
 
@@ -373,7 +517,7 @@ class WorkflowExecutor:
         write_run_trace_artifacts(cancelled_run, run_dir)
         write_agent_safety_report(cancelled_run)
         append_workflow_event(cancelled_run, "run.cancelled", message="Workflow cancelled by user.", status="cancelled", error_code=cancelled_run.get("error_code"))
-        await self.refresh_artifacts(run_id)
+        await self._finalize_artifacts(run_id, cancelled_run)
         await self.bus.publish(run_id, {"type": "cancelled", "error": "Workflow cancelled by user."})
 
     async def _mark_failed(self, run_id: str, run: dict[str, Any], run_dir: Path, exc: Exception) -> None:
@@ -396,5 +540,5 @@ class WorkflowExecutor:
         write_run_trace_artifacts(failed_run, run_dir)
         write_agent_safety_report(failed_run)
         append_workflow_event(failed_run, "run.failed", message=str(error), status="failed", error_code=error_code)
-        await self.refresh_artifacts(run_id)
+        await self._finalize_artifacts(run_id, failed_run)
         await self.bus.publish(run_id, {"type": "failed", "error": str(error)})

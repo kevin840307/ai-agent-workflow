@@ -32,7 +32,7 @@ UI Workflow Console
 
 ## Safety defaults
 
-- Real agents default to `patchMode=review`.
+- Real agents default to `patchMode=auto_apply`, so the agent cwd is the selected project. `review` and `dry_run` remain opt-in isolation modes.
 - Same project allows one active writer.
 - Restart recovery clears stale locks.
 - `events.jsonl`, `state.json`, `final-report.md`, and `debug-bundle.json` are standard output artifacts.

@@ -1,0 +1,1 @@
+用 Python 建立 bubble_sort.py，提供 bubble_sort(data) 且不可修改輸入列表，並補上必要測試。

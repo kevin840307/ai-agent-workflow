@@ -18,9 +18,8 @@ from app.workflow_runtime.step_utils import parse_function_refs
 from app.workflow_runtime.thinking import normalize_thinking_level, thinking_enabled
 
 
-SYSTEM_WORKFLOW_ID = "system-controlled-qwen"
-SAMPLE_WORKFLOW_ID = "sample-custom-workflow"
-SAMPLE_WORKFLOW_FOLDER = "sample-custom-workflow"
+SYSTEM_WORKFLOW_ID = "general-auto-development"
+ALLOWED_WORKFLOW_IDS = ("general-auto-development", "adaptive-auto-workflow", "security-scan")
 
 # Canonical workflow root. The old data/workflows bundle source is intentionally
 # no longer a first-class runtime location; workflows, skill prompts, metadata,
@@ -534,126 +533,56 @@ def ensure_system_workflow() -> None:
     system_workflow_with_folder()
 
 
-def sample_workflow_config() -> dict:
-    workflow = deepcopy(stored_system_workflow_config())
-    now = runtime.utc_now()
-    workflow.update(
-        {
-            "id": SAMPLE_WORKFLOW_ID,
-            "kind": "custom",
-            "name": "Sample Custom Workflow",
-            "description": "Editable example copied from the system workflow. Use it to learn separated steps, contracts, Python functions, review, retry, and gates.",
-            "active": False,
-            "protected": False,
-            "deletable": True,
-            "folderName": SAMPLE_WORKFLOW_FOLDER,
-            "created_at": now,
-            "updated_at": now,
-        }
-    )
-    for step in workflow.get("steps", []):
-        if str(step.get("id", "")).startswith("system-"):
-            step["id"] = f"sample-{step['key']}"
-        step["contractId"] = step.get("key") or step.get("contractId") or "step"
-    return workflow
-
-
-def ensure_sample_workflow() -> None:
-    ensure_workflow_dir()
-    if list_custom_workflow_files():
-        return
-    write_workflow_assets(sample_workflow_config())
-
 
 # ---------------------------------------------------------------------------
 # API service surface
 # ---------------------------------------------------------------------------
 
 async def list_workflows(project_path: str | None = None) -> dict:
-    ensure_sample_workflow()
-    default_system = system_workflow_with_folder()
-    systems: list[dict[str, Any]] = []
-    custom: list[dict[str, Any]] = []
+    """Return the production workflow catalog only.
 
-    for path in list_workflow_files():
+    Internal asset loaders remain available to tests/plugins, but the product UI
+    exposes exactly the three supported, repository-maintained workflows.
+    """
+    ensure_workflow_dir()
+    items: list[dict[str, Any]] = []
+    for workflow_id in ALLOWED_WORKFLOW_IDS:
         try:
-            workflow = workflow_asset_service.load_workflow_asset(path.stem, project_path=project_path)
-            workflow = read_prompt_files(normalize_workflow_steps(workflow), workflow.get("folderName") or workflow.get("id"))
-            if workflow.get("id") == SYSTEM_WORKFLOW_ID:
-                default_system = workflow
-            elif workflow.get("kind") == "system" or workflow.get("protected"):
-                workflow["kind"] = "system"
-                workflow["protected"] = True
-                workflow["deletable"] = False
-                systems.append(workflow)
-            else:
-                custom.append(workflow)
+            workflow = workflow_asset_service.load_workflow_asset(workflow_id, project_path=project_path)
         except Exception as exc:
-            custom.append({"id": path.stem, "kind": "asset", "name": path.stem, "workflowPath": f"workflows/{path.name}", "error": str(exc), "steps": []})
-
-    # Project-local .ai-workflow/workflows/*.workflow can override global files.
-    if project_path:
-        global_ids = {item.get("id") for item in [default_system, *systems, *custom]}
-        for workflow in workflow_asset_service.list_workflow_assets(project_path):
-            if workflow.get("scope") != "project" or workflow.get("id") in global_ids:
-                continue
-            item = read_prompt_files(normalize_workflow_steps(workflow), workflow.get("folderName") or workflow.get("id"))
-            if item.get("kind") == "system" or item.get("protected"):
-                item["kind"] = "system"
-                item["protected"] = True
-                item["deletable"] = False
-                systems.append(item)
-            else:
-                custom.append(item)
-
-    systems.sort(key=lambda item: (item.get("updated_at") or item.get("name") or ""), reverse=True)
-    custom.sort(key=lambda item: (item.get("kind") == "asset", item.get("updated_at") or item.get("name") or ""), reverse=True)
-    return {"system": default_system, "systems": systems, "custom": custom, "functions": workflow_asset_service.function_catalog(project_path)}
+            raise HTTPException(status_code=500, detail=f"Required production workflow is unavailable: {workflow_id}: {exc}") from exc
+        item = read_prompt_files(normalize_workflow_steps(workflow), workflow.get("folderName") or workflow.get("id"))
+        item["kind"] = "system"
+        item["protected"] = True
+        item["deletable"] = False
+        items.append(item)
+    by_id = {item.get("id"): item for item in items}
+    default_system = by_id[SYSTEM_WORKFLOW_ID]
+    systems = [by_id[item] for item in ALLOWED_WORKFLOW_IDS if item != SYSTEM_WORKFLOW_ID]
+    return {"system": default_system, "systems": systems, "custom": [], "functions": workflow_asset_service.function_catalog(project_path)}
 
 
 async def get_workflow(workflow_id: str, project_path: str | None = None) -> dict:
-    if workflow_id == SYSTEM_WORKFLOW_ID:
-        return system_workflow_with_folder()
+    if workflow_id not in ALLOWED_WORKFLOW_IDS:
+        raise HTTPException(status_code=404, detail="Workflow not found")
     try:
         workflow = workflow_asset_service.load_workflow_asset(workflow_id, project_path=project_path)
     except HTTPException:
         raise HTTPException(status_code=404, detail="Workflow not found")
-    return read_prompt_files(normalize_workflow_steps(workflow), workflow.get("folderName") or workflow.get("id"))
+    item = read_prompt_files(normalize_workflow_steps(workflow), workflow.get("folderName") or workflow.get("id"))
+    item.update({"kind": "system", "protected": True, "deletable": False})
+    return item
 
 
 async def upsert_workflow(workflow: dict) -> dict:
-    if workflow.get("id") == SYSTEM_WORKFLOW_ID:
-        raise HTTPException(status_code=400, detail="System workflow is read-only")
-    existing_path = find_workflow_path(workflow.get("id", ""))
-    existing = read_workflow_file(existing_path) if existing_path else None
-    if existing and (existing.get("kind") == "system" or existing.get("protected")):
-        raise HTTPException(status_code=400, detail="Protected workflow is read-only")
-    if workflow.get("kind") == "system" or workflow.get("protected"):
-        raise HTTPException(status_code=400, detail="System/protected workflows must be maintained as repository assets, not saved from the UI")
-    item = _normalize_workflow(workflow, workflow.get("folderName") or workflow.get("id"))
-    if existing:
-        item["created_at"] = existing.get("created_at", item["created_at"])
-    return write_workflow_assets(item)
+    raise HTTPException(
+        status_code=403,
+        detail="Production workflow catalog is read-only. Maintain the three repository workflow assets through a versioned release.",
+    )
 
 
 async def delete_workflow(workflow_id: str) -> dict:
-    if workflow_id == SYSTEM_WORKFLOW_ID:
-        raise HTTPException(status_code=400, detail="System workflow cannot be deleted")
-    path = find_workflow_path(workflow_id)
-    if not path:
-        raise HTTPException(status_code=404, detail="Workflow not found")
-    try:
-        workflow = workflow_asset_service.load_workflow_asset(workflow_id)
-    except Exception:
-        workflow = {"id": workflow_id}
-    if workflow.get("protected") or workflow.get("kind") == "system":
-        raise HTTPException(status_code=400, detail="Protected workflow cannot be deleted")
-    path.unlink(missing_ok=True)
-    # Remove only folders dedicated to this workflow id. Shared/manual assets stay.
-    for root in (CONTRACTS_DIR / slugify(workflow_id), STEPS_DIR / slugify(workflow_id)):
-        if root.exists() and root.is_dir():
-            shutil.rmtree(root)
-    return {"ok": True}
+    raise HTTPException(status_code=403, detail="Production workflows cannot be deleted from the UI.")
 
 
 async def get_functions() -> dict:

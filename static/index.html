@@ -1,10 +1,10 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-Hant">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Agent Workflow</title>
-    <link rel="stylesheet" href="/static/styles.css?v=20260704-direct-edit-gad" />
+    <title>AI Workflow Controller</title>
+    <link rel="stylesheet" href="/static/styles.css?v=20260711-ui-v12" />
   </head>
   <body data-page="workflow-runner">
     <!-- App region: Project sessions -->
@@ -47,7 +47,7 @@
               <strong id="runStatusMeta">No active run</strong>
             </div>
             <div>
-              <span>Agent</span>
+              <span>Agent 原始輸出</span>
               <strong id="qwenMeta">Checking agent...</strong>
             </div>
           </div>
@@ -80,71 +80,71 @@
         </div>
       </header>
 
+      <section id="setupStatusCard" class="setup-status-card compact-notice" hidden aria-live="polite">
+        <button id="openSetupWizard" class="compact-notice-main" type="button" title="開啟環境檢查">
+          <span class="notice-dot warning" aria-hidden="true"></span>
+          <span><strong>環境提醒</strong><small id="setupStatusText">檢查 Agent、Project Path 與模型設定</small></span>
+        </button>
+        <button id="dismissSetupStatus" class="notice-close" type="button" aria-label="關閉環境提醒">×</button>
+      </section>
+
       <section class="summary">
         <div><span>Step</span><strong id="currentStep">Idle</strong></div>
         <div><span>Progress</span><strong id="progressText">0 / 14</strong></div>
         <div><span>Status</span><strong id="resultText">Waiting</strong></div>
       </section>
 
-      <section id="runResultPanel" class="run-result-panel" hidden></section>
+      <section id="runResultPanel" class="run-result-modal-backdrop" hidden aria-live="polite" aria-label="Workflow 結果"></section>
 
       <section id="messages" class="history"></section>
 
       <section class="compose-panel">
         <div class="composer-box" id="composerBox">
-          <div class="composer-topbar">
+          <div class="composer-topbar simple-composer-topbar">
             <div class="workflow-picker" id="workflowPicker">
-              <span class="workflow-picker-label">Run with</span>
+              <span class="workflow-picker-label">執行模式</span>
               <select id="workflowSelect" class="workflow-native-select" aria-hidden="true" tabindex="-1"></select>
               <button id="workflowDropdownButton" class="workflow-dropdown-button" type="button" aria-haspopup="listbox" aria-expanded="false">
-                <span id="workflowSelectedLabel" class="workflow-selected-label">Select workflow</span>
+                <span id="workflowSelectedLabel" class="workflow-selected-label">選擇 Workflow</span>
                 <span class="workflow-dropdown-caret" aria-hidden="true"></span>
               </button>
               <div id="workflowDropdownMenu" class="workflow-dropdown-menu" role="listbox" hidden></div>
             </div>
-            <div class="thinking-picker" id="thinkingPicker" title="Controls how much self-checking guidance is injected into workflow and chat prompts.">
-              <span class="workflow-picker-label">Thinking</span>
-              <select id="thinkingLevel" class="workflow-native-select" aria-hidden="true" tabindex="-1">
-                <option value="none">無</option>
-                <option value="medium" selected>中</option>
-                <option value="high">高</option>
-                <option value="extreme">極高</option>
-              </select>
-              <button id="thinkingDropdownButton" class="thinking-dropdown-button workflow-dropdown-button" type="button" aria-haspopup="listbox" aria-expanded="false">
-                <span id="thinkingSelectedLabel" class="workflow-selected-label thinking-selected-label">中</span>
-                <span class="workflow-dropdown-caret thinking-dropdown-caret" aria-hidden="true"></span>
-              </button>
-              <div id="thinkingDropdownMenu" class="thinking-dropdown-menu workflow-dropdown-menu" role="listbox" hidden>
-                <button class="workflow-dropdown-option thinking-dropdown-option" type="button" role="option" data-thinking-level="none" aria-selected="false">
-                  <span class="workflow-option-main"><strong>無</strong><small>No additional thinking guidance</small></span>
-                  <span class="workflow-option-badge">OFF</span>
+            <div id="planningRecommendation" class="planning-recommendation recommendation-chip" hidden></div>
+            <button id="composerAdvancedToggle" class="composer-options-button" type="button" aria-expanded="false">Options</button>
+            <div id="composerAdvancedSettings" class="composer-advanced-settings" hidden>
+              <div class="thinking-picker" id="thinkingPicker" title="控制 Agent 自我檢查深度。">
+                <span class="workflow-picker-label">Thinking</span>
+                <select id="thinkingLevel" class="workflow-native-select" aria-hidden="true" tabindex="-1">
+                  <option value="none">無</option>
+                  <option value="medium" selected>中</option>
+                  <option value="high">高</option>
+                  <option value="extreme">極高</option>
+                </select>
+                <button id="thinkingDropdownButton" class="thinking-dropdown-button workflow-dropdown-button" type="button" aria-haspopup="listbox" aria-expanded="false">
+                  <span id="thinkingSelectedLabel" class="workflow-selected-label thinking-selected-label">中</span>
+                  <span class="workflow-dropdown-caret thinking-dropdown-caret" aria-hidden="true"></span>
                 </button>
-                <button class="workflow-dropdown-option thinking-dropdown-option active" type="button" role="option" data-thinking-level="medium" aria-selected="true">
-                  <span class="workflow-option-main"><strong>中</strong><small>Basic self-check before output</small></span>
-                  <span class="workflow-option-badge">MID</span>
-                </button>
-                <button class="workflow-dropdown-option thinking-dropdown-option" type="button" role="option" data-thinking-level="high" aria-selected="false">
-                  <span class="workflow-option-main"><strong>高</strong><small>Deeper validation and repair checks</small></span>
-                  <span class="workflow-option-badge">HIGH</span>
-                </button>
-                <button class="workflow-dropdown-option thinking-dropdown-option" type="button" role="option" data-thinking-level="extreme" aria-selected="false">
-                  <span class="workflow-option-main"><strong>極高</strong><small>Reflect, decide, and replan when needed</small></span>
-                  <span class="workflow-option-badge">MAX</span>
-                </button>
+                <div id="thinkingDropdownMenu" class="thinking-dropdown-menu workflow-dropdown-menu" role="listbox" hidden>
+                  <button class="workflow-dropdown-option thinking-dropdown-option" type="button" role="option" data-thinking-level="none" aria-selected="false"><span class="workflow-option-main"><strong>無</strong><small>不額外注入思考提示</small></span><span class="workflow-option-badge">OFF</span></button>
+                  <button class="workflow-dropdown-option thinking-dropdown-option active" type="button" role="option" data-thinking-level="medium" aria-selected="true"><span class="workflow-option-main"><strong>中</strong><small>基本自我檢查</small></span><span class="workflow-option-badge">MID</span></button>
+                  <button class="workflow-dropdown-option thinking-dropdown-option" type="button" role="option" data-thinking-level="high" aria-selected="false"><span class="workflow-option-main"><strong>高</strong><small>加強驗證與修復</small></span><span class="workflow-option-badge">HIGH</span></button>
+                  <button class="workflow-dropdown-option thinking-dropdown-option" type="button" role="option" data-thinking-level="extreme" aria-selected="false"><span class="workflow-option-main"><strong>極高</strong><small>反思並必要時重規劃</small></span><span class="workflow-option-badge">MAX</span></button>
+                </div>
               </div>
+              <div class="profile-picker" id="profilePicker">
+                <span class="workflow-picker-label">Model Profile</span>
+                <select id="runProfile" class="workflow-native-select">
+                  <option value="small">Small</option>
+                  <option value="normal" selected>Normal</option>
+                  <option value="strong">Strong</option>
+                </select>
+              </div>
+              <label class="advanced-mode-toggle" title="顯示進階 Workflow 與診斷工具。">
+                <input id="advancedMode" type="checkbox" />
+                <span>進階模式</span>
+              </label>
             </div>
-            <div class="profile-picker" id="profilePicker" title="Tune workflow prompts and retry behavior for agent capability.">
-              <span class="workflow-picker-label">Profile</span>
-              <select id="runProfile" class="workflow-native-select">
-                <option value="small">Small</option>
-                <option value="normal" selected>Normal</option>
-                <option value="strong">Strong</option>
-              </select>
-            </div>
-            <label class="advanced-mode-toggle" title="Show advanced tools such as prompt metadata, replay, export, run diff, patch approval, and console.">
-              <input id="advancedMode" type="checkbox" />
-              <span>Advanced</span>
-            </label>
           </div>
           <textarea id="messageInput" placeholder="Describe what to build..." rows="2"></textarea>
           <div class="composer-footer">
@@ -168,43 +168,90 @@
       </section>
     </main>
 
-    <!-- App region: Workflow Console -->
-    <aside class="details workflow-console" aria-label="Workflow Console">
-      <div class="workflow-console-head">
+    <!-- App region: Run Center -->
+    <aside class="details workflow-console run-center" aria-label="Run Center">
+      <div class="workflow-console-head run-center-head">
         <div>
-          <span class="eyebrow">Workflow Console</span>
-          <strong>Run Summary / Timeline / Detail / Artifacts</strong>
+          <span class="eyebrow">RUN CENTER</span>
+          <strong>看懂目前進度、變更與驗證結果</strong>
         </div>
+        <div class="run-center-actions"><button id="openRunResult" class="diagnostics-button" type="button" title="查看最近一次結果" hidden>結果</button><button id="openDiagnostics" class="diagnostics-button" type="button" title="開啟技術診斷">技術診斷</button></div>
       </div>
-      <div class="tabs">
-        <button class="tab active" data-tab="stepsPanel">Steps</button>
-        <button class="tab" data-tab="qwenPanel">Agent</button>
-        <button class="tab" data-tab="logsPanel">Logs</button>
-        <button class="tab" data-tab="artifactsPanel">Artifacts</button>
-        <button class="tab" data-tab="runDetailPanel">Detail</button>
+      <div class="tabs run-center-tabs">
+        <button class="tab active" data-tab="overviewPanel">總覽</button>
+        <button class="tab" data-tab="changesPanel">變更</button>
+        <button class="tab" data-tab="validationPanel">驗證</button>
       </div>
 
-      <section id="stepsPanel" class="panel active">
-        <div class="step-panel-layout">
+      <section id="overviewPanel" class="panel active">
+        <article id="currentActionCard" class="current-action-card">
+          <span class="current-action-phase">準備中</span>
+          <h2>尚未開始執行</h2>
+          <p>選擇專案、輸入需求並開始 Workflow。</p>
+          <small>完成後會自動整理變更與驗證結果。</small>
+        </article>
+        <div id="overviewMetrics" class="overview-metrics"></div>
+        <details id="runTimelineCard" class="run-timeline-card">
+          <summary><span>執行時間線</span><small id="runTimelineCount">0 events</small></summary>
+          <ol id="runTimeline" class="run-timeline"></ol>
+        </details>
+        <div class="overview-section-head"><strong>執行步驟</strong><span id="overviewProgressLabel">0 / 0</span></div>
+        <div class="step-panel-layout overview-step-layout">
           <div id="steps" class="steps"></div>
           <div id="stepDetails" class="step-details"></div>
         </div>
+        <div id="runDetail" class="run-detail-view overview-run-detail">No run selected.</div>
       </section>
-      <section id="qwenPanel" class="panel" hidden>
-        <pre id="qwenLive" class="console">No agent output yet.</pre>
+
+      <section id="changesPanel" class="panel" hidden>
+        <div id="changesSummary" class="changes-summary"></div>
+        <div id="changesList" class="changes-list"></div>
+        <section id="changePreview" class="change-review-stage change-review-empty">選擇檔案查看變更摘要。</section>
       </section>
-      <section id="logsPanel" class="panel" hidden>
-        <pre id="logs" class="console"></pre>
-      </section>
-      <section id="artifactsPanel" class="panel" hidden>
-        <input id="artifactSearch" class="artifact-search" placeholder="Search artifacts..." />
-        <div id="artifacts" class="artifacts"></div>
-        <pre id="artifactContent" class="artifact-content"></pre>
-      </section>
-      <section id="runDetailPanel" class="panel" hidden>
-        <div id="runDetail" class="run-detail-view">No run selected.</div>
+
+      <section id="validationPanel" class="panel" hidden>
+        <div id="validationSummary" class="validation-summary"></div>
+        <div id="validationList" class="validation-list"></div>
       </section>
     </aside>
+
+    <!-- Technical diagnostics are intentionally lazy-loaded and kept out of the normal workflow. -->
+    <div id="diagnosticsBackdrop" class="diagnostics-backdrop" hidden>
+      <aside id="diagnosticsDrawer" class="diagnostics-drawer" role="dialog" aria-modal="true" aria-labelledby="diagnosticsTitle">
+        <header class="diagnostics-head">
+          <div><span class="eyebrow">ADVANCED</span><h2 id="diagnosticsTitle">技術診斷</h2><p>只有除錯或人工處理時才需要查看。</p></div>
+          <button id="closeDiagnostics" class="modal-close" type="button" aria-label="關閉技術診斷">×</button>
+        </header>
+        <nav class="diagnostics-nav" aria-label="Diagnostic sections">
+          <button class="diagnostic-nav-button active" data-diagnostic="diagnosticConsole">執行時間線</button>
+          <button class="diagnostic-nav-button" data-diagnostic="diagnosticAgent">Agent 原始輸出</button>
+          <button class="diagnostic-nav-button" data-diagnostic="diagnosticLogs">完整 Logs</button>
+          <button class="diagnostic-nav-button" data-diagnostic="diagnosticArtifacts">技術檔案</button>
+          <button class="diagnostic-nav-button" data-diagnostic="diagnosticPatch">Patch 審核</button>
+          <button class="diagnostic-nav-button" data-diagnostic="diagnosticRepair">修復策略</button>
+          <button class="diagnostic-nav-button" data-diagnostic="diagnosticHealth">系統健康</button>
+        </nav>
+        <section id="diagnosticConsole" class="diagnostic-section active"><div id="diagnosticConsoleContent" class="diagnostic-card">尚未載入。</div></section>
+        <section id="diagnosticAgent" class="diagnostic-section" hidden><pre id="qwenLive" class="console">No agent output yet.</pre></section>
+        <section id="diagnosticLogs" class="diagnostic-section" hidden><pre id="logs" class="console"></pre></section>
+        <section id="diagnosticArtifacts" class="diagnostic-section" hidden>
+          <div class="diagnostic-toolbar"><input id="artifactSearch" class="artifact-search" placeholder="搜尋技術檔案..." /><button id="compactArtifacts" class="mini-button" type="button">壓縮診斷檔</button></div>
+          <div id="artifacts" class="artifacts"></div>
+          <pre id="artifactContent" class="artifact-content"></pre>
+        </section>
+        <section id="diagnosticPatch" class="diagnostic-section" hidden>
+          <div class="patch-review-head"><div><strong>變更審核</strong><small>先選檔案、看差異，再決定套用。</small></div><div class="patch-view-switch"><button class="mini-button active" data-patch-view="split" type="button">並排</button><button class="mini-button" data-patch-view="unified" type="button">單欄</button></div></div>
+          <div id="diagnosticPatchContent" class="patch-review-host">尚未載入。</div>
+          <div class="diagnostic-actions patch-actions"><span id="patchSelectionSummary">尚未選擇檔案</span><button id="applyDiagnosticPatch" class="mini-button primary-action" type="button" title="Apply to Project" aria-label="Apply to Project">套用到專案</button></div>
+        </section>
+        <section id="diagnosticRepair" class="diagnostic-section" hidden><div id="diagnosticRepairContent" class="diagnostic-card">尚未載入。</div></section>
+        <section id="diagnosticHealth" class="diagnostic-section" hidden><div id="diagnosticHealthContent" class="diagnostic-card">尚未載入。</div></section>
+        <footer class="diagnostics-footer">
+          <button id="downloadDebugBundle" class="mini-button" type="button">匯出技術診斷</button>
+          <button id="exportRunBundle" class="mini-button" type="button">匯出 Run</button>
+        </footer>
+      </aside>
+    </div>
 
     <div id="resizeProjects" class="rail-resizer rail-resizer-left" role="separator" aria-label="Resize projects panel" aria-orientation="vertical" tabindex="0"></div>
     <div id="resizeDetails" class="rail-resizer rail-resizer-right" role="separator" aria-label="Resize details panel" aria-orientation="vertical" tabindex="0"></div>
@@ -231,6 +278,6 @@
       </div>
     </div>
 
-    <script type="module" src="/static/js/main.js?v=20260704-direct-edit-gad"></script>
+    <script type="module" src="/static/js/main.js?v=20260711-ui-v12"></script>
   </body>
 </html>

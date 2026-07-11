@@ -823,8 +823,9 @@ Status: READY
             asyncio.run(functions.call_python_function(run, "run_external_validation", output, "external-validation-result.md"))
 
             result = (output / "external-validation-result.md").read_text(encoding="utf-8")
-            self.assertIn("Status: PASS", result)
-            self.assertIn("external validation skipped", result)
+            self.assertIn("Status: NOT_CONFIGURED", result)
+            self.assertNotIn("Status: PASS", result)
+            self.assertIn("Optional user validation was not configured", result)
 
 
     @unittest.skip("AI Workflow Controller redesign replaced legacy deterministic planner/materialization expectations.")

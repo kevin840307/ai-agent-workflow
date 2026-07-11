@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from app.workflow_runtime.failure_classifier import classify_step_failure, classify_failure
+from app.workflow_runtime.recovery_counters import public_recovery_counters
 
 
 def _parse_time(value: Any) -> datetime | None:
@@ -94,6 +95,7 @@ def build_run_console(run: dict[str, Any]) -> dict[str, Any]:
             "steps_attention": len(failed),
             "retry_total": retry_total,
             "failure_codes": sorted({(step.get("failure") or {}).get("code") for step in failed if step.get("failure")}),
+            "recovery": public_recovery_counters(run),
         },
         "run_failure": classify_failure(run.get("error"), error_code=run.get("error_code")) if run.get("error") else None,
         "steps": steps,

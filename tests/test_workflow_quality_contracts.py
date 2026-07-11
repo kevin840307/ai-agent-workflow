@@ -26,7 +26,7 @@ def _step(
     output: str | None = None,
     expected: list[str] | None = None,
     function: str = "",
-    template_path: str = "prompts/01_spec.md",
+    template_path: str = "steps/general-auto-development/03_build.md",
 ) -> dict:
     return {
         "id": f"quality-{key}",
@@ -35,6 +35,7 @@ def _step(
         "type": step_type,
         "enabled": True,
         "templatePath": template_path,
+        "templateContent": f"Workflow test step: {key}. Produce only the expected test artifact.",
         "filename": output or "",
         "outputFile": output or "",
         "maxRetries": 0,
@@ -57,7 +58,7 @@ def _workflow(workflow_id: str, steps: list[dict]) -> dict:
         "kind": "custom",
         "name": workflow_id,
         "description": "Quality contract test workflow.",
-        "folderName": "system-controlled-qwen",
+        "folderName": "general-auto-development",
         "skillRoot": "",
         "steps": steps,
     }

@@ -120,8 +120,8 @@ class StaticArchitectureRound4Tests(unittest.TestCase):
     def test_workflow_console_and_local_first_docs_exist(self) -> None:
         root = Path(__file__).resolve().parents[1]
         index = (root / "static/index.html").read_text(encoding="utf-8")
-        self.assertIn("Workflow Console", index)
-        self.assertIn("Run Summary / Timeline / Detail / Artifacts", index)
+        self.assertIn("Run Center", index)
+        self.assertIn("看懂目前進度、變更與驗證結果", index)
         self.assertTrue((root / "doc/LOCAL_FIRST_SYSTEM_ARCHITECTURE.md").exists())
         schema_doc = (root / "data/ai-workflow/WORKFLOW_CONTRACT_SCHEMA.md").read_text(encoding="utf-8")
         self.assertIn("aiwf.workflow-validator.v3", schema_doc)

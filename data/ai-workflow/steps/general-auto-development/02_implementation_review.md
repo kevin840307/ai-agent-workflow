@@ -34,6 +34,7 @@ Return ONLY a JSON object in this shape:
   "status": "PASS or FAIL",
   "confidence": 0.0,
   "summary": "one short sentence",
+  "criteria": [{"criterion": "acceptance item", "status": "PASS or FAIL", "evidence": "test/artifact/file evidence"}],
   "missing_items": ["concrete missing item, empty when PASS"],
   "test_check": "tests present / validation passed / tests not applicable because ...",
   "repair_prompt": "concrete prompt for Execute Task Loop retry, or empty when PASS"

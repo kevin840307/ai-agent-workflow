@@ -97,18 +97,27 @@ class StaticArchitectureContractTests(unittest.TestCase):
         styles = (ROOT / "static/styles.css").read_text(encoding="utf-8")
         html = (ROOT / "static/index.html").read_text(encoding="utf-8")
         tab_count = len(re.findall(r'class="tab(?: active)?" data-tab=', html))
-        self.assertGreaterEqual(tab_count, 5)
+        self.assertEqual(tab_count, 3)
         self.assertNotIn("grid-template-columns: repeat(4, 1fr)", css)
-        self.assertIn("grid-template-columns: repeat(5, minmax(0, 1fr))", css)
+        self.assertIn(".run-center-tabs", css)
         self.assertNotIn("var(--border)", css + styles)
         self.assertIn("Run detail stability / overflow hardening", css)
+
+    def test_workflow_console_tabs_do_not_consume_panel_space(self):
+        layout_css = (ROOT / "static/css/layout.css").read_text(encoding="utf-8")
+        self.assertIn("grid-template-rows: auto auto minmax(0, 1fr)", layout_css)
+        self.assertNotIn("grid-template-rows: auto 1fr", layout_css)
+        self.assertRegex(layout_css, r"\.details\s*\{[^}]*overflow:\s*hidden;")
 
 
     def test_workflow_runner_inactive_panels_are_hidden_before_js_loads(self):
         html = (ROOT / "static/index.html").read_text(encoding="utf-8")
-        for panel_id in ["qwenPanel", "logsPanel", "artifactsPanel", "runDetailPanel"]:
+        for panel_id in ["changesPanel", "validationPanel"]:
             with self.subTest(panel_id=panel_id):
                 self.assertRegex(html, rf'<section id="{panel_id}" class="panel" hidden>')
+        for panel_id in ["diagnosticAgent", "diagnosticLogs", "diagnosticArtifacts", "diagnosticPatch", "diagnosticRepair"]:
+            with self.subTest(panel_id=panel_id):
+                self.assertRegex(html, rf'<section id="{panel_id}" class="diagnostic-section" hidden>')
 
         layout = (ROOT / "static/js/features/layout.js").read_text(encoding="utf-8")
         self.assertIn("panel.hidden = !active;", layout)
@@ -120,7 +129,7 @@ class StaticArchitectureContractTests(unittest.TestCase):
                 continue
             source = path.read_text(encoding="utf-8")
             versions.update(re.findall(r"\?v=([A-Za-z0-9_-]+)", source))
-        self.assertEqual(versions, {"20260704-direct-edit-gad"})
+        self.assertEqual(versions, {"20260711-ui-v12"})
 
 
     def test_workflow_designer_sidebar_uses_shared_workflow_scroll(self):

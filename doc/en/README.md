@@ -13,6 +13,10 @@ This directory contains the English documentation for Agent Workflow Web.
 7. `PYTHON_FUNCTION_ASSET_GUIDE.md` - write reusable Python function assets.
 8. `FRONTEND_STRUCTURE.md` - maintain the static frontend structure.
 9. `TESTING.md` - run daily checks and opt-in manual scenarios.
+- [`SYSTEM_PRODUCTIZATION_V9.md`](SYSTEM_PRODUCTIZATION_V9.md) — V9 reliability, risk/approval, checkpoints, validators, benchmarks, and non-blocking UI.
+10. `SYSTEM_OPTIMIZATION_V8.md` - review the unified state/session/evidence core, Run Center, compact artifacts, and execution recommendations.
+11. `WORKFLOW_OPTIMIZATION_V7.md` - review the latest phase ownership, deterministic layout repair, timeout-session, retry-budget, and validation hardening.
+12. `WORKFLOW_OPTIMIZATION_V6.md` - review the direct Project Path and filesystem-first execution foundation.
 
 Traditional Chinese docs are in `../zh-TW/`.
 

@@ -102,9 +102,12 @@ class ControllerObservabilityAndManualControlTests(unittest.TestCase):
         designer_html = (root / "static/workflow-designer.html").read_text(encoding="utf-8")
         real_smoke = (root / "scripts/run_real_agent_smoke.py").read_text(encoding="utf-8")
 
-        for marker in ["Gate Report", "Effective", "Prompt Meta", "Resume", "Skip", "Mark Pass", "manualStepControl", "steps/${endpoint}", "/resume"]:
+        # V8 keeps user-facing step details concise. Prompt/meta/trace are lazy-loaded
+        # through the technical diagnostics drawer rather than shown in every step.
+        for marker in ["補充指示", "從此步驟重試", "開啟技術診斷", "manualStepControl", "steps/${endpoint}", "/resume", "/actions"]:
             with self.subTest(marker=marker):
                 self.assertIn(marker, runs)
+        self.assertNotIn("Effective Prompt", runs[runs.index("async openStepDetailModal"):runs.index("ensureStepDetailModal")])
         self.assertIn("run-timeline-inline", css)
         self.assertIn("Controller UX", designer_html)
         self.assertIn("Every N failures escalate", designer_html)

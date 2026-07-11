@@ -125,7 +125,9 @@ class ActionDispatcherMixin:
 
     @staticmethod
     def _run_with_step_context(run: dict[str, Any], step_record: dict[str, Any]) -> dict[str, Any]:
-        scoped = dict(run)
-        scoped["_current_step"] = step_record
-        scoped["_current_step_config"] = {**step_record, **step_config(step_record)}
-        return scoped
+        # Validators must write evidence back to the stable runtime Run object.
+        # A shallow copy caused pytest/user-validation evidence to disappear
+        # before the final completion gate and triggered unnecessary retries.
+        run["_current_step"] = step_record
+        run["_current_step_config"] = {**step_record, **step_config(step_record)}
+        return run

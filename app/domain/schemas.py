@@ -30,6 +30,21 @@ class CreateRunRequest(BaseModel):
     prompt_version: str | None = Field(default=None, alias="promptVersion")
     contract_version: str | None = Field(default=None, alias="contractVersion")
     context_pack: str | None = Field(default=None, alias="contextPack")
+    approval_mode: str | None = Field(default=None, alias="approvalMode")
+    benchmark_id: str | None = Field(default=None, alias="benchmarkId")
+
+
+class OptimizationRequest(BaseModel):
+    requirement: str = Field(min_length=1)
+    project_path: str | None = None
+    workflow_id: str | None = None
+    agent: str | None = None
+
+
+class SetupSmokeRequest(BaseModel):
+    project_path: str | None = None
+    agent: str | None = None
+    run_agent: bool = Field(default=True, description="Run a real isolated agent/model/tool smoke test when available.")
 
 
 class CreateSessionRequest(BaseModel):
@@ -68,6 +83,13 @@ class StepControlRequest(BaseModel):
     step_key: str
     reason: str | None = None
 
+
+class RunActionRequest(BaseModel):
+    action: str = Field(description="retry_current, retry_fresh_session, resume, stop, keep_changes, rollback_task, approve, reject")
+    step_key: str | None = None
+    reason: str | None = None
+
+
 class PatchApplyRequest(BaseModel):
     files: list[str] | None = None
 
@@ -81,12 +103,15 @@ class RerunStepRequest(BaseModel):
 __all__ = [
     "CreateMessageRequest",
     "CreateRunRequest",
+    "OptimizationRequest",
+    "SetupSmokeRequest",
     "CreateSessionRequest",
     "AgentSettingsRequest",
     "RetryRunRequest",
     "SubmitAnswersRequest",
     "SubmitGuidanceRequest",
     "StepControlRequest",
+    "RunActionRequest",
     "PatchApplyRequest",
     "RerunStepRequest",
 ]

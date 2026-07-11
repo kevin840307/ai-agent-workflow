@@ -50,6 +50,7 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--requirement-file", default=None, help="Read requirement from a UTF-8 text file.")
     run.add_argument("--wait", action="store_true", help="Wait until the run reaches a terminal or waiting_input state.")
     run.add_argument("--json", action="store_true", help="Print the run as JSON.")
+    run.add_argument("--dry-run", action="store_true", help="Validate slash-command routing and print the normalized request without starting a workflow.")
 
     assets = subparsers.add_parser("assets", help="List .ai-workflow assets using the shared backend resolver.")
     assets.add_argument("--project", "--project-path", dest="project_path", default=None, help="Optional project directory for project-local assets.")
@@ -205,7 +206,6 @@ async def _init_runtime() -> None:
     runtime.mark_interrupted_runs()
     workflow_asset_service.ensure_asset_dirs()
     workflow_config_service.ensure_system_workflow()
-    workflow_config_service.ensure_sample_workflow()
 
 
 def _read_requirement(args: argparse.Namespace) -> str:
@@ -234,10 +234,11 @@ async def _wait_for_run(run_id: str) -> dict:
 
 async def run_cli(argv: Sequence[str] | None = None) -> int:
     parser = build_parser()
-    args = parser.parse_args(normalize_cli_args(argv))
-    await _init_runtime()
+    normalized = normalize_cli_args(argv)
+    args = parser.parse_args(normalized)
 
     if args.command == "assets":
+        await _init_runtime()
         payload = workflow_asset_service.list_assets(args.project_path)
         print(json.dumps(payload, indent=2, ensure_ascii=False))
         return 0
@@ -246,6 +247,24 @@ async def run_cli(argv: Sequence[str] | None = None) -> int:
         requirement = _read_requirement(args).strip()
         if not requirement:
             parser.error("requirement or --requirement-file is required")
+        if args.dry_run:
+            payload = {
+                "schema": "aiwf.agent-command-dry-run.v1",
+                "ok": True,
+                "project_path": str(Path(args.project_path).expanduser().resolve()),
+                "workflow_id": args.workflow_id,
+                "skill": args.skill,
+                "config": args.config,
+                "agent": args.agent,
+                "run_profile": args.run_profile,
+                "thinking_level": args.thinking_level,
+                "test_command": args.test_command,
+                "validation_script": args.validation_script,
+                "requirement": requirement,
+            }
+            print(json.dumps(payload, indent=2, ensure_ascii=False))
+            return 0
+        await _init_runtime()
         session = await create_project(CreateSessionRequest(project_path=args.project_path, title=args.title))
         run = await workflow_service.create_workflow_run(
             session["id"],
@@ -271,6 +290,14 @@ async def run_cli(argv: Sequence[str] | None = None) -> int:
             print(f"session_id={run['session_id']}")
             print(f"status={run.get('status')}")
             print(f"project_path={run.get('project_path')}")
+            if run.get("error_code"):
+                print(f"error_code={run.get('error_code')}")
+            if run.get("error"):
+                print(f"error={run.get('error')}")
+        # Interactive custom commands need the textual run result injected back
+        # into the conversation even when the workflow itself failed.  Keep the
+        # launcher process successful; the structured status/error above remains
+        # the source of truth for Qwen/OpenCode and the user.
         return 0
 
     parser.error(f"Unknown command: {args.command}")

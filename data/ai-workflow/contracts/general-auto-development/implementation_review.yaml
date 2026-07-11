@@ -11,14 +11,13 @@ agent: qwen
 outputs:
 - final-review.md
 function: ''
-retry: 99
+retry: 2
 failAction: selected_step
 retryFromStepKey: build
-retryEscalationEvery: 3
-retryEscalationStepKey: plan_tasks
-keepSameSession: true
+retryEscalationEvery: 0
+keepSameSession: false
 injectFailureFeedback: true
-stopAfterFailures: 99
+stopAfterFailures: 2
 allowInteraction: false
 thinking: true
 thinkingLevel: medium
@@ -27,7 +26,7 @@ pauseAfterStep: false
 approvalMessage: ''
 timeoutEnabled: true
 timeoutMinutes: 3.0
-reviewMode: current_session
+reviewMode: new_agent
 confidenceThreshold: 0.75
 passKeywords: PASS
 failKeywords: FAIL, BLOCKED, RISK
@@ -41,6 +40,6 @@ compactRetryPromptWhenReusingSession: true
 reviewOutputFormat: json
 retryPolicy:
   defaultRetryTo: build
-  escalateEvery: 3
-  escalateTo: plan_tasks
-  maxRetries: 99
+  escalateEvery: 0
+  maxRetries: 2
+maxRetries: 2

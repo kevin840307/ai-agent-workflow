@@ -4,7 +4,7 @@ import {
   SourceTypes,
   StepTypes,
   TemplatePresets,
-} from "../workflow-designer-constants.js?v=20260704-direct-edit-gad";
+} from "../workflow-designer-constants.js?v=20260711-ui-v12";
 import {
   clone,
   copyTextToClipboard,
@@ -19,7 +19,7 @@ import {
   readInputValue,
   setText,
   toast,
-} from "./utils.js?v=20260704-direct-edit-gad";
+} from "./utils.js?v=20260711-ui-v12";
 import {
   createStep,
   createWorkflow,
@@ -32,7 +32,7 @@ import {
   normalizeFunctionList,
   normalizeStep,
   normalizeWorkflow,
-} from "./model.js?v=20260704-direct-edit-gad";
+} from "./model.js?v=20260711-ui-v12";
 import {
   availablePromptParamsFor,
   functionHelpFor,
@@ -40,13 +40,13 @@ import {
   functionOptionsFor,
   stepUiCapabilitiesFor,
   workflowFunctionCountsFor,
-} from "./function-catalog.js?v=20260704-direct-edit-gad";
-import { installLayoutRenderer } from "./layout-renderer.js?v=20260704-direct-edit-gad";
-import { installStepSettingsRenderer } from "./step-settings-renderer.js?v=20260704-direct-edit-gad";
-import { installTemplateEditor } from "./template-editor.js?v=20260704-direct-edit-gad";
-import { installImportExportTools } from "./import-export.js?v=20260704-direct-edit-gad";
-import { installWorkflowAssetTools } from "./asset-tools.js?v=20260704-direct-edit-gad";
-import { allSystemWorkflows as collectSystemWorkflows, findWorkflowById as findWorkflowByIdFromState, isWorkflowReadOnly } from "./workflow-selection.js?v=20260704-direct-edit-gad";
+} from "./function-catalog.js?v=20260711-ui-v12";
+import { installLayoutRenderer } from "./layout-renderer.js?v=20260711-ui-v12";
+import { installStepSettingsRenderer } from "./step-settings-renderer.js?v=20260711-ui-v12";
+import { installTemplateEditor } from "./template-editor.js?v=20260711-ui-v12";
+import { installImportExportTools } from "./import-export.js?v=20260711-ui-v12";
+import { installWorkflowAssetTools } from "./asset-tools.js?v=20260711-ui-v12";
+import { allSystemWorkflows as collectSystemWorkflows, findWorkflowById as findWorkflowByIdFromState, isWorkflowReadOnly } from "./workflow-selection.js?v=20260711-ui-v12";
 const STORAGE_KEY = "qwenWorkflow.workflowDesigner.ui.v1";
 const WORKFLOW_API = "/api/workflows";
 function functionOptions(groupName, fallbackItems, selected) {
@@ -68,7 +68,7 @@ function stepUiCapabilities(step) {
   return stepUiCapabilitiesFor(availableWorkflowFunctions, step);
 }
 let systemWorkflow = Object.freeze({
-  id: "system-controlled-qwen",
+  id: "general-auto-development",
   kind: "system",
   name: "Controlled Agent Workflow",
   description: "Built-in workflow loaded from backend configuration.",

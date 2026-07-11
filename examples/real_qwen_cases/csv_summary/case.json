@@ -1,0 +1,9 @@
+{
+  "id": "csv_summary",
+  "title": "CSV 統計功能",
+  "prompt_is_single_line": true,
+  "expected_files": [
+    "csv_summary.py"
+  ],
+  "required_validation": "validation.py"
+}

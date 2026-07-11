@@ -342,7 +342,28 @@ class TaskLoopActionsMixin:
     @staticmethod
     def _feedback_is_generic_for_task_loop(feedback: str) -> bool:
         block = TaskLoopActionsMixin._latest_retry_feedback_block(feedback)
-        return bool(block.strip()) and not bool(re.search(r"\bTASK-\d{3}\b", block))
+        if not block.strip() or re.search(r"\bTASK-\d{3}\b", block):
+            return False
+        # Deterministic test/layout/validation failures already have a precise
+        # owner step. Appending a synthetic TASK-999 causes Adaptive/General to
+        # redo unrelated production work instead of repairing tests/validation.
+        deterministic_markers = (
+            "TEST_DEFINITION_INVALID",
+            "TEST_LAYOUT_CONFLICT",
+            "VALIDATION_FILE_NOT_FOUND",
+            "VALIDATION_FILE_MUTATED",
+            "VALIDATION_NOT_EXECUTED",
+            "pytest collection",
+            "import file mismatch",
+            "unresolved required fixture arguments",
+        )
+        upper = block.upper()
+        lower = block.lower()
+        if any(marker in upper for marker in deterministic_markers[:5]):
+            return False
+        if any(marker in lower for marker in deterministic_markers[5:]):
+            return False
+        return True
 
     @staticmethod
     def _with_generic_repair_task(tasks: list[dict[str, Any]], *, owner: str) -> list[dict[str, Any]]:

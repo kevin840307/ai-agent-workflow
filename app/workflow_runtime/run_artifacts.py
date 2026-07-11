@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
 from pathlib import Path
 from typing import Any
 
 from app.core.paths import read_text, utc_now, write_text
+from app.workflow_runtime.artifact_policy import artifact_visibility, enrich_artifact_records
 
 ARTIFACT_SCHEMA = "aiwf.run-artifacts.v2"
 STANDARD_DIRS = [
@@ -46,6 +48,7 @@ def _record(run_id: str, run_dir: Path, rel: str, *, category: str, role: str) -
         "role": role,
         "size": path.stat().st_size if path.exists() else 0,
         "exists": path.exists(),
+        "visibility": artifact_visibility(rel.replace("\\", "/"), category=category, role=role),
         "updated_at": utc_now(),
     }
 
@@ -61,7 +64,9 @@ def write_standard_run_artifacts(run: dict[str, Any], run_dir: Path) -> dict[str
     workflow_dir = run_dir / ".workflow"
     artifacts_dir = workflow_dir / "artifacts"
     artifacts_dir.mkdir(parents=True, exist_ok=True)
-    for folder in STANDARD_DIRS:
+    artifact_mode = os.environ.get("AIWF_ARTIFACT_MODE", "compact").strip().lower()
+    active_dirs = STANDARD_DIRS if artifact_mode == "full" else ["diff", "validation", "reports", "metadata"]
+    for folder in active_dirs:
         (artifacts_dir / folder).mkdir(parents=True, exist_ok=True)
 
     copies: list[tuple[str, str, str, str]] = [
@@ -86,31 +91,39 @@ def write_standard_run_artifacts(run: dict[str, Any], run_dir: Path) -> dict[str
         ("output/verifier-report.json", "reports/verifier-report.json", "report", "verifier"),
     ]
 
+    if artifact_mode != "full":
+        compact_roles = {
+            "final-report", "summary", "gate", "run-diff", "test",
+            "external-validation", "final-review", "verifier",
+        }
+        copies = [item for item in copies if item[3] in compact_roles]
+
     records: list[dict[str, Any]] = []
     for src_rel, dst_rel, category, role in copies:
         if _safe_copy(run_dir / src_rel, artifacts_dir / dst_rel):
             records.append(_record(str(run.get("id") or ""), artifacts_dir, dst_rel, category=category, role=role))
 
-    for step in run.get("steps") or []:
-        key = str(step.get("key") or "step")
-        safe_key = "".join(ch if ch.isalnum() or ch in "-_" else "-" for ch in key)
-        step_payload = {
-            "schema": "aiwf.step-artifact.v1",
-            "run_id": run.get("id"),
-            "key": key,
-            "title": step.get("title") or step.get("name") or key,
-            "status": step.get("status"),
-            "retry_count": step.get("retry_count") or 0,
-            "started_at": step.get("started_at"),
-            "ended_at": step.get("ended_at"),
-            "error": step.get("error"),
-            "error_code": step.get("error_code"),
-            "changed_files": step.get("changed_files") or [],
-            "events": step.get("events") or [],
-        }
-        rel = f"steps/{safe_key}.json"
-        write_text(artifacts_dir / rel, json.dumps(step_payload, indent=2, ensure_ascii=False))
-        records.append(_record(str(run.get("id") or ""), artifacts_dir, rel, category="step", role="step-state"))
+    if artifact_mode == "full":
+        for step in run.get("steps") or []:
+            key = str(step.get("key") or "step")
+            safe_key = "".join(ch if ch.isalnum() or ch in "-_" else "-" for ch in key)
+            step_payload = {
+                "schema": "aiwf.step-artifact.v1",
+                "run_id": run.get("id"),
+                "key": key,
+                "title": step.get("title") or step.get("name") or key,
+                "status": step.get("status"),
+                "retry_count": step.get("retry_count") or 0,
+                "started_at": step.get("started_at"),
+                "ended_at": step.get("ended_at"),
+                "error": step.get("error"),
+                "error_code": step.get("error_code"),
+                "changed_files": step.get("changed_files") or [],
+                "events": step.get("events") or [],
+            }
+            rel = f"steps/{safe_key}.json"
+            write_text(artifacts_dir / rel, json.dumps(step_payload, indent=2, ensure_ascii=False))
+            records.append(_record(str(run.get("id") or ""), artifacts_dir, rel, category="step", role="step-state"))
 
     # Always emit a compact final report and debug bundle so local users have a
     # stable artifact to export even when the workflow failed early.
@@ -121,6 +134,7 @@ def write_standard_run_artifacts(run: dict[str, Any], run_dir: Path) -> dict[str
     write_text(artifacts_dir / debug_bundle_rel, json.dumps(render_debug_bundle_payload(run, records), indent=2, ensure_ascii=False))
     records.append(_record(str(run.get("id") or ""), artifacts_dir, debug_bundle_rel, category="metadata", role="debug-bundle"))
 
+    records = enrich_artifact_records(records)
     console = _json_or_none(artifacts_dir / "console/run-console.json") or {}
     index = {
         "schema": ARTIFACT_SCHEMA,
@@ -130,7 +144,8 @@ def write_standard_run_artifacts(run: dict[str, Any], run_dir: Path) -> dict[str
         "status": run.get("status"),
         "generated_at": utc_now(),
         "layout_root": ".workflow/artifacts",
-        "standard_dirs": STANDARD_DIRS,
+        "standard_dirs": active_dirs,
+        "artifact_mode": artifact_mode,
         "summary": console.get("summary") or {
             "steps_total": len(run.get("steps") or []),
             "retry_total": sum(int(step.get("retry_count") or 0) for step in run.get("steps") or []),
@@ -138,7 +153,12 @@ def write_standard_run_artifacts(run: dict[str, Any], run_dir: Path) -> dict[str
         "records": records,
     }
     write_text(artifacts_dir / "index.json", json.dumps(index, indent=2, ensure_ascii=False))
-    write_text(artifacts_dir / "README.md", render_artifact_readme(index))
+    if artifact_mode == "full":
+        write_text(artifacts_dir / "README.md", render_artifact_readme(index))
+    else:
+        readme = artifacts_dir / "README.md"
+        if readme.exists():
+            readme.unlink()
     return index
 
 

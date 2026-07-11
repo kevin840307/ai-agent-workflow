@@ -13,6 +13,10 @@
 7. `PYTHON_FUNCTION_ASSET_GUIDE.md` - 撰寫可重用的 Python function asset。
 8. `FRONTEND_STRUCTURE.md` - 維護 static frontend 拆分結構。
 9. `TESTING.md` - 執行日常檢查與 opt-in 手動測試。
+- [`SYSTEM_PRODUCTIZATION_V9.md`](SYSTEM_PRODUCTIZATION_V9.md) — V9 可靠性、風險核准、Checkpoint、Validator、Benchmark 與非阻塞 UI。
+10. `SYSTEM_OPTIMIZATION_V8.md` - 查看統一狀態機、Session、SQLite Evidence、Run Center、Compact Artifacts 與智慧建議。
+11. `WORKFLOW_OPTIMIZATION_V7.md` - 查看階段檔案 ownership、測試版面自動修復、timeout fresh session 與 Retry 額度強化。
+12. `WORKFLOW_OPTIMIZATION_V6.md` - 查看實際專案路徑與 filesystem-first 執行基礎。
 
 英文文件在 `../en/`。
 

@@ -1,4 +1,4 @@
-import { ReviewModes, StepTypes } from "../workflow-designer-constants.js?v=20260704-direct-edit-gad";
+import { ReviewModes, StepTypes } from "../workflow-designer-constants.js?v=20260711-ui-v12";
 
 function options(items, selected) {
   return items.map(([value, label]) => `

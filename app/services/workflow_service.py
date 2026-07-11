@@ -29,8 +29,18 @@ from app.workflow_runtime.patch_approval import patch_preview, write_patch_artif
 from app.workflow_runtime.versioning import build_version_metadata
 from app.workflow_runtime.run_artifacts import read_run_artifact_index
 from app.workflow_runtime.run_consistency import check_run_consistency
+from app.workflow_runtime.artifact_policy import filter_artifacts, compact_run_diagnostics
+from app.services.run_overview_service import build_run_overview
+from app.workflow_engine.state_machine import append_transition
 from app.workflow_runtime.artifact_repair import repair_run_artifacts
 from app.workflow_runtime.repair_policy import policy_for_failure
+from app.workflow_runtime.recovery_counters import increment_recovery_counter
+from app.workflow_runtime.risk_engine import assess_risk
+from app.workflow_runtime.model_capabilities import resolve_model_capability
+from app.workflow_runtime.validators import detect_validator_plans
+from app.workflow_runtime.scope_control import analyze_scope_delta
+from app.workflow_runtime.task_checkpoints import restore_task_checkpoint
+from app.workflow_runtime.validation_contract import ValidationContractError, build_validation_contract
 from app.workflow_runtime.run_lifecycle import (
     ACTIVE_RUN_STATUSES,
     cleanup_stale_project_lock,
@@ -62,23 +72,34 @@ def _run_creation_lock() -> asyncio.Lock:
 
 
 
-def _env_truthy(name: str) -> bool:
-    return os.environ.get(name, "").strip().lower() in {"1", "true", "yes", "on"}
+async def _clear_persisted_project_lock(run_id: str, run: dict | None = None) -> dict:
+    latest = run or await runtime.get_run_record(run_id)
+    clear_project_lock(latest)
+    updated = await runtime.update_run(run_id, lambda item: item.update({"project_lock": None}))
+    return updated or latest
+
+
+async def _persist_project_lock(run_id: str, run: dict) -> dict:
+    lock = write_project_lock(run)
+    if lock:
+        latest = await runtime.update_run(run_id, lambda item: item.update({"project_lock": lock}))
+        return latest or run
+    return run
 
 
 def default_patch_mode_for_agent(agent_name: str | None) -> str:
-    """Default real CLI agent runs to patch review, while keeping mock tests direct."""
+    """Write to the selected project by default for local workflow runs.
+
+    Review and dry-run isolation remain available through ``patchMode`` or the
+    ``AIWF_DEFAULT_PATCH_MODE`` environment variable.  The UI does not expose a
+    patch-mode selector, so defaulting real agents to ``review`` unexpectedly
+    redirected their cwd into ``.ai-workflow/.../isolated-workspace`` and left
+    successful generated files outside the project selected by the user.
+    """
     override = os.environ.get("AIWF_DEFAULT_PATCH_MODE")
     if override:
         return override.strip().lower().replace("-", "_")
-    agent = (agent_name or "qwen").strip().lower()
-    if agent == "opencode":
-        return "auto_apply" if _env_truthy("OPENCODE_MOCK") else "review"
-    if agent in {"qwen", "agent", ""}:
-        return "auto_apply" if _env_truthy("QWEN_MOCK") else "review"
-    if agent in {"cli", "generic"}:
-        return "auto_apply" if _env_truthy("GENERIC_AGENT_MOCK") else "review"
-    return "review"
+    return "auto_apply"
 
 def _same_existing_project_path(left: str | None, right: str) -> bool:
     """Compare project paths without letting stale invalid store rows block new runs."""
@@ -94,6 +115,7 @@ async def _recover_stale_project_active_runs(project_path: str) -> list[dict]:
     for run in recovered:
         try:
             clear_project_lock(run)
+            run["project_lock"] = None
             run_dir = Path(run.get("workspace") or "")
             if run_dir:
                 (run_dir / ".workflow").mkdir(parents=True, exist_ok=True)
@@ -153,7 +175,7 @@ async def _finalize_workflow_task(run_id: str) -> None:
         runtime.running_tasks.pop(run_id, None)
         return
     if latest.get("status") in {"done", "failed", "cancelled"}:
-        clear_project_lock(latest)
+        await _clear_persisted_project_lock(run_id, latest)
     runtime.running_tasks.pop(run_id, None)
 
 
@@ -366,11 +388,13 @@ async def create_workflow_run(session_id: str, body: runtime.CreateRunRequest) -
             run_id = str(uuid.uuid4())
             original_project_path = project_path
             original_project_dir = Path(project_path)
+            risk = assess_risk(requirement, project_path=original_project_path)
+            recommended = risk.get("recommended") or {}
             run_dir = original_project_dir / PROJECT_WORKFLOW_DIR / "runs" / f"session-{session_id}" / f"run-{run_id}"
             (run_dir / "output").mkdir(parents=True, exist_ok=True)
             (run_dir / "input").mkdir(parents=True, exist_ok=True)
             (run_dir / ".workflow").mkdir(parents=True, exist_ok=True)
-            patch_mode = (body.patch_mode or default_patch_mode_for_agent(body.agent)).strip().lower().replace("-", "_")
+            patch_mode = (body.patch_mode or recommended.get("patch_mode") or default_patch_mode_for_agent(body.agent)).strip().lower().replace("-", "_")
             if patch_mode not in {"auto_apply", "review", "dry_run"}:
                 raise HTTPException(status_code=400, detail="patchMode must be auto_apply, review, or dry_run")
             effective_project_path = project_path
@@ -380,6 +404,24 @@ async def create_workflow_run(session_id: str, body: runtime.CreateRunRequest) -
                 effective_project_path = isolated_project_path
             runtime.write_text(run_dir / "requirement.md", requirement)
             runtime.write_text(run_dir / ".workflow" / "run-log.md", "")
+            approval_mode = (body.approval_mode or recommended.get("approval_mode") or "fully_automatic").strip().lower()
+            if approval_mode not in {"fully_automatic", "milestones", "review_before_apply", "plan_and_patch_only"}:
+                raise HTTPException(status_code=400, detail="approvalMode must be fully_automatic, milestones, review_before_apply, or plan_and_patch_only")
+            validator_plans = detect_validator_plans(original_project_path)
+            model_capability = resolve_model_capability(run_profile)
+            validation_required = bool(body.validation_script) or any(
+                bool((step.get("config") or {}).get("requiresValidationScript") or step.get("requires_validation_script"))
+                for step in steps
+            )
+            try:
+                validation_contract = build_validation_contract(
+                    original_project_dir,
+                    body.validation_script,
+                    required=validation_required,
+                    timeout_seconds=int(os.environ.get("AIWF_VALIDATION_TIMEOUT_SEC", "300")),
+                )
+            except ValidationContractError as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
             run = {
                 "id": run_id,
                 "session_id": session_id,
@@ -402,6 +444,7 @@ async def create_workflow_run(session_id: str, body: runtime.CreateRunRequest) -
                 "agent": (body.agent.strip() if body.agent else None),
                 "test_command": body.test_command,
                 "validation_script": body.validation_script,
+                "validation_contract": validation_contract,
                 "run_profile": run_profile,
                 "thinking_level": thinking_level,
                 "thinking_level_override": thinking_level_override,
@@ -410,21 +453,48 @@ async def create_workflow_run(session_id: str, body: runtime.CreateRunRequest) -
                 "prompt_version": body.prompt_version or "current",
                 "contract_version": body.contract_version or "current",
                 "context_pack": context_pack,
+                "approval_mode": approval_mode,
+                "approval_state": (
+                    "not_required"
+                    if approval_mode == "fully_automatic" or (approval_mode == "milestones" and not risk.get("high_risk"))
+                    else "pending"
+                ),
+                "risk_assessment": risk,
+                "model_capability": model_capability,
+                "validator_plans": validator_plans,
+                "benchmark_id": body.benchmark_id,
                 "steps": steps,
+                "tasks": [],
+                "role_session_ids": {},
                 "artifacts": [],
                 "timeline": [],
+                "validation_results": [],
+                "file_changes": [],
+                "checkpoints": [],
+                "task_checkpoints": [],
+                "transitions": [],
+                "phase": "queued",
                 "created_at": runtime.utc_now(),
                 "updated_at": runtime.utc_now(),
                 "started_at": None,
                 "ended_at": None,
             }
+            append_transition(run, kind="run", source=None, target="queued", reason="run created")
             write_baseline_snapshot(run, run_dir)
+            run["checkpoints"].append({
+                "id": "baseline",
+                "step_key": None,
+                "status": "ready",
+                "created_at": runtime.utc_now(),
+                "path": ".workflow/project-snapshot-before.json",
+                "description": "Project state before workflow execution.",
+            })
             runtime.write_text(run_dir / ".workflow" / "version-metadata.json", json.dumps(build_version_metadata(run), indent=2, ensure_ascii=False))
             if patch_mode in {"review", "dry_run"}:
                 write_patch_artifacts(run)
+            run["project_lock"] = write_project_lock(run)
             runtime.write_text(run_dir / ".workflow" / "state.json", json.dumps(run, indent=2, ensure_ascii=False))
             await store_repository.mutate(lambda d: (d["runs"].insert(0, run), run)[1])
-            write_project_lock(run)
             await runtime.refresh_artifacts(run_id)
             metrics.increment("workflow.started")
             start_workflow_task(run_id)
@@ -570,7 +640,7 @@ async def retry_run(run_id: str, body: runtime.RetryRunRequest | None = None) ->
         )
     await runtime.reset_steps_from(run_id, start_index)
     latest = await get_run(run_id)
-    write_project_lock(latest)
+    latest = await _persist_project_lock(run_id, latest)
     start_workflow_task(run_id, start_index=start_index)
     return await get_run(run_id)
 
@@ -605,7 +675,7 @@ async def terminate_run(run_id: str) -> dict:
 
         await runtime.update_run(run_id, cancel)
         latest = await get_run(run_id)
-        clear_project_lock(latest)
+        await _clear_persisted_project_lock(run_id, latest)
         await runtime.refresh_artifacts(run_id)
     await runtime.log(run, "workflow: terminate requested")
     return await get_run(run_id)
@@ -648,7 +718,7 @@ async def submit_answers(run_id: str, body: runtime.SubmitAnswersRequest) -> dic
     await runtime.refresh_artifacts(run_id)
     await runtime.reset_steps_from(run_id, start_index)
     latest = await get_run(run_id)
-    write_project_lock(latest)
+    latest = await _persist_project_lock(run_id, latest)
     start_workflow_task(run_id, start_index=start_index)
     return await get_run(run_id)
 
@@ -682,7 +752,7 @@ async def submit_guidance(run_id: str, body: runtime.SubmitGuidanceRequest) -> d
         return await get_run(run_id)
     await runtime.reset_steps_from(run_id, start_index)
     latest = await get_run(run_id)
-    write_project_lock(latest)
+    latest = await _persist_project_lock(run_id, latest)
     start_workflow_task(run_id, start_index=start_index)
     return await get_run(run_id)
 
@@ -762,15 +832,97 @@ async def resume_run(run_id: str, body: runtime.StepControlRequest | None = None
         raise HTTPException(status_code=400, detail="Run has no steps to resume.")
     if body and body.step_key:
         start_index = await _step_index_or_400(run, body.step_key)
+    elif run.get("restart_recoverable") and isinstance(run.get("recovery"), dict):
+        start_index = max(0, min(int(run["recovery"].get("resume_index") or 0), len(step_keys) - 1))
     else:
         start_index = next((index for index, step in enumerate(run.get("steps", [])) if step.get("status") in {"pending", "failed", "waiting_input", "skipped"}), len(step_keys) - 1)
     target_key = step_keys[start_index]
     await runtime.record_step_event(run_id, target_key, "manual_resume", "Manual resume requested.", {"target_step": target_key, "start_index": start_index})
     await runtime.reset_steps_from(run_id, start_index)
+    def clear_recovery(item):
+        item["restart_recoverable"] = False
+        item["recovery"] = None
+        item["error"] = None
+        item["error_code"] = None
+    await runtime.update_run(run_id, clear_recovery)
     latest = await get_run(run_id)
-    write_project_lock(latest)
+    latest = await _persist_project_lock(run_id, latest)
     start_workflow_task(run_id, start_index=start_index)
     return await get_run(run_id)
+
+
+async def execute_run_action(run_id: str, body: runtime.RunActionRequest) -> dict:
+    action = str(body.action or "").strip().lower()
+    if action == "retry_current":
+        return await retry_run(run_id, runtime.RetryRunRequest(step_key=body.step_key))
+    if action == "retry_fresh_session":
+        def request_fresh(item):
+            item["_fresh_agent_session_once"] = True
+            increment_recovery_counter(item, "session_restarts")
+            increment_recovery_counter(item, "manual_actions")
+            item.setdefault("manual_actions", []).append({"action": action, "at": runtime.utc_now(), "reason": body.reason})
+        await runtime.update_run(run_id, request_fresh)
+        return await retry_run(run_id, runtime.RetryRunRequest(step_key=body.step_key))
+    if action == "resume":
+        control = runtime.StepControlRequest(step_key=body.step_key, reason=body.reason) if body.step_key else None
+        return await resume_run(run_id, control)
+    if action == "stop":
+        return await terminate_run(run_id)
+    if action == "keep_changes":
+        run = await _assert_not_active(run_id)
+        await runtime.record_step_event(run_id, body.step_key or "run", "keep_changes", body.reason or "Current project changes were kept.")
+        return run
+    if action == "rollback_task":
+        run = await _assert_not_active(run_id)
+        checkpoints = list(run.get("task_checkpoints") or [])
+        checkpoint_id = body.step_key or (checkpoints[-1].get("id") if checkpoints else None)
+        if not checkpoint_id:
+            raise HTTPException(status_code=409, detail={"code": "ROLLBACK_REQUIRES_CHECKPOINT", "message": "No accepted task checkpoint is available."})
+        result = restore_task_checkpoint(run, checkpoint_id, project_dir=Path(run.get("project_path") or ""))
+        selected_index = next((index for index, row in enumerate(checkpoints) if row.get("id") == checkpoint_id), len(checkpoints) - 1)
+        selected = checkpoints[selected_index] if checkpoints else {}
+        accepted_ids = {str(row.get("task_id") or "") for row in checkpoints[: selected_index + 1]}
+
+        def apply_restore_state(item):
+            item["last_restored_checkpoint_id"] = checkpoint_id
+            item["task_checkpoints"] = list(item.get("task_checkpoints") or [])[: selected_index + 1]
+            item["last_task_checkpoint_id"] = checkpoint_id
+            item["_fresh_agent_session_once"] = True
+            item["updated_at"] = runtime.utc_now()
+            increment_recovery_counter(item, "checkpoint_restores")
+            increment_recovery_counter(item, "session_restarts")
+            for task in item.get("tasks") or []:
+                task_id = str(task.get("id") or "")
+                if task_id in accepted_ids:
+                    task["status"] = "passed"
+                else:
+                    task.update({"status": "pending", "checkpoint_id": None, "updated_at": runtime.utc_now()})
+            # A restored filesystem invalidates all later validation evidence.
+            item["validation_results"] = []
+            item.setdefault("manual_actions", []).append({
+                "action": "rollback_task",
+                "checkpoint_id": checkpoint_id,
+                "task_id": selected.get("task_id"),
+                "at": runtime.utc_now(),
+                "reason": body.reason,
+            })
+
+        await runtime.update_run(run_id, apply_restore_state)
+        await runtime.record_step_event(run_id, "run", "checkpoint_restored", body.reason or f"Restored {checkpoint_id}.", result)
+        return {**result, "run": await get_run(run_id)}
+    if action == "approve":
+        def approve(item):
+            item["approval_state"] = "approved"
+            item["approval_decided_at"] = runtime.utc_now()
+            item["approval_reason"] = body.reason
+            increment_recovery_counter(item, "manual_actions")
+        await runtime.update_run(run_id, approve)
+        await runtime.record_step_event(run_id, body.step_key or "run", "approved", body.reason or "User approved the current milestone.")
+        return await get_run(run_id)
+    if action == "reject":
+        await runtime.update_run(run_id, lambda item: item.update({"approval_state": "rejected", "approval_decided_at": runtime.utc_now(), "approval_reason": body.reason}))
+        return await terminate_run(run_id)
+    raise HTTPException(status_code=400, detail=f"Unknown run action: {body.action}")
 
 
 async def simulate_question(run_id: str) -> dict:
@@ -862,9 +1014,50 @@ async def get_steps(run_id: str) -> list[dict]:
     return await _STEP_STORE.list_for_run(run["id"])
 
 
-async def get_artifacts(run_id: str) -> list[dict]:
+async def get_artifacts(run_id: str, view: str = "supporting") -> list[dict]:
     run = await get_run(run_id)
-    return await _ARTIFACT_STORE.list_for_run(run["id"])
+    artifacts = await _ARTIFACT_STORE.list_for_run(run["id"])
+    return filter_artifacts(artifacts, view)
+
+
+async def get_run_overview(run_id: str) -> dict:
+    return build_run_overview(await get_run(run_id))
+
+
+async def get_run_diagnostics(run_id: str) -> dict:
+    run = await get_run(run_id)
+    artifacts = filter_artifacts(await _ARTIFACT_STORE.list_for_run(run_id), "all")
+    diagnostic = [item for item in artifacts if item.get("visibility") == "diagnostic"]
+    return {
+        "schema": "aiwf.run-diagnostics.v1",
+        "run_id": run_id,
+        "status": run.get("status"),
+        "available": {
+            "console": True,
+            "diff": True,
+            "patch": True,
+            "repair_policy": bool(run.get("error") or any(step.get("error") for step in run.get("steps") or [])),
+            "debug_bundle": True,
+            "artifact_files": bool(diagnostic),
+        },
+        "diagnostic_artifact_count": len(diagnostic),
+        "diagnostic_artifacts": diagnostic[:100],
+        "endpoints": {
+            "console": f"/api/workflow-runs/{run_id}/console",
+            "diff": f"/api/workflow-runs/{run_id}/diff",
+            "patch": f"/api/workflow-runs/{run_id}/patch",
+            "repair_policy": f"/api/workflow-runs/{run_id}/repair-policy",
+            "debug_bundle": f"/api/workflow-runs/{run_id}/debug-bundle",
+            "artifacts": f"/api/workflow-runs/{run_id}/artifacts?view=all",
+        },
+    }
+
+
+async def compact_run_artifacts_service(run_id: str) -> dict:
+    run = await _assert_not_active(run_id)
+    result = compact_run_diagnostics(run, force=True)
+    await runtime.refresh_artifacts(run_id)
+    return result
 
 
 async def cancel_run(run_id: str) -> dict:
@@ -910,6 +1103,22 @@ async def get_patch_preview(run_id: str) -> dict:
 
 async def apply_run_patch(run_id: str, body: runtime.PatchApplyRequest | None = None) -> dict:
     run = await _assert_not_active(run_id)
+    approval_mode = str(run.get("approval_mode") or "fully_automatic")
+    approval_state = str(run.get("approval_state") or "not_required")
+    risk = run.get("risk_assessment") or {}
+    requires_approval = (
+        approval_mode in {"review_before_apply", "plan_and_patch_only"}
+        or (approval_mode == "milestones" and bool(risk.get("high_risk")))
+    )
+    if requires_approval and approval_state != "approved":
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "APPROVAL_REQUIRED",
+                "message": "Review and approve this patch before applying it to the project.",
+                "approval_mode": approval_mode,
+            },
+        )
     result = apply_patch(run, (body.files if body else None))
     def mark(item):
         item["patch_status"] = "applied"

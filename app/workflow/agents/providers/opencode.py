@@ -8,9 +8,10 @@ from typing import Any
 from app.testing.mock_agent import mock_qwen_response
 from app.runtime_modules.errors import WorkflowError
 from app.security.workspace_guard import apply_workspace_env
+from app.workflow.agents.errors import classify_agent_error
 from app.workflow_runtime.thinking import normalize_thinking_level, thinking_enabled
 
-from ..base import AgentOutputCallback, AgentRequest, AgentResult, run_process_stream
+from ..base import AgentCapabilities, AgentOutputCallback, AgentRequest, AgentResult, run_process_stream
 from app.workflow_runtime.agent_stream_events import AgentJsonStreamParser
 
 
@@ -159,6 +160,20 @@ class OpenCodeCliAdapter:
     def _uses_prompt_file(self, request: AgentRequest) -> bool:
         prompt_file = (request.metadata or {}).get("prompt_file")
         return bool(prompt_file and len(request.prompt) >= self.prompt_file_threshold and Path(prompt_file).is_file())
+
+    def capabilities(self) -> AgentCapabilities:
+        return AgentCapabilities(
+            streaming=True,
+            tool_calling=True,
+            session_resume=bool(getattr(self, "reuse_session", True)),
+            read_only=True,
+            structured_output="medium",
+            cancellation=True,
+        )
+
+    @staticmethod
+    def classify_error(error: Any) -> dict[str, Any]:
+        return classify_agent_error(error)
 
     def health(self) -> dict[str, Any]:
         return {

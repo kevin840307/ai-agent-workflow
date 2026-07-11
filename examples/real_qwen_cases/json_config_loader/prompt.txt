@@ -1,0 +1,1 @@
+用 Python 建立 config_loader.py，提供 load_config(path) 讀取 UTF-8 JSON 並回傳 dict，檔案不存在時拋出 FileNotFoundError。

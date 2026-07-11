@@ -146,7 +146,7 @@ export function createArtifacts(ctx) {
         ui.byKey("artifactContent").scrollTop = 0;
       }
       state.selectedStepArtifactId = artifactId;
-      if (activateArtifactsTab) ctx.features.layout.activateTab("artifactsPanel");
+      if (activateArtifactsTab) ctx.features.diagnostics.open("diagnosticArtifacts");
     },
 
     renderStepPreview(_run, step) {
@@ -174,7 +174,7 @@ export function createArtifacts(ctx) {
             <div class="step-files-active-head">
               <strong id="stepFilesActiveName">Select a file</strong>
               <div class="step-files-actions">
-                <button id="stepFilesOpenArtifactTab" class="mini-button" type="button">Open in Artifacts</button>
+                <button id="stepFilesOpenArtifactTab" class="mini-button" type="button">Open in Diagnostics</button>
                 <button id="stepFilesPreviewToggle" class="mini-button" type="button">Preview</button>
                 <button id="stepFilesCopy" class="mini-button" type="button">Copy</button>
                 <button id="stepFilesDownload" class="mini-button" type="button">Download</button>

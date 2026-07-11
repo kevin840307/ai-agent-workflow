@@ -1,5 +1,5 @@
-import { installWorkflowAssetManager } from "./ai-workflow-assets/asset-manager.js?v=20260704-direct-edit-gad";
-import { el, escapeAttr, escapeHtml, toast } from "./workflow-designer/utils.js?v=20260704-direct-edit-gad";
+import { installWorkflowAssetManager } from "./ai-workflow-assets/asset-manager.js?v=20260711-ui-v12";
+import { el, escapeAttr, escapeHtml, toast } from "./workflow-designer/utils.js?v=20260711-ui-v12";
 
 async function designerApi(path, options = {}) {
   const response = await fetch(path, {

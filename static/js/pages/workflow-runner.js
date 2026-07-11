@@ -1,20 +1,23 @@
-import { createAppContext } from "../core/context.js?v=20260704-direct-edit-gad";
-import { createArtifacts } from "../features/artifacts.js?v=20260704-direct-edit-gad";
-import { createChat } from "../features/chat.js?v=20260704-direct-edit-gad";
-import { createComposer } from "../features/composer.js?v=20260704-direct-edit-gad";
-import { createConfig } from "../features/config.js?v=20260704-direct-edit-gad";
-import { createConsole } from "../features/console.js?v=20260704-direct-edit-gad";
-import { createEvents } from "../features/events.js?v=20260704-direct-edit-gad";
-import { createEventStream } from "../features/event-stream.js?v=20260704-direct-edit-gad";
-import { createInteractions } from "../features/interactions.js?v=20260704-direct-edit-gad";
-import { createLayout } from "../features/layout.js?v=20260704-direct-edit-gad";
-import { createMessages } from "../features/messages.js?v=20260704-direct-edit-gad";
-import { createModal } from "../features/modal.js?v=20260704-direct-edit-gad";
-import { createRequirements } from "../features/requirements.js?v=20260704-direct-edit-gad";
-import { createRuns } from "../features/runs.js?v=20260704-direct-edit-gad";
-import { createSessions } from "../features/sessions.js?v=20260704-direct-edit-gad";
-import { createWorkflows } from "../features/workflows.js?v=20260704-direct-edit-gad";
-import { createWorkflowNotification } from "../features/workflow-notification.js?v=20260704-direct-edit-gad";
+import { createAppContext } from "../core/context.js?v=20260711-ui-v12";
+import { createArtifacts } from "../features/artifacts.js?v=20260711-ui-v12";
+import { createChat } from "../features/chat.js?v=20260711-ui-v12";
+import { createComposer } from "../features/composer.js?v=20260711-ui-v12";
+import { createConfig } from "../features/config.js?v=20260711-ui-v12";
+import { createConsole } from "../features/console.js?v=20260711-ui-v12";
+import { createEvents } from "../features/events.js?v=20260711-ui-v12";
+import { createDiagnostics } from "../features/diagnostics.js?v=20260711-ui-v12";
+import { createSetup } from "../features/setup.js?v=20260711-ui-v12";
+import { createOptimization } from "../features/optimization.js?v=20260711-ui-v12";
+import { createEventStream } from "../features/event-stream.js?v=20260711-ui-v12";
+import { createInteractions } from "../features/interactions.js?v=20260711-ui-v12";
+import { createLayout } from "../features/layout.js?v=20260711-ui-v12";
+import { createMessages } from "../features/messages.js?v=20260711-ui-v12";
+import { createModal } from "../features/modal.js?v=20260711-ui-v12";
+import { createRequirements } from "../features/requirements.js?v=20260711-ui-v12";
+import { createRuns } from "../features/runs.js?v=20260711-ui-v12";
+import { createSessions } from "../features/sessions.js?v=20260711-ui-v12";
+import { createWorkflows } from "../features/workflows.js?v=20260711-ui-v12";
+import { createWorkflowNotification } from "../features/workflow-notification.js?v=20260711-ui-v12";
 
 function registerWorkflowRunnerFeatures(ctx) {
   ctx.features.layout = createLayout(ctx);
@@ -22,6 +25,9 @@ function registerWorkflowRunnerFeatures(ctx) {
   ctx.features.chat = createChat(ctx);
   ctx.features.composer = createComposer(ctx);
   ctx.features.console = createConsole(ctx);
+  ctx.features.diagnostics = createDiagnostics(ctx);
+  ctx.features.setup = createSetup(ctx);
+  ctx.features.optimization = createOptimization(ctx);
   ctx.features.messages = createMessages(ctx);
   ctx.features.artifacts = createArtifacts(ctx);
   ctx.features.interactions = createInteractions(ctx);
@@ -51,6 +57,7 @@ export function initWorkflowRunnerPage() {
   ctx.features.workflows.load().catch((err) => {
     ctx.ui.byKey("runMeta").textContent = err.message;
   });
+  ctx.features.setup.check().catch(() => null);
   ctx.features.sessions.load().catch((err) => {
     ctx.ui.byKey("runMeta").textContent = err.message;
     ctx.ui.byKey("runStatusMeta").textContent = "Load failed";

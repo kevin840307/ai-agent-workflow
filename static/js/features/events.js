@@ -9,8 +9,26 @@ export function createEvents(ctx) {
       });
       ui.on("settingsMenu", "click", (event) => event.stopPropagation());
       ui.on("toggleDetails", "click", () => ctx.features.layout.toggleDetails());
+      ui.on("openDiagnostics", "click", () => ctx.features.diagnostics.open());
+      ui.on("openRunResult", "click", () => ctx.features.runs.openResultModal());
+      ui.on("closeDiagnostics", "click", () => ctx.features.diagnostics.close());
+      ui.on("compactArtifacts", "click", () => ctx.features.diagnostics.compactArtifacts());
+      ui.on("applyDiagnosticPatch", "click", () => ctx.features.diagnostics.applySelectedPatch());
+      ui.on("downloadDebugBundle", "click", () => ctx.features.diagnostics.downloadDebugBundle());
+      ui.on("exportRunBundle", "click", () => ctx.features.runs.exportRun());
+      ui.on("openSetupWizard", "click", () => ctx.features.setup.openWizard());
+      ui.on("dismissSetupStatus", "click", (event) => { event.stopPropagation(); ctx.features.setup.dismissNotice(); });
+      ui.on("composerAdvancedToggle", "click", () => {
+        const panel = ui.byKey("composerAdvancedSettings");
+        const button = ui.byKey("composerAdvancedToggle");
+        if (!panel || !button) return;
+        const open = panel.hidden;
+        panel.hidden = !open;
+        button.setAttribute("aria-expanded", String(open));
+        button.classList.toggle("active", open);
+      });
       ui.on("artifactSearch", "input", () => ctx.features.artifacts.renderList());
-      ui.on("messageInput", "input", () => ctx.features.composer.autoResize());
+      ui.on("messageInput", "input", () => { ctx.features.composer.autoResize(); ctx.features.optimization.schedule(); });
       ui.on("messageInput", "keydown", (event) => {
         if (event.key === "Enter" && event.ctrlKey && !ui.byKey("runWorkflow").disabled) {
           event.preventDefault();
@@ -61,6 +79,16 @@ export function createEvents(ctx) {
       ui.on("newProject", "click", () => ctx.features.sessions.create());
       ui.on("resetSession", "click", () => ctx.features.sessions.resetActive());
 
+      document.querySelectorAll(".diagnostic-nav-button").forEach((button) => {
+        button.addEventListener("click", () => ctx.features.diagnostics.activate(button.dataset.diagnostic));
+      });
+      ui.byKey("diagnosticsBackdrop")?.addEventListener("click", (event) => {
+        if (event.target === ui.byKey("diagnosticsBackdrop")) ctx.features.diagnostics.close();
+      });
+      ui.byKey("runResultPanel")?.addEventListener("click", (event) => {
+        if (event.target === ui.byKey("runResultPanel")) ctx.features.runs.closeResultModal({ remember: true });
+      });
+
       document.addEventListener("click", (event) => {
         const header = document.querySelector(".header");
         if (header && !header.contains(event.target)) ctx.features.layout.toggleSettings(false);
@@ -68,12 +96,18 @@ export function createEvents(ctx) {
         if (picker && !picker.contains(event.target)) ctx.features.workflows.closeDropdown();
         const thinkingPicker = ui.byKey("thinkingPicker");
         if (thinkingPicker && !thinkingPicker.contains(event.target)) ctx.features.workflows.closeThinkingDropdown();
+        const recommendation = ui.byKey("planningRecommendation")?.querySelector("details");
+        if (recommendation?.open && !recommendation.contains(event.target)) recommendation.open = false;
       });
 
       document.addEventListener("keydown", (event) => {
         if (event.key === "Escape") {
           ctx.features.workflows.closeDropdown();
           ctx.features.workflows.closeThinkingDropdown();
+          ctx.features.diagnostics.close();
+          ctx.features.runs.closeResultModal({ remember: true });
+          const recommendation = ui.byKey("planningRecommendation")?.querySelector("details");
+          if (recommendation) recommendation.open = false;
         }
       });
 

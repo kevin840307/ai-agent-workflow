@@ -57,10 +57,10 @@ class GeneralAutoDevelopmentWorkflowTests(unittest.TestCase):
         build = next(step for step in workflow["steps"] if step["key"] == "build")
         self.assertEqual(build["name"], "Execute Task Loop")
         self.assertTrue(build["enableTaskLoop"])
-        self.assertTrue(build["allowTestFilesInTaskLoop"])
+        self.assertFalse(build["allowTestFilesInTaskLoop"])
         self.assertEqual(build["retryFromStepKey"], "build")
-        self.assertEqual(build["retryEscalationEvery"], 3)
-        self.assertEqual(build["retryEscalationStepKey"], "plan_tasks")
+        self.assertNotIn("retryEscalationEvery", build)
+        self.assertNotIn("retryEscalationStepKey", build)
 
         generate_tests = next(step for step in workflow["steps"] if step["key"] == "generate_tests")
         self.assertEqual(generate_tests["type"], "ai")
@@ -152,20 +152,21 @@ class GeneralAutoDevelopmentWorkflowTests(unittest.TestCase):
                     "Implement calculator.add(a, b) and add a focused pytest test. Directly edit project files.",
                     "Implement add",
                 )
-            if "complete this sop task" in lower:
-                return """FILE: calculator.py
-CONTENT:
-def add(a, b):
-    return a + b
-END_FILE
-
-FILE: tests/test_calculator.py
+            if "add focused automated tests" in lower:
+                return """FILE: tests/test_calculator.py
 CONTENT:
 from calculator import add
 
 
 def test_add_returns_sum():
     assert add(2, 3) == 5
+END_FILE
+"""
+            if "complete this sop task" in lower:
+                return """FILE: calculator.py
+CONTENT:
+def add(a, b):
+    return a + b
 END_FILE
 """
             if "completed sop development result" in lower:
@@ -193,6 +194,24 @@ END_FILE
                     "Implement bubble_sort(values) and add focused tests for normal, duplicate, negative, empty, and single-item inputs. Directly edit project files.",
                     "Implement bubble sort",
                 )
+            if "add focused automated tests" in lower:
+                return """FILE: tests/test_bubble_sort.py
+CONTENT:
+from bubble_sort import bubble_sort
+
+
+def test_bubble_sort_orders_numbers_without_mutating_input():
+    values = [5, 1, 4, 2, 8]
+    assert bubble_sort(values) == [1, 2, 4, 5, 8]
+    assert values == [5, 1, 4, 2, 8]
+
+
+def test_bubble_sort_handles_duplicates_negatives_and_empty_inputs():
+    assert bubble_sort([3, -1, 3, 0]) == [-1, 0, 3, 3]
+    assert bubble_sort([]) == []
+    assert bubble_sort([7]) == [7]
+END_FILE
+"""
             if "complete this sop task" in lower:
                 return """FILE: bubble_sort.py
 CONTENT:
@@ -216,23 +235,6 @@ def bubble_sort(values: Iterable[T]) -> list[T]:
         if not swapped:
             break
     return result
-END_FILE
-
-FILE: tests/test_bubble_sort.py
-CONTENT:
-from bubble_sort import bubble_sort
-
-
-def test_bubble_sort_orders_numbers_without_mutating_input():
-    values = [5, 1, 4, 2, 8]
-    assert bubble_sort(values) == [1, 2, 4, 5, 8]
-    assert values == [5, 1, 4, 2, 8]
-
-
-def test_bubble_sort_handles_duplicates_negatives_and_empty_inputs():
-    assert bubble_sort([3, -1, 3, 0]) == [-1, 0, 3, 3]
-    assert bubble_sort([]) == []
-    assert bubble_sort([7]) == [7]
 END_FILE
 """
             if "completed sop development result" in lower:
@@ -267,12 +269,8 @@ END_FILE
                     "Apply CRUD operations from config/crud.yaml to config/users.yaml and write generated/users.yaml plus a focused test. Directly edit project files.",
                     "Generate CRUD output YAML",
                 )
-            if "complete this sop task" in lower:
-                return f"""FILE: generated/users.yaml
-CONTENT:
-{expected_yaml}END_FILE
-
-FILE: tests/test_yaml_crud.py
+            if "add focused automated tests" in lower:
+                return f"""FILE: tests/test_yaml_crud.py
 CONTENT:
 from pathlib import Path
 
@@ -284,6 +282,11 @@ def test_generated_yaml_matches_crud_config():
     actual = Path("generated/users.yaml").read_text(encoding="utf-8")
     assert actual == EXPECTED
 END_FILE
+"""
+            if "complete this sop task" in lower:
+                return f"""FILE: generated/users.yaml
+CONTENT:
+{expected_yaml}END_FILE
 """
             if "completed sop development result" in lower:
                 return "# Implementation Review\n\nStatus: PASS\nConfidence: 0.98\n\n## Findings\n- Complete.\n\n## Test Check\n- Tests exist.\n\n## Required Fixes\n- None\n"
@@ -337,8 +340,8 @@ END_FILE
             run = {"id": "run-1", "workspace": str(workspace), "project_path": str(project)}
             asyncio.run(service.call_python_function(run, "run_external_validation", output, "external-validation-result.md"))
             result = (output / "external-validation-result.md").read_text(encoding="utf-8")
-            self.assertIn("Status: PASS", result)
-            self.assertIn("external validation skipped", result)
+            self.assertIn("Status: NOT_CONFIGURED", result)
+            self.assertIn("not configured", result.lower())
 
     def test_external_validation_fails_when_step_requires_validation_script(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -352,7 +355,7 @@ END_FILE
             with self.assertRaises(WorkflowError):
                 asyncio.run(service.call_python_function(run, "run_external_validation", output, "external-validation-result.md"))
             result = (output / "external-validation-result.md").read_text(encoding="utf-8")
-            self.assertIn("Status: FAIL", result)
+            self.assertIn("Status: BLOCKED", result)
             self.assertIn("No validation script found", result)
 
     def test_external_validation_runs_project_default_validation_script(self) -> None:

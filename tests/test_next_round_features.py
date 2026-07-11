@@ -5,6 +5,7 @@ import subprocess
 import sys
 import time
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
@@ -49,19 +50,25 @@ class NextRoundFeatureTests(unittest.TestCase):
             self.assertEqual(matrix.json()["schema"], "aiwf.real-agent-matrix.v2")
             self.assertIn("--self-prompt-test", matrix.json()["rows"][0]["command"])
 
-    def test_regression_workflow_runs_and_writes_standard_artifact_index(self) -> None:
-        with TemporaryDirectory() as tmp, TestClient(app) as client:
+    def test_product_workflow_runs_and_writes_compact_artifact_index(self) -> None:
+        """The product exposes only the three approved workflows.
+
+        Regression-template APIs remain available for plugin/tooling use, but they are
+        not runnable product workflow assets.  This integration check therefore uses
+        the default General workflow and verifies the compact evidence index.
+        """
+        with patch.dict(os.environ, {"QWEN_MOCK": "1"}), TemporaryDirectory() as tmp, TestClient(app) as client:
             project = Path(tmp) / "project"
             project.mkdir()
             (project / "README.md").write_text("# Project\n", encoding="utf-8")
-            session = client.post("/api/sessions", json={"title": "regression", "project_path": str(project)})
+            session = client.post("/api/sessions", json={"title": "general", "project_path": str(project)})
             self.assertEqual(session.status_code, 200, session.text)
             run_resp = client.post(
                 f"/api/sessions/{session.json()['id']}/workflow-runs",
                 json={
-                    "workflow_id": "regression-test-case-generation",
+                    "workflow_id": "general-auto-development",
                     "project_path": str(project),
-                    "requirement": "WORKITEM5678 typeA/typeB 組合，產出 SOP SQL、Runtime SQL、validation.py、Markdown case。",
+                    "requirement": "Create a small Python add(a, b) function and deterministic tests.",
                     "runProfile": "small",
                     "runTimeoutSec": 60,
                 },
@@ -72,34 +79,28 @@ class NextRoundFeatureTests(unittest.TestCase):
             current = run_resp.json()
             while time.time() < deadline:
                 current = client.get(f"/api/workflow-runs/{run_id}").json()
-                if current.get("status") in {"done", "failed", "cancelled", "waiting_input"}:
+                if current.get("status") in {"done", "failed", "cancelled", "waiting_input", "blocked"}:
                     break
                 time.sleep(0.1)
             self.assertEqual(current.get("status"), "done", current.get("error"))
             workspace = Path(current["workspace"])
-            for rel in [
-                "output/sop-definition.sql",
-                "output/runtime-test-data.sql",
-                "output/validation.py",
-                "output/regression-test-case.md",
-                "output/dry-run-report.md",
-                ".workflow/artifacts/index.json",
-            ]:
-                self.assertTrue((workspace / rel).exists(), rel)
+            self.assertTrue((workspace / ".workflow/artifacts/index.json").exists())
             artifact_index = client.get(f"/api/workflow-runs/{run_id}/artifact-index")
             self.assertEqual(artifact_index.status_code, 200, artifact_index.text)
             self.assertEqual(artifact_index.json()["schema"], ARTIFACT_SCHEMA)
-            self.assertGreaterEqual(artifact_index.json()["summary"]["steps_total"], 7)
+            self.assertGreaterEqual(artifact_index.json()["summary"]["steps_total"], 1)
             console = client.get(f"/api/workflow-runs/{run_id}/console")
+            self.assertEqual(console.status_code, 200, console.text)
             self.assertEqual(console.json()["summary"]["steps_attention"], 0)
 
     def test_ui_has_run_detail_and_artifact_index(self) -> None:
         html = Path("static/index.html").read_text(encoding="utf-8")
         js = Path("static/js/features/runs.js").read_text(encoding="utf-8")
-        self.assertIn(">Detail</button>", html)
-        self.assertIn("runDetailPanel", html)
-        self.assertIn("Artifact Index", js)
-        self.assertIn("/artifact-index", js)
+        self.assertIn("Run Center", html)
+        self.assertIn("overviewPanel", html)
+        self.assertIn("diagnosticsDrawer", html)
+        self.assertIn("/overview", js)
+        self.assertNotIn("runDetailPanel", html)
         self.assertIn("/repair-policy", Path("app/api/routes/workflow_runs.py").read_text(encoding="utf-8"))
 
     def test_real_agent_matrix_cli_safe_execute(self) -> None:

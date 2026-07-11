@@ -9,6 +9,15 @@ import sys
 from pathlib import Path
 
 from app.workflow_runtime.builtin_functions.base import WorkflowFunctionContext, WorkflowFunctionError
+from app.workflow_runtime.completion_gate import evaluate_completion
+from app.workflow_runtime.project_hygiene import inspect_project_hygiene
+from app.workflow_runtime.validators import execute_validator_plan, primary_validator
+from app.workflow_runtime.validation_contract import ValidationContractError, verify_validation_contract
+from app.workflow_runtime.test_layout import (
+    is_pytest_import_mismatch,
+    repair_run_owned_test_layout,
+    write_test_layout_repair_report,
+)
 
 
 def ids_with_prefix(text: str, prefix: str) -> set[str]:
@@ -94,8 +103,45 @@ def summarize_command_failure(stdout: str, stderr: str) -> str:
     return "\n".join(selected).strip()
 
 
+def _upsert_validation_result(
+    run: dict, *, key: str, status: str, command: str, exit_code: object, summary: str
+) -> None:
+    results = run.setdefault("validation_results", [])
+    item = {
+        "key": key,
+        "status": status,
+        "command": command,
+        "exit_code": exit_code,
+        "summary": summary[-2000:],
+    }
+    for index, existing in enumerate(results):
+        if existing.get("key") == key:
+            results[index] = item
+            break
+    else:
+        results.append(item)
+
+
 async def run_pytest(ctx: WorkflowFunctionContext) -> None:
-    command = ctx.run.get("test_command") or os.environ.get("WORKFLOW_TEST_COMMAND", "python -m pytest")
+    run_workspace = Path(ctx.run["workspace"])
+    preflight = repair_run_owned_test_layout(ctx.project_dir, run_workspace)
+    write_test_layout_repair_report(run_workspace, preflight)
+    if preflight.get("removed_files"):
+        await ctx.log(
+            ctx.run,
+            "run_test: deterministic test-layout cleanup removed current-run file(s): "
+            + ", ".join(preflight["removed_files"]),
+        )
+
+    explicit = ctx.run.get("test_command") or os.environ.get("WORKFLOW_TEST_COMMAND")
+    if explicit:
+        command = str(explicit)
+    elif _project_has_pytest_files(ctx.project_dir):
+        command = "python -m pytest"
+    elif (ctx.project_dir / "run_tests.py").is_file():
+        command = f'"{sys.executable}" run_tests.py'
+    else:
+        command = "python -m pytest"
     timeout_sec = _test_command_timeout_seconds()
     await ctx.log(ctx.run, f"run_test: executing `{command}` in {ctx.project_dir} (timeout {timeout_sec:.0f}s)")
 
@@ -125,75 +171,146 @@ async def run_pytest(ctx: WorkflowFunctionContext) -> None:
             f"TimeoutSec: {timeout_sec:.0f}\n\n"
             f"STDOUT:\n{stdout}\n\nSTDERR:\n{stderr}\n"
         )
-        ctx.write_text(Path(ctx.run["workspace"]) / "output" / "test-result.md", result)
+        ctx.write_text(run_workspace / "output" / "test-result.md", result)
+        _upsert_validation_result(ctx.run, key="test", status="error", command=command, exit_code="TIMEOUT", summary=summarize_command_failure(stdout, stderr))
         await ctx.refresh_artifacts(ctx.run["id"])
         raise WorkflowFunctionError(f"Test command timed out after {timeout_sec:.0f} seconds. Open output/test-result.md for details.") from exc
 
+    # A pytest import mismatch is usually caused by a current-run root test and
+    # tests/ counterpart. Repair once deterministically and rerun without
+    # spending an AI retry.
+    combined = "\n".join([proc.stdout or "", proc.stderr or ""])
+    if proc.returncode != 0 and is_pytest_import_mismatch(combined):
+        repair = repair_run_owned_test_layout(ctx.project_dir, run_workspace)
+        write_test_layout_repair_report(run_workspace, repair)
+        if repair.get("removed_files"):
+            await ctx.log(
+                ctx.run,
+                "run_test: pytest import mismatch repaired deterministically; rerunning after removing "
+                + ", ".join(repair["removed_files"]),
+            )
+            proc = await asyncio.to_thread(execute)
+
     result = f"Command: {command}\nExitCode: {proc.returncode}\n\nSTDOUT:\n{proc.stdout}\n\nSTDERR:\n{proc.stderr}\n"
-    ctx.write_text(Path(ctx.run["workspace"]) / "output" / "test-result.md", result)
+    ctx.write_text(run_workspace / "output" / "test-result.md", result)
+    _upsert_validation_result(
+        ctx.run,
+        key="test",
+        status="passed" if proc.returncode == 0 else "failed",
+        command=command,
+        exit_code=proc.returncode,
+        summary=summarize_command_failure(proc.stdout, proc.stderr),
+    )
     await ctx.refresh_artifacts(ctx.run["id"])
     if proc.returncode != 0:
         summary = summarize_command_failure(proc.stdout, proc.stderr)
         detail = f"\n\nSummary:\n{summary}" if summary else ""
+        code = "TEST_LAYOUT_CONFLICT" if is_pytest_import_mismatch(result) else "TEST_FAILED"
         raise WorkflowFunctionError(
-            f"Test command failed with exit code {proc.returncode}. "
+            f"{code}: Test command failed with exit code {proc.returncode}. "
             "Open output/test-result.md for full stdout/stderr."
             f"{detail}"
         )
 
 
 async def adaptive_python_gate(ctx: WorkflowFunctionContext, artifact: str = "python-gate-result.md") -> None:
-    """Run the best available Python gate for adaptive workflows.
+    """Run project tests first, then the immutable user validation contract.
 
-    Precedence:
-    1. A configured or discovered validation script.
-    2. The project's pytest suite when tests exist.
-    3. A clear skipped PASS artifact when no Python gate is available.
+    User validation is an additional acceptance oracle.  It never replaces
+    pytest/run_tests.py, and a required validation contract can never be
+    silently reported as skipped.
     """
-    output_dir = Path(ctx.run["workspace"]) / "output"
+    run_workspace = Path(ctx.run["workspace"])
+    output_dir = run_workspace / "output"
     output_dir.mkdir(parents=True, exist_ok=True)
+    layout_repair = repair_run_owned_test_layout(ctx.project_dir, run_workspace)
+    write_test_layout_repair_report(run_workspace, layout_repair)
+    if layout_repair.get("removed_files"):
+        await ctx.log(ctx.run, "python_gate: deterministic test-layout cleanup removed current-run file(s): " + ", ".join(layout_repair["removed_files"]))
+
     script = _find_project_validation_script(ctx)
-    if script:
-        await _run_validation_script(ctx, script, artifact)
-        return
-    if _project_has_pytest_files(ctx.project_dir):
+    has_pytest = _project_has_pytest_files(ctx.project_dir)
+    has_run_tests = (ctx.project_dir / "run_tests.py").is_file()
+    has_python = any(
+        path.is_file() for path in ctx.project_dir.rglob("*.py")
+        if ".ai-workflow" not in path.parts and "__pycache__" not in path.parts
+    )
+    modes: list[str] = []
+
+    if has_pytest:
         await run_pytest(ctx)
-        test_result = ctx.read_text(output_dir / "test-result.md")
-        ctx.write_text(
-            output_dir / artifact,
-            "\n".join(
-                [
-                    "# Python Gate Result",
-                    "",
-                    "Status: PASS",
-                    "Mode: pytest",
-                    "Evidence: output/test-result.md",
-                    "",
-                    "## Test Result",
-                    "```text",
-                    test_result.rstrip(),
-                    "```",
-                    "",
-                ]
-            ),
-        )
+        modes.append("pytest")
+    elif has_run_tests:
+        await _run_project_python_file(ctx, ctx.project_dir / "run_tests.py", artifact)
+        modes.append("run_tests.py")
+    elif has_python and script is None:
+        ctx.write_text(output_dir / artifact, "# Validation Gate Result\n\nStatus: FAIL\nMode: none\nCode: VALIDATION_NOT_EXECUTED\nReason: Python source exists but no pytest tests, run_tests.py, or validation script was found.\n")
+        _upsert_validation_result(ctx.run, key="test", status="blocked", command="", exit_code=None, summary="Python source exists but no executable tests were found.")
+        raise WorkflowFunctionError("VALIDATION_NOT_EXECUTED: Python source exists but no executable tests were found.")
+    elif not has_python:
+        plan = primary_validator(ctx.project_dir)
+        if plan and plan.get("id") != "python":
+            result = await execute_validator_plan(ctx.project_dir, validator_id=str(plan.get("id")), timeout_sec=int(os.environ.get("AIWF_VALIDATOR_TIMEOUT_SEC", "900")))
+            _upsert_validation_result(ctx.run, key=str(plan.get("id")), status=str(result.get("status") or "error"), command=str(plan.get("command_text") or ""), exit_code=result.get("exit_code"), summary=(result.get("stderr") or result.get("stdout") or result.get("reason") or "")[-1200:])
+            if result.get("status") not in {"passed", "skipped"}:
+                raise WorkflowFunctionError(f"VALIDATION_FAILED: {plan.get('title')} did not pass.")
+            modes.append(str(plan.get("id")))
+
+    if script is not None:
+        await _run_validation_script(ctx, script, artifact)
+        modes.append("validation_script")
+    elif not modes:
+        ctx.write_text(output_dir / artifact, "# Validation Gate Result\n\nStatus: NOT_CONFIGURED\nMode: no_validator\nReason: No supported project validator was configured.\n")
+        _upsert_validation_result(ctx.run, key="user_validation", status="not_configured", command="", exit_code=None, summary="No user validation script configured.")
         return
+
+    test_result = ctx.read_text(output_dir / "test-result.md")
+    validation_result = ctx.read_text(output_dir / "user-validation-result.md")
     ctx.write_text(
         output_dir / artifact,
-        "\n".join(
-            [
-                "# Python Gate Result",
-                "",
-                "Status: PASS",
-                "Mode: skipped",
-                "Reason: No validation script was configured or found, and no pytest files were present.",
-                "",
-            ]
-        ),
+        "\n".join([
+            "# Validation Gate Result", "", "Status: PASS", f"Mode: {' + '.join(modes)}",
+            "", "## Test Result", "```text", test_result.rstrip(), "```",
+            "", "## User Validation", "```text", validation_result.rstrip(), "```", "",
+        ]),
     )
+
+    hygiene = inspect_project_hygiene(ctx.project_dir)
+    ctx.write_text(output_dir / "project-hygiene.json", json.dumps(hygiene, indent=2, ensure_ascii=False))
+    if hygiene["status"] != "PASS":
+        detail = "; ".join(hygiene.get("errors") or [])
+        raise WorkflowFunctionError(f"Project hygiene failed after {' + '.join(modes)}: {detail}")
+
+
+async def _run_project_python_file(ctx: WorkflowFunctionContext, script: Path, artifact: str) -> None:
+    command = [sys.executable, str(script)]
+    timeout_sec = _test_command_timeout_seconds()
+    await ctx.log(ctx.run, f"python_gate: executing `{script.name}` in {ctx.project_dir} (timeout {timeout_sec:.0f}s)")
+    proc = await _run_validation_command(command, cwd=ctx.project_dir, timeout_sec=timeout_sec)
+    status = "PASS" if proc["returncode"] == 0 else "FAIL"
+    result_markdown = "\n".join([
+        "# Test Result", "", f"Status: {status}", "Mode: run_tests.py",
+        f"Command: {_quote_command_part(sys.executable)} {_quote_command_part(str(script))}",
+        f"Exit Code: {proc['returncode']}", "", "## Stdout", "```text",
+        str(proc["stdout"] or "").rstrip(), "```", "", "## Stderr", "```text",
+        str(proc["stderr"] or "").rstrip(), "```", "",
+    ])
+    ctx.write_text(ctx.output_dir / "test-result.md", result_markdown)
+    if artifact != "test-result.md":
+        ctx.write_text(ctx.output_dir / artifact, result_markdown.replace("# Test Result", "# Python Gate Result", 1))
+    _upsert_validation_result(ctx.run, key="test", status="passed" if proc["returncode"] == 0 else "failed", command=" ".join(command), exit_code=proc["returncode"], summary=summarize_command_failure(str(proc["stdout"] or ""), str(proc["stderr"] or "")))
+    if proc["returncode"] != 0:
+        raise WorkflowFunctionError(f"run_tests.py failed with exit code {proc['returncode']}")
 
 
 def _find_project_validation_script(ctx: WorkflowFunctionContext) -> Path | None:
+    contract = ctx.run.get("validation_contract") if isinstance(ctx.run, dict) else None
+    if isinstance(contract, dict) and contract:
+        try:
+            _contract, script = verify_validation_contract(ctx.run)
+            return script
+        except ValidationContractError as exc:
+            raise WorkflowFunctionError(str(exc)) from exc
     configured = str(ctx.run.get("validation_script") or "").strip()
     candidates: list[str] = []
     if configured:
@@ -223,7 +340,8 @@ async def _run_validation_script(ctx: WorkflowFunctionContext, script: Path, art
         "--output",
         str(ctx.output_dir),
     ]
-    timeout_sec = _test_command_timeout_seconds()
+    contract = ctx.run.get("validation_contract") if isinstance(ctx.run, dict) else {}
+    timeout_sec = float((contract or {}).get("timeout_seconds") or _test_command_timeout_seconds())
     await ctx.log(ctx.run, f"python_gate: executing validation script `{script}` in {ctx.project_dir} (timeout {timeout_sec:.0f}s)")
 
     proc = await _run_validation_command(command, cwd=ctx.project_dir, timeout_sec=timeout_sec)
@@ -255,7 +373,13 @@ async def _run_validation_script(ctx: WorkflowFunctionContext, script: Path, art
             "",
         ]
     )
-    ctx.write_text(ctx.output_dir / artifact, result)
+    ctx.write_text(ctx.output_dir / "user-validation-result.md", result)
+    _upsert_validation_result(
+        ctx.run, key="user_validation",
+        status="passed" if proc["returncode"] == 0 else "failed",
+        command=" ".join(command), exit_code=proc["returncode"],
+        summary=summarize_command_failure(str(proc["stdout"] or ""), str(proc["stderr"] or "")),
+    )
     if proc["returncode"] == "TIMEOUT":
         raise WorkflowFunctionError(f"Python gate validation script timed out after {timeout_sec:.0f} seconds")
     if proc["returncode"] != 0:
@@ -463,6 +587,7 @@ def validate_general_auto_final(ctx: WorkflowFunctionContext, artifact: str = "f
     test_plan = ctx.read_text(ctx.output_dir / "test-plan.md")
     test_result = ctx.read_text(ctx.output_dir / "test-result.md")
     external_validation = ctx.read_text(ctx.output_dir / "external-validation-result.md")
+    completion = evaluate_completion(ctx.run, output_dir=ctx.output_dir)
 
     def _json_status_pass(text: str) -> bool:
         try:
@@ -496,20 +621,20 @@ def validate_general_auto_final(ctx: WorkflowFunctionContext, artifact: str = "f
             "status": "PASS" if (_has_direct_edit_summary(test_plan) or bool(_direct_state_paths(ctx.output_dir, "generate_tests"))) else "FAIL",
             "evidence": "output/test-plan.md or output/tasks/*/generate_tests-state.json",
         },
-        "automated_tests": {
-            "status": "PASS" if _contains_status_pass(test_result) else "FAIL",
-            "evidence": "output/test-result.md",
-        },
-        "external_validation": {
-            "status": "PASS" if ("Status: PASS" in external_validation or "Exit Code: 0" in external_validation or "ExitCode: 0" in external_validation) else "FAIL",
-            "evidence": "output/external-validation-result.md",
-        },
+        "automated_tests": completion["checks"].get("automated_tests", {"status": "PASS", "evidence": "not required"}),
+        "external_validation": completion["checks"].get("user_validation", {"status": "NOT_CONFIGURED", "evidence": "optional"}),
         "workspace_isolation": {
             "status": "PASS",
             "evidence": "Project diff safety checks confirm Qwen/OpenCode direct edits stay inside the selected Project Path.",
         },
     }
-    failures = [name for name, item in checks.items() if item["status"] != "PASS"]
+    hygiene = inspect_project_hygiene(ctx.project_dir)
+    ctx.write_text(ctx.output_dir / "project-hygiene.json", json.dumps(hygiene, indent=2, ensure_ascii=False))
+    checks["project_hygiene"] = {
+        "status": hygiene["status"],
+        "evidence": "output/project-hygiene.json",
+    }
+    failures = [name for name, item in checks.items() if item["status"] not in {"PASS", "NOT_CONFIGURED", "SKIPPED"}]
     diff_context = _diff_context(ctx, build_result, test_plan)
     report = {
         "status": "FAIL" if failures else "PASS",

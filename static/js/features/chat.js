@@ -1,4 +1,4 @@
-import { LocalStore, StorageKeys } from "../core/storage.js?v=20260704-direct-edit-gad";
+import { LocalStore, StorageKeys } from "../core/storage.js?v=20260711-ui-v12";
 
 export function createChat(ctx) {
   const { api, state, ui } = ctx;
