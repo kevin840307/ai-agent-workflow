@@ -4,22 +4,26 @@ import asyncio
 import os
 from contextlib import asynccontextmanager, suppress
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from app.runtime_modules import api as runtime
+from app.runtime_modules.api import get_runtime_context as get_default_runtime_context, mark_interrupted_runs
+from app.api.dependencies import get_runtime_context
 from app.api.errors import http_exception_handler, validation_exception_handler
 from app.api.routes import artifacts, config, maintenance, projects, workflow_assets, workflow_runs, workflows, workflow_cases, validation_scripts, context_packs, workflow_productization, setup, analytics, optimization, productization_v9, project_validation_profiles
 from app.core.metrics import metrics
+from app.core.paths import DATA_DIR, STATIC_DIR, ensure_dirs
+from app.core.runtime_context import RuntimeContext
 from app.services import workflow_asset_service, workflow_config_service, health_service, workflow_service, maintenance_service
 from app.agents.process_supervisor import terminate_async_process_tree
 from app.workflow_runtime.qwen_serve import shutdown_qwen_serve
 
 _invariant_stop: asyncio.Event | None = None
 _invariant_task: asyncio.Task | None = None
+_runtime_context = get_default_runtime_context()
 
 
 async def startup() -> None:
@@ -27,14 +31,14 @@ async def startup() -> None:
     workers = os.environ.get("WEB_CONCURRENCY") or os.environ.get("UVICORN_WORKERS")
     if workers and workers != "1":
         raise RuntimeError("This single-machine MVP requires workers=1. Run uvicorn with --workers 1.")
-    runtime.ensure_dirs()
+    ensure_dirs()
     # Clean up controller-managed child processes that survived an abrupt
     # controller exit before restoring persisted runs.
-    reaper = getattr(runtime.running_processes, "reap_orphans", None)
+    reaper = getattr(_runtime_context.running_processes, "reap_orphans", None)
     if callable(reaper):
         await asyncio.to_thread(reaper)
-    runtime.store.load_sync()
-    runtime.mark_interrupted_runs()
+    _runtime_context.store.load_sync()
+    mark_interrupted_runs()
     workflow_asset_service.ensure_asset_dirs()
     workflow_config_service.ensure_system_workflow()
     context_pack_service = __import__("app.services.context_pack_service", fromlist=["ensure_context_pack_dirs"])
@@ -46,6 +50,7 @@ async def startup() -> None:
             maintenance_service.runtime_invariant_monitor(
                 _invariant_stop,
                 interval_seconds=int(os.environ.get("AIWF_INVARIANT_INTERVAL_SEC", "60") or 60),
+                context=_runtime_context,
             ),
             name="aiwf-invariant-monitor",
         )
@@ -62,25 +67,25 @@ async def shutdown() -> None:
             await _invariant_task
     _invariant_stop = None
     _invariant_task = None
-    tasks = [task for task in runtime.running_tasks.values() if not task.done()]
+    tasks = [task for task in _runtime_context.running_tasks.values() if not task.done()]
     for task in tasks:
         task.cancel()
     if tasks:
         with suppress(asyncio.TimeoutError):
             await asyncio.wait_for(asyncio.gather(*tasks, return_exceptions=True), timeout=8)
-    runtime.running_tasks.clear()
+    _runtime_context.running_tasks.clear()
 
-    processes = list(runtime.running_processes.values())
+    processes = list(_runtime_context.running_processes.values())
     for process in processes:
         if process.returncode is None:
             with suppress(Exception):
                 await terminate_async_process_tree(process, grace_sec=1.5)
-    runtime.running_processes.clear()
+    _runtime_context.running_processes.clear()
 
     # Persist active runs as recoverable and release their project locks before
     # the process exits. This also keeps TestClient teardown deterministic.
     with suppress(Exception):
-        runtime.mark_interrupted_runs()
+        mark_interrupted_runs()
     with suppress(Exception):
         await asyncio.to_thread(shutdown_qwen_serve)
 
@@ -95,49 +100,50 @@ async def lifespan(_app: FastAPI):
 
 
 app = FastAPI(title="Agent Workflow Web MVP", lifespan=lifespan)
+app.state.runtime_context = _runtime_context
 app.add_exception_handler(StarletteHTTPException, http_exception_handler)
 app.add_exception_handler(RequestValidationError, validation_exception_handler)
 
 
 @app.get("/")
 async def index():
-    return FileResponse(runtime.STATIC_DIR / "index.html")
+    return FileResponse(STATIC_DIR / "index.html")
 
 @app.get("/workflow-designer")
 @app.get("/workflow-designer.html")
 async def workflow_designer():
-    return FileResponse(runtime.STATIC_DIR / "workflow-designer.html")
+    return FileResponse(STATIC_DIR / "workflow-designer.html")
 
 
 @app.get("/ai-workflow-assets")
 @app.get("/ai-workflow-assets.html")
 async def ai_workflow_assets():
-    return FileResponse(runtime.STATIC_DIR / "ai-workflow-assets.html")
+    return FileResponse(STATIC_DIR / "ai-workflow-assets.html")
 
 
 @app.get("/health")
 @app.get("/api/health")
-async def health():
-    return await health_service.health_summary(deep=False)
+async def health(context: RuntimeContext = Depends(get_runtime_context)):
+    return await health_service.health_summary(deep=False, context=context)
 
 
 @app.get("/api/health/deep")
-async def deep_health():
-    return await health_service.health_summary(deep=True)
+async def deep_health(context: RuntimeContext = Depends(get_runtime_context)):
+    return await health_service.health_summary(deep=True, context=context)
 
 
 @app.get("/ready")
-async def ready():
-    store_path = runtime.store_path()
+async def ready(context: RuntimeContext = Depends(get_runtime_context)):
+    store_path = context.store_path()
     checks = {
-        "storeBackend": runtime.store_backend_name(),
+        "storeBackend": context.store_backend_name(),
         "storePath": str(store_path),
         "storeReadable": store_path.exists(),
         "storeWritable": os.access(store_path.parent, os.W_OK),
-        "dataWritable": os.access(runtime.DATA_DIR, os.W_OK),
-        "staticAvailable": (runtime.STATIC_DIR / "index.html").exists(),
-        "designerAvailable": (runtime.STATIC_DIR / "workflow-designer.html").exists(),
-        "assetsPageAvailable": (runtime.STATIC_DIR / "ai-workflow-assets.html").exists(),
+        "dataWritable": os.access(DATA_DIR, os.W_OK),
+        "staticAvailable": (STATIC_DIR / "index.html").exists(),
+        "designerAvailable": (STATIC_DIR / "workflow-designer.html").exists(),
+        "assetsPageAvailable": (STATIC_DIR / "ai-workflow-assets.html").exists(),
         "aiWorkflowWritable": os.access(workflow_asset_service.GLOBAL_ASSET_ROOT, os.W_OK),
     }
     ok = all(checks.values())
@@ -145,12 +151,12 @@ async def ready():
 
 
 @app.get("/metrics")
-async def get_metrics():
-    data = await runtime.store.read()
+async def get_metrics(context: RuntimeContext = Depends(get_runtime_context)):
+    data = await context.store.read()
     active_runs = sum(1 for run in data.get("runs", []) if run.get("status") in {"queued", "running", "waiting_input", "cancelling"})
     return metrics.snapshot(active_runs=active_runs)
 
-app.mount("/static", StaticFiles(directory=runtime.STATIC_DIR), name="static")
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 app.include_router(config.router)
 app.include_router(setup.router)

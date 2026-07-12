@@ -47,7 +47,7 @@ Environment requirements in the profile may declare commands, environment variab
 
 ## Baseline and legacy projects
 
-Baseline validation runs before implementation. Pre-existing failures are recorded as evidence. Final validation blocks new/worsened failures and unmet acceptance criteria; unchanged unrelated legacy failures are not automatically assigned to the Agent.
+Baseline validation runs before implementation for engineering Workflows. Report-only Security Vulnerability Scan skips this phase and starts at manifest collection. Pre-existing failures are recorded as evidence when a baseline is required. Final validation blocks new/worsened failures and unmet acceptance criteria; unchanged unrelated legacy failures are not automatically assigned to the Agent.
 
 ## Isolated workspace and atomic delivery
 
@@ -72,10 +72,13 @@ Back up `data/store.sqlite3`, `data/settings.json`, global workflow assets, cont
 ## Safe release procedure
 
 ```powershell
-python -m compileall -q app tests
+python -m compileall -q app tests scripts
+python scripts/run_startup_smoke.py
 python scripts/validate_workflow_assets.py
-python scripts/run_tests.py --mode all --isolate-all
+python scripts/run_tests.py --profile release --file-timeout 240
 python scripts/run_production_acceptance.py
+python scripts/build_release.py --check-only
+python scripts/build_release.py
 ```
 
 Run the real-Agent matrix on the target Windows/Qwen/OpenCode environment before claiming real-model certification.
@@ -105,3 +108,19 @@ python scripts/run_browser_ui_smoke.py --browser
 ```
 
 Increase soak iterations for overnight testing. Real Qwen/OpenCode certification remains separate and opt-in.
+
+## Release artifact policy
+
+Do not zip the working directory directly. `scripts/build_release.py` uses an allowlist and writes `RELEASE_MANIFEST.json` plus a sidecar manifest. Keep the sidecar with release evidence so support can verify exactly which files and hashes were delivered.
+
+Runtime state is intentionally excluded. Backups and release packages are different artifacts: back up SQLite/settings/profiles for recovery, but never distribute them in the product ZIP.
+
+## Database migration operations
+
+Startup applies only missing SQLite migrations. Before changing an existing schema, the controller creates one `pre-migration` backup unless `AIWF_SQLITE_AUTO_BACKUP=0`. Keep automatic backup enabled for normal local operation. Migration failure blocks startup and leaves the failed version unapplied. `DATABASE_SCHEMA_TOO_NEW` means the database belongs to a newer controller and must not be downgraded in place.
+
+After an upgrade, verify `/ready`, `/api/health/deep`, and `/api/maintenance/store/status`. For rollback, restore the pre-migration backup before starting the older program version.
+
+## CommandRunner operations
+
+Project commands are executed only from a cwd inside the declared Project Path. Agent-generated commands must be argv-only and cannot enable shell mode. Command output is UTF-8 normalized, redacted, and bounded; timeout terminates the full process tree. Investigate `TIMEOUT` and `COMMAND_FAILED` through validation artifacts rather than rerunning commands outside the controller with different cwd/environment.

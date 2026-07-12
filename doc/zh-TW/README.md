@@ -13,3 +13,4 @@
 7. [測試與真實 Agent 認證](TESTING.md)
 
 英文文件：[`../en/README.md`](../en/README.md)
+目前版本收斂內容：[`../../IMPLEMENTATION_REPORT_V24.md`](../../IMPLEMENTATION_REPORT_V24.md)，Windows Security Scan Hotfix 請見 [`../../IMPLEMENTATION_REPORT_V24_1.md`](../../IMPLEMENTATION_REPORT_V24_1.md)。

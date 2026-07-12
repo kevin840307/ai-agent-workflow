@@ -99,7 +99,7 @@ Best for broader work with a stronger model. Replanning is reserved for true spe
 
 ### Security Vulnerability Scan
 
-Read-mostly inventory and supported security checks. It must not create product code.
+Read-mostly inventory and supported security checks. It must not create product code. It starts directly at **Collect Security Manifest** and intentionally skips the project Build/Test baseline.
 
 ## Completion rules
 

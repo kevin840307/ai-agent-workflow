@@ -11,9 +11,10 @@ from pathlib import Path
 from typing import Any, Callable
 
 from app.core.paths import ensure_dirs
+from app.persistence.migrations import LATEST_SQLITE_SCHEMA_VERSION, run_migrations, verify_schema
 
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = LATEST_SQLITE_SCHEMA_VERSION
 
 
 class SQLiteStore:
@@ -52,163 +53,30 @@ class SQLiteStore:
 
     def _init_db(self) -> None:
         with self._connect() as conn:
-            conn.execute(
-                "CREATE TABLE IF NOT EXISTS store_documents "
-                "(key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at REAL NOT NULL)"
-            )
-            conn.execute(
-                "CREATE TABLE IF NOT EXISTS schema_migrations "
-                "(version INTEGER PRIMARY KEY, applied_at REAL NOT NULL)"
-            )
-            self._create_projection_tables(conn)
-            for version in range(1, SCHEMA_VERSION + 1):
-                conn.execute(
-                    "INSERT OR IGNORE INTO schema_migrations(version, applied_at) VALUES(?, ?)",
-                    (version, time.time()),
-                )
+            self.last_migration = run_migrations(conn, self.path)
+            verify_schema(conn)
             existing = conn.execute("SELECT 1 FROM store_documents WHERE key='state'").fetchone()
             if not existing:
                 empty = self._empty()
-                conn.execute(
-                    "INSERT INTO store_documents(key, value, updated_at) VALUES('state', ?, ?)",
-                    (json.dumps(empty, ensure_ascii=False), time.time()),
-                )
-                self._sync_projections(conn, empty)
+                conn.execute("BEGIN IMMEDIATE")
+                try:
+                    conn.execute(
+                        "INSERT INTO store_documents(key, value, updated_at) VALUES('state', ?, ?)",
+                        (json.dumps(empty, ensure_ascii=False), time.time()),
+                    )
+                    self._sync_projections(conn, empty)
+                    conn.execute("COMMIT")
+                except Exception:
+                    conn.execute("ROLLBACK")
+                    raise
 
     def _create_projection_tables(self, conn: sqlite3.Connection) -> None:
-        conn.executescript(
-            """
-            CREATE TABLE IF NOT EXISTS runs (
-                id TEXT PRIMARY KEY,
-                session_id TEXT,
-                workflow_id TEXT,
-                workflow_name TEXT,
-                project_path TEXT,
-                status TEXT NOT NULL,
-                phase TEXT,
-                error_code TEXT,
-                error TEXT,
-                created_at TEXT,
-                started_at TEXT,
-                ended_at TEXT,
-                updated_at TEXT,
-                payload_json TEXT NOT NULL
-            );
-            CREATE INDEX IF NOT EXISTS idx_runs_status ON runs(status);
-            CREATE INDEX IF NOT EXISTS idx_runs_project ON runs(project_path, created_at);
+        """Compatibility hook retained for older callers.
 
-            CREATE TABLE IF NOT EXISTS run_steps (
-                run_id TEXT NOT NULL,
-                step_key TEXT NOT NULL,
-                position INTEGER NOT NULL,
-                title TEXT,
-                status TEXT,
-                retry_count INTEGER NOT NULL DEFAULT 0,
-                error_code TEXT,
-                error TEXT,
-                started_at TEXT,
-                ended_at TEXT,
-                payload_json TEXT NOT NULL,
-                PRIMARY KEY(run_id, step_key),
-                FOREIGN KEY(run_id) REFERENCES runs(id) ON DELETE CASCADE
-            );
-            CREATE INDEX IF NOT EXISTS idx_steps_status ON run_steps(run_id, status);
-
-            CREATE TABLE IF NOT EXISTS tasks (
-                run_id TEXT NOT NULL,
-                task_id TEXT NOT NULL,
-                title TEXT,
-                status TEXT,
-                position INTEGER NOT NULL,
-                payload_json TEXT NOT NULL,
-                PRIMARY KEY(run_id, task_id),
-                FOREIGN KEY(run_id) REFERENCES runs(id) ON DELETE CASCADE
-            );
-
-            CREATE TABLE IF NOT EXISTS agent_sessions (
-                run_id TEXT NOT NULL,
-                role TEXT NOT NULL,
-                agent TEXT NOT NULL,
-                session_id TEXT,
-                status TEXT,
-                updated_at TEXT,
-                payload_json TEXT NOT NULL,
-                PRIMARY KEY(run_id, role, agent),
-                FOREIGN KEY(run_id) REFERENCES runs(id) ON DELETE CASCADE
-            );
-
-            CREATE TABLE IF NOT EXISTS run_events (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                run_id TEXT NOT NULL,
-                step_key TEXT,
-                event_type TEXT,
-                message TEXT,
-                occurred_at TEXT,
-                event_key TEXT,
-                payload_json TEXT NOT NULL,
-                FOREIGN KEY(run_id) REFERENCES runs(id) ON DELETE CASCADE
-            );
-            CREATE INDEX IF NOT EXISTS idx_events_run ON run_events(run_id, id);
-
-            CREATE TABLE IF NOT EXISTS run_artifacts (
-                run_id TEXT NOT NULL,
-                artifact_id TEXT NOT NULL,
-                path TEXT,
-                category TEXT,
-                role TEXT,
-                visibility TEXT,
-                size_bytes INTEGER,
-                payload_json TEXT NOT NULL,
-                PRIMARY KEY(run_id, artifact_id),
-                FOREIGN KEY(run_id) REFERENCES runs(id) ON DELETE CASCADE
-            );
-
-            CREATE TABLE IF NOT EXISTS validation_results (
-                run_id TEXT NOT NULL,
-                validation_key TEXT NOT NULL,
-                status TEXT,
-                command TEXT,
-                exit_code INTEGER,
-                payload_json TEXT NOT NULL,
-                PRIMARY KEY(run_id, validation_key),
-                FOREIGN KEY(run_id) REFERENCES runs(id) ON DELETE CASCADE
-            );
-
-            CREATE TABLE IF NOT EXISTS file_changes (
-                run_id TEXT NOT NULL,
-                path TEXT NOT NULL,
-                change_type TEXT,
-                additions INTEGER,
-                deletions INTEGER,
-                payload_json TEXT NOT NULL,
-                PRIMARY KEY(run_id, path),
-                FOREIGN KEY(run_id) REFERENCES runs(id) ON DELETE CASCADE
-            );
-
-            CREATE TABLE IF NOT EXISTS checkpoints (
-                run_id TEXT NOT NULL,
-                checkpoint_id TEXT NOT NULL,
-                step_key TEXT,
-                status TEXT,
-                created_at TEXT,
-                payload_json TEXT NOT NULL,
-                PRIMARY KEY(run_id, checkpoint_id),
-                FOREIGN KEY(run_id) REFERENCES runs(id) ON DELETE CASCADE
-            );
-
-            CREATE TABLE IF NOT EXISTS project_locks (
-                project_path TEXT PRIMARY KEY,
-                run_id TEXT,
-                mode TEXT,
-                acquired_at TEXT,
-                payload_json TEXT NOT NULL
-            );
-            """
-        )
-        columns = {str(row[1]) for row in conn.execute("PRAGMA table_info(run_events)").fetchall()}
-        if "event_key" not in columns:
-            conn.execute("ALTER TABLE run_events ADD COLUMN event_key TEXT")
-        conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_events_key ON run_events(run_id, event_key)")
+        Projection tables are now created only by ordered migrations. This
+        method verifies the migrated schema instead of silently mutating it.
+        """
+        verify_schema(conn)
 
     def _empty(self) -> dict[str, Any]:
         return {"state_version": 0, "sessions": [], "messages": [], "runs": [], "workflow_configs": []}

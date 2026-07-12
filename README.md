@@ -20,7 +20,7 @@ One user request
 - Different projects/sessions can run concurrently through configurable provider slots; one project keeps one active writer.
 - Small models may retry many times. Quantitative progress evidence keeps useful repairs running, while Run/Step/Task/error/time budgets and fresh-session rotation stop useless loops.
 - Model endpoints are continuously rechecked through a circuit breaker. Offline unattended runs pause safely, allow one controlled recovery probe, and continue after the model reconnects instead of rapidly consuming retries or processes.
-- Every unattended run establishes a baseline, reuses a saved Project Validation Profile, persists restart-safe leases/idempotent attempts, and can use an isolated workspace with restart-idempotent atomic apply and rollback.
+- Unattended engineering Workflows establish a project validation baseline and reuse a saved Project Validation Profile. Report-only Workflows such as Security Vulnerability Scan explicitly skip unrelated Build/Test baseline execution while retaining restart-safe leases and idempotent attempts.
 - Completion requires real file changes, project-native Build/Test/Lint/Type Check, optional immutable Validation Script, scope checks, and a deterministic Completion Gate.
 - Overview stays simple and opens the dedicated Patch Review workbench when human delivery review is needed; raw Agent output, complete logs, Repair Strategy, Execution Artifacts, and system evidence remain in the closable/maximizable diagnostics workspace.
 
@@ -28,13 +28,13 @@ One user request
 
 - **General Auto Development** — fixed engineering SOP; recommended for local/small models.
 - **Adaptive Auto Workflow** — compact AI-planned task loop for broader work.
-- **Security Vulnerability Scan** — read-mostly security inventory and supported scans.
+- **Security Vulnerability Scan** — read-mostly security inventory and supported scans; it starts directly from manifest collection and does not run the project Build/Test baseline.
 
 ## Quick start
 
 ```powershell
 python -m venv .venv
-.\.venv\Scripts\pip install -r requirements.txt
+.\.venv\Scripts\pip install -r requirements.txt -c constraints-tested.txt
 .\.venv\Scripts\python -m uvicorn app.main:app --reload --port 8000
 ```
 
@@ -63,17 +63,20 @@ The Asset Library manages shared or project-local skills, metadata contracts, Py
 
 The canonical guides include Simple/Advanced Mode, unattended recovery, reusable Project Validation Profiles, model reconnect, atomic delivery, operations, testing, and a complete Validation Script example.
 
-V22 details are in [`IMPLEMENTATION_REPORT_V22.md`](IMPLEMENTATION_REPORT_V22.md). This release repairs persisted Artifact metadata and previews, restores Step-scoped related-file dialogs, makes Split Diff columns exactly equal, and excludes tool/controller metadata from Patch scope while preserving project-local Qwen/OpenCode configuration in the effective Agent cwd. V21 Patch approval and V20 unattended transaction safety remain intact. OS-level Agent sandboxing is deliberately not included.
+V24 details are in [`IMPLEMENTATION_REPORT_V24.md`](IMPLEMENTATION_REPORT_V24.md). The Windows Security Scan startup hotfix is documented in [`IMPLEMENTATION_REPORT_V24_1.md`](IMPLEMENTATION_REPORT_V24_1.md). V24.1 routes all validation subprocesses through the cross-platform CommandRunner, skips unrelated Build/Test baseline work for report-only Security Scan, and reconciles fast terminal Runs in the UI.
 
 ## Core checks
 
 ```powershell
 python -m compileall -q app tests scripts
+python scripts/run_startup_smoke.py
 python scripts/validate_workflow_assets.py
 python scripts/run_tests.py --isolate-all --file-timeout 240
 python scripts/run_production_acceptance.py
 python scripts/run_chaos_matrix.py
 python scripts/run_reliability_soak.py --iterations 200
+python scripts/build_release.py --check-only
+python scripts/build_release.py
 ```
 
 Real-agent tests remain opt-in because they require the local CLI and model:

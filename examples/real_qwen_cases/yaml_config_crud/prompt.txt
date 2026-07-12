@@ -1,0 +1,1 @@
+請建立 config_store.py，提供 load_config(path)、get_value(path, key)、set_value(path, key, value)，使用 YAML 並保留其他欄位，建立 tests/test_config_store.py。

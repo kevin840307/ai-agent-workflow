@@ -1,6 +1,0 @@
-{
-  "status": "PASS",
-  "summary": "self-prompt smoke payload is ready",
-  "problems": [],
-  "prompt_to_review": "Review this real-agent smoke request before running Qwen/OpenCode. Confirm it is a concise human CLI instruction, includes validation.py, and only targets the fixture project.\n\nWorkflow: adaptive-auto-workflow\nAgent: qwen\nRequirement: Create config_loader.py that loads a JSON file and returns a dictionary.\n"
-}

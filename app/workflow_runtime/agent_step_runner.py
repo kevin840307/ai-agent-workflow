@@ -16,6 +16,7 @@ from .agents import AgentManager, AgentRequest
 from .prompt_builder import PromptBuilder
 from .questions import extract_user_questions
 from .context_handoff import write_context_handoff
+from .agent_output_parser import json_with_triple_quoted_strings, tool_call_name, tool_call_payload
 
 LogFn = Callable[[dict[str, Any], str], Awaitable[None]]
 RefreshArtifactsFn = Callable[[str], Awaitable[Any]]
@@ -415,41 +416,15 @@ class AgentStepRunner:
 
     @staticmethod
     def _tool_call_name(output: str) -> str:
-        text = (output or "").strip()
-        if not text:
-            return ""
-        parsed = AgentStepRunner._tool_call_payload(text)
-        if isinstance(parsed, dict) and isinstance(parsed.get("name"), str):
-            return parsed["name"].strip()
-        match = re.search(r'"name"\s*:\s*"([^"]+)"', text)
-        return match.group(1).strip() if match else ""
+        return tool_call_name(output)
 
     @staticmethod
     def _tool_call_payload(output: str) -> Any:
-        text = (output or "").strip()
-        if text.startswith("```"):
-            match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, flags=re.DOTALL | re.IGNORECASE)
-            if match:
-                text = match.group(1).strip()
-        try:
-            return json.loads(text)
-        except json.JSONDecodeError:
-            relaxed = AgentStepRunner._json_with_triple_quoted_strings(text)
-            if relaxed != text:
-                try:
-                    return json.loads(relaxed)
-                except json.JSONDecodeError:
-                    return None
-            return None
+        return tool_call_payload(output)
 
     @staticmethod
     def _json_with_triple_quoted_strings(text: str) -> str:
-        def replace(match: re.Match[str]) -> str:
-            prefix = match.group(1)
-            content = match.group(2)
-            return prefix + json.dumps(content)
-
-        return re.sub(r'(:\s*)"""(.*?)"""', replace, text, flags=re.DOTALL)
+        return json_with_triple_quoted_strings(text)
 
     def _compact_retry_prompt_if_reusing_session(
         self,

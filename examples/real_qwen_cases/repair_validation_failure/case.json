@@ -1,9 +1,0 @@
-{
-  "id": "repair_validation_failure",
-  "title": "修正會讓驗證失敗的既有程式",
-  "prompt_is_single_line": true,
-  "expected_files": [
-    "calculator.py"
-  ],
-  "required_validation": "validation.py"
-}

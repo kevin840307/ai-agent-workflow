@@ -30,126 +30,14 @@ from app.agents.process_supervisor import terminate_popen_tree
 LOG_DIR = REPO_ROOT / "test-results"
 TEST_RUN_ID = f"{int(time.time())}-{os.getpid()}"
 
-PYTEST_GROUPS: list[tuple[str, list[str]]] = [
-    (
-        "A_core_cli_api",
-        [
-            "tests/test_agent_execution_service.py",
-            "tests/test_agent_runner.py",
-            "tests/test_ai_workflow_assets_ui.py",
-            "tests/test_aiwf_cli.py",
-            "tests/test_api_smoke.py",
-            "tests/test_auto_workflow_orchestrator.py",
-            "tests/test_controller_observability_and_manual_controls.py",
-            "tests/test_controller_productization.py",
-        ],
-    ),
-    (
-        "B_general_project_prompt",
-        [
-            "tests/test_general_auto_development_workflow.py",
-            "tests/test_isolated_workspace.py",
-            "tests/test_large_project_fixture.py",
-            "tests/test_project_and_config_api.py",
-            "tests/test_prompt_builder.py",
-            "tests/test_python_functions_multi.py",
-        ],
-    ),
-    (
-        "C_productization_features",
-        [
-            "tests/test_next_round_features.py",
-            "tests/test_practical_platform_features.py",
-            "tests/test_test_pipeline_and_lifecycle.py",
-            "tests/test_productization_next_features.py",
-        ],
-    ),
-    (
-        "D_manual_run_state",
-        [
-            "tests/test_real_qwen_workflow_manual.py",
-            "tests/test_release_and_ui_manual.py",
-            "tests/test_real_qwen_unattended_manual.py",
-            "tests/test_run_state.py",
-        ],
-    ),
-    (
-        "E_runtime_safety_contracts",
-        [
-            "tests/test_runtime_files_and_qwen.py",
-            "tests/test_runtime_refactor_contract.py",
-            "tests/test_runtime_safety.py",
-            "tests/test_static_architecture_contract.py",
-            "tests/test_supervisor_patch_defaults_and_action_split.py",
-            "tests/test_hardening_next.py",
-            "tests/test_production_hardening_round2.py",
-            "tests/test_production_hardening_round3.py",
-            "tests/test_project_path_write_mode.py",
-            "tests/test_full_system_optimization_round4.py",
-            "tests/test_reliability_hardening_round5.py",
-            "tests/test_workflow_optimization_v6.py",
-            "tests/test_workflow_optimization_v7.py",
-            "tests/test_system_optimization_v8.py",
-            "tests/test_system_productization_v9.py",
-            "tests/test_production_readiness_v10.py",
-            "tests/test_stability_v11.py",
-            "tests/test_stability_completion_v15.py",
-            "tests/test_unattended_stability_v16.py",
-            "tests/test_v17_runtime_ui_regressions.py",
-            "tests/test_reliability_v18.py",
-            "tests/test_ui_and_local_qwen_v12.py",
-            "tests/test_unattended_v20.py",
-            "tests/test_v21_patch_review_artifacts.py",
-            "tests/test_v22_artifact_diff_step_preview.py",
-            "tests/test_real_qwen_unattended_e2e_contract.py",
-        ],
-    ),
-    (
-        "F_workflow_assets_stability",
-        [
-            "tests/test_workflow_advanced_stability.py",
-            "tests/test_workflow_assets.py",
-            "tests/test_workflow_assets_functional_e2e.py",
-            "tests/test_workflow_config_service.py",
-        ],
-    ),
-    ("G_self_prompt_e2e", ["tests/test_self_prompt_workflow_e2e.py"]),
-    (
-        "H_workflow_core_contracts",
-        [
-            "tests/test_workflow_core.py",
-            "tests/test_workflow_function_refactor_contract.py",
-            "tests/test_workflow_functions.py",
-        ],
-    ),
-    ("I_workflow_integration", ["tests/test_workflow_integration.py"]),
-    (
-        "J_workflow_quality_resilience",
-        [
-            "tests/test_workflow_non_e2e_contracts.py",
-            "tests/test_workflow_quality_contracts.py",
-            "tests/test_workflow_resilience_e2e.py",
-        ],
-    ),
-]
-
-FAST_GROUPS = {"A_core_cli_api", "B_general_project_prompt", "C_productization_features", "D_manual_run_state"}
-E2E_GROUPS = {
-    "E_runtime_safety_contracts",
-    "F_workflow_assets_stability",
-    "G_self_prompt_e2e",
-    "H_workflow_core_contracts",
-    "I_workflow_integration",
-    "J_workflow_quality_resilience",
-}
-
-TEST_TIERS: dict[str, set[str]] = {
-    "unit": {"A_core_cli_api", "B_general_project_prompt"},
-    "contract": {"C_productization_features", "E_runtime_safety_contracts", "H_workflow_core_contracts"},
-    "integration": {"D_manual_run_state", "F_workflow_assets_stability", "I_workflow_integration"},
-    "e2e": {"G_self_prompt_e2e", "J_workflow_quality_resilience"},
-    "soak": {"G_self_prompt_e2e"},
-}
+from app.testing.test_catalog import (
+    E2E_GROUPS,
+    FAST_GROUPS,
+    PROFILE_TIERS,
+    PYTEST_GROUPS,
+    TEST_TIERS,
+    groups_for_profile,
+)
 
 
 def discover_test_files() -> list[str]:
@@ -178,7 +66,9 @@ def coverage_report() -> dict[str, object]:
     }
 
 
-def selected_groups(mode: str, tier: str | None = None) -> list[tuple[str, list[str]]]:
+def selected_groups(mode: str, tier: str | None = None, profile: str | None = None) -> list[tuple[str, list[str]]]:
+    if profile:
+        return groups_for_profile(profile)
     if tier:
         names = TEST_TIERS.get(tier)
         if names is None:
@@ -392,7 +282,23 @@ def _junit_totals(paths: list[Path]) -> dict[str, int]:
     return totals
 
 
-def run_isolated_matrix(groups: list[tuple[str, list[str]]], file_timeout: int) -> int:
+def _junit_slowest(paths: list[Path], limit: int = 30) -> list[dict[str, object]]:
+    cases: list[dict[str, object]] = []
+    for path in paths:
+        if not path.exists():
+            continue
+        root = ET.parse(path).getroot()
+        for case in root.iter("testcase"):
+            cases.append({
+                "name": case.attrib.get("name", ""),
+                "classname": case.attrib.get("classname", ""),
+                "seconds": round(float(case.attrib.get("time", "0") or 0), 4),
+                "junit": str(path.relative_to(REPO_ROOT)),
+            })
+    return sorted(cases, key=lambda item: float(item["seconds"]), reverse=True)[:limit]
+
+
+def run_isolated_matrix(groups: list[tuple[str, list[str]]], file_timeout: int, *, profile: str | None = None) -> int:
     """Run every test file in a fresh interpreter and aggregate JUnit evidence.
 
     This is the production acceptance path. It avoids FastAPI/TestClient or agent
@@ -415,20 +321,25 @@ def run_isolated_matrix(groups: list[tuple[str, list[str]]], file_timeout: int) 
             results.append(result)
     failures = [str(item["name"]) for item in results if int(item["return_code"]) != 0]
     totals = _junit_totals(junit_paths)
+    slowest = _junit_slowest(junit_paths)
     coverage = coverage_report()
     summary = {
         "schema": "aiwf.test-pipeline.v3",
         "status": "PASS" if not failures else "FAIL",
         "mode": "isolated-all",
+        "profile": profile,
         "elapsed_seconds": round(time.monotonic() - started, 2),
         "coverage": coverage,
         "files_run": len(results),
         "failures": failures,
         "junit_totals": totals,
+        "slowest_tests": slowest,
         "results": results,
     }
     LOG_DIR.mkdir(parents=True, exist_ok=True)
     (LOG_DIR / "summary.json").write_text(json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8")
+    (LOG_DIR / "slowest-tests.json").write_text(json.dumps({"schema": "aiwf.slowest-tests.v1", "tests": slowest}, indent=2, ensure_ascii=False), encoding="utf-8")
+    (LOG_DIR / "release-test-manifest.json").write_text(json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8")
     lines = [
         f"status: {summary['status']}",
         "mode: isolated-all",
@@ -449,6 +360,7 @@ def run_isolated_matrix(groups: list[tuple[str, list[str]]], file_timeout: int) 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run all tests in deterministic groups.")
     parser.add_argument("--mode", choices=["all", "fast", "e2e"], default="all", help="test subset to run")
+    parser.add_argument("--profile", choices=sorted(PROFILE_TIERS), help="named pipeline: developer, commit, release, or e2e")
     parser.add_argument("--tier", choices=sorted(TEST_TIERS), help="run a stability tier: unit, contract, integration, e2e, or soak")
     parser.add_argument("--group", help="run one deterministic test group and exec directly into pytest")
     parser.add_argument("--list-groups", action="store_true", help="print available test groups and exit")
@@ -461,6 +373,12 @@ def main() -> int:
     parser.add_argument("--execute-all", action="store_true", help="run all selected groups sequentially; CI should prefer --group matrix jobs")
     parser.add_argument("--isolate-all", action="store_true", help="run every selected test file in its own pytest interpreter and aggregate JUnit evidence")
     args = parser.parse_args()
+
+    if args.profile == "release":
+        args.isolate_all = True
+    elif args.profile:
+        args.execute_all = True
+        args.python_runner = True
 
     if args.list_groups:
         for group_name, files in PYTEST_GROUPS:
@@ -480,14 +398,15 @@ def main() -> int:
     group_results: list[dict[str, object]] = []
     isolated_results: dict[str, list[dict[str, object]]] = {}
     started = time.monotonic()
-    groups = selected_groups(args.mode, args.tier)
+    groups = selected_groups(args.mode, args.tier, args.profile)
     if args.isolate_all:
-        return run_isolated_matrix(groups, args.file_timeout)
+        return run_isolated_matrix(groups, args.file_timeout, profile=args.profile)
     if not args.execute_all:
         commands = [f"python scripts/run_tests.py --group {group_name}" for group_name, _files in groups]
         lines = [
             "status: PLAN",
             f"mode: {args.mode}",
+            f"profile: {args.profile or 'none'}",
             f"tier: {args.tier or 'none'}",
             f"coverage_ok: {coverage['ok']} ({coverage['grouped_count']}/{coverage['discovered_count']} files)",
             "",
@@ -515,6 +434,7 @@ def main() -> int:
         "schema": "aiwf.test-pipeline.v2",
         "status": "PASS" if not failures else "FAIL",
         "mode": args.mode,
+        "profile": args.profile,
         "elapsed_seconds": round(elapsed, 2),
         "coverage": coverage,
         "groups_run": len(group_results),
@@ -523,6 +443,12 @@ def main() -> int:
         "isolated_results": isolated_results,
     }
     (LOG_DIR / "summary.json").write_text(json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8")
+    slowest_groups = sorted(
+        ({"name": item["name"], "seconds": item["elapsed_seconds"], "log": item["log"]} for item in group_results),
+        key=lambda item: float(item["seconds"]),
+        reverse=True,
+    )
+    (LOG_DIR / "slowest-tests.json").write_text(json.dumps({"schema": "aiwf.slowest-groups.v1", "groups": slowest_groups}, indent=2, ensure_ascii=False), encoding="utf-8")
     lines = [
         f"status: {summary['status']}",
         f"mode: {args.mode}",

@@ -1,8 +1,16 @@
 from pathlib import Path
-import sorts
-assert sorts.insertion_sort([4, 1, 3, 1]) == [1, 1, 3, 4]
-root_test = Path("test_sorts.py")
-assert root_test.exists(), "既有 test_sorts.py 被移除"
-assert "insertion_sort" in root_test.read_text(encoding="utf-8"), "test_sorts.py 未新增 insertion_sort 測試"
-assert not Path("tests/test_sorts.py").exists(), "產生了重複 tests/test_sorts.py"
-print("VALIDATION PASS: root_pytest_update")
+import sys
+root=Path(__file__).parent; sys.path.insert(0,str(root))
+from math_utils import clamp
+assert clamp(10,0,5)==5
+assert clamp(-1,0,5)==0
+assert clamp(3,0,5)==3
+try:
+    clamp(1,5,0)
+except ValueError:
+    pass
+else:
+    raise AssertionError("minimum > maximum must raise ValueError")
+assert (root/"tests"/"test_math_utils.py").is_file()
+assert not (root/"test_math_utils.py").exists(), "root duplicate test must be removed"
+print("PASS")

@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-import asyncio
 import json
 import re
 import os
-import subprocess
 import sys
 from pathlib import Path
 
+from app.core.command_runner import CommandPolicy, CommandRequest, run_command, run_command_async
 from app.workflow_runtime.builtin_functions.base import WorkflowFunctionContext, WorkflowFunctionError
 from app.workflow_runtime.completion_gate import evaluate_completion
 from app.workflow_runtime.project_hygiene import inspect_project_hygiene
@@ -163,36 +162,30 @@ async def run_pytest(ctx: WorkflowFunctionContext) -> None:
     timeout_sec = _test_command_timeout_seconds()
     await ctx.log(ctx.run, f"run_test: executing `{command}` in {ctx.project_dir} (timeout {timeout_sec:.0f}s)")
 
-    def execute() -> subprocess.CompletedProcess:
-        return subprocess.run(
-            command,
-            cwd=str(ctx.project_dir),
-            shell=True,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            timeout=timeout_sec,
+    async def execute():
+        return await run_command_async(
+            CommandRequest(
+                command=command,
+                cwd=ctx.project_dir,
+                project_root=ctx.project_dir,
+                policy=CommandPolicy.PROJECT,
+                shell=True,
+                timeout_seconds=timeout_sec,
+            )
         )
 
-    try:
-        proc = await asyncio.to_thread(execute)
-    except subprocess.TimeoutExpired as exc:
-        stdout = exc.stdout or ""
-        stderr = exc.stderr or ""
-        if isinstance(stdout, bytes):
-            stdout = stdout.decode("utf-8", errors="replace")
-        if isinstance(stderr, bytes):
-            stderr = stderr.decode("utf-8", errors="replace")
+    proc = await execute()
+    if proc.timed_out:
         result = (
-            f"Command: {command}\n"
+            f"Command: {proc.command}\n"
             f"ExitCode: TIMEOUT\n"
             f"TimeoutSec: {timeout_sec:.0f}\n\n"
-            f"STDOUT:\n{stdout}\n\nSTDERR:\n{stderr}\n"
+            f"STDOUT:\n{proc.stdout}\n\nSTDERR:\n{proc.stderr}\n"
         )
         ctx.write_text(run_workspace / "output" / "test-result.md", result)
-        _upsert_validation_result(ctx.run, key="test", status="error", command=command, exit_code="TIMEOUT", summary=summarize_command_failure(stdout, stderr))
+        _upsert_validation_result(ctx.run, key="test", status="error", command=proc.command, exit_code="TIMEOUT", summary=summarize_command_failure(proc.stdout, proc.stderr))
         await ctx.refresh_artifacts(ctx.run["id"])
-        raise WorkflowFunctionError(f"Test command timed out after {timeout_sec:.0f} seconds. Open output/test-result.md for details.") from exc
+        raise WorkflowFunctionError(f"Test command timed out after {timeout_sec:.0f} seconds. Open output/test-result.md for details.")
 
     # A pytest import mismatch is usually caused by a current-run root test and
     # tests/ counterpart. Repair once deterministically and rerun without
@@ -207,7 +200,7 @@ async def run_pytest(ctx: WorkflowFunctionContext) -> None:
                 "run_test: pytest import mismatch repaired deterministically; rerunning after removing "
                 + ", ".join(repair["removed_files"]),
             )
-            proc = await asyncio.to_thread(execute)
+            proc = await execute()
 
     result = f"Command: {command}\nExitCode: {proc.returncode}\n\nSTDOUT:\n{proc.stdout}\n\nSTDERR:\n{proc.stderr}\n"
     ctx.write_text(run_workspace / "output" / "test-result.md", result)
@@ -463,27 +456,23 @@ async def _run_validation_script(ctx: WorkflowFunctionContext, script: Path, art
 
 
 async def _run_validation_command(command: list[str], *, cwd: Path, timeout_sec: float) -> dict[str, object]:
-    process = await asyncio.create_subprocess_exec(
-        *command,
-        cwd=str(cwd),
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE,
+    result = await run_command_async(
+        CommandRequest(
+            command=command,
+            cwd=cwd,
+            project_root=cwd,
+            policy=CommandPolicy.PROJECT,
+            shell=False,
+            timeout_seconds=timeout_sec,
+            max_output_chars=20000,
+        )
     )
-    try:
-        stdout_b, stderr_b = await asyncio.wait_for(process.communicate(), timeout=timeout_sec)
-    except asyncio.TimeoutError:
-        process.kill()
-        stdout_b, stderr_b = await process.communicate()
-        return {
-            "returncode": "TIMEOUT",
-            "stdout": stdout_b.decode("utf-8", errors="replace") if isinstance(stdout_b, bytes) else str(stdout_b or ""),
-            "stderr": stderr_b.decode("utf-8", errors="replace") if isinstance(stderr_b, bytes) else str(stderr_b or ""),
-        }
     return {
-        "returncode": int(process.returncode or 0),
-        "stdout": stdout_b.decode("utf-8", errors="replace") if isinstance(stdout_b, bytes) else str(stdout_b or ""),
-        "stderr": stderr_b.decode("utf-8", errors="replace") if isinstance(stderr_b, bytes) else str(stderr_b or ""),
+        "returncode": "TIMEOUT" if result.timed_out else result.returncode,
+        "stdout": result.stdout,
+        "stderr": result.stderr,
     }
+
 
 def _project_has_pytest_files(project_dir: Path) -> bool:
     tests_dir = project_dir / "tests"
@@ -601,18 +590,18 @@ def _has_direct_edit_summary(text: str) -> bool:
 
 def _git_output(project_dir: Path, args: list[str], *, timeout: float = 5.0) -> str:
     try:
-        proc = subprocess.run(
-            ["git", *args],
-            cwd=str(project_dir),
-            shell=False,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            timeout=timeout,
+        proc = run_command(
+            CommandRequest(
+                command=["git", *args],
+                cwd=project_dir,
+                project_root=project_dir,
+                policy=CommandPolicy.PROJECT,
+                timeout_seconds=timeout,
+            )
         )
     except Exception:
         return ""
-    if proc.returncode != 0:
+    if not proc.ok:
         return ""
     return proc.stdout.strip()
 

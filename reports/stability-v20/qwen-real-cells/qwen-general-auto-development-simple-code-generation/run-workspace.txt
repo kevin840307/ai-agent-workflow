@@ -1,1 +1,0 @@
-C:\Users\kevin\testllm\reports\stability-v20\qwen-real-cells\qwen-general-auto-development-simple-code-generation\fixture\simple-code-generation-project\.ai-workflow\runs\run-6b2980011cab

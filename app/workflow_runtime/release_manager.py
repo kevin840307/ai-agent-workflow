@@ -7,10 +7,11 @@ from typing import Any
 
 from app.core.paths import DATA_DIR, ROOT, utc_now, write_text
 
-APP_VERSION = "1.9.0"
-DATABASE_SCHEMA_VERSION = 9
+APP_VERSION = "1.11.1"
+DATABASE_SCHEMA_VERSION = 10
 WORKFLOW_SCHEMA_VERSION = 6
 CONFIG_SCHEMA_VERSION = 5
+SQLITE_SCHEMA_VERSION = 4
 
 
 def version_manifest() -> dict[str, Any]:
@@ -19,6 +20,7 @@ def version_manifest() -> dict[str, Any]:
         "database_schema": DATABASE_SCHEMA_VERSION,
         "workflow_schema": WORKFLOW_SCHEMA_VERSION,
         "config_schema": CONFIG_SCHEMA_VERSION,
+        "sqlite_schema": SQLITE_SCHEMA_VERSION,
         "generated_at": utc_now(),
     }
 
@@ -56,4 +58,4 @@ def upgrade_readiness(store_path: Path | None = None) -> dict[str, Any]:
     }
 
 
-__all__ = ["APP_VERSION", "CONFIG_SCHEMA_VERSION", "DATABASE_SCHEMA_VERSION", "WORKFLOW_SCHEMA_VERSION", "create_upgrade_backup", "upgrade_readiness", "version_manifest", "write_version_manifest"]
+__all__ = ["APP_VERSION", "CONFIG_SCHEMA_VERSION", "DATABASE_SCHEMA_VERSION", "SQLITE_SCHEMA_VERSION", "WORKFLOW_SCHEMA_VERSION", "create_upgrade_backup", "upgrade_readiness", "version_manifest", "write_version_manifest"]

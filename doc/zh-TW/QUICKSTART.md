@@ -11,9 +11,17 @@
 
 ```powershell
 python -m venv .venv
-.\.venv\Scripts\pip install -r requirements.txt
+.\.venv\Scripts\pip install -r requirements.txt -c constraints-tested.txt
 .\.venv\Scripts\python -m uvicorn app.main:app --reload --port 8000
 ```
+
+第一次正式啟動前，先用隔離狀態驗證乾淨環境：
+
+```powershell
+python scripts/run_startup_smoke.py
+```
+
+開發測試請安裝 `requirements-dev.txt`；Playwright UI 測試請安裝 `requirements-browser.txt`。
 
 開啟 `http://127.0.0.1:8000`。建議只使用一個 uvicorn worker。不同 Project／Session 可共用 Provider Slot 並行，同一專案仍只保留一個 Writer。
 

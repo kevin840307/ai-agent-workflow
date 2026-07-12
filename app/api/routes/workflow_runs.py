@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import json
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
 from fastapi.responses import FileResponse, StreamingResponse
 
-from app.runtime_modules import api as runtime
+from app.api.dependencies import get_runtime_context
+from app.core.runtime_context import RuntimeContext
 from app.domain import schemas
 from app.services import workflow_service
 
@@ -201,11 +202,11 @@ async def get_artifacts(run_id: str, view: str = Query(default="supporting", pat
 
 
 @router.get("/api/workflow-runs/{run_id}/events")
-async def events(run_id: str):
+async def events(run_id: str, context: RuntimeContext = Depends(get_runtime_context)):
     await workflow_service.get_run(run_id)
 
     async def stream():
-        async for queue in runtime.bus.subscribe(run_id):
+        async for queue in context.bus.subscribe(run_id):
             while True:
                 event = await queue.get()
                 yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"

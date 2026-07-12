@@ -13,3 +13,4 @@ This is the canonical English documentation set. Versioned migration notes and r
 7. [Testing](TESTING.md) — deterministic, UI, E2E, and real-agent certification.
 
 Traditional Chinese: [`../zh-TW/README.md`](../zh-TW/README.md)
+Current release hardening: see [`../../IMPLEMENTATION_REPORT_V24.md`](../../IMPLEMENTATION_REPORT_V24.md) and the Windows Security Scan hotfix in [`../../IMPLEMENTATION_REPORT_V24_1.md`](../../IMPLEMENTATION_REPORT_V24_1.md).

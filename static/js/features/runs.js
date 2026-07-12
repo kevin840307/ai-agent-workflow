@@ -645,6 +645,10 @@ export function createRuns(ctx) {
       ctx.features.eventStream.close();
       const run = await api.request(`/api/workflow-runs/${runId}`);
       runs.render(run);
+      if (["done", "failed", "cancelled"].includes(run.status)) {
+        ctx.features.messages.finishWorkflowActivity({ type: run.status });
+        return;
+      }
       ctx.features.eventStream.open(runId);
     },
 

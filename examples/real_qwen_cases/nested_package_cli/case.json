@@ -1,0 +1,10 @@
+{
+  "id": "nested_package_cli",
+  "title": "Implement a nested package parser",
+  "prompt_is_single_line": true,
+  "expected_files": [
+    "src/texttools/__init__.py",
+    "src/texttools/parser.py",
+    "tests/test_parser.py"
+  ]
+}

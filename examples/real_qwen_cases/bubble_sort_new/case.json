@@ -1,9 +1,9 @@
 {
   "id": "bubble_sort_new",
-  "title": "新增泡沫排序",
+  "title": "Create bubble sort with tests",
   "prompt_is_single_line": true,
   "expected_files": [
-    "bubble_sort.py"
-  ],
-  "required_validation": "validation.py"
+    "bubble_sort.py",
+    "tests/test_bubble_sort.py"
+  ]
 }

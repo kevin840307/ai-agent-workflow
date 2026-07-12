@@ -1,21 +1,20 @@
 {
   "qwen": {
     "auth_type": "",
-    "reuse_session": true,
-    "max_retries": 10
+    "reuse_session": false,
+    "max_retries": 2
   },
   "agents": {
     "default": "qwen",
     "providers": {
       "qwen": {
-        "type": "qwen_cli",
-        "bin": "qwen"
+        "type": "qwen_cli"
       },
       "opencode": {
         "type": "opencode_cli",
         "bin": "opencode",
         "mode": "run",
-        "reuseSession": true,
+        "reuseSession": false,
         "timeoutSec": 1200
       }
     }

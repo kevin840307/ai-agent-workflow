@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-import asyncio
-import os
 import shutil
 from pathlib import Path
 from typing import Any
+
+from app.core.command_runner import CommandPolicy, CommandRequest, run_command_async
 
 from .plugins import PLUGINS
 
@@ -60,32 +60,40 @@ async def execute_validator_plan(
             "reason": f"Command is not installed: {plan['command'][0] if plan.get('command') else 'unknown'}",
             "project_path": str(project),
         }
-    env = dict(os.environ)
-    env.setdefault("PYTHONUTF8", "1")
-    process = await asyncio.create_subprocess_exec(
-        *plan["command"],
-        cwd=str(project),
-        env=env,
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE,
+    result = await run_command_async(
+        CommandRequest(
+            command=list(plan.get("command") or []),
+            cwd=project,
+            project_root=project,
+            policy=CommandPolicy.PROJECT,
+            shell=False,
+            timeout_seconds=max(1, int(timeout_sec)),
+            env={"PYTHONUTF8": "1"},
+            max_output_chars=20000,
+        )
     )
-    try:
-        stdout_b, stderr_b = await asyncio.wait_for(process.communicate(), timeout=max(1, int(timeout_sec)))
-    except asyncio.TimeoutError:
-        process.kill()
-        await process.communicate()
-        return {"schema": "aiwf.validator-result.v1", "status": "failed", "validator": plan, "exit_code": None, "error_code": "VALIDATION_TIMEOUT", "timeout_sec": timeout_sec, "project_path": str(project)}
-    stdout = stdout_b.decode("utf-8", errors="replace")
-    stderr = stderr_b.decode("utf-8", errors="replace")
+    if result.timed_out:
+        return {
+            "schema": "aiwf.validator-result.v1",
+            "status": "failed",
+            "validator": plan,
+            "exit_code": None,
+            "error_code": "VALIDATION_TIMEOUT",
+            "timeout_sec": timeout_sec,
+            "stdout": result.stdout,
+            "stderr": result.stderr,
+            "project_path": str(project),
+        }
     return {
         "schema": "aiwf.validator-result.v1",
-        "status": "passed" if process.returncode == 0 else "failed",
+        "status": "passed" if result.returncode == 0 else "failed",
         "validator": plan,
-        "exit_code": process.returncode,
-        "stdout": stdout[-20000:],
-        "stderr": stderr[-20000:],
+        "exit_code": result.returncode,
+        "stdout": result.stdout,
+        "stderr": result.stderr,
         "project_path": str(project),
     }
+
 
 
 __all__ = ["detect_validator_plans", "execute_validator_plan", "primary_validator"]

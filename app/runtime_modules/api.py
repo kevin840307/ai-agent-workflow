@@ -49,6 +49,7 @@ from app.workflow_runtime.agent_step_runner import AgentStepRunner
 from app.workflow_runtime.agents import AgentManager, create_agent_manager
 from app.workflow_runtime.executor import WorkflowExecutor
 from app.workflow_engine.kernel import WorkflowEngineKernel
+from app.core.runtime_context import RuntimeContext, install_runtime_context
 from app.workflow_runtime.functions import WorkflowFunctionService
 from app.workflow_runtime.prompt_builder import PromptBuilder, load_prompt, workflow_prompt_path
 from app.workflow_runtime.questions import extract_user_questions, interaction_instruction
@@ -220,6 +221,31 @@ workflow_executor = WorkflowExecutor(
     transition_run_status=transition_run_status,
 )
 workflow_kernel = WorkflowEngineKernel(executor=workflow_executor, actions=workflow_actions, store=store, bus=bus)
+
+runtime_context = install_runtime_context(RuntimeContext(
+    store=store,
+    bus=bus,
+    run_state=run_state,
+    running_tasks=running_tasks,
+    running_processes=running_processes,
+    agent_manager=agent_manager,
+    workflow_actions=workflow_actions,
+    workflow_executor=workflow_executor,
+    workflow_kernel=workflow_kernel,
+    store_provider=lambda: store,
+    bus_provider=lambda: bus,
+    running_tasks_provider=lambda: running_tasks,
+    running_processes_provider=lambda: running_processes,
+))
+
+
+def get_runtime_context() -> RuntimeContext:
+    """Return the explicit runtime service container.
+
+    Existing imports from this module remain supported; new orchestration code
+    should prefer this context to avoid adding more module-global dependencies.
+    """
+    return runtime_context
 
 
 def mark_interrupted_runs() -> None:

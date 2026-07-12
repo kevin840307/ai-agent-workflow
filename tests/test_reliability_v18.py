@@ -32,7 +32,8 @@ def test_failure_normalizer_never_emits_blank_failure() -> None:
     assert failure["summary"] == "adaptive_python_gate failed with Exception"
     assert failure["code"]
     assert failure["evidence_hash"]
-    assert failure["schema"] == "aiwf.failure.v2"
+    assert failure["schema"] == "aiwf.failure.v3"
+    assert "aiwf.failure.v2" in failure["compatible_with"]
 
 
 def test_failure_normalizer_keeps_owner_and_stable_evidence_hash() -> None:

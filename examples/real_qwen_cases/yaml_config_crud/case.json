@@ -1,0 +1,9 @@
+{
+  "id": "yaml_config_crud",
+  "title": "Implement YAML configuration CRUD",
+  "prompt_is_single_line": true,
+  "expected_files": [
+    "config_store.py",
+    "tests/test_config_store.py"
+  ]
+}

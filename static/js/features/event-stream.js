@@ -67,8 +67,10 @@ export function createEventStream(ctx) {
         if (recovered) {
           ctx.features.console.append("logs", "Workflow event stream reconnected.");
           ctx.features.messages.updateWorkflowActivity({ message: "Controller connection restored. Synchronizing workflow state." });
-          eventStream.reconcileAfterReconnect(runId);
         }
+        // Reconcile on every open so a very fast failure between POST/GET and
+        // EventSource subscription is still rendered instead of appearing idle.
+        eventStream.reconcileAfterReconnect(runId);
       };
 
       source.onmessage = (message) => {

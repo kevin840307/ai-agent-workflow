@@ -1,0 +1,1 @@
+請在 src/texttools 建立 Python package，提供 parse_key_values(text) 將逗號分隔 key=value 轉成 dict，拒絕重複 key 與格式錯誤，並建立 tests/test_parser.py。

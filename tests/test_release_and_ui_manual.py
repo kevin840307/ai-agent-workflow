@@ -24,7 +24,7 @@ class TestingDocumentationContractTests(unittest.TestCase):
             required = [
                 "python -m compileall -q app tests",
                 "python scripts/validate_workflow_assets.py",
-                "python scripts/run_tests.py --mode all --isolate-all",
+                "python scripts/run_tests.py --profile release --file-timeout 240",
                 "python scripts/run_browser_ui_smoke.py",
                 "run_local_qwen_cases.ps1",
                 "Repeat 5",

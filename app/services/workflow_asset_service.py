@@ -8,7 +8,6 @@ import inspect
 import io
 import json
 import re
-import subprocess
 import sys
 from copy import deepcopy
 from pathlib import Path
@@ -17,6 +16,7 @@ from typing import Any
 import yaml
 from fastapi import HTTPException
 
+from app.core.command_runner import CommandPolicy, CommandRequest, run_command
 from app.core.paths import DATA_DIR, ROOT, read_text, write_text
 from app.security.workspace_guard import guarded_write_text, ensure_http_within_project, is_within
 from app.workflow_runtime.builtin_functions.base import WorkflowFunctionContext, WorkflowFunctionError
@@ -1058,6 +1058,7 @@ def load_workflow_asset(workflow_id_or_path: str, project_path: str | None = Non
         "folderName": str(document.get("folderName") or workflow_id),
         "skillRoot": str(document.get("skillRoot") or ".ai-workflow"),
         "promptRoot": str(document.get("promptRoot") or "steps/"),
+        "validationBaseline": _coerce_bool(document.get("validationBaseline"), True),
         "workflowPath": rel_path,
         "scope": resolved_scope,
         "projectPath": str(project_root or ""),
@@ -1169,9 +1170,17 @@ def _run_python_asset_cli(path: Path, run: dict[str, Any], project_path: str, ou
     ]
     if artifact:
         args.extend(["--artifact", artifact])
-    completed = subprocess.run(args, cwd=project_path, text=True, capture_output=True, timeout=None)
+    completed = run_command(
+        CommandRequest(
+            command=args,
+            cwd=Path(project_path),
+            project_root=Path(project_path),
+            policy=CommandPolicy.PROJECT,
+            timeout_seconds=None,
+        )
+    )
     transcript = "\n".join(part for part in [completed.stdout.strip(), completed.stderr.strip()] if part).strip()
     if transcript:
         write_text(Path(run["workspace"]) / "output" / f"{Path(path).stem}-result.md", transcript + "\n")
-    if completed.returncode != 0:
+    if not completed.ok:
         raise RuntimeError(transcript or f"Python asset failed with exit code {completed.returncode}: {function_path}")

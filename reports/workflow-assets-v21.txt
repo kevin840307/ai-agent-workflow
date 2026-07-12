@@ -1,6 +1,0 @@
-schema: aiwf.workflow-validator.v3
-status: PASS
-workflows: 3 errors: 0 warnings: 0
-- general-auto-development: PASS, errors=0, warnings=0
-- adaptive-auto-workflow: PASS, errors=0, warnings=0
-- security-scan: PASS, errors=0, warnings=0

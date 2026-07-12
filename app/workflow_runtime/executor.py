@@ -125,11 +125,15 @@ class WorkflowExecutor:
                 )
             )
             await self.log(run, f"workflow: started with lease fence {lease_token}")
-            if bool(run.get("unattended")):
+            baseline_required = bool(run.get("validation_baseline_required", True))
+            if bool(run.get("unattended")) and baseline_required:
                 await set_autopilot_state(run_id, "discovering", update_run=self.update_run, detail="Preparing project context and validation baseline.")
-            if start_index == 0 and bool(run.get("unattended")):
+            if start_index == 0 and bool(run.get("unattended")) and baseline_required:
                 run = await ensure_autopilot_preflight(run, update_run=self.update_run, log=self.log)
                 await set_autopilot_state(run_id, "executing", update_run=self.update_run, detail="Project baseline is ready; executing task contracts.")
+            elif start_index == 0 and bool(run.get("unattended")):
+                await self.log(run, "autopilot: project validation baseline skipped by workflow contract")
+                await set_autopilot_state(run_id, "executing", update_run=self.update_run, detail="Workflow does not require a project validation baseline; executing task contracts.")
 
             # Actions close over this stable run object. Runtime-only flags such
             # as fresh-session recovery must be written here even when store
@@ -178,133 +182,18 @@ class WorkflowExecutor:
                     raise
                 except Exception as exc:
                     await self.update_run(run_id, lambda item: finish_attempt(item, idempotency_key, status="failed", error=str(exc)))
-                    base_retry_key = retry_target_for_failure(action_run, step_record, step_records, index, output_dir, error=exc)
-                    if base_retry_key is None:
-                        raise
-                    if base_retry_key not in key_to_index:
-                        await self.log(run, f"{key}: retry target {base_retry_key} is not in this workflow")
-                        raise
-                    retry_streaks = action_run.setdefault("retry_streaks", {})
-                    source_retry_streak = int(retry_streaks.get(key, 0) or 0)
-                    retry_key = retry_target_for_failure(
-                        action_run,
-                        step_record,
-                        step_records,
-                        index,
-                        output_dir,
-                        next_retry_count=source_retry_streak + 1,
+                    index, run = await self._recover_failed_step(
+                        run_id=run_id,
+                        run=run,
+                        action_run=action_run,
+                        step_record=step_record,
+                        step_records=step_records,
+                        key=key,
+                        index=index,
+                        key_to_index=key_to_index,
+                        output_dir=output_dir,
                         error=exc,
                     )
-                    if retry_key is None:
-                        raise
-                    if retry_key not in key_to_index:
-                        await self.log(run, f"{key}: retry target {retry_key} is not in this workflow")
-                        raise
-                    if retry_key != base_retry_key:
-                        await self.log(
-                            run,
-                            f"{key}: retry escalation {base_retry_key} -> {retry_key} on attempt {source_retry_streak + 1}",
-                        )
-                    # Retry budgets belong to the step that actually failed,
-                    # not to the step selected as the repair target. This keeps
-                    # AI Review from inheriting an exhausted Build budget.
-                    source_retry_policy = step_record.get("retryPolicy") or (step_record.get("config") or {}).get("retryPolicy") or {}
-                    policy_max_retries = source_retry_policy.get("maxRetries") if isinstance(source_retry_policy, dict) else None
-                    max_retries = int(policy_max_retries or step_record.get("max_retries", 0) or 0)
-                    if source_retry_streak >= max_retries:
-                        message = (
-                            f"Retry stopped: {key} already reached its consecutive retry budget "
-                            f"({source_retry_streak}/{max_retries}). Repair target was {retry_key}: {exc}"
-                        )
-                        await self.set_step(run_id, key, "failed", message, error_code=classify_exception(message))
-                        await self.log(action_run, f"{key}: consecutive retry budget reached; repair target={retry_key}: {exc}")
-                        raise WorkflowError(message) from exc
-                    failure_code = str(classify_failure(exc, step_key=key).get("code") or "UNKNOWN")
-                    if failure_code == "TIMEOUT":
-                        # Reusing the same timed-out conversation commonly repeats
-                        # the same stalled behavior. Force the next agent call,
-                        # whichever repair step it belongs to, onto a fresh session.
-                        action_run["_fresh_agent_session_once"] = True
-                        await self.log(action_run, f"{key}: timeout recovery will use a fresh agent session")
-
-                    source_retry_streak += 1
-                    retry_streaks[key] = source_retry_streak
-                    def persist_retry_streak(item: dict[str, Any]) -> None:
-                        item.setdefault("retry_streaks", {})[key] = source_retry_streak
-                        increment_recovery_counter(item, "agent_attempts")
-                        increment_recovery_counter(item, "consecutive_failures")
-                        if failure_code == "TIMEOUT":
-                            item["_fresh_agent_session_once"] = True
-                            increment_recovery_counter(item, "session_restarts")
-                        target_step = next((candidate for candidate in step_records if candidate.get("key") == retry_key), None)
-                        if retry_key != key and target_step and step_phase(target_step) == "planning":
-                            increment_recovery_counter(item, "replans")
-                        if bool(classify_failure(exc, step_key=key).get("auto_repairable")):
-                            increment_recovery_counter(item, "deterministic_repairs")
-                    latest_streak = await self.update_run(run_id, persist_retry_streak)
-                    if latest_streak:
-                        run = latest_streak
-
-                    # Reliability guard: stop deterministic retry loops before local runs
-                    # burn the whole retry budget on the same failure text.  The
-                    # history is stored on the run so crash/restart/debug bundles
-                    # can explain why a retry stopped.
-                    guard_payload: dict[str, Any] = {}
-                    def update_retry_guard_history(item: dict[str, Any]) -> None:
-                        nonlocal guard_payload
-                        stop, stop_reason, attempt = should_stop_retry(
-                            item,
-                            step_key=key,
-                            error=exc,
-                            task_id=self._task_id_from_error(exc),
-                            retry_target=retry_key,
-                            progress=progress_signature(item, item.get("project_path")),
-                        )
-                        attempt["stop"] = stop
-                        attempt["stop_reason"] = stop_reason
-                        guard_payload = attempt
-                    latest_for_guard = await self.update_run(run_id, update_retry_guard_history)
-                    if latest_for_guard:
-                        run = latest_for_guard
-                    if guard_payload.get("stop"):
-                        message = str(guard_payload.get("stop_reason") or f"Retry loop guard stopped {retry_key}.")
-                        config = step_config(step_record)
-                        recover_repeated = bool_config(config, "recoverRepeatedFailure", False)
-                        hard_stop = bool(guard_payload.get("hard_stop"))
-                        if recover_repeated and not hard_stop and source_retry_streak < max_retries:
-                            action_run["_fresh_agent_session_once"] = True
-
-                            def recover_retry_loop(item: dict[str, Any]) -> None:
-                                item["_fresh_agent_session_once"] = True
-                                clear_retry_history(item, step_key=key, task_id=self._task_id_from_error(exc))
-                                increment_recovery_counter(item, "session_restarts")
-
-                            recovered_run = await self.update_run(run_id, recover_retry_loop)
-                            if recovered_run:
-                                run = recovered_run
-                            await self.log(run, f"{message} Starting the configured fresh-session recovery and continuing from {retry_key}.")
-                        else:
-                            await self.set_step(run_id, key, "failed", message, error_code="RETRY_LOOP_DETECTED")
-                            await self.log(run, message)
-                            raise WorkflowError(message) from exc
-                    if self._same_failure_repeated(run, key, exc):
-                        await self.log(run, f"{key}: same failure observed again; retry target={retry_key}; retry guard count={guard_payload.get('same_failure_count')}: {exc}")
-                    retry_count = await self.increment_step_retry(run_id, key)
-                    target_index = key_to_index[retry_key]
-                    await self.append_failure_feedback(action_run, key, retry_key, exc, retry_count, max_retries)
-                    await self.log(action_run, f"{key}: failed, retrying from {retry_key} ({retry_count}/{max_retries}): {exc}")
-                    reset_run = await self.reset_steps_from(run_id, target_index)
-                    if reset_run:
-                        # Keep the stable object captured by all step actions, but
-                        # refresh it from the authoritative Store after a retry reset.
-                        # Some Store adapters return the exact same dict object. Take
-                        # a deep snapshot before clearing, otherwise the synchronization
-                        # erases the Run itself and the next retry loses workspace/steps.
-                        refreshed_run = copy.deepcopy(reset_run)
-                        action_run.clear()
-                        action_run.update(refreshed_run)
-                        run = action_run
-                    index = target_index
 
             if bool(run.get("unattended")):
                 await set_autopilot_state(run_id, "finalizing", update_run=self.update_run, detail="Completion gates passed; preparing verified delivery.")
@@ -332,6 +221,144 @@ class WorkflowExecutor:
                 heartbeat_task.cancel()
                 with suppress(asyncio.CancelledError):
                     await heartbeat_task
+
+
+    async def _recover_failed_step(
+        self,
+        *,
+        run_id: str,
+        run: dict[str, Any],
+        action_run: dict[str, Any],
+        step_record: dict[str, Any],
+        step_records: list[dict[str, Any]],
+        key: str,
+        index: int,
+        key_to_index: dict[str, int],
+        output_dir: Path,
+        error: Exception,
+    ) -> tuple[int, dict[str, Any]]:
+        """Plan and persist one failed-step recovery transition.
+
+        The main execute loop only owns sequencing. Retry budgets, escalation,
+        loop detection, feedback, and reset synchronization are contained here
+        so each recovery decision has one testable boundary.
+        """
+        base_retry_key = retry_target_for_failure(action_run, step_record, step_records, index, output_dir, error=error)
+        if base_retry_key is None:
+            raise error
+        if base_retry_key not in key_to_index:
+            await self.log(run, f"{key}: retry target {base_retry_key} is not in this workflow")
+            raise error
+        retry_streaks = action_run.setdefault("retry_streaks", {})
+        source_retry_streak = int(retry_streaks.get(key, 0) or 0)
+        retry_key = retry_target_for_failure(
+            action_run,
+            step_record,
+            step_records,
+            index,
+            output_dir,
+            next_retry_count=source_retry_streak + 1,
+            error=error,
+        )
+        if retry_key is None:
+            raise error
+        if retry_key not in key_to_index:
+            await self.log(run, f"{key}: retry target {retry_key} is not in this workflow")
+            raise error
+        if retry_key != base_retry_key:
+            await self.log(run, f"{key}: retry escalation {base_retry_key} -> {retry_key} on attempt {source_retry_streak + 1}")
+
+        source_retry_policy = step_record.get("retryPolicy") or (step_record.get("config") or {}).get("retryPolicy") or {}
+        policy_max_retries = source_retry_policy.get("maxRetries") if isinstance(source_retry_policy, dict) else None
+        max_retries = int(policy_max_retries or step_record.get("max_retries", 0) or 0)
+        if source_retry_streak >= max_retries:
+            message = (
+                f"Retry stopped: {key} already reached its consecutive retry budget "
+                f"({source_retry_streak}/{max_retries}). Repair target was {retry_key}: {error}"
+            )
+            await self.set_step(run_id, key, "failed", message, error_code=classify_exception(message))
+            await self.log(action_run, f"{key}: consecutive retry budget reached; repair target={retry_key}: {error}")
+            raise WorkflowError(message) from error
+
+        failure = classify_failure(error, step_key=key)
+        failure_code = str(failure.get("code") or "UNKNOWN")
+        if failure_code == "TIMEOUT":
+            action_run["_fresh_agent_session_once"] = True
+            await self.log(action_run, f"{key}: timeout recovery will use a fresh agent session")
+
+        source_retry_streak += 1
+        retry_streaks[key] = source_retry_streak
+
+        def persist_retry_streak(item: dict[str, Any]) -> None:
+            item.setdefault("retry_streaks", {})[key] = source_retry_streak
+            increment_recovery_counter(item, "agent_attempts")
+            increment_recovery_counter(item, "consecutive_failures")
+            if failure_code == "TIMEOUT":
+                item["_fresh_agent_session_once"] = True
+                increment_recovery_counter(item, "session_restarts")
+            target_step = next((candidate for candidate in step_records if candidate.get("key") == retry_key), None)
+            if retry_key != key and target_step and step_phase(target_step) == "planning":
+                increment_recovery_counter(item, "replans")
+            if bool(failure.get("auto_repairable")):
+                increment_recovery_counter(item, "deterministic_repairs")
+
+        latest_streak = await self.update_run(run_id, persist_retry_streak)
+        if latest_streak:
+            run = latest_streak
+
+        guard_payload: dict[str, Any] = {}
+
+        def update_retry_guard_history(item: dict[str, Any]) -> None:
+            nonlocal guard_payload
+            stop, stop_reason, attempt = should_stop_retry(
+                item,
+                step_key=key,
+                error=error,
+                task_id=self._task_id_from_error(error),
+                retry_target=retry_key,
+                progress=progress_signature(item, item.get("project_path")),
+            )
+            attempt["stop"] = stop
+            attempt["stop_reason"] = stop_reason
+            guard_payload = attempt
+
+        latest_for_guard = await self.update_run(run_id, update_retry_guard_history)
+        if latest_for_guard:
+            run = latest_for_guard
+        if guard_payload.get("stop"):
+            message = str(guard_payload.get("stop_reason") or f"Retry loop guard stopped {retry_key}.")
+            config = step_config(step_record)
+            recover_repeated = bool_config(config, "recoverRepeatedFailure", False)
+            hard_stop = bool(guard_payload.get("hard_stop"))
+            if recover_repeated and not hard_stop and source_retry_streak < max_retries:
+                action_run["_fresh_agent_session_once"] = True
+
+                def recover_retry_loop(item: dict[str, Any]) -> None:
+                    item["_fresh_agent_session_once"] = True
+                    clear_retry_history(item, step_key=key, task_id=self._task_id_from_error(error))
+                    increment_recovery_counter(item, "session_restarts")
+
+                recovered_run = await self.update_run(run_id, recover_retry_loop)
+                if recovered_run:
+                    run = recovered_run
+                await self.log(run, f"{message} Starting the configured fresh-session recovery and continuing from {retry_key}.")
+            else:
+                await self.set_step(run_id, key, "failed", message, error_code="RETRY_LOOP_DETECTED")
+                await self.log(run, message)
+                raise WorkflowError(message) from error
+        if self._same_failure_repeated(run, key, error):
+            await self.log(run, f"{key}: same failure observed again; retry target={retry_key}; retry guard count={guard_payload.get('same_failure_count')}: {error}")
+        retry_count = await self.increment_step_retry(run_id, key)
+        target_index = key_to_index[retry_key]
+        await self.append_failure_feedback(action_run, key, retry_key, error, retry_count, max_retries)
+        await self.log(action_run, f"{key}: failed, retrying from {retry_key} ({retry_count}/{max_retries}): {error}")
+        reset_run = await self.reset_steps_from(run_id, target_index)
+        if reset_run:
+            refreshed_run = copy.deepcopy(reset_run)
+            action_run.clear()
+            action_run.update(refreshed_run)
+            run = action_run
+        return target_index, run
 
 
     async def _heartbeat_run_lease(

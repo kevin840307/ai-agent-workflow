@@ -97,7 +97,7 @@ AI 規劃 → 唯讀 Implementation Review → Task Loop → 產生測試
 
 ### Security Vulnerability Scan
 
-唯讀為主的盤點與安全檢查，不應生成產品程式碼。
+唯讀為主的盤點與安全檢查，不應生成產品程式碼。它會直接從 **Collect Security Manifest** 開始，刻意略過專案 Build／Test Baseline。
 
 ## 完成條件
 

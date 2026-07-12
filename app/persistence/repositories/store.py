@@ -2,12 +2,16 @@ from __future__ import annotations
 
 from typing import Any, Callable
 
-from app.runtime_modules import api as runtime
+from app.core.runtime_context import RuntimeContext, current_runtime_context
 
 
-async def read() -> dict[str, Any]:
-    return await runtime.store.read()
+def _context(context: RuntimeContext | None = None) -> RuntimeContext:
+    return context or current_runtime_context()
 
 
-async def mutate(fn: Callable[[dict[str, Any]], Any]) -> Any:
-    return await runtime.store.mutate(fn)
+async def read(context: RuntimeContext | None = None) -> dict[str, Any]:
+    return await _context(context).store.read()
+
+
+async def mutate(fn: Callable[[dict[str, Any]], Any], context: RuntimeContext | None = None) -> Any:
+    return await _context(context).store.mutate(fn)

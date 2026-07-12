@@ -1,17 +1,14 @@
 from __future__ import annotations
 
-import asyncio
 import json
 import os
 import shutil
 import sys
-import time
 from pathlib import Path
 from typing import Any, Iterable
 
 from app.core.provider_slots import provider_execution_slot
-from app.agents.process_registry import managed_process_registry
-from app.security.redaction import redact_text
+from app.core.command_runner import CommandPolicy, CommandRequest, run_command_async
 from app.workflow_runtime.flaky_tests import merge_flaky_result
 from app.workflow_runtime.impacted_tests import identify_impacted_tests
 
@@ -147,7 +144,6 @@ def build_validation_plan(
 
 
 async def _execute_phase(project: Path, phase: dict[str, Any], timeout_sec: int) -> dict[str, Any]:
-    started = time.monotonic()
     if not phase.get("available"):
         return {
             **phase,
@@ -156,46 +152,37 @@ async def _execute_phase(project: Path, phase: dict[str, Any], timeout_sec: int)
             "duration_sec": 0.0,
             "reason": f"Command is not installed: {(phase.get('command') or ['unknown'])[0]}",
         }
-    env = dict(os.environ)
-    env.setdefault("PYTHONUTF8", "1")
     async with provider_execution_slot("validator"):
-        process = await asyncio.create_subprocess_exec(
-            *phase["command"],
-            cwd=str(project),
-            env=env,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
+        result = await run_command_async(
+            CommandRequest(
+                command=list(phase.get("command") or []),
+                cwd=project,
+                project_root=project,
+                policy=CommandPolicy.PROJECT,
+                shell=False,
+                timeout_seconds=max(1, int(timeout_sec)),
+                env={"PYTHONUTF8": "1"},
+                max_output_chars=20000,
+            )
         )
-        registry_key = f"validator:{phase.get('id') or 'phase'}:{process.pid}:{time.monotonic_ns()}"
-        managed_process_registry.register(
-            registry_key, process, process_type="validator",
-            command=list(phase.get("command") or []), cwd=str(project),
-        )
-        try:
-            try:
-                stdout_b, stderr_b = await asyncio.wait_for(process.communicate(), timeout=max(1, int(timeout_sec)))
-            except asyncio.TimeoutError:
-                process.kill()
-                await process.communicate()
-                return {
-                    **phase,
-                    "status": "failed",
-                    "exit_code": None,
-                    "error_code": "VALIDATION_TIMEOUT",
-                    "duration_sec": round(time.monotonic() - started, 3),
-                    "timeout_sec": timeout_sec,
-                }
-        finally:
-            managed_process_registry.unregister(registry_key, process)
-    stdout = redact_text(stdout_b.decode("utf-8", errors="replace"))[-20000:]
-    stderr = redact_text(stderr_b.decode("utf-8", errors="replace"))[-20000:]
+    if result.timed_out:
+        return {
+            **phase,
+            "status": "failed",
+            "exit_code": None,
+            "error_code": "VALIDATION_TIMEOUT",
+            "duration_sec": result.duration_seconds,
+            "timeout_sec": timeout_sec,
+            "stdout": result.stdout,
+            "stderr": result.stderr,
+        }
     return {
         **phase,
-        "status": "passed" if process.returncode == 0 else "failed",
-        "exit_code": process.returncode,
-        "duration_sec": round(time.monotonic() - started, 3),
-        "stdout": stdout,
-        "stderr": stderr,
+        "status": "passed" if result.returncode == 0 else "failed",
+        "exit_code": result.returncode,
+        "duration_sec": result.duration_seconds,
+        "stdout": result.stdout,
+        "stderr": result.stderr,
     }
 
 

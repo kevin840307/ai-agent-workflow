@@ -7,6 +7,7 @@ from typing import Any
 
 from app.persistence.repositories import store as store_repository
 from app.core.metrics import metrics
+from app.core.runtime_context import RuntimeContext, current_runtime_context
 from app.security.workspace_guard import PROJECT_WORKFLOW_DIR, LEGACY_WORKFLOW_DIR
 
 
@@ -67,6 +68,7 @@ async def cleanup_runs(
     older_than_days: int | None = None,
     dry_run: bool = False,
     include_orphan_workspaces: bool = False,
+    context: RuntimeContext | None = None,
 ) -> dict[str, Any]:
     """Apply run/artifact retention without touching active runs.
 
@@ -80,7 +82,12 @@ async def cleanup_runs(
     keep_per_project = max(1, min(int(keep_per_project or 20), 500))
     older_than_days = int(older_than_days) if older_than_days is not None else None
     cutoff = datetime.now(timezone.utc) - timedelta(days=older_than_days) if older_than_days and older_than_days > 0 else None
-    data = await store_repository.read()
+    explicit_context = context is not None
+    if context is None:
+        data = await store_repository.read()
+        context = current_runtime_context()
+    else:
+        data = await store_repository.read(context=context)
     grouped: dict[str, list[dict[str, Any]]] = {}
     for run in data.get("runs", []):
         grouped.setdefault(_run_project_key(run), []).append(run)
@@ -129,7 +136,10 @@ async def cleanup_runs(
             store["runs"] = [run for run in store.get("runs", []) if run.get("id") not in remove_ids]
             return None
 
-        await store_repository.mutate(mutate)
+        if explicit_context:
+            await store_repository.mutate(mutate, context=context)
+        else:
+            await store_repository.mutate(mutate)
 
     actually_removed_artifacts = 0
     for workspace in removable_workspaces:
@@ -144,26 +154,30 @@ async def cleanup_runs(
     result["removedArtifacts"] = actually_removed_artifacts
     return result
 
-async def inspect_runtime_invariants(*, repair: bool = False) -> dict[str, Any]:
+async def inspect_runtime_invariants(*, repair: bool = False, context: RuntimeContext | None = None) -> dict[str, Any]:
     """Inspect and optionally repair durable controller invariants.
 
     Repairs are intentionally limited to states that are provably stale:
     expired leases, terminal-run locks, orphan managed processes, and unfinished
     delivery journals whose owning Run no longer has a live execution task.
     """
-    from app.runtime_modules import api as runtime
     from app.workflow_runtime.delivery_journal import load_delivery_journal, rollback_delivery_journal
     from app.workflow_runtime.run_lease import lease_is_expired, release_run_lease
     from app.workflow_runtime.run_lifecycle import clear_project_lock
     from app.core.paths import utc_now
 
-    data = await store_repository.read()
+    explicit_context = context is not None
+    if context is None:
+        data = await store_repository.read()
+        context = current_runtime_context()
+    else:
+        data = await store_repository.read(context=context)
     issues: list[dict[str, Any]] = []
     repaired: list[dict[str, Any]] = []
     active_statuses = ACTIVE_RUN_STATUSES
-    task_ids = {str(key) for key, task in runtime.running_tasks.items() if task and not task.done()}
+    task_ids = {str(key) for key, task in context.running_tasks.items() if task and not task.done()}
     process_run_ids = set()
-    values = runtime.running_processes.values() if hasattr(runtime.running_processes, "values") else []
+    values = context.running_processes.values() if hasattr(context.running_processes, "values") else []
     for process in values:
         run_id = getattr(process, "run_id", None) or getattr(process, "aiwf_run_id", None)
         if run_id:
@@ -220,10 +234,13 @@ async def inspect_runtime_invariants(*, repair: bool = False) -> dict[str, Any]:
                     issue["rollback_error"] = str(exc)[:1000]
 
     if repair and changed:
-        await store_repository.mutate(lambda store: store.update(data))
+        if explicit_context:
+            await store_repository.mutate(lambda store: store.update(data), context=context)
+        else:
+            await store_repository.mutate(lambda store: store.update(data))
     orphan_result = None
     if repair:
-        reaper = getattr(runtime.running_processes, "reap_orphans", None)
+        reaper = getattr(context.running_processes, "reap_orphans", None)
         if callable(reaper):
             orphan_result = await __import__("asyncio").to_thread(reaper)
     return {
@@ -239,12 +256,13 @@ async def inspect_runtime_invariants(*, repair: bool = False) -> dict[str, Any]:
     }
 
 
-async def runtime_invariant_monitor(stop_event: Any, *, interval_seconds: int = 60) -> None:
+async def runtime_invariant_monitor(stop_event: Any, *, interval_seconds: int = 60, context: RuntimeContext | None = None) -> None:
     import asyncio
+    context = context or current_runtime_context()
     interval = max(10, int(interval_seconds or 60))
     while not stop_event.is_set():
         try:
-            await inspect_runtime_invariants(repair=True)
+            await inspect_runtime_invariants(repair=True, context=context)
         except asyncio.CancelledError:
             raise
         except Exception:

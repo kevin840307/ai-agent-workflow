@@ -7,11 +7,14 @@ from pathlib import Path
 
 from fastapi import HTTPException
 
-from app.runtime_modules import api as runtime
+from app.core.paths import ROOT, WORKSPACES_DIR, utc_now
+from app.core.runtime_context import RuntimeContext, current_runtime_context
+from app.domain.schemas import CreateMessageRequest, CreateSessionRequest
 from app.persistence.repositories import store as store_repository
 from app.services.agent_session_service import default_agent_session_ids
 from app.services import chat_service
 from app.workflow_runtime.qwen_serve import forget_qwen_serve_session
+from app.workflow_runtime.settings import resolve_project_path
 from app.security.workspace_guard import PROJECT_WORKFLOW_DIR, LEGACY_WORKFLOW_DIR
 
 
@@ -24,8 +27,8 @@ def _session_run_workspaces(data: dict, session_id: str) -> list[Path]:
 
 
 def _remove_session_workspaces(session_id: str, run_workspaces: list[Path]) -> None:
-    session_workspace = (runtime.WORKSPACES_DIR / f"session-{session_id}").resolve()
-    workspace_root = runtime.WORKSPACES_DIR.resolve()
+    session_workspace = (WORKSPACES_DIR / f"session-{session_id}").resolve()
+    workspace_root = WORKSPACES_DIR.resolve()
 
     if session_workspace.exists():
         if workspace_root not in session_workspace.parents:
@@ -41,14 +44,19 @@ def _remove_session_workspaces(session_id: str, run_workspaces: list[Path]) -> N
         shutil.rmtree(run_workspace)
 
 
-async def _cancel_session_runs(run_ids: list[str]) -> None:
+def _context(context: RuntimeContext | None = None) -> RuntimeContext:
+    return context or current_runtime_context()
+
+
+async def _cancel_session_runs(run_ids: list[str], context: RuntimeContext | None = None) -> None:
+    context = _context(context)
     for run_id in run_ids:
-        proc = runtime.running_processes.get(run_id)
+        proc = context.running_processes.get(run_id)
         if proc and proc.returncode is None:
             proc.terminate()
 
     for run_id in run_ids:
-        task = runtime.running_tasks.get(run_id)
+        task = context.running_tasks.get(run_id)
         if task and not task.done():
             task.cancel()
             try:
@@ -57,10 +65,11 @@ async def _cancel_session_runs(run_ids: list[str]) -> None:
                 pass
 
 
-async def create_project(body: runtime.CreateSessionRequest | None = None) -> dict:
-    body = body or runtime.CreateSessionRequest()
+async def create_project(body: CreateSessionRequest | None = None, context: RuntimeContext | None = None) -> dict:
+    context = _context(context)
+    body = body or CreateSessionRequest()
     session_id = str(uuid.uuid4())
-    project_path = str(runtime.resolve_project_path(body.project_path or str(runtime.ROOT)))
+    project_path = str(resolve_project_path(body.project_path or str(ROOT)))
     title = (body.title or "").strip() or Path(project_path).name or "New Project"
     session = {
         "id": session_id,
@@ -68,23 +77,24 @@ async def create_project(body: runtime.CreateSessionRequest | None = None) -> di
         "agent_session_ids": default_agent_session_ids(session_id),
         "title": title,
         "project_path": project_path,
-        "created_at": runtime.utc_now(),
-        "updated_at": runtime.utc_now(),
+        "created_at": utc_now(),
+        "updated_at": utc_now(),
     }
-    return await store_repository.mutate(lambda data: (data["sessions"].insert(0, session), session)[1])
+    return await store_repository.mutate(lambda data: (data["sessions"].insert(0, session), session)[1], context=context)
 
 
-async def list_projects() -> list[dict]:
-    return (await store_repository.read())["sessions"]
+async def list_projects(context: RuntimeContext | None = None) -> list[dict]:
+    return (await store_repository.read(_context(context)))["sessions"]
 
 
-async def delete_project(session_id: str) -> dict:
-    data = await store_repository.read()
+async def delete_project(session_id: str, context: RuntimeContext | None = None) -> dict:
+    context = _context(context)
+    data = await store_repository.read(context)
     session = next((item for item in data.get("sessions", []) if item.get("id") == session_id), None)
     old_qwen_session_id = (session or {}).get("qwen_session_id") or session_id
     run_ids = [run["id"] for run in data.get("runs", []) if run.get("session_id") == session_id]
     run_workspaces = _session_run_workspaces(data, session_id)
-    await _cancel_session_runs(run_ids)
+    await _cancel_session_runs(run_ids, context)
     forget_qwen_serve_session(old_qwen_session_id)
     forget_qwen_serve_session(session_id)
 
@@ -96,13 +106,14 @@ async def delete_project(session_id: str) -> dict:
         data["runs"] = [run for run in data["runs"] if run["session_id"] != session_id]
         return {"ok": True}
 
-    result = await store_repository.mutate(remove)
+    result = await store_repository.mutate(remove, context=context)
     _remove_session_workspaces(session_id, run_workspaces)
     return result
 
 
-async def reset_project(session_id: str) -> dict:
-    data = await store_repository.read()
+async def reset_project(session_id: str, context: RuntimeContext | None = None) -> dict:
+    context = _context(context)
+    data = await store_repository.read(context)
     session = next((item for item in data["sessions"] if item["id"] == session_id), None)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -110,7 +121,7 @@ async def reset_project(session_id: str) -> dict:
     old_qwen_session_id = session.get("qwen_session_id") or session_id
     run_ids = [run["id"] for run in data.get("runs", []) if run.get("session_id") == session_id]
     run_workspaces = _session_run_workspaces(data, session_id)
-    await _cancel_session_runs(run_ids)
+    await _cancel_session_runs(run_ids, context)
     forget_qwen_serve_session(old_qwen_session_id)
     forget_qwen_serve_session(session_id)
 
@@ -122,30 +133,31 @@ async def reset_project(session_id: str) -> dict:
             raise HTTPException(status_code=404, detail="Session not found")
         target["qwen_session_id"] = new_agent_session_id
         target["agent_session_ids"] = default_agent_session_ids(session_id, new_agent_session_id)
-        target["updated_at"] = runtime.utc_now()
+        target["updated_at"] = utc_now()
         data["messages"] = [message for message in data["messages"] if message["session_id"] != session_id]
         data["runs"] = [run for run in data["runs"] if run["session_id"] != session_id]
         return dict(target)
 
-    result = await store_repository.mutate(reset)
+    result = await store_repository.mutate(reset, context=context)
     _remove_session_workspaces(session_id, run_workspaces)
     return result
 
 
-async def list_messages(session_id: str) -> list[dict]:
-    data = await store_repository.read()
+async def list_messages(session_id: str, context: RuntimeContext | None = None) -> list[dict]:
+    data = await store_repository.read(_context(context))
     messages = [msg for msg in data["messages"] if msg["session_id"] == session_id]
     return sorted(messages, key=lambda msg: msg.get("created_at") or "")
 
 
-async def create_message(session_id: str, body: runtime.CreateMessageRequest) -> dict:
+async def create_message(session_id: str, body: CreateMessageRequest, context: RuntimeContext | None = None) -> dict:
+    context = _context(context)
     msg = {
         "id": str(uuid.uuid4()),
         "session_id": session_id,
         "role": "user",
         "kind": "requirement",
         "content": body.content,
-        "created_at": runtime.utc_now(),
+        "created_at": utc_now(),
     }
 
     def add(data):
@@ -154,11 +166,11 @@ async def create_message(session_id: str, body: runtime.CreateMessageRequest) ->
         data["messages"].append(msg)
         for session in data["sessions"]:
             if session["id"] == session_id:
-                session["updated_at"] = runtime.utc_now()
+                session["updated_at"] = utc_now()
         return msg
 
-    return await store_repository.mutate(add)
+    return await store_repository.mutate(add, context=context)
 
 
-async def chat(session_id: str, body: runtime.CreateMessageRequest) -> dict:
+async def chat(session_id: str, body: CreateMessageRequest, context: RuntimeContext | None = None) -> dict:
     return await chat_service.chat(session_id, body)

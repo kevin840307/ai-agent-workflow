@@ -3,7 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from app.runtime_modules import api as runtime
+from app.core.paths import DATA_DIR, STATIC_DIR
+from app.core.runtime_context import RuntimeContext, current_runtime_context
 from app.services import workflow_asset_validator
 from app.workflow_runtime.run_consistency import check_store_consistency
 from app.workflow_runtime.run_lease import lease_is_expired
@@ -22,22 +23,23 @@ def _writable(path: Path) -> bool:
         return False
 
 
-async def health_summary(*, deep: bool = False) -> dict[str, Any]:
-    store_path = runtime.store_path()
+async def health_summary(*, deep: bool = False, context: RuntimeContext | None = None) -> dict[str, Any]:
+    context = context or current_runtime_context()
+    store_path = context.store_path()
     checks: dict[str, Any] = {
-        "storeBackend": runtime.store_backend_name(),
+        "storeBackend": context.store_backend_name(),
         "storePath": str(store_path),
         "storeReadable": True,
         "storeFileExists": store_path.exists(),
-        "dataWritable": _writable(runtime.DATA_DIR),
-        "artifactRootWritable": _writable(runtime.DATA_DIR),
-        "staticAvailable": (runtime.STATIC_DIR / "index.html").exists(),
-        "runningTasks": len(runtime.running_tasks),
-        "runningProcesses": len(runtime.running_processes),
+        "dataWritable": _writable(DATA_DIR),
+        "artifactRootWritable": _writable(DATA_DIR),
+        "staticAvailable": (STATIC_DIR / "index.html").exists(),
+        "runningTasks": len(context.running_tasks),
+        "runningProcesses": len(context.running_processes),
     }
     status = "ok"
     try:
-        data = await runtime.store.read()
+        data = await context.store.read()
         checks["runCount"] = len(data.get("runs", []))
         active = [run for run in data.get("runs", []) if run.get("status") in {"queued", "running", "waiting_input", "cancelling"}]
         checks["activeRunCount"] = len(active)
@@ -54,11 +56,11 @@ async def health_summary(*, deep: bool = False) -> dict[str, Any]:
             checks["expiredRunLeases"] = expired_leases
             checks["providerSlots"] = provider_slot_snapshot()
             checks["modelCircuits"] = await model_circuit_breaker.snapshots()
-            store_file = runtime.store_path()
+            store_file = context.store_path()
             checks["storeSizeBytes"] = store_file.stat().st_size if store_file.exists() else 0
             wal = Path(str(store_file) + "-wal")
             checks["storeWalSizeBytes"] = wal.stat().st_size if wal.exists() else 0
-            disk = __import__("shutil").disk_usage(runtime.DATA_DIR)
+            disk = __import__("shutil").disk_usage(DATA_DIR)
             checks["diskFreeBytes"] = disk.free
             checks["workflowAssets"] = {
                 "status": validator.get("status"),

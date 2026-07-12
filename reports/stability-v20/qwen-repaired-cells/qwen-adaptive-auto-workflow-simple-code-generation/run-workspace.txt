@@ -1,1 +1,0 @@
-C:\Users\kevin\testllm\reports\stability-v20\qwen-repaired-cells\qwen-adaptive-auto-workflow-simple-code-generation\fixture\simple-code-generation-project\.ai-workflow\runs\run-83f395d13aab

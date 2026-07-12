@@ -1,10 +1,9 @@
 {
   "id": "root_pytest_update",
-  "title": "沿用根目錄測試慣例",
+  "title": "Update a project with a root pytest file",
   "prompt_is_single_line": true,
   "expected_files": [
-    "sorts.py",
-    "test_sorts.py"
-  ],
-  "required_validation": "validation.py"
+    "math_utils.py",
+    "tests/test_math_utils.py"
+  ]
 }

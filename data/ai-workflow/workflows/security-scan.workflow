@@ -9,6 +9,7 @@ protected: true
 deletable: false
 skillRoot: ~/.qwen/skills
 promptRoot: steps/
+validationBaseline: false
 created_at: '2026-06-28T00:00:00+00:00'
 updated_at: '2026-06-28T12:00:00+00:00'
 steps:

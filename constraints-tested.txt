@@ -1,0 +1,16 @@
+# Versions used by the V23 clean-environment acceptance run.
+# Install with: python -m pip install -r requirements.txt -c constraints-tested.txt
+fastapi==0.128.2
+uvicorn==0.48.0
+pydantic==2.13.4
+pydantic-core==2.46.4
+httpx==0.28.1
+httpcore==1.0.9
+PyYAML==6.0.3
+starlette==0.50.0
+anyio==4.13.0
+h11==0.16.0
+click==8.1.8
+typing-extensions==4.15.0
+typing-inspection==0.4.2
+annotated-types==0.7.0

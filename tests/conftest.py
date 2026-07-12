@@ -2,6 +2,10 @@ from __future__ import annotations
 
 import os
 import sys
+
+import pytest
+
+from app.testing.test_catalog import markers_for_test_file
 from pathlib import Path
 
 
@@ -41,6 +45,20 @@ def _reset_runtime_state() -> None:
             registry = getattr(locks, name, None)
             if hasattr(registry, "clear"):
                 registry.clear()
+
+
+
+def pytest_collection_modifyitems(items):  # noqa: ANN001 - pytest hook signature
+    """Assign every test file to one stable execution tier.
+
+    Existing explicit markers remain intact. Manual/real-agent files are never
+    accidentally included in developer or commit profiles.
+    """
+    for item in items:
+        existing = {marker.name for marker in item.iter_markers()}
+        for marker in markers_for_test_file(item.path):
+            if marker not in existing:
+                item.add_marker(getattr(pytest.mark, marker))
 
 
 def pytest_runtest_setup(item):  # noqa: ANN001 - pytest hook signature

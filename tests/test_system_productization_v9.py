@@ -144,8 +144,8 @@ def test_agent_adapter_capabilities_and_error_normalization(monkeypatch: pytest.
 
 def test_release_manifest_and_upgrade_readiness(tmp_path: Path) -> None:
     manifest = version_manifest()
-    assert manifest["app_version"] == "1.9.0"
-    assert manifest["database_schema"] == 9
+    assert manifest["app_version"] == "1.11.1"
+    assert manifest["database_schema"] == 10
     path = write_version_manifest(tmp_path)
     assert json.loads(path.read_text(encoding="utf-8"))["workflow_schema"] == 6
     readiness = upgrade_readiness(tmp_path / "store.sqlite3")
@@ -221,7 +221,7 @@ def test_v9_route_payloads_work_with_test_client(tmp_path: Path, monkeypatch: py
     (tmp_path / "config.xml").write_text("<root />", encoding="utf-8")
     with TestClient(app) as client:
         version = client.get("/api/productization/version")
-        assert version.status_code == 200 and version.json()["version"]["app_version"] == "1.9.0"
+        assert version.status_code == 200 and version.json()["version"]["app_version"] == "1.11.1"
         validators = client.get("/api/productization/validators", params={"project_path": str(tmp_path)})
         assert validators.status_code == 200
         result = client.post("/api/productization/validators/run", json={"project_path": str(tmp_path), "validator_id": "xml", "timeout_sec": 10})

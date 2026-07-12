@@ -5,9 +5,10 @@ import hashlib
 import json
 import os
 import shutil
-import subprocess
 import tempfile
 from pathlib import Path
+
+from app.core.command_runner import CommandPolicy, CommandRequest, run_command
 from typing import Any, Iterable
 
 DEFAULT_IGNORED_DIRS = {
@@ -181,14 +182,16 @@ def create_isolated_project_copy(
         raise RuntimeError("WORKSPACE_REFLINK_REQUIRES_EMPTY_IGNORE_LIST")
     if selected_strategy in {"auto", "reflink"} and can_reflink:
         target.mkdir(parents=True, exist_ok=True)
-        completed = subprocess.run(
-            ["cp", "-a", "--reflink=auto", f"{project}/.", str(target)],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            check=False,
+        completed = run_command(
+            CommandRequest(
+                command=["cp", "-a", "--reflink=auto", f"{project}/.", str(target)],
+                cwd=workspace,
+                project_root=workspace,
+                policy=CommandPolicy.TRUSTED,
+                timeout_seconds=300,
+            )
         )
-        if completed.returncode == 0:
+        if completed.ok:
             used_strategy = "reflink"
         elif selected_strategy == "reflink":
             shutil.rmtree(target, ignore_errors=True)

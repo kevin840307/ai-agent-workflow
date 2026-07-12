@@ -1,0 +1,10 @@
+{
+  "id": "multi_file_service",
+  "title": "Create a small multi-file service",
+  "prompt_is_single_line": true,
+  "expected_files": [
+    "models.py",
+    "todo_service.py",
+    "tests/test_todo_service.py"
+  ]
+}

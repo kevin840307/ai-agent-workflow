@@ -1,5 +1,21 @@
 # 測試與真實 Agent 認證
 
+## 命名測試 Profile
+
+```powershell
+python scripts/run_tests.py --profile developer
+python scripts/run_tests.py --profile commit
+python scripts/run_tests.py --profile release --file-timeout 240
+python scripts/run_tests.py --profile e2e
+```
+
+- `developer`：快速 Unit Group。
+- `commit`：Unit + Deterministic Contract。
+- `release`：每個非人工測試檔都使用獨立 Python Interpreter，並彙整 JUnit。
+- `e2e`：Workflow 端到端 Group。
+
+所有測試檔由 `app/testing/test_catalog.py` 指派穩定 Marker。Release 會產生 `summary.json`、`slowest-tests.json`、`release-test-manifest.json` 與每檔 JUnit XML。
+
 ## 確定性檢查
 
 ```powershell
@@ -7,7 +23,7 @@ python -m compileall -q app tests
 python scripts/validate_workflow_assets.py
 python -m pytest -q tests/test_stability_completion_v15.py
 python -m pytest -q tests/test_unattended_stability_v16.py
-python scripts/run_tests.py --mode all --isolate-all
+python scripts/run_tests.py --profile release --file-timeout 240
 ```
 
 建議使用隔離矩陣，因為部分舊 FastAPI／TestClient 測試刻意驗證 Process／Thread 生命週期，不適合全部共用同一個長生命週期 pytest Interpreter。
@@ -162,3 +178,34 @@ python scripts/run_browser_ui_smoke.py --browser
 ```
 
 V22 檢查 SQLite Projection 完整還原、舊 Run Artifact Metadata 一次性補建、真實 Storage Path Preview ID、文字／媒體預覽、二進位安全下載、工具目錄不進入 Diff／Atomic Delivery、專案 `.qwen`／`.opencode` 仍提供給 Agent cwd、Split Diff 精確等寬，以及保留 Step 上下文的獨立對應文件 Dialog。
+
+## V23 乾淨發版、啟動與 Failure Contract
+
+```powershell
+python scripts/run_startup_smoke.py
+python -m pytest -q tests/test_v23_release_failure_runtime.py
+python scripts/build_release.py --check-only
+python scripts/build_release.py
+```
+
+V23 驗證正式／開發／瀏覽器依賴分層、必要 PyYAML、暫存 SQLite 下的 FastAPI 隔離啟動、Error Code 優先的 Failure Contract V3、RuntimeContext 相容性、白名單 Release 內容、每檔 SHA-256 Manifest，以及拆出的 Executor Recovery 邊界。
+
+Release ZIP 不得包含 Controller SQLite／Settings、Project Index、pytest 狀態、Reports、Test Results、Workspace、Python Cache 或使用者 Project Validation Profile。真實 Agent 認證仍是目標機器上的獨立 Gate。
+
+## V24 穩定性收斂測試
+
+```powershell
+python -m pytest -q tests/test_v24_stability_convergence.py
+python scripts/run_tests.py --profile commit
+python scripts/run_tests.py --profile release --file-timeout 240
+```
+
+V24 驗證全新／舊版 SQLite 升級、自動備份、Migration Audit、拒絕新版 DB、Transaction Rollback、RuntimeContext 範圍覆寫、舊 Facade 相容性、Command cwd／Shell 政策、Timeout Process Tree 終止、輸出上限與敏感資訊遮罩、穩定測試 Marker／Profile，以及防止 Runtime Facade Import 再增加的架構 Guard。
+
+## V24.1 Security Scan 啟動回歸測試
+
+```powershell
+python -m pytest -q tests/test_v24_security_scan_hotfix.py
+```
+
+此測試涵蓋報告型 Workflow 的 Baseline 政策、跨平台 Validator CommandRunner、Timeout 映射、Python Validation 執行、快速終止 Run 的 UI 同步，以及 Validator 模組不再直接呼叫 asyncio subprocess。

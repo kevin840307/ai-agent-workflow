@@ -1,5 +1,21 @@
 # Testing and Real-Agent Certification
 
+## Named test profiles
+
+```powershell
+python scripts/run_tests.py --profile developer
+python scripts/run_tests.py --profile commit
+python scripts/run_tests.py --profile release --file-timeout 240
+python scripts/run_tests.py --profile e2e
+```
+
+- `developer`: fast unit groups.
+- `commit`: unit plus deterministic contract groups.
+- `release`: every non-manual file in a fresh interpreter with JUnit aggregation.
+- `e2e`: workflow end-to-end groups.
+
+Every collected file receives a stable marker from `app/testing/test_catalog.py`. Release evidence includes `summary.json`, `slowest-tests.json`, `release-test-manifest.json`, and per-file JUnit XML.
+
 ## Deterministic checks
 
 ```powershell
@@ -7,7 +23,7 @@ python -m compileall -q app tests
 python scripts/validate_workflow_assets.py
 python -m pytest -q tests/test_stability_completion_v15.py
 python -m pytest -q tests/test_unattended_stability_v16.py
-python scripts/run_tests.py --mode all --isolate-all
+python scripts/run_tests.py --profile release --file-timeout 240
 ```
 
 The isolated matrix is preferred because some legacy FastAPI/TestClient tests intentionally exercise process/thread lifecycles that should not share one long-lived pytest interpreter.
@@ -162,3 +178,34 @@ python scripts/run_browser_ui_smoke.py --browser
 ```
 
 V22 verifies SQLite projection hydration, legacy one-time Artifact metadata repair, real storage-path preview IDs, text/media preview coverage, binary-safe download, tool-directory exclusion from Diff and Atomic Delivery, preservation of project-local `.qwen`/`.opencode` in Agent cwd, exact equal Split Diff columns, and a dedicated Step-scoped related-file dialog.
+
+## V23 clean release, startup, and failure contract
+
+```powershell
+python scripts/run_startup_smoke.py
+python -m pytest -q tests/test_v23_release_failure_runtime.py
+python scripts/build_release.py --check-only
+python scripts/build_release.py
+```
+
+V23 verifies split runtime/dev/browser dependencies, the required PyYAML runtime package, an isolated FastAPI startup against temporary SQLite state, code-first Failure Contract V3, RuntimeContext compatibility, clean allowlisted release contents, per-file SHA-256 manifest data, and the extracted Executor recovery boundary.
+
+A release ZIP must not contain controller SQLite/settings, project indexes, pytest state, reports, test results, workspaces, Python caches, or user Project Validation Profiles. Real-Agent certification remains a separate target-machine gate.
+
+## V24 stability-convergence contracts
+
+```powershell
+python -m pytest -q tests/test_v24_stability_convergence.py
+python scripts/run_tests.py --profile commit
+python scripts/run_tests.py --profile release --file-timeout 240
+```
+
+V24 verifies fresh and legacy SQLite upgrades, automatic backup, migration audit metadata, future-database rejection, transactional rollback, scoped RuntimeContext overrides, legacy facade compatibility, command cwd/shell policies, timeout process-tree termination, output bounding/redaction, deterministic test markers/profiles, and a guard that prevents Runtime Facade imports from growing again.
+
+## V24.1 Security Scan startup regression
+
+```powershell
+python -m pytest -q tests/test_v24_security_scan_hotfix.py
+```
+
+This suite verifies the report-only baseline policy, cross-platform validator CommandRunner, timeout mapping, Python validation execution, fast-terminal Run reconciliation, and the absence of direct asyncio subprocess calls in validator modules.

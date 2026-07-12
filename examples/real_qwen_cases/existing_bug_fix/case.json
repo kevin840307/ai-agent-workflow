@@ -1,0 +1,9 @@
+{
+  "id": "existing_bug_fix",
+  "title": "Repair an existing implementation",
+  "prompt_is_single_line": true,
+  "expected_files": [
+    "calculator.py",
+    "tests/test_calculator.py"
+  ]
+}

@@ -18,6 +18,8 @@ TERMINAL_STATUS = {"done", "failed", "cancelled", "waiting_input"}
 
 
 def _case_dirs(root: Path) -> list[Path]:
+    if not root.is_dir():
+        return []
     return [path for path in sorted(root.iterdir()) if path.is_dir() and (path / "case.json").exists()]
 
 

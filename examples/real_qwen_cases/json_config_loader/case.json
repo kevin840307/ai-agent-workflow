@@ -1,9 +1,0 @@
-{
-  "id": "json_config_loader",
-  "title": "JSON 設定載入器",
-  "prompt_is_single_line": true,
-  "expected_files": [
-    "config_loader.py"
-  ],
-  "required_validation": "validation.py"
-}

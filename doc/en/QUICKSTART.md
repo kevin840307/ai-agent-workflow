@@ -11,9 +11,17 @@
 
 ```powershell
 python -m venv .venv
-.\.venv\Scripts\pip install -r requirements.txt
+.\.venv\Scripts\pip install -r requirements.txt -c constraints-tested.txt
 .\.venv\Scripts\python -m uvicorn app.main:app --reload --port 8000
 ```
+
+Before the first normal start, verify a clean isolated boot:
+
+```powershell
+python scripts/run_startup_smoke.py
+```
+
+For development tests install `requirements-dev.txt`; for Playwright UI checks install `requirements-browser.txt`.
 
 Open `http://127.0.0.1:8000`. Use one uvicorn worker. Different projects/sessions may share configured provider slots, while each project keeps one active writer.
 

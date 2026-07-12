@@ -509,6 +509,7 @@ async def create_workflow_run(session_id: str, body: runtime.CreateRunRequest) -
                 "model_capability": model_capability,
                 "validator_plans": validator_plans,
                 "project_validation_profile": project_validation_profile,
+                "validation_baseline_required": bool(workflow.get("validationBaseline", True)),
                 "benchmark_id": body.benchmark_id,
                 "steps": steps,
                 "tasks": [],
