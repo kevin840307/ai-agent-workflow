@@ -6,18 +6,25 @@ from app.auto_workflow import orchestrator
 
 
 def test_route_request_distinguishes_ask_from_development_and_acceptance() -> None:
-    ask = orchestrator.route_request("這個專案怎麼運作?", project_has_files=True)
+    ask = orchestrator.route_request("這個專案怎麼運作?", project_has_files=True, requested_intent="ASK")
     assert ask["intent"] == "ASK"
     assert not ask["requires_code_change"]
 
-    dev = orchestrator.route_request("幫我新增 config checker", project_has_files=True)
+    dev = orchestrator.route_request("幫我新增 config checker", project_has_files=True, requested_intent="DEVELOP_EXISTING_PROJECT")
     assert dev["intent"] == "DEVELOP_EXISTING_PROJECT"
     assert dev["requires_workflow_instance"]
 
-    acceptance = orchestrator.route_request("幫我做 config checker", validation_script="tools/check.py", project_has_files=True)
+    acceptance = orchestrator.route_request("幫我做 config checker", validation_script="tools/check.py", project_has_files=True, requested_intent="AUTO_WORKFLOW")
     assert acceptance["intent"] == "AUTO_WORKFLOW"
     assert acceptance["requires_acceptance"]
 
+
+
+def test_route_request_does_not_guess_intent_from_natural_language() -> None:
+    first = orchestrator.route_request("這是一個問題嗎？", project_has_files=True)
+    second = orchestrator.route_request("請修改登入、資料庫、部署與文件", project_has_files=True)
+    assert first["intent"] == second["intent"] == "DEVELOP_EXISTING_PROJECT"
+    assert first["routing_source"] == second["routing_source"] == "workflow_context"
 
 def test_extract_user_instructions_reads_numbered_steps_and_md_constraints(tmp_path: Path) -> None:
     workflow_md = tmp_path / "dev-flow.md"

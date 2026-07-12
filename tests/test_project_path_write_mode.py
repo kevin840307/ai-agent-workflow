@@ -28,12 +28,13 @@ def test_isolated_patch_workspace_is_explicit_opt_in() -> None:
 def test_ui_uses_original_project_path_and_can_apply_legacy_isolated_patch() -> None:
     root = Path(__file__).resolve().parents[1]
     source = (root / "static/js/features/runs.js").read_text(encoding="utf-8")
+    patch_review = (root / "static/js/features/patch-review.js").read_text(encoding="utf-8")
     index = (root / "static/index.html").read_text(encoding="utf-8")
     assert "run.original_project_path || run.project_path" in source
-    assert "/patch/apply" in source
-    assert "applyRunPatch" in source
-    assert "Apply to Project" in index
-    assert "套用到專案" in index
+    assert "/patch/apply" in patch_review
+    assert "applyApproved" in patch_review
+    assert "核准並套用" in index
+    assert "查看並審核變更" in source
 
 
 def test_created_run_uses_selected_project_as_effective_cwd_by_default() -> None:

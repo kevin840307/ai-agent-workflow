@@ -99,6 +99,21 @@ def test_completion_gate_requires_required_user_validation(tmp_path: Path) -> No
     assert evaluate_completion(run, output_dir=tmp_path)["status"] == "PASS"
 
 
+def test_completion_gate_accepts_executed_external_validation_as_test_evidence(tmp_path: Path) -> None:
+    run = {
+        "workflow_id": "adaptive-auto-workflow",
+        "workspace": str(tmp_path),
+        "steps": [],
+        "tasks": [],
+        "validation_contract": {"required": True},
+        "validation_results": [{"key": "user_validation", "status": "passed", "exit_code": 0}],
+    }
+    result = evaluate_completion(run, output_dir=tmp_path)
+    assert result["status"] == "PASS"
+    assert result["checks"]["automated_tests"]["status"] == "PASS"
+    assert "external validation" in result["checks"]["automated_tests"]["evidence"]
+
+
 def test_product_catalog_exposes_exactly_three_workflows(monkeypatch: pytest.MonkeyPatch) -> None:
     async def fake_load(workflow_id: str, project_path=None):
         return {"id": workflow_id, "name": workflow_id, "kind": "system", "steps": [], "folderName": workflow_id}
@@ -118,7 +133,9 @@ def test_ui_contract_is_dismissible_and_single_layer() -> None:
     runs = (root / "static/js/features/runs.js").read_text(encoding="utf-8")
     assert 'id="dismissSetupStatus"' in html
     assert ".setup-status-card.compact-notice[hidden]" in css
-    assert 'class="change-review-stage change-review-empty"' in html
-    assert 'class="change-preview change-review-empty"' not in html
+    assert 'id="changesPanel"' not in html
+    assert 'id="overviewChangeCard"' in html
+    assert 'id="diffDialog"' in html
+    assert 'id="diagnosticPatch"' not in html
     assert "hunk[4]" not in runs
-    assert 'class="patch-review-host"' in html
+    assert 'class="diff-dialog patch-review-workbench"' in html

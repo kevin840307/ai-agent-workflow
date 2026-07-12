@@ -10,14 +10,34 @@ from app.runtime_modules.errors import WorkflowError
 from app.runtime_modules.files import project_content_snapshot
 from app.workflow_runtime.base_actions import BaseAgentActionsMixin
 from app.workflow_runtime.builtin_functions.base import WorkflowFunctionContext
-from app.workflow_runtime.builtin_functions.core import run_pytest
+from app.workflow_runtime.builtin_functions.core import normalize_shell_command, run_pytest
 from app.workflow_runtime.executor import WorkflowExecutor
 from app.workflow_runtime.failure_classifier import classify_failure
+from app.workflow_runtime.agent_step_runner import restore_validation_script, validation_script_snapshot
+from app.workflow_runtime.adaptive_actions import AdaptiveWorkflowActionsMixin
+from app.workflow_runtime.general_actions import GeneralDevelopmentActionsMixin
 from app.workflow_runtime.test_layout import repair_run_owned_test_layout
 
 
 class _OwnershipActions(BaseAgentActionsMixin):
     pass
+
+
+class _ExternalEvidenceActions(GeneralDevelopmentActionsMixin, _OwnershipActions):
+    async def _external_validation_passes_now(self, _run, _output_dir):
+        return True
+
+    async def log(self, _run, message):
+        self.logged = message
+
+
+class _AdaptiveCandidateActions(AdaptiveWorkflowActionsMixin):
+    @staticmethod
+    def _fallback_validation_scripts(_run):
+        return []
+
+    async def log(self, _run, message):
+        self.logged = message
 
 
 def _write_baseline(workspace: Path, files: dict[str, str]) -> None:
@@ -61,6 +81,37 @@ def test_preexisting_root_test_is_never_deleted(tmp_path: Path) -> None:
     assert result["preserved_files"] == [{"path": "test_existing.py", "reason": "file existed before this run"}]
 
 
+def test_adaptive_candidate_repairs_duplicate_root_test_before_validation(tmp_path: Path) -> None:
+    project = tmp_path / "project"
+    workspace = tmp_path / "workspace"
+    (project / "tests").mkdir(parents=True)
+    root_test = project / "test_config_loader.py"
+    canonical = project / "tests" / "test_config_loader.py"
+    source = project / "config_loader.py"
+    root_test.write_text("# Placeholder duplicate\n", encoding="utf-8")
+    canonical.write_text("def test_load_config():\n    assert True\n", encoding="utf-8")
+    source.write_text("def load_config(path):\n    return {}\n", encoding="utf-8")
+    _write_baseline(workspace, {})
+    direct = [
+        ("test_config_loader.py", root_test.read_text(encoding="utf-8")),
+        ("tests/test_config_loader.py", canonical.read_text(encoding="utf-8")),
+        ("config_loader.py", source.read_text(encoding="utf-8")),
+    ]
+    actions = _AdaptiveCandidateActions()
+
+    accepted = asyncio.run(actions._repair_and_validate_adaptive_candidate(
+        {"workspace": str(workspace), "project_path": str(project)},
+        project,
+        direct,
+        log_prefix="auto_generation/TASK-001",
+    ))
+
+    assert not root_test.exists()
+    assert canonical.is_file()
+    assert "tests/test_config_loader.py" in {path for path, _ in accepted}
+    assert "removed current-run duplicate root test" in actions.logged
+
+
 def test_build_ownership_restores_tests_but_keeps_production(tmp_path: Path) -> None:
     project = tmp_path / "project"
     project.mkdir()
@@ -80,6 +131,55 @@ def test_build_ownership_restores_tests_but_keeps_production(tmp_path: Path) -> 
     assert restored == ["test_bubble_sort.py"]
     assert (project / "bubble_sort.py").is_file()
     assert not (project / "test_bubble_sort.py").exists()
+
+
+def test_build_ownership_restores_validation_but_keeps_production(tmp_path: Path) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    validation = project / "validation.py"
+    validation.write_text("assert True\n", encoding="utf-8")
+    before = project_content_snapshot(project)
+    validation.write_text("assert False\n", encoding="utf-8")
+    source = project / "config_loader.py"
+    source.write_text("def load_config(path):\n    return {}\n", encoding="utf-8")
+    files = [
+        ("validation.py", validation.read_text(encoding="utf-8")),
+        ("config_loader.py", source.read_text(encoding="utf-8")),
+    ]
+
+    accepted, restored = _OwnershipActions()._enforce_phase_file_ownership(
+        project, before, files, phase="build", protected_names={"validation.py"}
+    )
+
+    assert [path for path, _ in accepted] == ["config_loader.py"]
+    assert restored == ["validation.py"]
+    assert validation.read_text(encoding="utf-8") == "assert True\n"
+
+
+def test_agent_step_protects_user_validation_script_for_every_step(tmp_path: Path) -> None:
+    validation = tmp_path / "validation.py"
+    validation.write_text("assert True\n", encoding="utf-8")
+    snapshot = validation_script_snapshot({"validation_script": "validation.py"}, tmp_path)
+    validation.write_text("assert False\n", encoding="utf-8")
+
+    assert restore_validation_script(snapshot) is True
+    assert validation.read_text(encoding="utf-8") == "assert True\n"
+    assert restore_validation_script(snapshot) is False
+
+
+def test_non_source_build_can_pass_with_external_validation_evidence(tmp_path: Path) -> None:
+    actions = _ExternalEvidenceActions()
+    run = {
+        "steps": [
+            {"key": "build", "config": {"requireSubstantiveBuild": True}}
+        ]
+    }
+    asyncio.run(
+        actions._validate_build_substance_or_external_evidence(
+            run, tmp_path, [("README.md", "# Usage\n")]
+        )
+    )
+    assert "external validation passed" in actions.logged
 
 
 def test_generate_tests_ownership_restores_production_change(tmp_path: Path) -> None:
@@ -151,6 +251,14 @@ def test_import_mismatch_has_dedicated_failure_class() -> None:
     failure = classify_failure("TEST_LAYOUT_CONFLICT: import file mismatch")
     assert failure["code"] == "TEST_LAYOUT_CONFLICT"
     assert failure["retry_target"] == "deterministic test-layout repair"
+
+
+def test_unquoted_absolute_test_executable_is_normalized(tmp_path: Path) -> None:
+    executable = tmp_path / "Program Files" / "python.exe"
+    executable.parent.mkdir(parents=True)
+    executable.write_text("", encoding="utf-8")
+    command = normalize_shell_command(f"{executable} validation.py")
+    assert command == f'"{executable}" validation.py'
 
 
 def test_retry_budget_belongs_to_failed_review_not_exhausted_repair_target(tmp_path: Path) -> None:

@@ -30,16 +30,13 @@ def _seconds(start: Any, end: Any) -> float | None:
         return None
 
 
-def _workflow_for(requirement: str, profile: str) -> tuple[str, str]:
-    text = " ".join((requirement or "").lower().split())
-    if any(token in text for token in ("security", "vulnerability", "弱點", "安全掃描", "cve")):
-        return "security-scan", "需求明確屬於安全檢查。"
-    if any(token in text for token in ("regression", "test case", "回歸測試", "測試案例")):
-        return "regression-test-case-generation", "需求明確屬於回歸測試案例產生。"
-    ambiguity = any(token in text for token in ("自行決定", "自動規劃", "不確定", "整個系統", "全面", "all modules"))
-    if profile == "complex" or ambiguity:
-        return "adaptive-auto-workflow", "任務範圍較廣或需求仍需動態拆解。"
-    return "general-auto-development", "需求可使用固定開發 SOP 取得較高穩定性。"
+def _workflow_for(profile: str, requested_workflow: str | None = None) -> tuple[str, str]:
+    """Select from explicit caller choice or structural complexity only."""
+    if requested_workflow:
+        return str(requested_workflow), "使用呼叫端明確指定的 Workflow。"
+    if profile == "complex":
+        return "adaptive-auto-workflow", "專案結構指標較大，使用動態拆解 Workflow。"
+    return "general-auto-development", "使用固定開發 SOP 以提高可預測性。"
 
 
 def _profile_for(complexity: str) -> tuple[str, str]:
@@ -132,8 +129,8 @@ async def recommend_execution(
     except Exception:
         project = Path(project_path or runtime.ROOT).expanduser()
     complexity = classify_workflow_complexity(requirement, project)
-    recommended_workflow, workflow_reason = _workflow_for(requirement, complexity["profile"])
-    selected_workflow = workflow_id or recommended_workflow
+    recommended_workflow, workflow_reason = _workflow_for(complexity["profile"], workflow_id)
+    selected_workflow = recommended_workflow
     run_profile, thinking_level = _profile_for(complexity["profile"])
 
     data = await store_repository.read()

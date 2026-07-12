@@ -72,8 +72,14 @@ def validate_workflow(workflow: dict[str, Any], *, project_path: str | None = No
         except (TypeError, ValueError):
             errors.append(_issue("error", f"{location}.maxRetries", "Retry budget must be numeric."))
             max_retries = 0
-        if max_retries > 20:
-            warnings.append(_issue("warning", f"{location}.maxRetries", f"High retry budget may hide infinite retry risk: {max_retries}"))
+        recovery_budget = step.get("recoveryBudget") or (step.get("retryPolicy") or {}).get("recoveryBudget")
+        if max_retries > 20 and not isinstance(recovery_budget, dict):
+            warnings.append(_issue("warning", f"{location}.maxRetries", f"High retry budget requires a bounded recoveryBudget: {max_retries}"))
+        if isinstance(recovery_budget, dict):
+            required_limits = {"maxRunFailures", "maxTaskFailures", "maxFailureClass", "wallClockMinutes"}
+            missing_limits = sorted(key for key in required_limits if not recovery_budget.get(key))
+            if missing_limits:
+                warnings.append(_issue("warning", f"{location}.recoveryBudget", "Missing bounded recovery limits: " + ", ".join(missing_limits)))
         functions = parse_function_refs(step.get("functions") if step.get("functions") is not None else step.get("function"))
         if contract.type in {"python", "validation", "check", "gate"} and not functions:
             warnings.append(_issue("warning", f"{location}.functions", f"Deterministic step type '{contract.type}' has no runtime function."))

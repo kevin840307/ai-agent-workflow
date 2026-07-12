@@ -1,0 +1,11 @@
+status: PASS
+mode: isolated-all
+elapsed_seconds: 397.57
+files_run: 58
+coverage_ok: True (58/58 files)
+tests: 712
+passed: 702
+skipped: 10
+failures: 0
+errors: 0
+failed_files: none

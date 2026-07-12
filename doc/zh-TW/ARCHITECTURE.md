@@ -1,183 +1,104 @@
-# Architecture
+# 系統架構
 
-## Goal
-
-讓 Workflow 的 UI 與 CLI 使用同一套 filesystem-first 架構：
+## 責任分工
 
 ```text
-workflow manifest + markdown skill + metadata contract + python function
+Qwen／OpenCode
+  理解、規劃、以有效 Project Path cwd 編輯、修復、Review
+
+Workflow Kernel
+  確定性狀態、Task Contract、Retry／Recovery、Session、Checkpoint、
+  Validation、原子交付、Evidence
+
+FastAPI／Web UI／CLI
+  Project／Run 操作、Simple／Advanced 顯示、診斷與 Asset
 ```
 
-## Canonical Asset Layout
+Controller 不實作使用者要求的產品功能。它可以檢查、Snapshot、比較、驗證、於原子交付時複製已驗證的 Agent 輸出並回滾，但不會自行生成需求程式碼。
+
+## 正式 Runtime 邊界
+
+- `app/workflow_engine/`：狀態機與 Executor Contract。
+- `app/workflow_runtime/`：Agent Action、Validation、Retry、Context、Checkpoint、Autopilot State、Preflight、Environment Health、Profile、Atomic Delivery 與 Evidence。
+- `app/services/`：Use Case API 與 Recovery 協調。
+- `app/workflow/agents/providers/`：Qwen、OpenCode、Generic CLI Adapter。
+- `app/persistence/`：SQLite WAL 與正規化投影。
+
+`app/runtime_modules/` 只保留隔離的低階相容工具，新 Orchestration 不得放入。
+
+## Autopilot 狀態機
+
+無人值守 Run 會保存與 UI 文案無關的精簡狀態：
 
 ```text
-data/ai-workflow/
-  workflows/**/*.workflow
-  steps/**/*.md
-  steps/common/**/*.md
-  contracts/**/*.yaml
-  contracts/**/*.json
-  functions/**/*.py
+discovering → executing → finalizing → verified → completed
 ```
 
-Project local override：
+Preflight 解析 Environment Health、可重用 Project Validation Profile 與 Baseline。重要轉換都持久化，Controller 重啟後才能判斷是否可安全恢復。
+
+## Project 與 Session 隔離
+
+- 一般 Agent 以使用者選擇的 Project Path 作 cwd。
+- 隔離無人值守 Run 使用保留專案 CLI 設定的有效 Project Path 副本。
+- 同一原始專案只允許一個 Writer。
+- 不同專案／Session 可透過 Provider Semaphore 並行。
+- Planning、Implementation、Validation、Review 可使用角色 Session。
+- Context 過高或重複失敗時，用精簡 Handoff 切換 Fresh Session。
+
+## Baseline 與 Validation Profile
+
+Profile 依 resolved Project Path 建立 Key，保存於 Controller 資料目錄。Descriptor Fingerprint 追蹤 Build／Test／Validation 描述檔。所有 Profile Command 都從有效 Project Path 執行，不把語言專用命令寫死在 Workflow。
+
+Baseline 會區分專案原本就存在的錯誤與本次新增 Regression。完成條件阻擋新增或惡化的失敗，不要求 Agent 修復無關且完全不變的歷史錯誤。
+
+## 依進展判斷 Recovery
+
+Recovery 同時使用 Failure Identity 與 Progress Identity。Progress Signature 包含 Filesystem、Changed Files、Task、Validation Evidence 與 Checkpoint。有改善時可以繼續；錯誤與進展都完全相同時會換策略／Session，最後才由累積 Budget 停止。
+
+## 原子交付
+
+隔離無人值守 Run：
 
 ```text
-<project>/.ai-workflow/
-  workflows/
-  steps/
-  contracts/
-  functions/
+Snapshot 原專案 → Agent 修改隔離有效 Project Path → 驗證
+→ 檢查原專案外部衝突 → 原子複製已驗證的 Agent 變更
+→ 套用後 Fast Validation → 保留或回滾
 ```
 
-解析順序永遠是：
+Atomic Delivery 只複製 Agent 產生的 Bytes，不會生成內容。原專案被外部修改或套用後驗證退化時，會拒絕或回滾。
+
+## 連線與 Durable Recovery
+
+Provider Connectivity 與 Workflow Event Stream 分開探測。無人值守的暫時連線失敗會低頻等候，不快速消耗 Retry。EventSource 自動重連並重新同步 Run 狀態。
+
+Controller 啟動時會自動恢復具有安全持久化資訊的 Interrupted Unattended Run。Checkpoint 與 Project Lock 避免重複 Writer。
+
+## Evidence 與儲存
+
+SQLite 使用 WAL，並以 Runs、Steps、Tasks、Sessions、Events、Validation、File Changes、Checkpoints、Locks 等投影查詢。相容 Document Snapshot 只保留給 Atomic Recovery。敏感資訊在持久化／顯示前遮罩。
+
+## 前端 Layout 邊界
+
+Simple／Advanced 共用同一 State Tree。Run Center 只負責可閱讀的總覽與驗證；總覽開啟唯一一套近全螢幕 Patch Review Workbench，正常核准／套用流程不再重複放在技術診斷。技術診斷保留 Agent、Log、修復證據、Session／Process、Delivery／Rollback 與共用執行產物 Viewer。每個工作區自行管理捲動，不允許多層固定高度互相壓縮。
+
+## 前端模組邊界
 
 ```text
-project .ai-workflow → global data/ai-workflow
+static/js/pages/
+├── workflow-designer.js             # 精簡頁面入口
+├── workflow-designer/
+│   ├── controller.js
+│   ├── asset-tools.js
+│   ├── layout-renderer.js
+│   ├── step-settings-renderer.js
+│   ├── template-editor.js
+│   ├── import-export.js
+│   ├── function-catalog.js
+│   ├── model.js
+│   └── utils.js
+├── ai-workflow-assets.js
+└── ai-workflow-assets/
+    └── asset-manager.js
 ```
 
-## Main Backend Modules
-
-```text
-app/services/workflow_asset_service.py
-  - canonical asset resolver
-  - asset CRUD
-  - workflow manifest loader
-  - metadata contract mapper
-  - Python function discovery
-
-app/services/workflow_config_service.py
-  - UI workflow save/load
-  - converts UI workflow into workflows + contracts + steps assets
-
-app/services/workflow_lint_service.py
-  - validates workflow config before save/run
-
-app/workflow_runtime/
-  - executor, retry policy, prompt builder, step actions
-  - agent provider abstraction
-  - built-in Python function implementation library
-
-app/workflow/agents/providers/
-  - qwen provider
-  - opencode provider
-  - generic CLI provider
-```
-
-## Python Function Model
-
-新版只有一種 Python asset：
-
-```text
-functions/**/*.py
-```
-
-metadata 使用：
-
-```yaml
-function: validate_spec
-```
-
-或：
-
-```yaml
-function: functions/check_spec.py
-```
-
-UI 下拉選單不是 hard-code catalog，而是掃描 `data/ai-workflow/functions/**/*.py` 與 project `.ai-workflow/functions/**/*.py` 的 `FUNCTION_META`。
-
-內建 function 的執行邏輯在：
-
-```text
-app/workflow_runtime/builtin_functions/
-```
-
-它是 runtime library，不是使用者要改的設定檔。使用者新增 function 時，只要放到：
-
-```text
-data/ai-workflow/functions/
-```
-
-或：
-
-```text
-<project>/.ai-workflow/functions/
-```
-
-## Metadata Contract Fields
-
-常用欄位：
-
-```yaml
-id: check_spec
-key: check_spec
-name: Check Spec
-type: python
-skill: steps/my-workflow/check_spec.md
-function: validate_spec
-agent: qwen
-outputs:
-  - spec.md
-retry: 2
-retryFromStepKey: generate_spec
-failAction: selected_step
-allowInteraction: false
-thinking: false
-confidenceThreshold: 0.9
-passKeywords: PASS
-failKeywords: FAIL
-aggregatorFunction: keyword_confidence
-```
-
-新版正式欄位只使用 `function:` / `functions:`；`validator:` 不再是支援欄位。
-
-## UI / CLI Sharing
-
-UI 儲存 workflow 時，會寫入：
-
-```text
-data/ai-workflow/workflows/*.workflow
-data/ai-workflow/contracts/<workflow-id>/*.yaml
-data/ai-workflow/steps/<workflow-id>/*.md
-```
-
-CLI 執行 workflow 時，讀取同一批 asset。
-
-因此：
-
-```text
-UI 新增 → CLI 可跑
-手動放檔案 → UI Refresh 可看到
-project .ai-workflow 覆蓋 global asset
-```
-
-## Extension Rules
-
-新增 agent provider：改 `data/settings.json` 加 provider 設定。
-
-新增 skill：放 `steps/**/*.md`。
-
-新增 metadata：放 `contracts/**/*.yaml`。
-
-新增 Python function：放 `functions/**/*.py`，加 `FUNCTION_META` 可讓 UI 顯示較友善名稱。
-
-新增 workflow：放 `workflows/*.workflow`。
-
-## Python Function execution model
-
-Python validator and Python tool are one concept: **Python Function Asset**. Runtime accepts either:
-
-```yaml
-function: validate_spec
-```
-
-or the ordered multi-function form:
-
-```yaml
-functions:
-  - validate_spec
-  - functions/check_spec.py
-  - run_pytest
-```
-
-The workflow runtime resolves each id/path through the same global/project asset resolver and executes them sequentially. The first failure stops the step and lets retry policy decide the next action.
+頁面入口保持精簡，State、Render、Asset Edit 與 Interaction 放在聚焦模組，避免 UI 修正再次堆成單一大型 Script。

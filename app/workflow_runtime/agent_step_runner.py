@@ -10,11 +10,9 @@ from app.runtime_modules.errors import UserInputRequired, WorkflowError
 from app.runtime_modules.files import failure_feedback_for_step, project_content_snapshot, restore_project_content_snapshot, project_overview
 from app.core.paths import read_text, write_text
 from app.security.agent_project_config import ensure_agent_project_configs
-from app.security.workspace_guard import resolve_project_relative_write
-from app.services.agent_session_manager import AgentSessionManager
+from app.services.agent_execution_service import AgentExecutionService
 
 from .agents import AgentManager, AgentRequest
-from .error_codes import is_recoverable_session_error, is_context_limit_error
 from .prompt_builder import PromptBuilder
 from .questions import extract_user_questions
 from .context_handoff import write_context_handoff
@@ -23,6 +21,36 @@ LogFn = Callable[[dict[str, Any], str], Awaitable[None]]
 RefreshArtifactsFn = Callable[[str], Awaitable[Any]]
 AppendSessionMessageFn = Callable[[str, str, str], Awaitable[Any]]
 UpdateRunFn = Callable[[str, Callable[[dict[str, Any]], Any]], Awaitable[dict[str, Any] | None]]
+
+
+def validation_script_snapshot(run: dict[str, Any], project_dir: Path) -> tuple[Path, bytes] | None:
+    contract = run.get("validation_contract") or {}
+    raw = run.get("validation_script") or contract.get("display_path")
+    if not raw:
+        return None
+    candidate = Path(str(raw)).expanduser()
+    target = candidate if candidate.is_absolute() else project_dir / candidate
+    try:
+        target = target.resolve()
+        target.relative_to(project_dir.resolve())
+        return (target, target.read_bytes()) if target.is_file() else None
+    except (OSError, ValueError):
+        return None
+
+
+def restore_validation_script(snapshot: tuple[Path, bytes] | None) -> bool:
+    if snapshot is None:
+        return False
+    target, expected = snapshot
+    try:
+        current = target.read_bytes() if target.is_file() else None
+        if current == expected:
+            return False
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(expected)
+        return True
+    except OSError:
+        return False
 
 
 class AgentStepRunner:
@@ -44,7 +72,8 @@ class AgentStepRunner:
         self.refresh_artifacts = refresh_artifacts
         self.append_session_message = append_session_message
         self.update_run = update_run
-        self.session_manager = AgentSessionManager()
+        self.execution = AgentExecutionService()
+        self.session_manager = self.execution.session_manager
 
     async def run(
         self,
@@ -128,6 +157,8 @@ class AgentStepRunner:
                 "template_prompt_file": str(workspace_path / prompt_result.relative_prompt_path),
                 "write_root": str(cwd),
                 "read_policy": "unrestricted",
+                "unattended": bool(run.get("unattended")),
+                "agent": agent_name,
             },
         )
         display_cmd = agent.command_preview(request)
@@ -142,6 +173,7 @@ class AgentStepRunner:
         await self._publish_status(run["id"], agent_name, step_key, self._running_status(run, step_config, agent_name, step_key, artifact))
         read_only_step = self._is_read_only_step(step_key, step_config)
         read_only_snapshot = project_content_snapshot(cwd) if read_only_step else None
+        protected_validation_snapshot = validation_script_snapshot(run, cwd)
 
         async def publish_agent_output(stream: str, text: str) -> None:
             if not text:
@@ -160,56 +192,37 @@ class AgentStepRunner:
             if agent_name == "qwen" and self._emit_legacy_qwen_output():
                 await self.bus.publish(run["id"], {"type": "qwen_output", "step": step_key, "stream": stream, "text": text})
 
-        try:
-            result = await agent.run_stream(request, on_output=publish_agent_output)
-        except WorkflowError as exc:
-            recover_session = bool(request.session_id and is_recoverable_session_error(exc))
-            recover_context = is_context_limit_error(exc)
-            if not (recover_session or recover_context):
-                raise
-            if recover_context:
-                handoff = self._write_session_handoff(run, step_key, cwd, workspace_path, str(exc))
-                recovery_prompt = handoff + "\n\n---\n\n" + prompt_text
-                status_message = f"{agent_name} context was full; continuing in a fresh session with a compact handoff..."
-                await self.log(run, f"{step_key}: context limit reached; retrying once with session handoff")
-            else:
-                recovery_prompt = prompt_text
-                status_message = f"{agent_name} session recovered; retrying..."
-                await self.log(run, f"{step_key}: {agent_name} session failed; retrying once with a fresh session: {exc}")
-            await self._publish_status(run["id"], agent_name, step_key, status_message)
-            fresh_request = AgentRequest(
-                run_id=run["id"],
-                step_key=step_key,
-                prompt=recovery_prompt,
-                cwd=cwd,
-                session_id=None,
-                metadata={
-                    "recovered_from_session_id": request.session_id,
-                    "recovery_reason": "context_limit" if recover_context else "session_error",
-                    "project_path": str(cwd),
-                    "workspace_path": str(workspace_path),
-                    "prompt_file": str(effective_prompt_path),
-                    "template_prompt_file": str(workspace_path / prompt_result.relative_prompt_path),
-                    "write_root": str(cwd),
-                    "read_policy": "unrestricted",
-                },
-            )
-            result = await agent.run_stream(fresh_request, on_output=publish_agent_output)
-            self.session_manager.invalidate(run, step_key=step_key, agent=agent_name, reason="context_limit" if recover_context else "session_error")
-            self.session_manager.record(
-                run,
-                role=session_decision.role,
-                agent=agent_name,
-                session_id=result.session_id,
-                recovery_reason="context_limit" if recover_context else "session_error",
-            )
-        else:
-            self.session_manager.record(
-                run,
-                role=session_decision.role,
-                agent=agent_name,
-                session_id=result.session_id or request.session_id,
-            )
+        def recovery_prompt(failure: dict[str, Any], _request: AgentRequest, _attempt: int) -> str:
+            if failure.get("code") != "CONTEXT_LIMIT_REACHED":
+                return prompt_text
+            handoff = self._write_session_handoff(run, step_key, cwd, workspace_path, str(failure.get("message") or "context limit"))
+            return handoff + "\n\n---\n\n" + prompt_text
+
+        outcome = await self.execution.execute(
+            agent,
+            request,
+            on_output=publish_agent_output,
+            on_status=lambda message: self._publish_status(run["id"], agent_name, step_key, message),
+            recovery_prompt_factory=recovery_prompt,
+        )
+        result = outcome.result
+        recovery_reason = str((outcome.recoveries[-1] if outcome.recoveries else {}).get("code") or "").lower() or None
+        if outcome.recoveries:
+            for recovery in outcome.recoveries:
+                await self.log(
+                    run,
+                    f"{step_key}: agent recovery {recovery['attempt']}/{len(outcome.recoveries)} "
+                    f"code={recovery['code']} strategy={recovery['strategy']} fresh={recovery['fresh_session']}",
+                )
+            if outcome.request.session_id is None and request.session_id:
+                self.session_manager.invalidate(run, step_key=step_key, agent=agent_name, reason=recovery_reason or "agent_recovery")
+        self.session_manager.record(
+            run,
+            role=session_decision.role,
+            agent=agent_name,
+            session_id=result.session_id or outcome.request.session_id,
+            recovery_reason=recovery_reason,
+        )
         if self.update_run is not None:
             role_sessions_snapshot = json.loads(json.dumps(run.get("role_session_ids") or {}))
             provider_sessions_snapshot = json.loads(json.dumps(run.get("agent_session_ids") or {}))
@@ -237,12 +250,26 @@ class AgentStepRunner:
                 ):
                     if field in persisted:
                         run[field] = persisted[field]
+        if restore_validation_script(protected_validation_snapshot):
+            counters = run.setdefault("recovery_counters", {})
+            counters["deterministic_repairs"] = int(counters.get("deterministic_repairs") or 0) + 1
+            run.setdefault("protected_file_repairs", []).append(
+                {"step_key": step_key, "path": str(protected_validation_snapshot[0]), "reason": "VALIDATION_SCRIPT_MUTATED"}
+            )
+            await self.log(run, f"{step_key}: restored user validation script after agent mutation")
         if read_only_snapshot is not None:
             current_snapshot = project_content_snapshot(cwd)
             if current_snapshot != read_only_snapshot:
                 restore_project_content_snapshot(cwd, read_only_snapshot)
-                raise WorkflowError(
-                    f"{step_key}: REVIEW_MUTATED_PROJECT: planning/review steps are read-only; project changes were reverted."
+                counters = run.setdefault("recovery_counters", {})
+                counters["deterministic_repairs"] = int(counters.get("deterministic_repairs") or 0) + 1
+                run.setdefault("read_only_mutations_reverted", []).append(
+                    {"step_key": step_key, "agent": agent_name, "reason": "REVIEW_MUTATED_PROJECT"}
+                )
+                await self.log(
+                    run,
+                    f"{step_key}: REVIEW_MUTATED_PROJECT: project changes were reverted; "
+                    "continuing with artifact validation.",
                 )
         output = result.output
         if not output.strip():
@@ -286,7 +313,13 @@ class AgentStepRunner:
                     "tool_call_json_reprompt": raw_tool_name,
                 },
             )
-            correction_result = await agent.run_stream(correction_request, on_output=publish_agent_output)
+            correction_outcome = await self.execution.execute(
+                agent,
+                correction_request,
+                on_output=publish_agent_output,
+                on_status=lambda message: self._publish_status(run["id"], agent_name, step_key, message),
+            )
+            correction_result = correction_outcome.result
             output = correction_result.output
             if not output.strip():
                 raise WorkflowError(f"{step_key}: {agent_name} returned empty stdout after tool-call JSON correction prompt.")
@@ -299,12 +332,6 @@ class AgentStepRunner:
                 "The workflow controller does not execute agent edit/write JSON. Use Qwen/OpenCode real file edit/write tools so the project files actually change."
             )
 
-        # Keep optional FILE block normalization only for mock/unit-test runs.
-        # Real workflow runs must prove completion through actual project diffs.
-        if self._mock_file_block_normalization_allowed(config):
-            file_block_output = self._tool_call_file_blocks(output, cwd)
-            if file_block_output:
-                output = file_block_output
         if "No specification found" in output:
             raise WorkflowError(f"{step_key}: {agent_name} did not treat the prompt file as the task.")
         write_text(output_dir / artifact, output + "\n")
@@ -320,13 +347,6 @@ class AgentStepRunner:
         if value is not None:
             return str(value).lower() not in {"0", "false", "no", "off"}
         return step_key in {"build", "generate_tests", "auto_generation"}
-
-    @staticmethod
-    def _mock_file_block_normalization_allowed(config: dict[str, Any]) -> bool:
-        value = config.get("normalizeToolCallFileBlocksForMock")
-        if value is not None:
-            return str(value).lower() in {"1", "true", "yes", "on"}
-        return os.environ.get("QWEN_WORKFLOW_MOCK_FILE_BLOCK_NORMALIZATION", "").lower() in {"1", "true", "yes", "on"}
 
     @staticmethod
     def _render_tool_call_json_correction_prompt(step_key: str, tool_name: str, *, cwd: Path, artifact: str) -> str:
@@ -430,171 +450,6 @@ class AgentStepRunner:
             return prefix + json.dumps(content)
 
         return re.sub(r'(:\s*)"""(.*?)"""', replace, text, flags=re.DOTALL)
-
-    @staticmethod
-    def _file_blocks_from_text(text: str) -> list[tuple[str, str]]:
-        files: list[tuple[str, str]] = []
-        pattern = re.compile(
-            r"^FILE:\s*(?P<path>.+?)\s*\r?\n(?:CONTENT:\r?\n)?(?P<content>.*?)(?=^END_FILE\s*$|^FILE:\s*|\Z)",
-            re.DOTALL | re.MULTILINE,
-        )
-        for match in pattern.finditer(text or ""):
-            rel_path = match.group("path").strip().strip("`").replace("\\", "/")
-            content = match.group("content").strip("\n\r")
-            if rel_path:
-                files.append((rel_path, content))
-        return files
-
-    @staticmethod
-    def _tool_call_file_blocks(output: str, cwd: Path) -> str:
-        payload = AgentStepRunner._tool_call_payload(output)
-        if not isinstance(payload, dict):
-            return AgentStepRunner._loose_tool_call_file_blocks(output, cwd)
-        args = AgentStepRunner._tool_call_arguments(payload)
-        if not isinstance(args, dict):
-            return AgentStepRunner._loose_tool_call_file_blocks(output, cwd)
-        candidates: list[dict[str, Any]]
-        file_items = (
-            args.get("files")
-            or args.get("edits")
-            or args.get("changes")
-            or args.get("writes")
-        )
-        if isinstance(file_items, list):
-            candidates = [item for item in file_items if isinstance(item, dict)]
-        else:
-            candidates = [args]
-        blocks: list[str] = []
-        for item in candidates:
-            raw_path = AgentStepRunner._tool_call_path(item)
-            content = AgentStepRunner._tool_call_content(item)
-            if not raw_path and content is not None:
-                parsed = AgentStepRunner._path_prefixed_content(str(content))
-                if parsed:
-                    raw_path, content = parsed
-            if not raw_path or content is None:
-                continue
-            rel_path = AgentStepRunner._safe_tool_call_relative_path(cwd, str(raw_path))
-            if not rel_path:
-                continue
-            blocks.extend(["", f"FILE: {rel_path}", "CONTENT:", str(content).rstrip(), "END_FILE"])
-        if not blocks:
-            return ""
-        name = payload.get("name") or "tool_call"
-        return "\n".join(["# Tool Call File Blocks", "", f"Converted from agent tool-call JSON: `{name}`.", *blocks]).strip()
-
-    @staticmethod
-    def _loose_tool_call_file_blocks(output: str, cwd: Path) -> str:
-        text = (output or "").strip()
-        if not text:
-            return ""
-        name_match = re.search(r'"name"\s*:\s*"([^"]+)"', text)
-        content_match = re.search(
-            r'"(?:new_source|newSource|content|contents|source|text|data)"\s*:\s*(?:"""(.*?)"""|"([\s\S]*?)")',
-            text,
-            flags=re.DOTALL,
-        )
-        if not content_match:
-            return ""
-        content = content_match.group(1) if content_match.group(1) is not None else content_match.group(2)
-        parsed = AgentStepRunner._path_prefixed_content(content)
-        if not parsed:
-            return ""
-        raw_path, body = parsed
-        rel_path = AgentStepRunner._safe_tool_call_relative_path(cwd, str(raw_path))
-        if not rel_path:
-            return ""
-        name = name_match.group(1).strip() if name_match else "tool_call"
-        return "\n".join(
-            [
-                "# Tool Call File Blocks",
-                "",
-                f"Converted from agent tool-call JSON: `{name}`.",
-                "",
-                f"FILE: {rel_path}",
-                "CONTENT:",
-                str(body).rstrip(),
-                "END_FILE",
-            ]
-        ).strip()
-
-    @staticmethod
-    def _path_prefixed_content(content: str) -> tuple[str, str] | None:
-        text = (content or "").strip("\n\r ")
-        if not text:
-            return None
-        match = re.match(r"^\s*([A-Za-z0-9_.\-/\\]+)\s*:\s*(.*)$", text, flags=re.DOTALL)
-        if not match:
-            return None
-        raw_path = match.group(1).strip()
-        body = match.group(2)
-        if not raw_path or "." not in Path(raw_path).name:
-            return None
-        return raw_path, body.lstrip()
-
-    @staticmethod
-    def _tool_call_arguments(payload: dict[str, Any]) -> dict[str, Any] | None:
-        for key in ("arguments", "args", "parameters", "input"):
-            value = payload.get(key)
-            if isinstance(value, dict):
-                return value
-            if isinstance(value, str):
-                try:
-                    parsed = json.loads(value)
-                except json.JSONDecodeError:
-                    continue
-                if isinstance(parsed, dict):
-                    return parsed
-        if AgentStepRunner._tool_call_path(payload) is not None:
-            return payload
-        return None
-
-    @staticmethod
-    def _tool_call_path(item: dict[str, Any]) -> Any:
-        for key in (
-            "file_path",
-            "filepath",
-            "filePath",
-            "path",
-            "file",
-            "filename",
-            "target_file",
-            "targetPath",
-            "target_path",
-        ):
-            value = item.get(key)
-            if value:
-                return value
-        return None
-
-    @staticmethod
-    def _tool_call_content(item: dict[str, Any]) -> Any:
-        for key in (
-            "new_source",
-            "newSource",
-            "content",
-            "contents",
-            "source",
-            "text",
-            "data",
-        ):
-            if key in item and item.get(key) is not None:
-                return item.get(key)
-        return None
-
-    @staticmethod
-    def _safe_tool_call_relative_path(cwd: Path, raw_path: str) -> str:
-        try:
-            root = cwd.expanduser().resolve()
-            resolved = resolve_project_relative_write(root, raw_path, label="agent tool-call file")
-            rel = resolved.relative_to(root).as_posix()
-        except (OSError, ValueError, WorkflowError):
-            return ""
-        if not rel or rel.startswith("../") or rel in {".", ".."}:
-            return ""
-        if rel.startswith((".git/", ".qwen/", ".ai-workflow/", ".qwen-workflow/")) or rel == "opencode.json":
-            return ""
-        return rel
 
     def _compact_retry_prompt_if_reusing_session(
         self,
@@ -719,7 +574,7 @@ Read-only planning/review guard:
 
 Build output guard:
 - You are in the Build step. Create or modify production project files directly with the CLI agent's real file edit/write capability.
-- Do not output, copy, rewrite, summarize, or include test file blocks.
+- Do not create, modify, copy, or include test files or test-file content.
 - Do not write paths under tests/ and do not write files named test_*.py.
 - Do not return edit tool JSON. Do not rely on platform FILE/CONTENT/END_FILE materialization in real runs.
 - The project must contain at least one non-test production file that implements the current Requirement.

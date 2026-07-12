@@ -19,29 +19,30 @@ ROOT = Path(__file__).resolve().parents[1]
 
 class TestingDocumentationContractTests(unittest.TestCase):
     def test_testing_documentation_lists_daily_and_manual_commands(self) -> None:
-        text = (ROOT / "doc/TESTING.md").read_text(encoding="utf-8")
-        required = [
-            "python -m unittest discover -s tests -v",
-            "RUN_REAL_QWEN=1",
-            "RUN_REAL_QWEN_FULL=1",
-            "RUN_REAL_QWEN_STABILITY=1",
-            "RUN_CLEAN_REPO_SMOKE=1",
-            "RUN_PLAYWRIGHT_UI=1",
-            "Run all 8 opt-in actual scenarios once",
-            "unset RUN_REAL_QWEN RUN_REAL_QWEN_FULL RUN_REAL_QWEN_STABILITY",
-            "Remove-Item Env:RUN_CLEAN_REPO_SMOKE",
-            "QWEN_MOCK_SCENARIO=fail_final_review_once",
-            "QWEN_MOCK_SCENARIO=generate_tests_no_files",
-        ]
-        for marker in required:
-            with self.subTest(marker=marker):
-                self.assertIn(marker, text)
+        for language in ("en", "zh-TW"):
+            text = (ROOT / "doc" / language / "TESTING.md").read_text(encoding="utf-8")
+            required = [
+                "python -m compileall -q app tests",
+                "python scripts/validate_workflow_assets.py",
+                "python scripts/run_tests.py --mode all --isolate-all",
+                "python scripts/run_browser_ui_smoke.py",
+                "run_local_qwen_cases.ps1",
+                "Repeat 5",
+                "validation.py",
+                "RUN_REAL_QWEN",
+                "RUN_PLAYWRIGHT_UI",
+                "QWEN_MOCK_SCENARIO=fail_final_review_once",
+                "QWEN_MOCK_SCENARIO=generate_tests_no_files",
+            ]
+            for marker in required:
+                with self.subTest(language=language, marker=marker):
+                    self.assertIn(marker, text)
 
 class AgentSlashCommandDocumentationTests(unittest.TestCase):
     def test_agent_slash_command_docs_and_templates_exist(self) -> None:
         required_paths = [
-            ROOT / "doc/en/AGENT_SLASH_COMMANDS.md",
-            ROOT / "doc/zh-TW/AGENT_SLASH_COMMANDS.md",
+            ROOT / "doc/en/QUICKSTART.md",
+            ROOT / "doc/zh-TW/QUICKSTART.md",
             ROOT / "data/agent-commands/qwen/commands/wf.md",
             ROOT / "data/agent-commands/qwen/commands/wstep.md",
             ROOT / "data/agent-commands/opencode/commands/wf.md",
@@ -53,9 +54,11 @@ class AgentSlashCommandDocumentationTests(unittest.TestCase):
                 self.assertTrue(path.exists())
                 self.assertGreater(path.stat().st_size, 0)
 
-        readme = (ROOT / "README.md").read_text(encoding="utf-8")
-        self.assertIn("AGENT_SLASH_COMMANDS.md", readme)
-        self.assertIn("python scripts/install_agent_commands.py --target all --scope project", readme)
+        for language in ("en", "zh-TW"):
+            quickstart = (ROOT / "doc" / language / "QUICKSTART.md").read_text(encoding="utf-8")
+            self.assertIn("python scripts/install_agent_commands.py --target all --scope project", quickstart)
+            self.assertIn("/wf", quickstart)
+            self.assertIn("/wstep", quickstart)
 
     def test_agent_command_templates_call_aiwf_shortcuts(self) -> None:
         qwen_wf = (ROOT / "data/agent-commands/qwen/commands/wf.md").read_text(encoding="utf-8")

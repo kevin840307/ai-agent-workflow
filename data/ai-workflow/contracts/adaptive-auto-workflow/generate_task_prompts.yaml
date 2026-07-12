@@ -1,7 +1,8 @@
 id: generate_task_prompts
 key: generate_task_prompts
 name: Generate Execution Prompts
-description: AI generates SPEC plus short execution prompts that will be sent to Qwen/OpenCode like human CLI instructions.
+description: AI generates SPEC plus short execution prompts that will be sent to Qwen/OpenCode
+  like human CLI instructions.
 enabled: true
 type: ai
 skill: steps/adaptive-auto-workflow/00_generate_task_prompts.md
@@ -12,13 +13,13 @@ outputs:
 - task-manifest.md
 - task-manifest.json
 function: ''
-retry: 2
-maxRetries: 2
+retry: 99
+maxRetries: 99
 failAction: same_step
 retryFromStepKey: generate_task_prompts
 keepSameSession: true
 injectFailureFeedback: true
-stopAfterFailures: 2
+stopAfterFailures: 99
 allowInteraction: false
 thinking: true
 thinkingLevel: medium
@@ -38,3 +39,25 @@ includeSkillContext: false
 path: contracts/adaptive-auto-workflow/generate_task_prompts.yaml
 compactPrompt: true
 compactRetryPromptWhenReusingSession: true
+recoverRepeatedFailure: true
+retryPolicy:
+  defaultRetryTo: generate_task_prompts
+  maxRetries: 99
+  recoveryBudget:
+    maxRunFailures: 40
+    maxStepFailures: 24
+    maxTaskFailures: 12
+    maxFailureClass: 12
+    maxFingerprint: 9
+    wallClockMinutes: 60
+    freshSessionEvery: 3
+recoveryBudget:
+  maxRunFailures: 40
+  maxStepFailures: 24
+  maxTaskFailures: 12
+  maxFailureClass: 12
+  maxFingerprint: 9
+  wallClockMinutes: 60
+  freshSessionEvery: 3
+phase: planning
+sessionRole: planning

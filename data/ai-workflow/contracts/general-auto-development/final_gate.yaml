@@ -10,13 +10,13 @@ command: ''
 agent: qwen
 outputs:
 - final-review.md
-retry: 2
+retry: 99
 failAction: selected_step
 retryFromStepKey: final_review
 retryEscalationEvery: 0
 keepSameSession: true
 injectFailureFeedback: true
-stopAfterFailures: 2
+stopAfterFailures: 99
 allowInteraction: false
 requiresValidationScript: false
 thinking: false
@@ -42,5 +42,25 @@ approval: false
 retryPolicy:
   defaultRetryTo: final_review
   escalateEvery: 0
-  maxRetries: 2
-maxRetries: 2
+  maxRetries: 99
+  recoveryBudget:
+    maxRunFailures: 40
+    maxStepFailures: 24
+    maxTaskFailures: 12
+    maxFailureClass: 12
+    maxFingerprint: 9
+    wallClockMinutes: 60
+    freshSessionEvery: 3
+recoverRepeatedFailure: true
+maxRetries: 99
+recoveryBudget:
+  maxRunFailures: 40
+  maxStepFailures: 24
+  maxTaskFailures: 12
+  maxFailureClass: 12
+  maxFingerprint: 9
+  wallClockMinutes: 60
+  freshSessionEvery: 3
+phase: validating
+sessionRole: validation
+evidenceCategory: validation

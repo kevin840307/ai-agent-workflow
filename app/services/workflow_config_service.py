@@ -45,7 +45,6 @@ def _sync_asset_paths() -> None:
     FUNCTIONS_DIR = root / "functions"
 
 PROMPT_FILE_BY_STEP_KEY = {
-    "prepare_project": "00_prepare.md",
     "reason_requirement": "00_reason_requirement.md",
     "generate_spec": "01_spec.md",
     "review_spec": "02_review_spec.md",
@@ -183,7 +182,7 @@ def normalize_step_config(step: dict) -> dict:
         item.setdefault("provider", item.get("agent") or "")
     item.setdefault("templateContent", "")
     item.setdefault("sources", [])
-    item.setdefault("reviewMode", "current_session" if item.get("type") == "review" or "review" in str(item.get("key", "")) else "none")
+    item.setdefault("reviewMode", "current_session" if item.get("type") == "review" else "none")
     item.setdefault("reviewers", [])
     item.setdefault("confidenceThreshold", 0.75)
     item.setdefault("passKeywords", "PASS, APPROVED")
@@ -209,7 +208,11 @@ def normalize_step_config(step: dict) -> dict:
     item["thinking"] = thinking_enabled(item["thinkingLevel"])
     item.setdefault("agentOptions", {})
     item.setdefault("expectedFiles", [item["outputFile"]] if item.get("outputFile") else [])
-    item.setdefault("requireProjectChanges", item.get("key") == "build")
+    item.setdefault("requireProjectChanges", False)
+    item.setdefault("phase", "")
+    item.setdefault("sessionRole", "")
+    item.setdefault("evidenceCategory", "")
+    item.setdefault("riskMetadata", {})
     if not item.get("functions"):
         item["functions"] = parse_function_refs(item.get("function"))
     else:
@@ -299,6 +302,11 @@ def _contract_from_step(workflow_id: str, step: dict) -> dict[str, Any]:
         "aggregatorFunction": item.get("aggregatorFunction") or "",
         "sources": item.get("sources") or [],
         "agentOptions": item.get("agentOptions") or {},
+        "phase": item.get("phase") or "",
+        "sessionRole": item.get("sessionRole") or "",
+        "evidenceCategory": item.get("evidenceCategory") or "",
+        "riskMetadata": item.get("riskMetadata") or {},
+        "requireProjectChanges": bool(item.get("requireProjectChanges", False)),
         "path": _contract_rel(workflow_id, key),
     }
     if len(functions) == 1:

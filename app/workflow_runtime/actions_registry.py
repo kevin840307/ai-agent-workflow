@@ -30,12 +30,6 @@ def builtin_action_for_step(actions: Any, run: dict[str, Any], step_record: dict
     agent_name = run_agent or step_agent_name(step_record) or None
 
     registry: dict[str, ActionCallable] = {
-        "prepare_project": lambda: actions.prepare_project_step(
-            run,
-            step_prompt_name(step_record, "00_prepare.md"),
-            step_artifact_name(step_record, "architecture.md"),
-            agent_name=agent_name,
-        ),
         "generate_spec": lambda: actions.generate_spec_step(
             run,
             step_prompt_name(step_record, "01_spec.md"),

@@ -20,32 +20,27 @@ ALLOWED_STEP_TYPES = {
     "final_gate",
 }
 
-DEV_PATTERNS = [
-    r"\b(add|build|create|implement|modify|update|fix|repair|generate|write|refactor|optimi[sz]e)\b",
-    r"(新增|建立|製作|產生|實作|修改|修正|優化|重構|開發|加入|補上|調整)",
-]
-NEW_PROJECT_PATTERNS = [r"(新專案|產生專案|建立專案|從零|create\s+(a\s+)?project|new\s+project)"]
-ASK_PATTERNS = [r"(為什麼|怎麼|如何|建議|解釋|說明|理解|分析|可以嗎|足夠嗎)", r"\b(why|explain|suggest|analy[sz]e|understand)\b"]
-
-
-def route_request(raw_requirement: str, *, validation_script: str | None = None, project_has_files: bool = True) -> dict[str, Any]:
-    text = raw_requirement or ""
-    lowered = text.lower()
-    new_project = any(re.search(pattern, lowered, re.I) or re.search(pattern, text, re.I) for pattern in NEW_PROJECT_PATTERNS)
-    dev = bool(validation_script) or any(re.search(pattern, lowered, re.I) or re.search(pattern, text, re.I) for pattern in DEV_PATTERNS)
-    ask = any(re.search(pattern, lowered, re.I) or re.search(pattern, text, re.I) for pattern in ASK_PATTERNS)
-    if new_project:
-        intent = "CREATE_NEW_PROJECT"
-    elif dev:
-        intent = "AUTO_WORKFLOW" if validation_script else "DEVELOP_EXISTING_PROJECT"
-    elif ask:
-        intent = "ASK"
+def route_request(
+    raw_requirement: str,
+    *,
+    validation_script: str | None = None,
+    project_has_files: bool = True,
+    requested_intent: str | None = None,
+) -> dict[str, Any]:
+    """Route from explicit caller context; never infer intent from requirement text."""
+    allowed = {"ASK", "CREATE_NEW_PROJECT", "DEVELOP_EXISTING_PROJECT", "AUTO_WORKFLOW"}
+    explicit = str(requested_intent or "").strip().upper()
+    if explicit and explicit not in allowed:
+        raise ValueError(f"Unsupported requested intent: {requested_intent}")
+    if explicit:
+        intent = explicit
+    elif validation_script:
+        intent = "AUTO_WORKFLOW"
     else:
-        # In the auto workflow path, ambiguous input is treated as a development request
-        # only when a project exists; otherwise it becomes a new-project scaffold request.
         intent = "DEVELOP_EXISTING_PROJECT" if project_has_files else "CREATE_NEW_PROJECT"
     return {
         "intent": intent,
+        "routing_source": "explicit" if explicit else "workflow_context",
         "requires_code_change": intent in {"CREATE_NEW_PROJECT", "DEVELOP_EXISTING_PROJECT", "AUTO_WORKFLOW"},
         "requires_project_index": intent != "ASK",
         "requires_task_manifest": intent in {"CREATE_NEW_PROJECT", "DEVELOP_EXISTING_PROJECT", "AUTO_WORKFLOW"},
@@ -75,11 +70,7 @@ def extract_user_instructions(raw_requirement: str, project_dir: Path) -> dict[s
             "found": True,
             "summary": _summarize_workflow_markdown(content),
         })
-    architecture_phrases = []
-    if re.search(r"(依照|遵守|沿用).{0,12}(專案架構|目前架構|現有架構)", text):
-        architecture_phrases.append("Follow the existing project architecture and do not introduce unrelated top-level structure.")
-    if re.search(r"(先|before|first)", text, re.I) and not sequence:
-        architecture_phrases.append("Respect explicit ordering words such as first/before when generating tasks.")
+    architecture_phrases: list[str] = []
     return {
         "user_sequence": sequence,
         "workflow_md_refs": md_constraints,
@@ -317,24 +308,10 @@ def _task_section(todo: str, task_id: str) -> str:
 
 
 def _task_owner(section: str, title: str) -> str:
-    header = title.lower()
-    goal_match = re.search(r"(?im)^\s*-\s*goal:\s*(.+)$", section or "")
-    goal = goal_match.group(1).lower() if goal_match else ""
-    primary = f"{header}\n{goal}"
-    text = f"{primary}\n{section}".lower()
-    # Owner is derived from the task's own title/goal first.  Later validation or
-    # assembly text may mention Generate Tests / External Validation as downstream
-    # gates and must not steal Build ownership from an implementation task.
-    if re.search(r"\b(implement|create|modify|update|write|add|generate|produce|build)\b", primary) or re.search(r"(實作|新增|建立|修改|產生|製作)", primary):
-        if not re.search(r"\btests?\b", primary) and "測試" not in primary:
-            return "build"
-    if re.search(r"\b(generate|create|write|add)\s+(focused\s+)?(automated\s+)?tests?\b", primary) or "test files only" in text:
-        return "generate_tests"
-    if "external validation" in primary and not re.search(r"\b(implement|create|modify|update|write|add|build)\b", primary):
-        return "run_external_validation"
-    if re.search(r"\b(review|analyze|analyse|inspect|scan|understand|plan)\b", primary) and not re.search(r"\b(implement|create|modify|update|write|add|generate|produce|build)\b", primary):
-        return "planning"
-    return "build"
+    """Read explicit task protocol metadata; do not classify natural language."""
+    match = re.search(r"(?im)^\s*-\s*owner:\s*([a-z_]+)\s*$", section or "")
+    owner = str(match.group(1) if match else "build").strip().lower()
+    return owner if owner in {"planning", "build", "generate_tests", "run_external_validation"} else "build"
 
 
 def _acceptance_criteria(section: str) -> list[str]:
@@ -382,16 +359,8 @@ def _extract_requirement(todo: str) -> str:
 
 
 def _infer_user_step(title: str, section: str, instructions: dict[str, Any]) -> int | None:
-    sequence = instructions.get("user_sequence") or []
-    text = f"{title}\n{section}".lower()
-    for item in sequence:
-        instruction = str(item.get("instruction") or "").lower()
-        if instruction and any(token for token in instruction.split() if token in text):
-            try:
-                return int(item.get("order"))
-            except Exception:
-                return None
-    return None
+    match = re.search(r"(?im)^\s*-\s*user[_ -]?step:\s*(\d+)\s*$", section or "")
+    return int(match.group(1)) if match else None
 
 
 def _validate_relative_path(value: str, project_dir: Path, *, label: str) -> list[str]:
@@ -440,16 +409,32 @@ def _safe_read(path: Path) -> str:
 
 
 def _summarize_workflow_markdown(content: str) -> dict[str, Any]:
+    """Extract only document structure; never classify prose by keywords.
+
+    Markdown headings and ordered/list items are explicit author-provided
+    structure.  Their text is preserved for the Agent, while the Controller
+    makes no semantic judgment about which words imply a phase or a rule.
+    """
     lines = [line.strip() for line in (content or "").splitlines() if line.strip()]
-    phases = []
-    must = []
+    headings: list[str] = []
+    ordered_items: list[str] = []
+    list_items: list[str] = []
     for line in lines[:200]:
-        if re.match(r"^(#+|\d+[\.、\)]|[-*])", line):
-            if re.search(r"(step|phase|流程|步驟|先|再|最後|驗證|test|build|review)", line, re.I):
-                phases.append(line[:240])
-        if re.search(r"(must|必須|一定|禁止|不可|不能|不要|do not|驗證)", line, re.I):
-            must.append(line[:240])
-    return {"required_phases": phases[:20], "must_follow_rules": must[:20], "excerpt": "\n".join(lines[:40])[:4000]}
+        if re.match(r"^#{1,6}\s+", line):
+            headings.append(line[:240])
+        elif re.match(r"^\d+[\.、\)]\s+", line):
+            ordered_items.append(line[:240])
+        elif re.match(r"^[-*+]\s+", line):
+            list_items.append(line[:240])
+    return {
+        # Compatibility keys now contain structural groups, not inferred meaning.
+        "required_phases": (headings + ordered_items)[:20],
+        "must_follow_rules": list_items[:20],
+        "headings": headings[:20],
+        "ordered_items": ordered_items[:20],
+        "list_items": list_items[:20],
+        "excerpt": "\n".join(lines[:40])[:4000],
+    }
 
 
 def dumps(data: Any) -> str:

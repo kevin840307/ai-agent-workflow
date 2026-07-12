@@ -8,6 +8,7 @@ from typing import Any
 
 from app.runtime_modules.errors import WorkflowError
 from app.runtime_modules.files import failure_feedback_for_step, project_overview, project_profile, render_project_index_markdown
+from app.workflow_runtime.project_index_cache import get_cached_project_index
 from app.core.paths import AI_WORKFLOW_DIR, DEFAULT_SKILL_PATH, ROOT, SYSTEM_WORKFLOW_ID, WORKFLOW_BUNDLES_DIR, read_text, write_text
 from app.runtime_modules.skills import load_skill_context
 from app.services.workflow_asset_service import GLOBAL_ASSET_ROOT, PROJECT_ASSET_DIR
@@ -95,7 +96,9 @@ class PromptBuilder:
         architecture = read_text(project_dir / "architecture.md") or read_text(output_dir / "architecture.md")
         profile = project_profile(project_dir)
         project_index_path = output_dir / "project-index.md"
-        write_text(project_index_path, render_project_index_markdown(project_dir))
+        project_index, cache_info = get_cached_project_index(project_dir)
+        write_text(project_index_path, project_index)
+        run["project_index_cache"] = cache_info
 
         skill_root = step_config.get("skillRoot") or run.get("skill_root") or str(DEFAULT_SKILL_PATH)
         compact_prompt = bool_config(step_config, "compactPrompt", False)
@@ -165,9 +168,9 @@ class PromptBuilder:
                     f"{failure_feedback.strip()}\n"
                 )
         if not compact_prompt:
-            if architecture.strip() and step_key != "prepare_project" and "{{architecture}}" not in prompt_template:
+            if architecture.strip() and "{{architecture}}" not in prompt_template:
                 prompt = f"{prompt}\n\nCurrent project architecture context from architecture.md:\n\n{architecture.strip()}\n"
-            if profile.strip() and step_key != "prepare_project" and "{{project_profile}}" not in prompt_template:
+            if profile.strip() and "{{project_profile}}" not in prompt_template:
                 prompt = f"{prompt}\n\nCurrent project profile inferred from existing files:\n\n{profile.strip()}\n"
         thinking_guidance = render_thinking_guidance(
             step_thinking_level(step_record, run),
@@ -373,10 +376,20 @@ class PromptBuilder:
             include_task = bool(current_index and task_number < current_index) or task_dir.name == task_id
             if not include_task:
                 continue
-            for artifact_name in ("build-result.md", "adaptive-generation-result.md"):
-                artifact_path = task_dir / artifact_name
-                for rel_path, _ in self._extract_file_blocks_for_context(read_text(artifact_path)):
-                    if rel_path not in candidate_paths:
+            for state_name in ("build-state.json", "auto_generation-state.json"):
+                state_path = task_dir / state_name
+                if not state_path.is_file():
+                    continue
+                try:
+                    state = json.loads(read_text(state_path))
+                except json.JSONDecodeError:
+                    continue
+                files = state.get("files") if isinstance(state, dict) else []
+                for item in files if isinstance(files, list) else []:
+                    if not isinstance(item, dict):
+                        continue
+                    rel_path = str(item.get("path") or "").strip().replace("\\", "/")
+                    if rel_path and rel_path not in candidate_paths:
                         candidate_paths.append(rel_path)
 
         if not candidate_paths:
@@ -488,19 +501,6 @@ class PromptBuilder:
         if not candidates:
             return "No importable project Python modules detected yet."
         return "\n".join(candidates[:80])
-
-    @staticmethod
-    def _extract_file_blocks_for_context(text: str) -> list[tuple[str, str]]:
-        files: list[tuple[str, str]] = []
-        pattern = re.compile(
-            r"^FILE:\s*(?P<path>.+?)\s*\r?\n(?:CONTENT:\r?\n)?(?P<content>.*?)(?=^FILE:\s*|^END_FILE\s*$|\Z)",
-            re.DOTALL | re.MULTILINE,
-        )
-        for match in pattern.finditer(text or ""):
-            rel_path = match.group("path").strip().strip("`").replace("\\", "/")
-            content = match.group("content")
-            files.append((rel_path, content))
-        return files
 
     def _current_task_failure_feedback(self, feedback: str, task_id: str) -> str:
         if not feedback.strip() or not task_id.strip():

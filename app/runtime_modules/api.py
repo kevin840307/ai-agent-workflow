@@ -15,6 +15,7 @@ from app.domain.schemas import (  # noqa: F401
     CreateSessionRequest,
     RetryRunRequest,
     PatchApplyRequest,
+    PatchValidateRequest,
     RerunStepRequest,
     SubmitAnswersRequest,
     SubmitGuidanceRequest,
@@ -37,10 +38,11 @@ from app.core.paths import (
     utc_now,
     write_text,
 )
-from app.runtime_modules.run_state import RunState, artifact_record  # noqa: F401
+from app.runtime_modules.run_state import ARTIFACT_METADATA_SCHEMA, RunState, artifact_record  # noqa: F401
 from app.runtime_modules.run_owner import current_run_owner, owner_matches_current_process, owner_process_is_alive
 from app.persistence.json_store import Store
 from app.persistence.sqlite_store import SQLiteStore
+from app.agents.process_registry import ProcessRegistry, managed_process_registry
 
 from app.workflow_runtime.actions import WorkflowActions
 from app.workflow_runtime.agent_step_runner import AgentStepRunner
@@ -136,7 +138,7 @@ store = _create_store_backend()
 
 bus = EventBus()
 running_tasks: dict[str, asyncio.Task] = {}
-running_processes: dict[str, asyncio.subprocess.Process] = {}
+running_processes: ProcessRegistry = managed_process_registry
 
 qwen_serve_process = _qwen_serve.qwen_serve_process
 qwen_serve_status = _qwen_serve.qwen_serve_status
@@ -327,10 +329,6 @@ async def review_step(
     allow_interaction: bool = False,
 ) -> None:
     return await workflow_actions.review_step(run, step_key, prompt_name, artifact, allow_interaction=allow_interaction)
-
-
-async def prepare_project_step(run: dict[str, Any], prompt_name: str = "00_prepare.md") -> None:
-    return await workflow_actions.prepare_project_step(run, prompt_name)
 
 
 async def run_tests(run: dict[str, Any]) -> None:

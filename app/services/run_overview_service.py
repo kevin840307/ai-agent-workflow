@@ -11,6 +11,7 @@ from app.workflow_runtime.artifact_policy import filter_artifacts
 from app.workflow_runtime.recovery_counters import public_recovery_counters
 from app.workflow_runtime.scope_control import analyze_scope_delta
 from app.core.paths import read_text
+from app.workflow_runtime.step_metadata import is_validation_step
 
 ACTIVE = {"queued", "running", "waiting_input", "cancelling"}
 
@@ -60,24 +61,57 @@ def _dedupe_changed_files(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 
 def _validation_status(run: dict[str, Any]) -> list[dict[str, Any]]:
+    results_by_key = {
+        str(item.get("key") or ""): item
+        for item in run.get("validation_results") or []
+        if isinstance(item, dict) and item.get("key")
+    }
+    artifacts_by_step: dict[str, list[dict[str, Any]]] = {}
+    for artifact in run.get("artifacts") or []:
+        producer = str(artifact.get("producer_step_key") or "")
+        if producer:
+            artifacts_by_step.setdefault(producer, []).append(artifact)
     rows: list[dict[str, Any]] = []
     for step in run.get("steps") or []:
-        key = str(step.get("key") or "").lower()
-        if not any(token in key for token in ("test", "validation", "review", "gate")):
+        if not is_validation_step(step):
             continue
-        status = str(step.get("status") or "pending")
-        label = friendly_step_title(step)
+        key = str(step.get("key") or "")
+        result = results_by_key.get(key) or {}
+        config = step.get("config") or {}
+        status = str(result.get("status") or step.get("status") or "pending")
+        command = result.get("command") or config.get("command") or config.get("testCommand") or config.get("test_command")
+        started = step.get("started_at")
+        ended = step.get("ended_at")
+        duration = result.get("duration_sec")
+        if duration is None and started and ended:
+            try:
+                from datetime import datetime
+                duration = max(0.0, (datetime.fromisoformat(str(ended).replace("Z", "+00:00")) - datetime.fromisoformat(str(started).replace("Z", "+00:00"))).total_seconds())
+            except (TypeError, ValueError):
+                duration = None
+        required = bool(config.get("required", config.get("validationRequired", True)))
         rows.append(
             {
-                "key": step.get("key"),
-                "label": label,
+                "key": key,
+                "label": friendly_step_title(step),
                 "status": status,
-                "error": step.get("error"),
-                "error_code": step.get("error_code"),
+                "error": step.get("error") or result.get("summary"),
+                "error_code": step.get("error_code") or result.get("error_code"),
                 "retry_count": int(step.get("retry_count") or 0),
+                "command": command,
+                "exit_code": result.get("exit_code"),
+                "duration_sec": duration,
+                "required": required,
+                "blocks_apply": required,
+                "category": result.get("category") or config.get("evidenceCategory") or config.get("evidence_category") or "validation",
+                "summary": result.get("summary"),
+                "executed": result.get("exit_code") is not None or status in {"passed", "failed"},
+                "baseline": result.get("baseline_comparison"),
+                "artifacts": artifacts_by_step.get(key, []),
             }
         )
     return rows
+
 
 
 def _recommended_actions(run: dict[str, Any]) -> list[dict[str, Any]]:
@@ -105,11 +139,11 @@ def _recommended_actions(run: dict[str, Any]) -> list[dict[str, Any]]:
     if status == "done":
         if patch_mode in {"review", "dry_run"} and approval == "pending":
             return [
-                {"id": "approve", "label": "核准並檢視 Patch", "kind": "primary"},
-                {"id": "reject", "label": "拒絕這次變更", "kind": "danger"},
+                {"id": "view_changes", "label": "查看並審核變更", "kind": "primary"},
+                {"id": "diagnostics", "label": "技術診斷", "kind": "secondary"},
             ]
         return [
-            {"id": "view_changes", "label": "查看變更", "kind": "primary"},
+            {"id": "view_changes", "label": "查看並審核變更", "kind": "primary"},
             {"id": "run_again", "label": "再次執行", "kind": "secondary"},
         ]
     if status in ACTIVE:
@@ -180,7 +214,7 @@ def build_run_overview(run: dict[str, Any]) -> dict[str, Any]:
     requirement = read_text(run_dir / "requirement.md") if run_dir.exists() else ""
     scope_delta = analyze_scope_delta(requirement, file_changes=changed_files, planned_tasks=list(run.get("tasks") or []))
     validation = _validation_status(run)
-    validation_passed = bool(validation) and all(row["status"] in {"passed", "skipped"} for row in validation)
+    validation_passed = bool(validation) and all(row["status"] == "passed" for row in validation)
     stability = compute_workflow_stability_score(
         run,
         {
@@ -241,6 +275,11 @@ def build_run_overview(run: dict[str, Any]) -> dict[str, Any]:
         "recommended_actions": _recommended_actions(run),
         "restart_recoverable": bool(run.get("restart_recoverable")),
         "recovery": run.get("recovery") if run.get("restart_recoverable") else None,
+        "autopilot_state": run.get("autopilot_state") if run.get("unattended") else None,
+        "project_validation_profile": {
+            "status": (run.get("project_validation_profile") or {}).get("status"),
+            "primary_validator": (run.get("project_validation_profile") or {}).get("primary_validator"),
+        } if isinstance(run.get("project_validation_profile"), dict) else None,
         "last_checkpoint_id": run.get("last_checkpoint_id"),
         "essential_artifacts": filter_artifacts(run.get("artifacts") or [], "essential")[:12],
         "advanced": {

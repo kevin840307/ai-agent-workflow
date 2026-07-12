@@ -164,7 +164,6 @@ def apply_thinking_level_to_steps(steps: list[dict[str, Any]], level: Any) -> li
             config = {}
             step["config"] = config
         if step_type in {"ai", "review", "agent", "qwen"} or key in {
-            "prepare_project",
             "plan_tasks",
             "generate_task_prompts",
             "auto_generation",

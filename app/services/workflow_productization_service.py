@@ -30,7 +30,8 @@ async def real_agent_matrix(body: dict[str, Any] | None = None) -> dict[str, Any
 def regression_workflow_template() -> dict[str, Any]:
     return {
         "schema": "aiwf.regression-workflow-template.v1",
-        "workflow_id": "regression-test-case-generation",
+        "template_id": "regression-test-case-generation",
+        "workflow_id": "general-auto-development",
         "purpose": "Generate SOP SQL, runtime SQL, expected result, validation.py, markdown case, and dry-run report.",
         "recommended_inputs": [
             "SOP name / Block name / CaseId",

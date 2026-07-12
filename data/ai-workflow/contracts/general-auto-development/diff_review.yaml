@@ -35,3 +35,6 @@ path: contracts/general-auto-development/diff_review.yaml
 compactPrompt: true
 includeSkillContext: false
 compactRetryPromptWhenReusingSession: true
+phase: reviewing
+sessionRole: review
+evidenceCategory: validation

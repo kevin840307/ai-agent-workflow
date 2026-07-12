@@ -55,6 +55,8 @@ class ProductizationNextFeatureTests(unittest.TestCase):
             self.assertEqual(matrix.status_code, 200, matrix.text)
             self.assertEqual(matrix.json()["count"], 1)
             self.assertIn("run_real_agent_smoke.py", matrix.json()["rows"][0]["command"])
+            self.assertEqual(matrix.json()["rows"][0]["acceptance"]["external_validation"], "passed")
+            self.assertIn("AgentExecutionService", matrix.json()["summary"]["shared_core"])
             cli = subprocess.run(
                 [sys.executable, "scripts/run_real_agent_matrix.py", "--agent", "qwen", "--workflow", "adaptive-auto-workflow", "--case", "sort"],
                 cwd=Path(__file__).resolve().parents[1],
@@ -65,16 +67,15 @@ class ProductizationNextFeatureTests(unittest.TestCase):
             self.assertEqual(cli.returncode, 0, cli.stderr + cli.stdout)
             self.assertIn('"count": 1', cli.stdout)
 
-    def test_dry_run_patch_console_version_and_apply(self) -> None:
+    def test_dry_run_patch_console_version_and_strict_apply_gate(self) -> None:
         old_mock = os.environ.get("QWEN_MOCK")
-        old_norm = os.environ.get("QWEN_WORKFLOW_MOCK_FILE_BLOCK_NORMALIZATION")
         os.environ["QWEN_MOCK"] = "1"
-        os.environ["QWEN_WORKFLOW_MOCK_FILE_BLOCK_NORMALIZATION"] = "1"
         try:
             with TemporaryDirectory() as tmp, TestClient(app) as client:
                 project = Path(tmp) / "project"
                 project.mkdir()
                 (project / "README.md").write_text("# Project\n", encoding="utf-8")
+                (project / "validation.py").write_text("raise SystemExit(0)\n", encoding="utf-8")
                 session = client.post("/api/sessions", json={"title": "patch", "project_path": str(project)})
                 self.assertEqual(session.status_code, 200, session.text)
                 run_resp = client.post(
@@ -120,18 +121,23 @@ class ProductizationNextFeatureTests(unittest.TestCase):
                 self.assertEqual(patch.json()["mode"], "dry_run")
                 self.assertIn("changed_files", patch.json())
                 if patch.json().get("changed_files"):
-                    apply_resp = client.post(f"/api/workflow-runs/{run_id}/patch/apply", json={})
-                    self.assertEqual(apply_resp.status_code, 200, apply_resp.text)
-                    self.assertIn("written_files", apply_resp.json())
+                    patch_payload = patch.json()
+                    approve_resp = client.post(
+                        f"/api/workflow-runs/{run_id}/actions",
+                        json={
+                            "action": "approve",
+                            "files": patch_payload["changed_files"],
+                            "patch_hash": patch_payload["patch_hash"],
+                        },
+                    )
+                    self.assertEqual(approve_resp.status_code, 409, approve_resp.text)
+                    self.assertEqual(approve_resp.json()["error"]["code"], "VALIDATION_NOT_PASSED")
+                    self.assertFalse((project / "sorting_algorithms.py").exists(), "blocked approval must not apply the isolated Patch")
         finally:
             if old_mock is None:
                 os.environ.pop("QWEN_MOCK", None)
             else:
                 os.environ["QWEN_MOCK"] = old_mock
-            if old_norm is None:
-                os.environ.pop("QWEN_WORKFLOW_MOCK_FILE_BLOCK_NORMALIZATION", None)
-            else:
-                os.environ["QWEN_WORKFLOW_MOCK_FILE_BLOCK_NORMALIZATION"] = old_norm
 
 
 if __name__ == "__main__":

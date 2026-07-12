@@ -1,5 +1,5 @@
-import { TemplatePresets } from "../workflow-designer-constants.js?v=20260711-ui-v12";
-import { clone, makeId } from "./utils.js?v=20260711-ui-v12";
+import { TemplatePresets } from "../workflow-designer-constants.js?v=20260712-ui-v22";
+import { clone, makeId } from "./utils.js?v=20260712-ui-v22";
 const ThinkingLevels = new Set(["none", "medium", "high", "extreme"]);
 function normalizeThinkingLevel(value, legacyThinking = false) {
   const raw = String(value ?? "").trim().toLowerCase();
@@ -123,7 +123,6 @@ function normalizeStep(step = {}) {
 function inferStepType(step) {
   if (!step) return "ai";
   if (step.type === "ai" && step.reviewMode && step.reviewMode !== "none") return "review";
-  if (step.type === "ai" && String(step.key || "").includes("review")) return "review";
   return step.type || "ai";
 }
 function normalizeFunctionList(value = "") {

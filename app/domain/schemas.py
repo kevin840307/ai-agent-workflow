@@ -32,6 +32,10 @@ class CreateRunRequest(BaseModel):
     context_pack: str | None = Field(default=None, alias="contextPack")
     approval_mode: str | None = Field(default=None, alias="approvalMode")
     benchmark_id: str | None = Field(default=None, alias="benchmarkId")
+    unattended: bool | None = None
+    autopilot_mode: str | None = Field(default=None, alias="autopilotMode")
+    risk_metadata: dict | None = Field(default=None, alias="riskMetadata")
+    workflow_inputs: dict | None = Field(default=None, alias="workflowInputs")
 
 
 class OptimizationRequest(BaseModel):
@@ -65,6 +69,18 @@ class AgentSettingsRequest(BaseModel):
     opencode_agent: str | None = None
 
 
+class ProjectValidationProfileRequest(BaseModel):
+    project_path: str = Field(min_length=1)
+    profile: dict | None = None
+    refresh: bool = False
+    timeout_sec: int | None = Field(default=None, ge=1, le=86400)
+
+
+class ConnectivityRequest(BaseModel):
+    project_path: str | None = None
+    agent: str | None = None
+
+
 class RetryRunRequest(BaseModel):
     step_key: str | None = None
 
@@ -88,10 +104,21 @@ class RunActionRequest(BaseModel):
     action: str = Field(description="retry_current, retry_fresh_session, resume, stop, keep_changes, rollback_task, approve, reject")
     step_key: str | None = None
     reason: str | None = None
+    reason_code: str | None = None
+    comment: str | None = None
+    files: list[str] | None = None
+    patch_hash: str | None = None
 
 
 class PatchApplyRequest(BaseModel):
     files: list[str] | None = None
+    patch_hash: str | None = None
+    selection_hash: str | None = None
+
+
+class PatchValidateRequest(BaseModel):
+    files: list[str] = Field(min_length=1)
+    patch_hash: str | None = None
 
 
 class RerunStepRequest(BaseModel):
@@ -107,11 +134,14 @@ __all__ = [
     "SetupSmokeRequest",
     "CreateSessionRequest",
     "AgentSettingsRequest",
+    "ProjectValidationProfileRequest",
+    "ConnectivityRequest",
     "RetryRunRequest",
     "SubmitAnswersRequest",
     "SubmitGuidanceRequest",
     "StepControlRequest",
     "RunActionRequest",
     "PatchApplyRequest",
+    "PatchValidateRequest",
     "RerunStepRequest",
 ]

@@ -143,3 +143,113 @@ async def cleanup_runs(
     metrics.increment("cleanup.runs", len(remove_ids))
     result["removedArtifacts"] = actually_removed_artifacts
     return result
+
+async def inspect_runtime_invariants(*, repair: bool = False) -> dict[str, Any]:
+    """Inspect and optionally repair durable controller invariants.
+
+    Repairs are intentionally limited to states that are provably stale:
+    expired leases, terminal-run locks, orphan managed processes, and unfinished
+    delivery journals whose owning Run no longer has a live execution task.
+    """
+    from app.runtime_modules import api as runtime
+    from app.workflow_runtime.delivery_journal import load_delivery_journal, rollback_delivery_journal
+    from app.workflow_runtime.run_lease import lease_is_expired, release_run_lease
+    from app.workflow_runtime.run_lifecycle import clear_project_lock
+    from app.core.paths import utc_now
+
+    data = await store_repository.read()
+    issues: list[dict[str, Any]] = []
+    repaired: list[dict[str, Any]] = []
+    active_statuses = ACTIVE_RUN_STATUSES
+    task_ids = {str(key) for key, task in runtime.running_tasks.items() if task and not task.done()}
+    process_run_ids = set()
+    values = runtime.running_processes.values() if hasattr(runtime.running_processes, "values") else []
+    for process in values:
+        run_id = getattr(process, "run_id", None) or getattr(process, "aiwf_run_id", None)
+        if run_id:
+            process_run_ids.add(str(run_id))
+
+    changed = False
+    for run in data.get("runs", []):
+        run_id = str(run.get("id") or "")
+        status = str(run.get("status") or "")
+        lease = run.get("run_lease") if isinstance(run.get("run_lease"), dict) else None
+        workspace = Path(str(run.get("workspace") or "")) if run.get("workspace") else None
+        journal_path = workspace / ".workflow" / "atomic-delivery-transaction.json" if workspace else None
+        journal = load_delivery_journal(journal_path) if journal_path else None
+
+        if status not in active_statuses and lease:
+            issue = {"run_id": run_id, "code": "TERMINAL_RUN_HAS_LEASE", "status": status}
+            issues.append(issue)
+            if repair and release_run_lease(run):
+                repaired.append(issue)
+                changed = True
+        elif status in active_statuses and lease and lease_is_expired(lease):
+            issue = {"run_id": run_id, "code": "ACTIVE_RUN_LEASE_EXPIRED", "status": status}
+            issues.append(issue)
+            live_task = run_id in task_ids
+            if repair and not live_task:
+                if journal and journal.get("status") not in {"committed", "rolled_back"}:
+                    try:
+                        rollback_delivery_journal(journal, journal_path=journal_path)
+                        run["atomic_delivery_transaction"] = {"status": "rolled_back", "recovered_by": "invariant_monitor"}
+                    except Exception as exc:
+                        issue["rollback_error"] = str(exc)[:1000]
+                release_run_lease(run)
+                clear_project_lock(run)
+                run["project_lock"] = None
+                run["status"] = "failed"
+                run["error_code"] = "RUN_LEASE_EXPIRED"
+                run["error"] = "Run lease expired without a live controller task; state was safely recovered."
+                run["restart_recoverable"] = True
+                run["updated_at"] = utc_now()
+                repaired.append(issue)
+                changed = True
+        if status in active_statuses and run_id not in task_ids and run_id not in process_run_ids and not lease:
+            issues.append({"run_id": run_id, "code": "ACTIVE_RUN_WITHOUT_EXECUTION_OWNER", "status": status})
+        if journal and journal.get("status") not in {"committed", "rolled_back"} and status not in active_statuses:
+            issue = {"run_id": run_id, "code": "STALE_DELIVERY_TRANSACTION", "transaction_status": journal.get("status")}
+            issues.append(issue)
+            if repair:
+                try:
+                    rolled = rollback_delivery_journal(journal, journal_path=journal_path)
+                    run["atomic_delivery_transaction"] = {"status": rolled.get("status"), "recovered_by": "invariant_monitor"}
+                    repaired.append(issue)
+                    changed = True
+                except Exception as exc:
+                    issue["rollback_error"] = str(exc)[:1000]
+
+    if repair and changed:
+        await store_repository.mutate(lambda store: store.update(data))
+    orphan_result = None
+    if repair:
+        reaper = getattr(runtime.running_processes, "reap_orphans", None)
+        if callable(reaper):
+            orphan_result = await __import__("asyncio").to_thread(reaper)
+    return {
+        "schema": "aiwf.runtime-invariants.v1",
+        "status": "pass" if not issues else ("repaired" if repair and repaired else "warning"),
+        "issue_count": len(issues),
+        "repaired_count": len(repaired),
+        "issues": issues,
+        "repaired": repaired,
+        "active_task_count": len(task_ids),
+        "active_process_run_count": len(process_run_ids),
+        "orphan_reaper": orphan_result,
+    }
+
+
+async def runtime_invariant_monitor(stop_event: Any, *, interval_seconds: int = 60) -> None:
+    import asyncio
+    interval = max(10, int(interval_seconds or 60))
+    while not stop_event.is_set():
+        try:
+            await inspect_runtime_invariants(repair=True)
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            metrics.increment("invariants.monitor_errors")
+        try:
+            await asyncio.wait_for(stop_event.wait(), timeout=interval)
+        except asyncio.TimeoutError:
+            pass

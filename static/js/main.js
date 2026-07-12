@@ -1,7 +1,7 @@
-import { initSharedSidebar } from "./shared/sidebar.js?v=20260711-ui-v12";
-import { initWorkflowAssetsPage } from "./pages/ai-workflow-assets.js?v=20260711-ui-v12";
-import { initWorkflowDesignerPage } from "./pages/workflow-designer.js?v=20260711-ui-v12";
-import { initWorkflowRunnerPage } from "./pages/workflow-runner.js?v=20260711-ui-v12";
+import { initSharedSidebar } from "./shared/sidebar.js?v=20260712-ui-v22";
+import { initWorkflowAssetsPage } from "./pages/ai-workflow-assets.js?v=20260712-ui-v22";
+import { initWorkflowDesignerPage } from "./pages/workflow-designer.js?v=20260712-ui-v22";
+import { initWorkflowRunnerPage } from "./pages/workflow-runner.js?v=20260712-ui-v22";
 
 const page = document.body?.dataset.page || "workflow-runner";
 initSharedSidebar();

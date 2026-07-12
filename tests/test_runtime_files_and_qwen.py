@@ -10,8 +10,6 @@ from unittest.mock import AsyncMock, patch
 from app.agents.process_supervisor import SupervisedProcessResult
 from app.runtime_modules.errors import WorkflowError
 from app.runtime_modules.files import (
-    apply_extracted_files,
-    extract_build_files,
     files_from_changed_snapshot,
     project_content_snapshot,
     project_profile,
@@ -34,25 +32,6 @@ from app.workflow_runtime.qwen_serve import qwen_serve_disabled
 
 
 class RuntimeFilesAndQwenTests(unittest.TestCase):
-    def test_extract_build_files_and_test_file_validation(self) -> None:
-        text = """FILE: app/main.py
-CONTENT:
-print("hi")
-END_FILE
-FILE: tests/test_main.py
-CONTENT:
-def test_hi():
-    assert True
-END_FILE
-"""
-        files = extract_build_files(text)
-        self.assertEqual([path for path, _content in files], ["app/main.py", "tests/test_main.py"])
-
-        validate_generated_test_files([("tests/test_main.py", "def test_x(): pass\n")])
-        with self.assertRaises(WorkflowError):
-            validate_generated_test_files([("app/test_main.py", "def test_x(): pass\n")])
-        with self.assertRaises(WorkflowError):
-            validate_build_files_are_not_tests([("tests/test_main.py", "def test_x(): pass\n")])
 
     def test_project_content_snapshot_restores_modified_and_new_files(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -69,130 +48,15 @@ END_FILE
             self.assertEqual((project / "src" / "tool.py").read_text(encoding="utf-8"), "VALUE = 1\n")
             self.assertFalse((project / "src" / "bad.py").exists())
 
-    def test_extract_build_files_strips_wrapping_code_fences_for_code_files(self) -> None:
-        text = """FILE: tests/test_sort.py
-CONTENT:
-```python
-def test_sort():
-    assert True
-```
-END_FILE
-FILE: docs/example.md
-CONTENT:
-```python
-print("keep markdown fences")
-```
-END_FILE
-"""
-        files = dict(extract_build_files(text))
-        self.assertEqual(files["tests/test_sort.py"], "def test_sort():\n    assert True\n")
-        self.assertIn("```python", files["docs/example.md"])
 
-    def test_extract_build_files_splits_when_agent_omits_end_file_between_blocks(self) -> None:
-        text = """```content
-FILE: a.py
-CONTENT:
-print("a")
-FILE: b.py
-CONTENT:
-print("b")
-END_FILE
-```
-"""
-        files = extract_build_files(text)
-        self.assertEqual(files, [("a.py", "print(\"a\")\n"), ("b.py", "print(\"b\")\n")])
 
-    def test_extract_build_files_accepts_explicit_json_file_content_shape(self) -> None:
-        text = '''```json
-{"FILE": "src/tool.py", "CONTENT": "print(\\"ok\\")\\n"}
-```'''
-        self.assertEqual(extract_build_files(text), [("src/tool.py", "print(\"ok\")\n")])
 
-    def test_extract_build_files_accepts_file_block_without_content_marker(self) -> None:
-        text = """FILE: src/tool.py
-```python
-print("ok")
-```
-END_FILE
-"""
-        self.assertEqual(extract_build_files(text), [("src/tool.py", "print(\"ok\")\n")])
 
-    def test_extract_build_files_accepts_markdown_file_headings(self) -> None:
-        text = """# Adaptive Generation Result
 
-### FILE/bubble_sort.py BEGIN_FILE
-```python
-def bubble_sort(values):
-    return sorted(values)
-```
 
-### FILE/tests/test_bubble_sort.py BEGIN_FILE
-```python
-from bubble_sort import bubble_sort
 
-def test_bubble_sort():
-    assert bubble_sort([2, 1]) == [1, 2]
-```
 
-### END_FILE
-"""
-        files = dict(extract_build_files(text))
-        self.assertEqual(files["bubble_sort.py"], "def bubble_sort(values):\n    return sorted(values)\n")
-        self.assertIn("def test_bubble_sort", files["tests/test_bubble_sort.py"])
 
-    def test_extract_build_files_accepts_start_end_file_blocks(self) -> None:
-        text = """FILE/CONTENT/START_FILE sorting_sorting.py
-```python
-def selection_sort(values):
-    return sorted(values)
-```
-
-FILE/CONTENT/END_FILE sorting_sorting.py
-"""
-        self.assertEqual(extract_build_files(text), [("sorting_sorting.py", "def selection_sort(values):\n    return sorted(values)\n")])
-
-    def test_extract_build_files_strips_end_file_from_heading_path(self) -> None:
-        text = """### FILE/calculate_bubble_sort.py/END_FILE
-```python
-def bubble_sort(values):
-    return values
-```
-"""
-        self.assertEqual(extract_build_files(text), [("calculate_bubble_sort.py", "def bubble_sort(values):\n    return values\n")])
-
-    def test_extract_build_files_strips_trailing_fence_line_for_code_files(self) -> None:
-        text = """FILE: src/tool.py
-CONTENT:
-print("ok")
-```
-END_FILE
-"""
-        self.assertEqual(extract_build_files(text), [("src/tool.py", "print(\"ok\")\n")])
-
-    def test_file_block_marker_path_is_rejected(self) -> None:
-        files = extract_build_files("""FILE: CONTENT/END_FILE sorting_algorithms.py
-CONTENT:
-def bubble_sort(values):
-    return values
-END_FILE
-""")
-        with tempfile.TemporaryDirectory() as tmp:
-            with self.assertRaisesRegex(WorkflowError, "file block marker leaked into path"):
-                apply_extracted_files(Path(tmp), files)
-
-    def test_project_absolute_file_block_paths_are_normalized_safely(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            project = Path(tmp) / "project"
-            outside = Path(tmp) / "outside.py"
-            project.mkdir()
-            inside = (project / "src" / "tool.py").resolve()
-
-            written = apply_extracted_files(project, [(str(inside), "def run():\n    return 1\n")])
-
-            self.assertEqual(written, [inside])
-            self.assertTrue((project / "src" / "tool.py").is_file())
-            with self.assertRaisesRegex(WorkflowError, "outside Project Path"):
-                apply_extracted_files(project, [(str(outside.resolve()), "print('bad')\n")])
 
     def test_direct_edit_marker_path_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -238,28 +102,7 @@ END_FILE
         with self.assertRaisesRegex(WorkflowError, "invalid syntax"):
             validate_generated_code_files_are_clean([("src/tool.py", "def bad(:\n    pass\n")])
 
-    def test_extract_build_files_accepts_fenced_code_with_filename_comments(self) -> None:
-        text = """# Result
 
-```python
-# src/tool.py
-def run():
-    return "ok"
-
-# tests/test_tool.py
-from src.tool import run
-
-def test_run():
-    assert run() == "ok"
-```
-"""
-        files = dict(extract_build_files(text))
-        self.assertEqual(files["src/tool.py"], "def run():\n    return \"ok\"\n")
-        self.assertIn("def test_run", files["tests/test_tool.py"])
-
-    def test_extract_build_files_ignores_non_file_tool_call_json(self) -> None:
-        text = '{"name": "ask_user_question", "arguments": {"question": "Need input?"}}'
-        self.assertEqual(extract_build_files(text), [])
 
     def test_validate_generated_test_files_rejects_python_syntax_errors(self) -> None:
         with self.assertRaisesRegex(WorkflowError, "invalid Python syntax"):

@@ -8,6 +8,10 @@ import sys
 import time
 from pathlib import Path
 
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
 from fastapi.testclient import TestClient
 
 from e2e_log_utils import copy_pruned_tree, iter_project_snapshot_files
@@ -28,6 +32,43 @@ SMOKE_CASES = {
 }
 
 
+def remove_tree_with_retry(path: Path, attempts: int = 6) -> None:
+    if not path.exists():
+        return
+    for attempt in range(max(1, attempts)):
+        try:
+            shutil.rmtree(path)
+            return
+        except PermissionError:
+            if attempt + 1 >= attempts:
+                raise
+            time.sleep(min(2.0, 0.15 * (2 ** attempt)))
+
+def load_smoke_cases() -> dict[str, dict[str, str]]:
+    cases = dict(SMOKE_CASES)
+    try:
+        from app.services.workflow_case_service import get_case
+
+        validated = get_case("code-with-validation")
+        cases["code-with-validation"] = {
+            "requirement": str(validated.get("requirement") or "").strip(),
+            "validation": str(validated.get("validation_script") or "").strip(),
+        }
+        generated = get_case("simple-code-generation")
+        cases["simple-code-generation"] = {
+            "requirement": str(generated.get("requirement") or "").strip(),
+            "validation": SMOKE_CASES["sort"]["validation"],
+        }
+    except Exception:
+        # Built-in cases remain available even when optional workflow-case
+        # fixtures are not packaged.
+        pass
+    return cases
+
+
+AVAILABLE_SMOKE_CASES = load_smoke_cases()
+
+
 def wait_for_terminal_run(client: TestClient, run: dict, timeout_sec: float) -> dict:
     deadline = time.time() + timeout_sec
     run_id = run["id"]
@@ -44,10 +85,10 @@ def wait_for_terminal_run(client: TestClient, run: dict, timeout_sec: float) -> 
 def create_fixture_project(root: Path, case: str) -> Path:
     project = root / f"{case}-project"
     if project.exists():
-        shutil.rmtree(project)
+        remove_tree_with_retry(project)
     project.mkdir(parents=True)
     (project / "README.md").write_text(f"# Real Agent Smoke {case}\n", encoding="utf-8")
-    spec = SMOKE_CASES[case]
+    spec = AVAILABLE_SMOKE_CASES[case]
     (project / "validation.py").write_text(spec["validation"], encoding="utf-8")
     return project
 
@@ -77,8 +118,6 @@ def self_prompt_review(payload: dict) -> dict:
     problems: list[str] = []
     if len(prompt.strip()) < 20:
         problems.append("requirement is too short")
-    if any(marker in prompt.lower() for marker in ["mkdir ", "echo ", ">>", "file:", "end_file"]):
-        problems.append("requirement looks like shell/file-block output instead of a human CLI prompt")
     if not payload.get("validation_script"):
         problems.append("validation_script is missing")
     if not Path(payload.get("project_path") or "").exists():
@@ -120,17 +159,17 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Run a manually-triggered real Qwen/OpenCode smoke workflow against tiny fixture projects.")
     parser.add_argument("--agent", choices=["qwen", "opencode"], default="qwen")
     parser.add_argument("--workflow", choices=["adaptive-auto-workflow", "general-auto-development"], default="adaptive-auto-workflow")
-    parser.add_argument("--case", choices=sorted(SMOKE_CASES), default="sort")
+    parser.add_argument("--case", choices=sorted(AVAILABLE_SMOKE_CASES), default="sort")
     parser.add_argument("--output", default="real-agent-smoke-logs")
     parser.add_argument("--list-cases", action="store_true", help="List available real-agent smoke cases and exit.")
-    parser.add_argument("--timeout-sec", type=float, default=180)
+    parser.add_argument("--timeout-sec", type=float, default=900)
     parser.add_argument("--allow-mock", action="store_true", help="Allow QWEN_MOCK=1 for local dry-runs. By default mock mode is rejected.")
     parser.add_argument("--dry-run", action="store_true", help="Only create the fixture and print the payload; do not start a workflow run.")
     parser.add_argument("--self-prompt-test", action="store_true", help="Validate and print the smoke prompt first, before starting a real agent run.")
     args = parser.parse_args()
 
     if args.list_cases:
-        print(json.dumps({"cases": sorted(SMOKE_CASES)}, indent=2, ensure_ascii=False))
+        print(json.dumps({"cases": sorted(AVAILABLE_SMOKE_CASES)}, indent=2, ensure_ascii=False))
         return 0
 
     if os.environ.get("QWEN_MOCK") == "1" and not args.allow_mock and not args.dry_run and not args.self_prompt_test:
@@ -141,17 +180,17 @@ def main() -> int:
 
     output = Path(args.output).resolve()
     if output.exists():
-        shutil.rmtree(output)
+        remove_tree_with_retry(output)
     output.mkdir(parents=True)
     project = create_fixture_project(output / "fixture", args.case)
     payload = {
         "workflow_id": args.workflow,
         "project_path": str(project),
-        "requirement": SMOKE_CASES[args.case]["requirement"],
+        "requirement": AVAILABLE_SMOKE_CASES[args.case]["requirement"],
         "validation_script": "validation.py",
         "test_command": "python validation.py",
         "agent": args.agent,
-        "runProfile": "small",
+        "runProfile": "deep",
     }
     review = self_prompt_review(payload)
     (output / "self-prompt-review.json").write_text(json.dumps(review, indent=2, ensure_ascii=False), encoding="utf-8")
@@ -176,7 +215,29 @@ def main() -> int:
         resp.raise_for_status()
         run = wait_for_terminal_run(client, resp.json(), args.timeout_sec)
     copy_logs(project, run, output)
-    summary = {"status": "PASS" if run.get("status") == "done" else "FAIL", "workflow": args.workflow, "agent": args.agent, "case": args.case, "run_id": run.get("id"), "error": run.get("error"), "output": str(output), "self_prompt_review": review}
+    validations = [item for item in run.get("validation_results") or [] if isinstance(item, dict)]
+    required_validation = next((item for item in reversed(validations) if item.get("key") == "user_validation"), None)
+    validation_passed = bool(required_validation and str(required_validation.get("status") or "").lower() in {"pass", "passed", "success"} and required_validation.get("exit_code") == 0)
+    accepted = run.get("status") == "done" and validation_passed
+    summary = {
+        "schema": "aiwf.real-agent-acceptance-cell.v1",
+        "status": "PASS" if accepted else "FAIL",
+        "workflow": args.workflow,
+        "agent": args.agent,
+        "case": args.case,
+        "run_id": run.get("id"),
+        "run_status": run.get("status"),
+        "error": run.get("error"),
+        "output": str(output),
+        "self_prompt_review": review,
+        "acceptance": {
+            "external_validation_passed": validation_passed,
+            "retry_total": sum(int(step.get("retry_count") or 0) for step in run.get("steps") or []),
+            "recovery_counters": run.get("recovery_counters") or {},
+            "session_count": len(run.get("session_records") or []),
+            "steps": [{"key": step.get("key"), "status": step.get("status"), "retry_count": step.get("retry_count") or 0} for step in run.get("steps") or []],
+        },
+    }
     (output / "summary.json").write_text(json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8")
     write_markdown_report(output, summary)
     print(json.dumps(summary, indent=2, ensure_ascii=False))

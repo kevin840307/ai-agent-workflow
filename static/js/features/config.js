@@ -19,6 +19,7 @@ export function createConfig(ctx) {
       if (ui.byKey("defaultAgent")) ui.byKey("defaultAgent").value = agents.default || "qwen";
       state.defaultAgent = agents.default || "qwen";
       configFeature.renderAgentMeta(qwen);
+      ctx.features.setup?.refreshConnectivity?.({ force: true });
     },
 
     renderAgentMeta(qwen) {
@@ -47,6 +48,7 @@ export function createConfig(ctx) {
       });
       state.defaultAgent = config.qwen?.agents?.default || ui.byKey("defaultAgent")?.value || "qwen";
       configFeature.renderAgentMeta(config.qwen);
+      ctx.features.setup?.refreshConnectivity?.({ force: true });
     },
   };
 

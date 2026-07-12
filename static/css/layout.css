@@ -21,7 +21,9 @@
 .details {
   border-left: 1px solid var(--line);
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr);
+  /* Header, progress, tabs, active panel. Explicit rows prevent the panel
+     from creating an implicit track that stretches or covers the tabs. */
+  grid-template-rows: auto auto auto minmax(0, 1fr);
   overflow: hidden;
 }
 

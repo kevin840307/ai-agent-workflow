@@ -1,0 +1,47 @@
+{
+  "schema": "aiwf.real-agent-acceptance-cell.v1",
+  "status": "PASS",
+  "workflow": "adaptive-auto-workflow",
+  "agent": "qwen",
+  "case": "simple-code-generation",
+  "run_id": "83f395d1-3aab-42b6-9b20-807c2f9336e4",
+  "run_status": "done",
+  "error": null,
+  "output": "C:\\Users\\kevin\\testllm\\reports\\stability-v20\\qwen-repaired-cells\\qwen-adaptive-auto-workflow-simple-code-generation",
+  "self_prompt_review": {
+    "status": "PASS",
+    "summary": "self-prompt smoke payload is ready",
+    "problems": [],
+    "prompt_to_review": "Review this real-agent smoke request before running Qwen/OpenCode. Confirm it is a concise human CLI instruction, includes validation.py, and only targets the fixture project.\n\nWorkflow: adaptive-auto-workflow\nAgent: qwen\nRequirement: Create sort_utils.py with bubble_sort(data) returning a sorted list without mutating the input.\n"
+  },
+  "acceptance": {
+    "external_validation_passed": true,
+    "retry_total": 0,
+    "recovery_counters": {
+      "agent_attempts": 0,
+      "deterministic_repairs": 0,
+      "session_restarts": 0,
+      "replans": 0,
+      "manual_actions": 0,
+      "consecutive_failures": 0
+    },
+    "session_count": 3,
+    "steps": [
+      {
+        "key": "generate_task_prompts",
+        "status": "passed",
+        "retry_count": 0
+      },
+      {
+        "key": "auto_generation",
+        "status": "passed",
+        "retry_count": 0
+      },
+      {
+        "key": "ai_review",
+        "status": "passed",
+        "retry_count": 0
+      }
+    ]
+  }
+}

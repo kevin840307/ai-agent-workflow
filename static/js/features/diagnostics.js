@@ -5,27 +5,10 @@ function safeJson(value) {
 export function createDiagnostics(ctx) {
   const { api, state, ui } = ctx;
   const loaded = new Set();
-  let currentPatch = null;
-  let selectedPatchFiles = new Set();
-  let patchView = "split";
+  let currentRepairPolicy = null;
+  const diagnosticsSizeKey = "aiwf.ui.diagnosticsMaximized";
 
-  function patchChunkFor(path) {
-    const fileDiff = (currentPatch?.diff?.files || []).find((item) => item.path === path);
-    if (fileDiff?.patch) return fileDiff.patch;
-    const chunks = String(currentPatch?.diff?.patch || "").split(/(?=--- a\/)/g);
-    return chunks.find((chunk) => chunk.includes(`+++ b/${path}`) || chunk.startsWith(`--- a/${path}`)) || `${path} has no text diff preview.`;
-  }
 
-  function splitPatch(chunk) {
-    const before = []; const after = [];
-    String(chunk || "").split("\n").forEach((line) => {
-      if (line.startsWith("---") || line.startsWith("+++") || line.startsWith("@@")) return;
-      if (line.startsWith("-")) before.push(line.slice(1));
-      else if (line.startsWith("+")) after.push(line.slice(1));
-      else { const value = line.startsWith(" ") ? line.slice(1) : line; before.push(value); after.push(value); }
-    });
-    return { before: before.join("\n"), after: after.join("\n") };
-  }
 
   const diagnostics = {
     open(section = "diagnosticConsole") {
@@ -33,6 +16,7 @@ export function createDiagnostics(ctx) {
       if (!backdrop) return;
       backdrop.hidden = false;
       document.body.classList.add("diagnostics-open");
+      diagnostics.setMaximized(window.localStorage.getItem(diagnosticsSizeKey) === "true", { persist: false });
       diagnostics.activate(section);
     },
 
@@ -41,6 +25,24 @@ export function createDiagnostics(ctx) {
       if (!backdrop) return;
       backdrop.hidden = true;
       document.body.classList.remove("diagnostics-open");
+    },
+
+    setMaximized(enabled, { persist = true } = {}) {
+      const drawer = ui.byKey("diagnosticsDrawer");
+      const button = ui.byKey("toggleDiagnosticsSize");
+      if (!drawer) return;
+      drawer.classList.toggle("maximized", Boolean(enabled));
+      if (button) {
+        button.setAttribute("aria-pressed", String(Boolean(enabled)));
+        button.textContent = enabled ? "還原" : "放大";
+        button.title = enabled ? "還原技術診斷大小" : "放大技術診斷";
+      }
+      if (persist) window.localStorage.setItem(diagnosticsSizeKey, String(Boolean(enabled)));
+    },
+
+    toggleSize() {
+      const drawer = ui.byKey("diagnosticsDrawer");
+      diagnostics.setMaximized(!drawer?.classList.contains("maximized"));
     },
 
     async activate(sectionId) {
@@ -52,7 +54,7 @@ export function createDiagnostics(ctx) {
         section.classList.toggle("active", active);
         section.hidden = !active;
       });
-      ui.byKey("diagnosticsDrawer")?.classList.toggle("patch-review-mode", sectionId === "diagnosticPatch");
+      ui.byKey("diagnosticsDrawer")?.classList.remove("patch-review-mode");
       await diagnostics.load(sectionId);
     },
 
@@ -66,15 +68,11 @@ export function createDiagnostics(ctx) {
         } else if (sectionId === "diagnosticArtifacts") {
           const records = await api.request(`/api/workflow-runs/${runId}/artifacts?view=all`);
           ctx.features.artifacts.render(records || []);
-        } else if (sectionId === "diagnosticPatch") {
-          const patch = await api.request(`/api/workflow-runs/${runId}/patch`);
-          currentPatch = patch;
-          selectedPatchFiles = new Set(patch.changed_files || []);
-          ui.byKey("diagnosticPatchContent").innerHTML = diagnostics.renderPatch(patch);
-          diagnostics.bindPatchReview();
         } else if (sectionId === "diagnosticRepair") {
           const policy = await api.request(`/api/workflow-runs/${runId}/repair-policy`);
+          currentRepairPolicy = policy;
           ui.byKey("diagnosticRepairContent").innerHTML = diagnostics.renderRepair(policy);
+          diagnostics.bindRepair();
         } else if (sectionId === "diagnosticHealth") {
           const [setup, analytics, store, benchmarks, version] = await Promise.all([
             api.request("/api/setup/status"),
@@ -89,7 +87,6 @@ export function createDiagnostics(ctx) {
       } catch (err) {
         const target = {
           diagnosticConsole: ui.byKey("diagnosticConsoleContent"),
-          diagnosticPatch: ui.byKey("diagnosticPatchContent"),
           diagnosticRepair: ui.byKey("diagnosticRepairContent"),
           diagnosticHealth: ui.byKey("diagnosticHealthContent"),
         }[sectionId];
@@ -116,106 +113,47 @@ export function createDiagnostics(ctx) {
         <details><summary>Step diagnostics</summary><pre>${ui.escapeHtml(safeJson(data.steps || []))}</pre></details>`;
     },
 
-    renderPatch(patch) {
-      const diffFiles = patch.diff?.files || [];
-      const files = (patch.changed_files || patch.files || diffFiles.map((item) => item.path) || []).map((item) => typeof item === "string" ? item : item.path).filter(Boolean);
-      const first = files[0] || null;
-      const approval = patch.approval || {};
-      const approved = !approval.required || approval.state === "approved";
-      const canApply = ["review", "dry_run"].includes(patch.mode) && patch.status !== "applied" && approved;
-      return `
-        <div class="diagnostic-summary-grid"><div><span>Mode</span><strong>${ui.escapeHtml(patch.mode || "auto_apply")}</strong></div><div><span>Status</span><strong>${ui.escapeHtml(patch.status || "preview")}</strong></div><div><span>Files</span><strong>${files.length}</strong></div><div><span>Approval</span><strong>${ui.escapeHtml(approval.state || "not_required")}</strong></div></div>
-        ${approval.required && approval.state !== "approved" ? `<div class="patch-approval-callout"><div><strong>套用前需要核准</strong><span>先檢查檔案差異；核准後才會啟用「套用所選檔案」。</span></div><button class="mini-button primary-action" data-approve-patch="1" type="button">核准此 Patch</button></div>` : ""}
-        <div class="patch-review-layout">
-          <div class="patch-file-column">
-            <div class="patch-file-toolbar"><input data-patch-search type="search" placeholder="搜尋檔案…" aria-label="搜尋 Patch 檔案" /><button class="mini-button" data-patch-select="all" type="button">全選</button><button class="mini-button" data-patch-select="none" type="button">清除</button></div>
-            <div class="patch-file-list">${files.map((file, index) => { const meta = (patch.diff?.files || []).find((item) => item.path === file) || {}; const status = meta.status || "modified"; return `<label class="patch-file-option ${index === 0 ? "active" : ""}" data-patch-file="${ui.escapeHtml(file)}" data-patch-status="${ui.escapeHtml(status)}"><input type="checkbox" ${selectedPatchFiles.has(file) ? "checked" : ""} /><span><strong>${ui.escapeHtml(file)}</strong><small>${ui.escapeHtml(status)} · +${Number(meta.added ?? meta.added_lines ?? 0)} / -${Number(meta.removed ?? meta.deleted_lines ?? 0)}</small></span></label>`; }).join("") || ui.emptyState("No changes", "This run has no text file changes.")}</div>
-          </div>
-          <div class="patch-preview-pane patch-view-${patchView}" data-patch-preview>${first ? diagnostics.renderPatchPreview(first) : `<pre>No file selected.</pre>`}</div>
-        </div>
-        ${canApply ? "" : `<div class="ui-empty-state"><strong>不需要套用</strong><span>此 Run 直接修改正式 Project Path；Patch 僅供閱讀。</span></div>`}`;
-    },
-
-    renderPatchPreview(path) {
-      const chunk = patchChunkFor(path);
-      if (patchView === "unified") return `<pre>${ui.escapeHtml(chunk)}</pre>`;
-      const pair = splitPatch(chunk);
-      return `<div class="patch-split"><section><header>Before</header><pre>${ui.escapeHtml(pair.before || "(new file)")}</pre></section><section><header>After</header><pre>${ui.escapeHtml(pair.after || "(deleted)")}</pre></section></div>`;
-    },
-
-    bindPatchReview() {
-      const root = ui.byKey("diagnosticPatchContent");
-      if (!root) return;
-      const updateSummary = () => {
-        const target = ui.byKey("patchSelectionSummary");
-        if (target) target.textContent = `已選 ${selectedPatchFiles.size} / ${(currentPatch?.changed_files || []).length} 個檔案`;
-        const apply = ui.byKey("applyDiagnosticPatch");
-        if (apply) apply.disabled = !selectedPatchFiles.size || !["review", "dry_run"].includes(currentPatch?.mode) || currentPatch?.status === "applied";
-      };
-      root.querySelector("[data-approve-patch]")?.addEventListener("click", async () => {
-        try {
-          await api.request(`/api/workflow-runs/${state.activeRunId}/actions`, { method: "POST", body: JSON.stringify({ action: "approve", reason: "Patch reviewed in diagnostics." }) });
-          loaded.delete(`${state.activeRunId}:diagnosticPatch`);
-          await diagnostics.load("diagnosticPatch");
-        } catch (err) {
-          ctx.features.console.append("logs", `Patch approval failed: ${err.message}`);
-        }
-      });
-      const patchRows = [...root.querySelectorAll("[data-patch-file]")];
-      root.querySelector("[data-patch-search]")?.addEventListener("input", (event) => {
-        const query = String(event.target.value || "").trim().toLowerCase();
-        patchRows.forEach((row) => { row.hidden = Boolean(query) && !String(row.dataset.patchFile || "").toLowerCase().includes(query); });
-      });
-      root.querySelectorAll("[data-patch-select]").forEach((button) => button.addEventListener("click", () => {
-        const checked = button.dataset.patchSelect === "all";
-        patchRows.filter((row) => !row.hidden).forEach((row) => {
-          const input = row.querySelector("input");
-          if (input) input.checked = checked;
-          const path = row.dataset.patchFile;
-          if (checked) selectedPatchFiles.add(path); else selectedPatchFiles.delete(path);
-        });
-        updateSummary();
-      }));
-      patchRows.forEach((row) => {
-        const path = row.dataset.patchFile;
-        row.addEventListener("click", (event) => {
-          if (event.target.matches('input')) return;
-          root.querySelectorAll("[data-patch-file]").forEach((item) => item.classList.toggle("active", item === row));
-          const preview = root.querySelector("[data-patch-preview]");
-          if (preview) preview.innerHTML = diagnostics.renderPatchPreview(path);
-        });
-        row.querySelector("input")?.addEventListener("change", (event) => {
-          if (event.target.checked) selectedPatchFiles.add(path); else selectedPatchFiles.delete(path);
-          updateSummary();
-        });
-      });
-      document.querySelectorAll("[data-patch-view]").forEach((button) => {
-        button.onclick = () => {
-          patchView = button.dataset.patchView || "split";
-          document.querySelectorAll("[data-patch-view]").forEach((item) => item.classList.toggle("active", item === button));
-          const active = root.querySelector("[data-patch-file].active")?.dataset.patchFile || (currentPatch?.changed_files || [])[0];
-          const preview = root.querySelector("[data-patch-preview]");
-          if (preview) {
-            preview.classList.toggle("patch-view-unified", patchView === "unified");
-            preview.classList.toggle("patch-view-split", patchView === "split");
-          }
-          if (preview && active) preview.innerHTML = diagnostics.renderPatchPreview(active);
-        };
-      });
-      updateSummary();
-    },
-
-    async applySelectedPatch() {
-      if (!state.activeRunId || !selectedPatchFiles.size) return;
-      await ctx.features.runs.applyRunPatch(null, [...selectedPatchFiles]);
-      diagnostics.reset(state.activeRunId);
-    },
 
 
     renderRepair(policy) {
       const policies = policy.policies || [];
       if (!policies.length) return ui.emptyState("目前不需要 Repair", "沒有可分類的失敗或修復策略。");
-      return `<div class="repair-policy-list">${policies.map((item) => `<article><strong>${ui.escapeHtml(item.title || item.code || "Repair")}</strong><p>${ui.escapeHtml(item.description || "")}</p><small>${ui.escapeHtml(item.repair_prompt_hint || item.recommended_action || "")}</small></article>`).join("")}</div>`;
+      const first = policies[0];
+      return `
+        <div class="repair-policy-layout">
+          <nav class="repair-policy-list" aria-label="修復策略清單">
+            ${policies.map((item, index) => `<button class="repair-policy-item ${index === 0 ? "active" : ""}" data-repair-index="${index}" type="button"><strong>${ui.escapeHtml(item.title || item.code || "Repair")}</strong><span>${ui.escapeHtml(item.code || item.failure_class || "自動修復")}</span></button>`).join("")}
+          </nav>
+          <section class="repair-policy-detail" data-repair-detail>${diagnostics.renderRepairDetail(first)}</section>
+        </div>`;
+    },
+
+    renderRepairDetail(item = {}) {
+      const actions = Array.isArray(item.actions) ? item.actions : [];
+      const evidence = item.evidence || item.context || null;
+      return `
+        <header><div><span class="eyebrow">REPAIR STRATEGY</span><h3>${ui.escapeHtml(item.title || item.code || "Repair")}</h3></div><span class="badge ${ui.escapeHtml(item.severity || "running")}">${ui.escapeHtml(item.code || item.failure_class || "AUTO")}</span></header>
+        <div class="repair-detail-scroll">
+          <section><strong>問題</strong><p>${ui.escapeHtml(item.description || "沒有額外說明。")}</p></section>
+          <section><strong>建議動作</strong><p>${ui.escapeHtml(item.recommended_action || item.repair_prompt_hint || "平台會依 Recovery Policy 自動處理。")}</p></section>
+          ${item.repair_prompt_hint ? `<section><strong>Agent 修復提示</strong><pre>${ui.escapeHtml(item.repair_prompt_hint)}</pre></section>` : ""}
+          ${actions.length ? `<section><strong>執行順序</strong><ol>${actions.map((action) => `<li>${ui.escapeHtml(typeof action === "string" ? action : safeJson(action))}</li>`).join("")}</ol></section>` : ""}
+          ${evidence ? `<details><summary>Evidence</summary><pre>${ui.escapeHtml(safeJson(evidence))}</pre></details>` : ""}
+        </div>`;
+    },
+
+    bindRepair() {
+      const root = ui.byKey("diagnosticRepairContent");
+      const policies = currentRepairPolicy?.policies || [];
+      if (!root || !policies.length) return;
+      root.querySelectorAll("[data-repair-index]").forEach((button) => {
+        button.addEventListener("click", () => {
+          const index = Number(button.dataset.repairIndex || 0);
+          root.querySelectorAll("[data-repair-index]").forEach((item) => item.classList.toggle("active", item === button));
+          const detail = root.querySelector("[data-repair-detail]");
+          if (detail) detail.innerHTML = diagnostics.renderRepairDetail(policies[index] || policies[0]);
+        });
+      });
     },
 
     renderHealth(setup, analytics, store, benchmarks = {}, version = {}) {
@@ -237,7 +175,8 @@ export function createDiagnostics(ctx) {
       if (!state.activeRunId) return;
       try {
         const result = await api.request(`/api/workflow-runs/${state.activeRunId}/artifacts/compact`, { method: "POST", body: "{}" });
-        ctx.features.console.append("logs", `Diagnostics compacted: ${result.file_count || 0} file(s), ${result.size_bytes || 0} bytes.`);
+        state.lastArtifactCompaction = result;
+        ctx.features.console.append("logs", `Diagnostics archived: ${result.file_count || 0} file(s), ${result.size_bytes || 0} bytes; originals ${result.pruned ? "pruned by policy" : "retained"}.`);
         diagnostics.reset(state.activeRunId);
         await diagnostics.activate("diagnosticArtifacts");
       } catch (err) {

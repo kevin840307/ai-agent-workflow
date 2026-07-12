@@ -1,0 +1,47 @@
+{
+  "schema": "aiwf.real-agent-acceptance-cell.v1",
+  "status": "PASS",
+  "workflow": "adaptive-auto-workflow",
+  "agent": "qwen",
+  "case": "code-with-validation",
+  "run_id": "c0b4d964-5c8a-41fc-a9f8-691584c40710",
+  "run_status": "done",
+  "error": null,
+  "output": "C:\\Users\\kevin\\testllm\\reports\\stability-v20\\qwen-repaired-cells\\qwen-adaptive-auto-workflow-code-with-validation",
+  "self_prompt_review": {
+    "status": "PASS",
+    "summary": "self-prompt smoke payload is ready",
+    "problems": [],
+    "prompt_to_review": "Review this real-agent smoke request before running Qwen/OpenCode. Confirm it is a concise human CLI instruction, includes validation.py, and only targets the fixture project.\n\nWorkflow: adaptive-auto-workflow\nAgent: qwen\nRequirement: Create config_loader.py that loads a JSON file and returns a dictionary.\n"
+  },
+  "acceptance": {
+    "external_validation_passed": true,
+    "retry_total": 0,
+    "recovery_counters": {
+      "agent_attempts": 0,
+      "deterministic_repairs": 0,
+      "session_restarts": 0,
+      "replans": 0,
+      "manual_actions": 0,
+      "consecutive_failures": 0
+    },
+    "session_count": 3,
+    "steps": [
+      {
+        "key": "generate_task_prompts",
+        "status": "passed",
+        "retry_count": 0
+      },
+      {
+        "key": "auto_generation",
+        "status": "passed",
+        "retry_count": 0
+      },
+      {
+        "key": "ai_review",
+        "status": "passed",
+        "retry_count": 0
+      }
+    ]
+  }
+}

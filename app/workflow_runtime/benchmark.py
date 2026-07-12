@@ -52,4 +52,45 @@ def summarize_runs(runs: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
-__all__ = ["summarize_runs"]
+def _run_metrics(run: dict[str, Any]) -> dict[str, Any]:
+    steps = list(run.get("steps") or [])
+    retries = sum(int(step.get("retry_count") or 0) for step in steps)
+    validation = list(run.get("validation_results") or [])
+    failures = [item for item in validation if str(item.get("status") or "").lower() in {"failed", "error", "blocked"}]
+    changed = list(run.get("file_changes") or [])
+    return {
+        "run_id": run.get("id"),
+        "workflow": run.get("workflow_id"),
+        "agent": run.get("agent") or "qwen",
+        "profile": run.get("run_profile"),
+        "status": run.get("status"),
+        "retry_count": retries,
+        "step_count": len(steps),
+        "validation_count": len(validation),
+        "validation_failures": len(failures),
+        "changed_files": len(changed),
+        "manual_intervention": any(step.get("status") == "waiting_input" for step in steps),
+        "started_at": run.get("started_at"),
+        "ended_at": run.get("ended_at"),
+    }
+
+
+def compare_runs(left: dict[str, Any], right: dict[str, Any]) -> dict[str, Any]:
+    left_metrics = _run_metrics(left)
+    right_metrics = _run_metrics(right)
+    numeric = ("retry_count", "step_count", "validation_count", "validation_failures", "changed_files")
+    return {
+        "schema": "aiwf.run-comparison.v1",
+        "left": left_metrics,
+        "right": right_metrics,
+        "delta": {key: int(right_metrics[key]) - int(left_metrics[key]) for key in numeric},
+        "improved": {
+            "status": left_metrics["status"] != "done" and right_metrics["status"] == "done",
+            "fewer_retries": right_metrics["retry_count"] < left_metrics["retry_count"],
+            "fewer_validation_failures": right_metrics["validation_failures"] < left_metrics["validation_failures"],
+            "less_manual_intervention": bool(left_metrics["manual_intervention"] and not right_metrics["manual_intervention"]),
+        },
+    }
+
+
+__all__ = ["compare_runs", "summarize_runs"]

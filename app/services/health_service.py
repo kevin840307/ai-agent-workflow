@@ -6,6 +6,9 @@ from typing import Any
 from app.runtime_modules import api as runtime
 from app.services import workflow_asset_validator
 from app.workflow_runtime.run_consistency import check_store_consistency
+from app.workflow_runtime.run_lease import lease_is_expired
+from app.core.provider_slots import provider_slot_snapshot
+from app.services.model_circuit_breaker import model_circuit_breaker
 
 
 def _writable(path: Path) -> bool:
@@ -46,6 +49,17 @@ async def health_summary(*, deep: bool = False) -> dict[str, Any]:
                 "warningCount": consistency.get("warning_count"),
             }
             validator = await workflow_asset_validator.validate_all_workflows()
+            expired_leases = [run.get("id") for run in active if isinstance(run.get("run_lease"), dict) and lease_is_expired(run.get("run_lease"))]
+            checks["queueDepth"] = sum(run.get("status") == "queued" for run in active)
+            checks["expiredRunLeases"] = expired_leases
+            checks["providerSlots"] = provider_slot_snapshot()
+            checks["modelCircuits"] = await model_circuit_breaker.snapshots()
+            store_file = runtime.store_path()
+            checks["storeSizeBytes"] = store_file.stat().st_size if store_file.exists() else 0
+            wal = Path(str(store_file) + "-wal")
+            checks["storeWalSizeBytes"] = wal.stat().st_size if wal.exists() else 0
+            disk = __import__("shutil").disk_usage(runtime.DATA_DIR)
+            checks["diskFreeBytes"] = disk.free
             checks["workflowAssets"] = {
                 "status": validator.get("status"),
                 "errors": len(validator.get("errors") or []),

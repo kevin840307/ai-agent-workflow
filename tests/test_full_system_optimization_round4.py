@@ -121,8 +121,9 @@ class StaticArchitectureRound4Tests(unittest.TestCase):
         root = Path(__file__).resolve().parents[1]
         index = (root / "static/index.html").read_text(encoding="utf-8")
         self.assertIn("Run Center", index)
-        self.assertIn("看懂目前進度、變更與驗證結果", index)
-        self.assertTrue((root / "doc/LOCAL_FIRST_SYSTEM_ARCHITECTURE.md").exists())
+        self.assertIn("看懂目前進度與驗證結果", index)
+        self.assertTrue((root / "doc/en/ARCHITECTURE.md").exists())
+        self.assertTrue((root / "doc/zh-TW/ARCHITECTURE.md").exists())
         schema_doc = (root / "data/ai-workflow/WORKFLOW_CONTRACT_SCHEMA.md").read_text(encoding="utf-8")
         self.assertIn("aiwf.workflow-validator.v3", schema_doc)
 

@@ -133,7 +133,7 @@ class GoldenArtifactSnapshotTests(unittest.TestCase):
                 run_response = client.post(
                     f"/api/sessions/{session['id']}/workflow-runs",
                     json={
-                        "workflow_id": workflow_config_service.SYSTEM_WORKFLOW_ID,
+                        "workflow_id": "general-auto-development",
                         "project_path": str(project_dir),
                         "requirement": "新增一個 deterministic Python helper，並用 unittest 驗證。",
                         "test_command": "python -m unittest discover -s tests",
@@ -291,7 +291,7 @@ class WorkflowRunRehydrationTests(unittest.IsolatedAsyncioTestCase):
             project_dir = Path(tmp) / "project"
             run_id = "run-rehydrate"
             session_id = "session-rehydrate"
-            run_dir = project_dir / ".qwen-workflow" / "runs" / f"session-{session_id}" / f"run-{run_id}"
+            run_dir = project_dir / ".ai-workflow" / "runs" / f"session-{session_id}" / f"run-{run_id}"
             (run_dir / ".workflow").mkdir(parents=True)
             (run_dir / "input").mkdir()
             (run_dir / "output").mkdir()
@@ -303,28 +303,28 @@ class WorkflowRunRehydrationTests(unittest.IsolatedAsyncioTestCase):
                 "qwen_session_id": session_id,
                 "agent_session_ids": {"qwen": session_id, "opencode": session_id},
                 "status": "waiting_input",
-                "error": "prepare_project: qwen needs more user input. See input/questions.md.",
+                "error": "plan_tasks: qwen needs more user input. See input/questions.md.",
                 "workspace": str(run_dir),
                 "project_path": str(project_dir),
-                "workflow_id": workflow_config_service.SYSTEM_WORKFLOW_ID,
-                "workflow_folder": "system-controlled-qwen",
-                "workflow_name": "System Controlled Qwen",
+                "workflow_id": "general-auto-development",
+                "workflow_folder": "general-auto-development",
+                "workflow_name": "General Auto Development",
                 "skill_root": "",
                 "test_command": None,
                 "steps": [
                     {
-                        "key": "prepare_project",
-                        "name": "Prepare Project",
+                        "key": "plan_tasks",
+                        "name": "Plan Tasks",
                         "status": "waiting_input",
                         "started_at": None,
                         "ended_at": None,
-                        "error": "prepare_project: qwen needs more user input. See input/questions.md.",
+                        "error": "plan_tasks: qwen needs more user input. See input/questions.md.",
                         "retry_count": 0,
                         "events": [],
                     },
                     {
-                        "key": "generate_spec",
-                        "name": "Generate Spec",
+                        "key": "build",
+                        "name": "Build",
                         "status": "pending",
                         "started_at": None,
                         "ended_at": None,

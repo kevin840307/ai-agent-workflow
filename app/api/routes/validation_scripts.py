@@ -15,13 +15,21 @@ class GenerateValidationScriptRequest(BaseModel):
     expected_result: str | None = Field(default=None, alias="expectedResult")
     project_type: str | None = Field(default="python", alias="projectType")
     project_path: str | None = Field(default=None, alias="projectPath")
+    expected_files: list[str] = Field(default_factory=list, alias="expectedFiles")
+    expected_symbols: list[str] = Field(default_factory=list, alias="expectedSymbols")
     filename: str = "validation.py"
     write: bool = False
 
 
 @router.post("/api/validation-scripts/generate")
 async def generate_validation_script_endpoint(body: GenerateValidationScriptRequest):
-    script = generate_validation_script(body.requirement, body.expected_result, project_type=body.project_type or "python")
+    script = generate_validation_script(
+        body.requirement,
+        body.expected_result,
+        project_type=body.project_type or "python",
+        expected_files=body.expected_files,
+        expected_symbols=body.expected_symbols,
+    )
     result = {"script": script, "filename": body.filename, "project_type": body.project_type or "python"}
     if body.write:
         if not body.project_path:

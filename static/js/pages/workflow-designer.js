@@ -1,3 +1,3 @@
-import { initWorkflowDesignerPage } from "./workflow-designer/controller.js?v=20260711-ui-v12";
+import { initWorkflowDesignerPage } from "./workflow-designer/controller.js?v=20260712-ui-v22";
 
 export { initWorkflowDesignerPage };

@@ -130,7 +130,7 @@ class ProductionGateAndDebugBundleTests(unittest.TestCase):
         self.assertEqual(bundle["retryCount"], 3)
 
     def test_debug_bundle_route_and_ui_contract_exist(self) -> None:
-        routes = {getattr(route, "path", "") for route in app.routes}
+        routes = set(app.openapi().get("paths", {}))
         self.assertIn("/api/workflow-runs/{run_id}/debug-bundle", routes)
         diagnostics_js = Path("static/js/features/diagnostics.js").read_text(encoding="utf-8")
         index = Path("static/index.html").read_text(encoding="utf-8")
@@ -152,7 +152,7 @@ class ActionsSplitAndLimitationsTests(unittest.TestCase):
         self.assertLess(len(actions_source.splitlines()), 1700)
 
     def test_known_limitations_document_is_explicit(self) -> None:
-        doc = Path("doc/KNOWN_LIMITATIONS.md").read_text(encoding="utf-8")
+        doc = Path("doc/en/OPERATIONS.md").read_text(encoding="utf-8")
         self.assertIn("Small/local models may plan correctly but fail to create or modify files", doc)
         self.assertIn("patchMode=review", doc)
         self.assertIn("scripts/run_production_acceptance.py", doc)

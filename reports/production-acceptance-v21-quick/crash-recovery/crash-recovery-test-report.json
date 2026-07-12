@@ -1,0 +1,46 @@
+{
+  "schema": "aiwf.crash-recovery-test.v1",
+  "status": "PASS",
+  "changed_count": 1,
+  "cleanup": {
+    "removed": true,
+    "reason": "stale_lock",
+    "lock": {
+      "schema": "aiwf.project-run-lock.v1",
+      "run_id": "crash-run",
+      "session_id": "session-crash",
+      "workflow_id": "crash-recovery-test",
+      "status": "running",
+      "project_path": "/tmp/aiwf-crash-recovery-cy433zsg/project",
+      "effective_project_path": "/tmp/aiwf-crash-recovery-cy433zsg/project",
+      "owner": {
+        "id": "6b5cf39580ee:11875",
+        "host": "6b5cf39580ee",
+        "pid": 11875,
+        "started_at": "2026-07-12T04:29:12.747242+00:00"
+      },
+      "created_at": "2026-07-12T04:29:13.189090+00:00",
+      "updated_at": "2026-07-12T04:29:13.190953+00:00"
+    }
+  },
+  "consistency": {
+    "schema": "aiwf.store-consistency.v1",
+    "status": "PASS",
+    "checked_at": "2026-07-12T04:29:13.205779+00:00",
+    "run_count": 1,
+    "error_count": 0,
+    "warning_count": 0,
+    "runs": [
+      {
+        "schema": "aiwf.run-consistency.v1",
+        "run_id": "crash-run",
+        "status": "PASS",
+        "checked_at": "2026-07-12T04:29:13.205750+00:00",
+        "issue_count": 0,
+        "error_count": 0,
+        "warning_count": 0,
+        "issues": []
+      }
+    ]
+  }
+}

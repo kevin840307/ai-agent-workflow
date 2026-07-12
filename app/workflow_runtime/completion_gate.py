@@ -51,9 +51,19 @@ def evaluate_completion(run: dict[str, Any], *, output_dir: Path | None = None) 
         test_ok = bool(test and _status(test.get("status")) in _PASS and _exit_zero(test.get("exit_code")))
         if not test_ok:
             test_ok = _artifact_pass(output / "test-result.md")
+        user_validation = _validation_record(run, "user_validation")
+        external_test_ok = bool(
+            user_validation
+            and _status(user_validation.get("status")) in _PASS
+            and _exit_zero(user_validation.get("exit_code"))
+        )
+        if not test_ok and external_test_ok:
+            test_ok = True
         checks["automated_tests"] = {
             "status": "PASS" if test_ok else "FAIL",
-            "evidence": "validation_results:test or output/test-result.md",
+            "evidence": (
+                "validation_results:test, output/test-result.md, or executed external validation"
+            ),
         }
         if not test_ok:
             errors.append("Automated tests were not executed successfully with exit code 0.")

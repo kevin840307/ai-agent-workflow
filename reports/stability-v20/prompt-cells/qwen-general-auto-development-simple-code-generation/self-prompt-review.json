@@ -1,0 +1,6 @@
+{
+  "status": "PASS",
+  "summary": "self-prompt smoke payload is ready",
+  "problems": [],
+  "prompt_to_review": "Review this real-agent smoke request before running Qwen/OpenCode. Confirm it is a concise human CLI instruction, includes validation.py, and only targets the fixture project.\n\nWorkflow: general-auto-development\nAgent: qwen\nRequirement: Create sort_utils.py with bubble_sort(data) returning a sorted list without mutating the input.\n"
+}

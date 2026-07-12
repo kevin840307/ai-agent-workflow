@@ -44,3 +44,5 @@ sources:
 agentOptions: {}
 path: contracts/security-scan/consensus_security_scan.yaml
 maxRetries: 3
+phase: executing
+sessionRole: build

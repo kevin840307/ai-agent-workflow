@@ -1,4 +1,4 @@
-import { LocalStore } from "../core/storage.js?v=20260711-ui-v12";
+import { LocalStore } from "../core/storage.js?v=20260712-ui-v22";
 
 const COLLAPSED_PROJECTS_KEY = "ui.collapsedProjectKeys";
 
@@ -171,6 +171,8 @@ export function createSessions(ctx) {
       ui.byKey("messages").innerHTML = "";
       ctx.features.runs.clearPanels();
       ctx.features.layout.applyRunStatus("");
+      ctx.features.setup?.refreshConnectivity?.({ force: true });
+      ctx.features.projectProfile?.load?.(null);
     },
 
     async refreshList() {
@@ -196,6 +198,8 @@ export function createSessions(ctx) {
       const session = state.sessions.find((item) => item.id === sessionId);
       sessions.renderHeader(session);
       ctx.features.composer.updatePrimaryAction();
+      ctx.features.setup?.refreshConnectivity?.({ force: true });
+      ctx.features.projectProfile?.load?.(session?.project_path || null, { force: true });
       await ctx.features.messages.load();
       await ctx.features.runs.loadLatest();
       ctx.features.composer.updatePrimaryAction();
@@ -258,9 +262,9 @@ export function createSessions(ctx) {
         title: "New Project",
         description: "Create a project session by selecting the source folder the agent should work with.",
         label: "Project folder path",
-        defaultValue: "C:\\Users\\kevin\\sort",
-        placeholder: "C:\\Users\\kevin\\sort",
-        hint: "Use an absolute local path. Example: C:\\Users\\kevin\\sort",
+        defaultValue: "",
+        placeholder: "Absolute project folder path",
+        hint: "Use an absolute local path. The agent process will use this folder as its working directory.",
         confirmText: "Create",
       });
       if (!projectPath) return;

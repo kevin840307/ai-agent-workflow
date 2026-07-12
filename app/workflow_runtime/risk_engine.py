@@ -1,30 +1,9 @@
 from __future__ import annotations
 
-import re
 from pathlib import Path
 from typing import Any
 
 RISK_ORDER = {"low": 0, "medium": 1, "high": 2, "critical": 3}
-
-CRITICAL_TERMS = {
-    "production database", "drop table", "delete database", "credential rotation", "private key",
-    "付款", "金流", "正式資料庫", "刪除資料庫", "權限系統", "authentication migration",
-}
-HIGH_TERMS = {
-    "database migration", "schema migration", "authentication", "authorization", "security", "ci/cd",
-    "deployment", "kubernetes", "terraform", "helm", "delete files", "breaking change", "public api",
-    "資料庫遷移", "認證", "授權", "部署", "刪除檔案", "公開 api", "權限",
-}
-MEDIUM_TERMS = {
-    "refactor", "multiple modules", "cross module", "dependency upgrade", "configuration", "docker",
-    "重構", "跨模組", "升級依賴", "設定", "多檔", "framework",
-}
-SENSITIVE_PATH_PATTERNS = (
-    r"(^|/)(auth|security|permissions?)(/|$)",
-    r"(^|/)(migrations?|terraform|helm|k8s|deploy|ci)(/|$)",
-    r"(^|/)(\.github/workflows|Dockerfile|docker-compose)",
-    r"(^|/)(secrets?|credentials?)(/|$)",
-)
 
 
 def _level(score: int) -> str:
@@ -43,31 +22,16 @@ def assess_risk(
     project_path: str | Path | None = None,
     expected_files: list[str] | None = None,
     estimated_file_count: int | None = None,
+    risk_metadata: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    text = str(requirement or "").lower()
-    score = 0
-    reasons: list[str] = []
-    matched: list[str] = []
-    for term in sorted(CRITICAL_TERMS):
-        if term in text:
-            score += 6
-            matched.append(term)
-            reasons.append(f"Critical operation mentioned: {term}")
-    for term in sorted(HIGH_TERMS):
-        if term in text:
-            score += 3
-            matched.append(term)
-            reasons.append(f"High-risk area mentioned: {term}")
-    for term in sorted(MEDIUM_TERMS):
-        if term in text:
-            score += 1
-            matched.append(term)
-            reasons.append(f"Cross-cutting change mentioned: {term}")
+    """Assess explicit contract declarations and structural change size only."""
+    metadata = dict(risk_metadata or {})
+    explicit_level = str(metadata.get("level") or "").strip().lower()
+    if explicit_level and explicit_level not in RISK_ORDER:
+        raise ValueError(f"Unsupported risk level: {explicit_level}")
+    reasons = [str(item) for item in metadata.get("reasons") or [] if str(item).strip()]
+    score = int(metadata.get("score") or (RISK_ORDER.get(explicit_level, 0) * 3))
     files = [str(item).replace("\\", "/") for item in expected_files or []]
-    for path in files:
-        if any(re.search(pattern, path, flags=re.IGNORECASE) for pattern in SENSITIVE_PATH_PATTERNS):
-            score += 3
-            reasons.append(f"Sensitive path may change: {path}")
     count = int(estimated_file_count or len(files) or 0)
     if count > 50:
         score += 4
@@ -78,27 +42,27 @@ def assess_risk(
     elif count > 8:
         score += 1
         reasons.append(f"Multi-file change estimated: {count} files")
-    if any(token in text for token in ("delete", "remove", "drop", "刪除", "移除")):
-        score += 2
-        reasons.append("Destructive operation may be required")
-    if any(token in text for token in ("without test", "skip test", "不要測試", "略過測試")):
-        score += 2
-        reasons.append("Request may reduce deterministic validation")
-    level = _level(score)
+    declared_operations = [str(item).strip().lower() for item in metadata.get("operations") or []]
+    destructive_count = sum(item in {"delete", "rename", "migration", "credential_change", "deployment"} for item in declared_operations)
+    if destructive_count:
+        score += min(6, destructive_count * 2)
+        reasons.append(f"Contract declares {destructive_count} elevated operation(s)")
+    level = explicit_level or _level(score)
     if not reasons:
-        reasons.append("No sensitive subsystem or destructive operation detected")
+        reasons.append("No elevated risk was declared by the workflow contract")
     behavior = {
-        "low": {"patch_mode": "auto_apply", "approval_mode": "fully_automatic", "reviewers": 1, "checkpoint": "per_step"},
-        "medium": {"patch_mode": "auto_apply", "approval_mode": "milestones", "reviewers": 1, "checkpoint": "per_task"},
+        "low": {"patch_mode": "atomic_apply", "approval_mode": "fully_automatic", "reviewers": 1, "checkpoint": "per_step"},
+        "medium": {"patch_mode": "atomic_apply", "approval_mode": "milestones", "reviewers": 1, "checkpoint": "per_task"},
         "high": {"patch_mode": "review", "approval_mode": "review_before_apply", "reviewers": 2, "checkpoint": "per_task"},
         "critical": {"patch_mode": "dry_run", "approval_mode": "plan_and_patch_only", "reviewers": 2, "checkpoint": "per_task"},
     }[level]
     return {
-        "schema": "aiwf.risk-assessment.v1",
+        "schema": "aiwf.risk-assessment.v2",
         "level": level,
         "score": score,
+        "source": "explicit_contract" if risk_metadata else "structural_metrics",
         "reasons": reasons[:20],
-        "matched_terms": matched[:30],
+        "declared_operations": declared_operations[:30],
         "project_path": str(project_path) if project_path else None,
         "recommended": behavior,
         "approval_required": level in {"high", "critical"},

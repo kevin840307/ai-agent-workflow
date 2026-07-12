@@ -91,7 +91,8 @@ class WorkflowFunctionService:
                     await result
                 return
             except WorkflowFunctionError as exc:
-                raise WorkflowError(str(exc)) from exc
+                message = str(exc).strip() or f"{function_id} failed with {type(exc).__name__}"
+                raise WorkflowError(message) from exc
 
         function_path = resolve_function_reference(function_id, str(run.get("project_path") or ROOT))
         if not function_path:
@@ -99,7 +100,8 @@ class WorkflowFunctionService:
         try:
             await run_python_asset(run, function_path, output_dir, artifact)
         except Exception as exc:
-            raise WorkflowError(str(exc)) from exc
+            message = str(exc).strip() or f"{function_id} failed with {type(exc).__name__}"
+            raise WorkflowError(message) from exc
 
     async def call_python_functions(
         self,

@@ -10,6 +10,31 @@ _ERROR_PATTERNS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("AGENT_TIMEOUT", ("timed out", "timeout")),
     ("AUTHENTICATION_FAILED", ("incorrect api key", "unauthorized", "authentication failed", "401")),
     ("RATE_LIMITED", ("rate limit", "too many requests", "429")),
+    ("EMPTY_OUTPUT", ("returned empty output", "returned empty stdout")),
+    (
+        "TRANSIENT_API_FAILURE",
+        (
+            "connection reset",
+            "connection refused",
+            "econnrefused",
+            "actively refused",
+            "failed to connect",
+            "connectex",
+            "econnreset",
+            "socket hang up",
+            "connection closed",
+            "connection aborted",
+            "temporarily unavailable",
+            "service unavailable",
+            "bad gateway",
+            "gateway timeout",
+            "fetch failed",
+            "network error",
+            "http 502",
+            "http 503",
+            "http 504",
+        ),
+    ),
 )
 
 
@@ -27,6 +52,8 @@ def classify_agent_error(error: Any) -> dict[str, Any]:
                 "CONTEXT_LIMIT_REACHED": "handoff_fresh_session",
                 "AGENT_TIMEOUT": "fresh_session",
                 "RATE_LIMITED": "backoff",
+                "TRANSIENT_API_FAILURE": "backoff",
+                "EMPTY_OUTPUT": "retry",
             }.get(code, "stop")
             return {"code": code, "message": message, "recoverable": code not in {"AUTHENTICATION_FAILED"}, "strategy": strategy}
     return {"code": "AGENT_ERROR", "message": message, "recoverable": False, "strategy": "inspect"}

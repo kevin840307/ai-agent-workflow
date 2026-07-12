@@ -4,7 +4,7 @@ import {
   SourceTypes,
   StepTypes,
   TemplatePresets,
-} from "../workflow-designer-constants.js?v=20260711-ui-v12";
+} from "../workflow-designer-constants.js?v=20260712-ui-v22";
 import {
   clone,
   copyTextToClipboard,
@@ -19,7 +19,7 @@ import {
   readInputValue,
   setText,
   toast,
-} from "./utils.js?v=20260711-ui-v12";
+} from "./utils.js?v=20260712-ui-v22";
 import {
   createStep,
   createWorkflow,
@@ -32,7 +32,7 @@ import {
   normalizeFunctionList,
   normalizeStep,
   normalizeWorkflow,
-} from "./model.js?v=20260711-ui-v12";
+} from "./model.js?v=20260712-ui-v22";
 import {
   availablePromptParamsFor,
   functionHelpFor,
@@ -40,13 +40,13 @@ import {
   functionOptionsFor,
   stepUiCapabilitiesFor,
   workflowFunctionCountsFor,
-} from "./function-catalog.js?v=20260711-ui-v12";
-import { installLayoutRenderer } from "./layout-renderer.js?v=20260711-ui-v12";
-import { installStepSettingsRenderer } from "./step-settings-renderer.js?v=20260711-ui-v12";
-import { installTemplateEditor } from "./template-editor.js?v=20260711-ui-v12";
-import { installImportExportTools } from "./import-export.js?v=20260711-ui-v12";
-import { installWorkflowAssetTools } from "./asset-tools.js?v=20260711-ui-v12";
-import { allSystemWorkflows as collectSystemWorkflows, findWorkflowById as findWorkflowByIdFromState, isWorkflowReadOnly } from "./workflow-selection.js?v=20260711-ui-v12";
+} from "./function-catalog.js?v=20260712-ui-v22";
+import { installLayoutRenderer } from "./layout-renderer.js?v=20260712-ui-v22";
+import { installStepSettingsRenderer } from "./step-settings-renderer.js?v=20260712-ui-v22";
+import { installTemplateEditor } from "./template-editor.js?v=20260712-ui-v22";
+import { installImportExportTools } from "./import-export.js?v=20260712-ui-v22";
+import { installWorkflowAssetTools } from "./asset-tools.js?v=20260712-ui-v22";
+import { allSystemWorkflows as collectSystemWorkflows, findWorkflowById as findWorkflowByIdFromState, isWorkflowReadOnly } from "./workflow-selection.js?v=20260712-ui-v22";
 const STORAGE_KEY = "qwenWorkflow.workflowDesigner.ui.v1";
 const WORKFLOW_API = "/api/workflows";
 function functionOptions(groupName, fallbackItems, selected) {

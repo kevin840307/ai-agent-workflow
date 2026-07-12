@@ -1,76 +1,26 @@
 from __future__ import annotations
 
 import asyncio
-import json
-import os
-import re
 from pathlib import Path
 from typing import Any
 
-from app.auto_workflow import orchestrator
-from app.runtime_modules.errors import UserInputRequired, ValidationError, WorkflowError
+from app.runtime_modules.errors import UserInputRequired, WorkflowError
 from app.runtime_modules.files import (
-    apply_build_files,
-    failure_feedback_for_step,
-    apply_extracted_files,
-    extract_build_files,
-    project_content_snapshot,
-    project_file_snapshot,
     changed_snapshot_paths,
     files_from_changed_snapshot,
-    render_file_blocks,
-    project_has_user_files,
-    project_overview,
-    project_profile,
-    render_project_index_markdown,
-    only_test_files,
-    non_test_files,
-    should_ask_for_spec_input,
-    snapshot_changed,
+    is_owned_test_file_path,
+    project_file_snapshot,
     restore_project_content_snapshot,
     restore_selected_project_paths,
-    spec_input_questions,
     split_build_files,
-    render_generic_spec_from_requirement,
-    render_generic_todo_from_spec,
-    build_generic_python_import_smoke_test,
-    build_validation_script_pytest_wrapper,
-    existing_validation_scripts,
-    validate_build_files_do_not_overwrite_validation_scripts,
     validate_build_files_are_not_tests,
-    validate_generated_code_files_are_clean,
     validate_generated_test_files,
-    validate_test_code_is_separate,
-    is_test_file_path,
-    is_owned_test_file_path,
 )
-from app.core.paths import ROOT, read_text, write_text
-from app.security.workspace_guard import resolve_project_relative_write
 from app.security.agent_project_config import ensure_agent_project_configs
-from app.workflow_runtime.builtin_functions.registry import PYTHON_FUNCTIONS
-from app.workflow_runtime.builtin_functions.base import WorkflowFunctionError
 from app.workflow_runtime.failure_classifier import classify_failure
 
-from .actions_registry import builtin_action_for_step
-from .action_helpers import (
-    config_for_step,
-    fresh_session_for_step,
-    is_adaptive_workflow,
-    is_auto_development_workflow,
-    is_general_auto_development_workflow,
-)
-from .agent_step_runner import AgentStepRunner
-from .step_utils import (
-    bool_config,
-    normalize_artifact_name,
-    step_agent_name,
-    step_artifact_name,
-    step_config,
-    step_prompt_name,
-    step_review_mode,
-    step_function_name,
-    step_function_names,
-)
+from .action_helpers import config_for_step
+from .step_utils import bool_config, normalize_artifact_name
 
 
 class BaseAgentActionsMixin:
@@ -177,6 +127,7 @@ class BaseAgentActionsMixin:
         files: list[tuple[str, str]],
         *,
         phase: str,
+        protected_names: set[str] | None = None,
     ) -> tuple[list[tuple[str, str]], list[str]]:
         """Keep only files owned by the current workflow phase.
 
@@ -187,6 +138,11 @@ class BaseAgentActionsMixin:
         """
         if phase == "build":
             accepted, rejected = split_build_files(files)
+            protected = {name.strip().lower() for name in (protected_names or set()) if name.strip()}
+            if protected:
+                protected_files = [item for item in accepted if Path(item[0]).name.strip().lower() in protected]
+                accepted = [item for item in accepted if Path(item[0]).name.strip().lower() not in protected]
+                rejected.extend(protected_files)
         elif phase == "generate_tests":
             existing_paths = before_content.keys()
             accepted = [
@@ -248,36 +204,6 @@ class BaseAgentActionsMixin:
             "allowDocumentationOnlyBuild for documentation-only workflows."
         )
 
-    def _file_blocks_allowed_as_direct_edits(self, run: dict[str, Any] | None = None, step_key: str = "") -> bool:
-        """Return whether the platform may materialize agent FILE blocks.
-
-        Real Qwen/OpenCode workflow runs should prove work through actual
-        project-file diffs.  FILE/CONTENT/END_FILE materialization is kept as
-        an explicit mock/test compatibility path only, so production behavior
-        stays close to normal CLI agent usage.
-        """
-        env_value = os.environ.get("QWEN_WORKFLOW_ALLOW_FILE_BLOCK_MATERIALIZATION", "").lower()
-        if env_value in {"1", "true", "yes", "on"}:
-            return True
-
-        if run:
-            if bool(run.get("allow_file_block_materialization") or run.get("_allow_file_block_materialization")):
-                return True
-            config = self._config_for_step(run, step_key) if step_key else {}
-            if bool_config(config, "allowFileBlockMaterialization", False):
-                return True
-
-        if any(
-            os.environ.get(name, "").lower() in {"1", "true", "yes", "on"}
-            for name in ("QWEN_MOCK", "OPENCODE_MOCK", "GENERIC_AGENT_MOCK")
-        ):
-            return True
-
-        # Unit tests and deterministic local fakes often inject a tiny runner
-        # instead of the real AgentStepRunner.  Keep their FILE-block fixtures
-        # working without enabling fallback in real CLI runs.
-        return not isinstance(self.agent_runner, AgentStepRunner)
-
     async def _restore_failed_project_attempt(
         self,
         run: dict[str, Any],
@@ -308,50 +234,3 @@ class BaseAgentActionsMixin:
         # Force exactly the next agent call onto a fresh session.
         run["_fresh_agent_session_once"] = True
         await self.log(run, f"{label}: restored project files after deterministic {code} failure: {str(exc)[:500]}")
-
-    def _apply_file_blocks_for_direct_edit(
-        self,
-        project_dir: Path,
-        output_text: str,
-        *,
-        run: dict[str, Any] | None = None,
-        step_key: str = "",
-        require_test_files: bool = False,
-        forbid_test_files: bool = False,
-        validation_script: str | None = None,
-        fallback_scripts: list[str] | None = None,
-        output_label: str = "agent file block direct edit output",
-    ) -> list[tuple[str, str]]:
-        if not self._file_blocks_allowed_as_direct_edits(run, step_key):
-            return []
-        files = extract_build_files(output_text)
-        if not files:
-            return []
-        if require_test_files:
-            validate_generated_test_files(files, project_dir=project_dir)
-        if forbid_test_files:
-            validate_build_files_are_not_tests(files)
-        validate_build_files_do_not_overwrite_validation_scripts(
-            project_dir,
-            files,
-            validation_script=validation_script,
-            fallback_scripts=fallback_scripts,
-        )
-        adjusted: list[tuple[str, str]] = []
-        for rel_path, content in files:
-            normalized = rel_path.strip().strip("`").replace("\\", "/")
-            target = project_dir / normalized
-            if target.is_file():
-                try:
-                    existing = target.read_text(encoding="utf-8")
-                except (UnicodeDecodeError, OSError):
-                    existing = ""
-                existing_markers = self._content_markers(existing)
-                new_markers = self._content_markers(content)
-                missing_existing = [marker for marker in existing_markers if marker not in content]
-                has_new = any(marker not in existing for marker in new_markers)
-                if existing.strip() and missing_existing and has_new:
-                    content = existing.rstrip() + "\n\n" + content.lstrip().rstrip() + "\n"
-            adjusted.append((rel_path, content))
-        apply_extracted_files(project_dir, adjusted, output_label=output_label)
-        return adjusted

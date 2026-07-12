@@ -1,0 +1,28 @@
+{
+  "schema": "aiwf.chaos-matrix.v1",
+  "status": "PASS",
+  "cases": [
+    {
+      "case": "model-offline-recovery",
+      "pass": true
+    },
+    {
+      "case": "duplicate-attempt",
+      "pass": true
+    },
+    {
+      "case": "stale-lease-takeover",
+      "pass": true
+    },
+    {
+      "case": "flaky-test-detection",
+      "pass": true
+    },
+    {
+      "case": "repair-progress",
+      "pass": true
+    }
+  ],
+  "passed": 5,
+  "total": 5
+}

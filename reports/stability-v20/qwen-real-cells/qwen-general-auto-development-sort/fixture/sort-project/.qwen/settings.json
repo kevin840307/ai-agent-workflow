@@ -1,0 +1,28 @@
+{
+  "$schema": "https://qwenlm.github.io/qwen-code/schemas/settings.json",
+  "tools": {
+    "approvalMode": "auto-edit",
+    "sandbox": false,
+    "exclude": [
+      "shell",
+      "run_shell_command",
+      "execute_command",
+      "web_fetch",
+      "web_search",
+      "git_commit",
+      "git_push"
+    ]
+  },
+  "context": {
+    "includeDirectories": []
+  },
+  "advanced": {},
+  "aiWorkflowGuard": {
+    "managed": true,
+    "writePolicy": "project_only",
+    "readPolicy": "unrestricted",
+    "dangerousOperations": "disabled_or_denied",
+    "note": "Managed by AI Workflow project guard. Keep edits inside this project."
+  },
+  "$version": 4
+}

@@ -14,7 +14,6 @@ from fastapi.testclient import TestClient
 from app.main import app
 from app.runtime_modules import api as runtime
 from app.runtime_modules.errors import WorkflowError
-from app.runtime_modules.files import apply_extracted_files
 from app.workflow_runtime.step_utils import expected_file_candidates
 from app.services import workflow_config_service
 
@@ -188,7 +187,12 @@ class ApiResponseSnapshotContractTests(_WorkflowTestSupport, unittest.TestCase):
                 content = client.get(f"/api/artifacts/{raw_artifact['id']}")
                 self.assertEqual(content.status_code, 200, content.text)
                 artifact_payload = content.json()
-                self.assertEqual(set(artifact_payload), {"id", "name", "path", "content"})
+                required_artifact_keys = {
+                    "id", "name", "path", "content", "run_id", "size", "updated_at",
+                    "content_hash", "category", "role", "visibility", "display_name",
+                    "display_order", "producer_step_key", "media_type",
+                }
+                self.assertTrue(required_artifact_keys.issubset(artifact_payload), sorted(required_artifact_keys - set(artifact_payload)))
                 self.assertIn("API response snapshot artifact", artifact_payload["content"])
 
                 retry = client.post(f"/api/workflow-runs/{run['id']}/retry", json={"step_key": "raw_artifact"})
@@ -293,26 +297,6 @@ class ObservabilityAndPerformanceTests(_WorkflowTestSupport, unittest.TestCase):
 
 
 class FileOutputFuzzSecurityTests(unittest.TestCase):
-    def test_agent_file_output_rejects_fuzzed_escape_paths(self) -> None:
-        unsafe_paths = [
-            "../evil.py",
-            "..\\evil.py",
-            "/tmp/evil.py",
-            "C:\\temp\\evil.py",
-            "C:/temp/evil.py",
-            "\\\\server\\share\\evil.py",
-            "//server/share/evil.py",
-            "output/%2e%2e/evil.py",
-            "output/.. /evil.py",
-            ".qwen-workflow/state.json",
-            "src/%2e%2e/%2e%2e/evil.py",
-        ]
-        with tempfile.TemporaryDirectory() as tmp:
-            project_dir = Path(tmp)
-            for rel_path in unsafe_paths:
-                with self.subTest(rel_path=rel_path):
-                    with self.assertRaises(WorkflowError):
-                        apply_extracted_files(project_dir, [(rel_path, "x = 1\n")], output_label="fuzz output")
 
     def test_expected_file_candidates_rejects_fuzzed_escape_paths(self) -> None:
         unsafe_paths = [
@@ -338,18 +322,6 @@ class FileOutputFuzzSecurityTests(unittest.TestCase):
                     with self.assertRaises(WorkflowError):
                         expected_file_candidates(run, rel_path)
 
-    def test_safe_nested_output_paths_are_still_allowed(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            project_dir = Path(tmp)
-            written = apply_extracted_files(project_dir, [("src/features/good.py", "VALUE = 1\n")])
-            self.assertEqual(len(written), 1)
-            self.assertTrue((project_dir / "src" / "features" / "good.py").exists())
-
-            workspace = project_dir / ".qwen-workflow" / "runs" / "r1"
-            workspace.mkdir(parents=True)
-            run = {"workspace": str(workspace), "project_path": str(project_dir)}
-            candidates = expected_file_candidates(run, "output/spec.md")
-            self.assertTrue(any(candidate.parts[-2:] == ("output", "spec.md") for candidate in candidates))
 
 
 if __name__ == "__main__":

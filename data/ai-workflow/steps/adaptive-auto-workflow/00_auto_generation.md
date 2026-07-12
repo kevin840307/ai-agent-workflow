@@ -23,6 +23,9 @@ Retry feedback for this task, if any:
 Do:
 - Directly edit real files inside the selected project.
 - Keep earlier completed work intact.
+- Keep all tasks for the same user request in one coherent product and architecture. Extend the existing owner module from earlier tasks when practical instead of creating a parallel implementation.
+- Before creating a new file, inspect the project snapshot and earlier task results for the existing file that owns this behavior.
+- Do not write generated source under `output/`, run artifact folders, path fragments copied from absolute paths, or ad-hoc nested roots unless the existing project architecture already uses them.
 - Use the minimum sufficient implementation; do not add unrequested public parameters or parallel/duplicate implementations.
 - Keep one canonical production implementation and one canonical test layout.
 - Add or update tests when the task prompt asks for tests or when needed to prove the change.

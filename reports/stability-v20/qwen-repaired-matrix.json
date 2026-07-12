@@ -1,0 +1,300 @@
+{
+  "schema": "aiwf.real-agent-matrix.v4",
+  "mode": "real",
+  "agents": [
+    "qwen"
+  ],
+  "workflows": [
+    "adaptive-auto-workflow"
+  ],
+  "cases": [
+    "code-with-validation",
+    "simple-code-generation"
+  ],
+  "rows": [
+    {
+      "agent": "qwen",
+      "workflow_id": "adaptive-auto-workflow",
+      "case_id": "code-with-validation",
+      "mode": "real",
+      "status": "passed",
+      "output": "reports/stability-v20/qwen-repaired-cells/qwen-adaptive-auto-workflow-code-with-validation",
+      "command": "python scripts/run_real_agent_smoke.py --agent qwen --workflow adaptive-auto-workflow --case code-with-validation --output reports/stability-v20/qwen-repaired-cells/qwen-adaptive-auto-workflow-code-with-validation",
+      "argv": [
+        "python",
+        "scripts/run_real_agent_smoke.py",
+        "--agent",
+        "qwen",
+        "--workflow",
+        "adaptive-auto-workflow",
+        "--case",
+        "code-with-validation",
+        "--output",
+        "reports/stability-v20/qwen-repaired-cells/qwen-adaptive-auto-workflow-code-with-validation"
+      ],
+      "acceptance": {
+        "run_status": "done",
+        "external_validation": "passed",
+        "project_files_generated_by_agent": true,
+        "workspace_isolation": true,
+        "scope_violation_count": 0
+      },
+      "returncode": 0,
+      "stdout_tail": "{\n  \"schema\": \"aiwf.real-agent-acceptance-cell.v1\",\n  \"status\": \"PASS\",\n  \"workflow\": \"adaptive-auto-workflow\",\n  \"agent\": \"qwen\",\n  \"case\": \"code-with-validation\",\n  \"run_id\": \"c0b4d964-5c8a-41fc-a9f8-691584c40710\",\n  \"run_status\": \"done\",\n  \"error\": null,\n  \"output\": \"C:\\\\Users\\\\kevin\\\\testllm\\\\reports\\\\stability-v20\\\\qwen-repaired-cells\\\\qwen-adaptive-auto-workflow-code-with-validation\",\n  \"self_prompt_review\": {\n    \"status\": \"PASS\",\n    \"summary\": \"self-prompt smoke payload is ready\",\n    \"problems\": [],\n    \"prompt_to_review\": \"Review this real-agent smoke request before running Qwen/OpenCode. Confirm it is a concise human CLI instruction, includes validation.py, and only targets the fixture project.\\n\\nWorkflow: adaptive-auto-workflow\\nAgent: qwen\\nRequirement: Create config_loader.py that loads a JSON file and returns a dictionary.\\n\"\n  },\n  \"acceptance\": {\n    \"external_validation_passed\": true,\n    \"retry_total\": 0,\n    \"recovery_counters\": {\n      \"agent_attempts\": 0,\n      \"deterministic_repairs\": 0,\n      \"session_restarts\": 0,\n      \"replans\": 0,\n      \"manual_actions\": 0,\n      \"consecutive_failures\": 0\n    },\n    \"session_count\": 3,\n    \"steps\": [\n      {\n        \"key\": \"generate_task_prompts\",\n        \"status\": \"passed\",\n        \"retry_count\": 0\n      },\n      {\n        \"key\": \"auto_generation\",\n        \"status\": \"passed\",\n        \"retry_count\": 0\n      },\n      {\n        \"key\": \"ai_review\",\n        \"status\": \"passed\",\n        \"retry_count\": 0\n      }\n    ]\n  }\n}\n",
+      "stderr_tail": "",
+      "duration_seconds": 135.703,
+      "result": {
+        "schema": "aiwf.real-agent-acceptance-cell.v1",
+        "status": "PASS",
+        "workflow": "adaptive-auto-workflow",
+        "agent": "qwen",
+        "case": "code-with-validation",
+        "run_id": "c0b4d964-5c8a-41fc-a9f8-691584c40710",
+        "run_status": "done",
+        "error": null,
+        "output": "C:\\Users\\kevin\\testllm\\reports\\stability-v20\\qwen-repaired-cells\\qwen-adaptive-auto-workflow-code-with-validation",
+        "self_prompt_review": {
+          "status": "PASS",
+          "summary": "self-prompt smoke payload is ready",
+          "problems": [],
+          "prompt_to_review": "Review this real-agent smoke request before running Qwen/OpenCode. Confirm it is a concise human CLI instruction, includes validation.py, and only targets the fixture project.\n\nWorkflow: adaptive-auto-workflow\nAgent: qwen\nRequirement: Create config_loader.py that loads a JSON file and returns a dictionary.\n"
+        },
+        "acceptance": {
+          "external_validation_passed": true,
+          "retry_total": 0,
+          "recovery_counters": {
+            "agent_attempts": 0,
+            "deterministic_repairs": 0,
+            "session_restarts": 0,
+            "replans": 0,
+            "manual_actions": 0,
+            "consecutive_failures": 0
+          },
+          "session_count": 3,
+          "steps": [
+            {
+              "key": "generate_task_prompts",
+              "status": "passed",
+              "retry_count": 0
+            },
+            {
+              "key": "auto_generation",
+              "status": "passed",
+              "retry_count": 0
+            },
+            {
+              "key": "ai_review",
+              "status": "passed",
+              "retry_count": 0
+            }
+          ]
+        }
+      }
+    },
+    {
+      "agent": "qwen",
+      "workflow_id": "adaptive-auto-workflow",
+      "case_id": "simple-code-generation",
+      "mode": "real",
+      "status": "passed",
+      "output": "reports/stability-v20/qwen-repaired-cells/qwen-adaptive-auto-workflow-simple-code-generation",
+      "command": "python scripts/run_real_agent_smoke.py --agent qwen --workflow adaptive-auto-workflow --case simple-code-generation --output reports/stability-v20/qwen-repaired-cells/qwen-adaptive-auto-workflow-simple-code-generation",
+      "argv": [
+        "python",
+        "scripts/run_real_agent_smoke.py",
+        "--agent",
+        "qwen",
+        "--workflow",
+        "adaptive-auto-workflow",
+        "--case",
+        "simple-code-generation",
+        "--output",
+        "reports/stability-v20/qwen-repaired-cells/qwen-adaptive-auto-workflow-simple-code-generation"
+      ],
+      "acceptance": {
+        "run_status": "done",
+        "external_validation": "passed",
+        "project_files_generated_by_agent": true,
+        "workspace_isolation": true,
+        "scope_violation_count": 0
+      },
+      "returncode": 0,
+      "stdout_tail": "{\n  \"schema\": \"aiwf.real-agent-acceptance-cell.v1\",\n  \"status\": \"PASS\",\n  \"workflow\": \"adaptive-auto-workflow\",\n  \"agent\": \"qwen\",\n  \"case\": \"simple-code-generation\",\n  \"run_id\": \"83f395d1-3aab-42b6-9b20-807c2f9336e4\",\n  \"run_status\": \"done\",\n  \"error\": null,\n  \"output\": \"C:\\\\Users\\\\kevin\\\\testllm\\\\reports\\\\stability-v20\\\\qwen-repaired-cells\\\\qwen-adaptive-auto-workflow-simple-code-generation\",\n  \"self_prompt_review\": {\n    \"status\": \"PASS\",\n    \"summary\": \"self-prompt smoke payload is ready\",\n    \"problems\": [],\n    \"prompt_to_review\": \"Review this real-agent smoke request before running Qwen/OpenCode. Confirm it is a concise human CLI instruction, includes validation.py, and only targets the fixture project.\\n\\nWorkflow: adaptive-auto-workflow\\nAgent: qwen\\nRequirement: Create sort_utils.py with bubble_sort(data) returning a sorted list without mutating the input.\\n\"\n  },\n  \"acceptance\": {\n    \"external_validation_passed\": true,\n    \"retry_total\": 0,\n    \"recovery_counters\": {\n      \"agent_attempts\": 0,\n      \"deterministic_repairs\": 0,\n      \"session_restarts\": 0,\n      \"replans\": 0,\n      \"manual_actions\": 0,\n      \"consecutive_failures\": 0\n    },\n    \"session_count\": 3,\n    \"steps\": [\n      {\n        \"key\": \"generate_task_prompts\",\n        \"status\": \"passed\",\n        \"retry_count\": 0\n      },\n      {\n        \"key\": \"auto_generation\",\n        \"status\": \"passed\",\n        \"retry_count\": 0\n      },\n      {\n        \"key\": \"ai_review\",\n        \"status\": \"passed\",\n        \"retry_count\": 0\n      }\n    ]\n  }\n}\n",
+      "stderr_tail": "",
+      "duration_seconds": 148.079,
+      "result": {
+        "schema": "aiwf.real-agent-acceptance-cell.v1",
+        "status": "PASS",
+        "workflow": "adaptive-auto-workflow",
+        "agent": "qwen",
+        "case": "simple-code-generation",
+        "run_id": "83f395d1-3aab-42b6-9b20-807c2f9336e4",
+        "run_status": "done",
+        "error": null,
+        "output": "C:\\Users\\kevin\\testllm\\reports\\stability-v20\\qwen-repaired-cells\\qwen-adaptive-auto-workflow-simple-code-generation",
+        "self_prompt_review": {
+          "status": "PASS",
+          "summary": "self-prompt smoke payload is ready",
+          "problems": [],
+          "prompt_to_review": "Review this real-agent smoke request before running Qwen/OpenCode. Confirm it is a concise human CLI instruction, includes validation.py, and only targets the fixture project.\n\nWorkflow: adaptive-auto-workflow\nAgent: qwen\nRequirement: Create sort_utils.py with bubble_sort(data) returning a sorted list without mutating the input.\n"
+        },
+        "acceptance": {
+          "external_validation_passed": true,
+          "retry_total": 0,
+          "recovery_counters": {
+            "agent_attempts": 0,
+            "deterministic_repairs": 0,
+            "session_restarts": 0,
+            "replans": 0,
+            "manual_actions": 0,
+            "consecutive_failures": 0
+          },
+          "session_count": 3,
+          "steps": [
+            {
+              "key": "generate_task_prompts",
+              "status": "passed",
+              "retry_count": 0
+            },
+            {
+              "key": "auto_generation",
+              "status": "passed",
+              "retry_count": 0
+            },
+            {
+              "key": "ai_review",
+              "status": "passed",
+              "retry_count": 0
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "count": 2,
+  "certification": {
+    "scenarios": [
+      {
+        "id": "CERT-001",
+        "title": "Single-file addition",
+        "layer": "real-agent",
+        "executable_case": "sort"
+      },
+      {
+        "id": "CERT-002",
+        "title": "Existing bug repair",
+        "layer": "benchmark",
+        "benchmark_id": "BENCH-003"
+      },
+      {
+        "id": "CERT-003",
+        "title": "Multi-file feature",
+        "layer": "benchmark",
+        "benchmark_id": "BENCH-002"
+      },
+      {
+        "id": "CERT-004",
+        "title": "Test-only update",
+        "layer": "real-agent",
+        "executable_case": "code-with-validation"
+      },
+      {
+        "id": "CERT-005",
+        "title": "Validation failure repair",
+        "layer": "benchmark",
+        "benchmark_id": "BENCH-011"
+      },
+      {
+        "id": "CERT-006",
+        "title": "No-file-change recovery",
+        "layer": "benchmark",
+        "benchmark_id": "BENCH-012"
+      },
+      {
+        "id": "CERT-007",
+        "title": "Transient agent interruption",
+        "layer": "benchmark",
+        "benchmark_id": "BENCH-005"
+      },
+      {
+        "id": "CERT-008",
+        "title": "Lost session recovery",
+        "layer": "benchmark",
+        "benchmark_id": "BENCH-006"
+      },
+      {
+        "id": "CERT-009",
+        "title": "Context handoff",
+        "layer": "benchmark",
+        "benchmark_id": "BENCH-007"
+      },
+      {
+        "id": "CERT-010",
+        "title": "Large legacy project local change",
+        "layer": "benchmark",
+        "benchmark_id": "BENCH-013"
+      },
+      {
+        "id": "CERT-011",
+        "title": "Multi-language validation",
+        "layer": "benchmark",
+        "benchmark_id": "BENCH-014"
+      },
+      {
+        "id": "CERT-012",
+        "title": "Protected-file and scope guard",
+        "layer": "benchmark",
+        "benchmark_id": "BENCH-010"
+      }
+    ],
+    "scenario_count": 12,
+    "quality_thresholds": {
+      "success_after_repair_min": 0.9,
+      "manual_intervention_max": 0.1,
+      "scope_violation_max": 0,
+      "external_validation_pass_rate_min": 0.95
+    },
+    "metrics": {
+      "executed": 2,
+      "success_at_1": 1.0,
+      "success_after_repair": 1.0,
+      "external_validation_pass_rate": 1.0,
+      "no_file_change_rate": 0.0,
+      "manual_intervention_rate": 0.0,
+      "scope_violation_count": 0,
+      "average_retries": 0.0,
+      "average_duration_seconds": 141.891,
+      "context_handoff_count": 0,
+      "fresh_session_count": 4,
+      "certified": true
+    }
+  },
+  "summary": {
+    "planned": 2,
+    "real_execution_requires_local_agent_cli": true,
+    "safe_modes": [
+      "plan",
+      "dry-run",
+      "self-prompt-test"
+    ],
+    "execution_modes": [
+      "real"
+    ],
+    "entrypoints": [
+      "web-api",
+      "python-cli",
+      "/wf",
+      "/wstep"
+    ],
+    "shared_core": [
+      "AgentManager",
+      "AgentExecutionService",
+      "AgentSessionManager",
+      "WorkflowExecutor"
+    ],
+    "passed": 2,
+    "failed": 0,
+    "pass_rate": 1.0,
+    "parallel": 1
+  }
+}

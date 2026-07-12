@@ -1,12 +1,12 @@
-@import url("./css/tokens.css?v=20260711-ui-v12");
-@import url("./css/layout.css?v=20260711-ui-v12");
-@import url("./css/projects.css?v=20260711-ui-v12");
-@import url("./css/sidebar.css?v=20260711-ui-v12");
-@import url("./css/header.css?v=20260711-ui-v12");
-@import url("./css/workflow-runner.css?v=20260711-ui-v12");
-@import url("./css/modal.css?v=20260711-ui-v12");
-@import url("./css/workflow-designer.css?v=20260711-ui-v12");
-@import url("./css/responsive.css?v=20260711-ui-v12");
+@import url("./css/tokens.css?v=20260712-ui-v22");
+@import url("./css/layout.css?v=20260712-ui-v22");
+@import url("./css/projects.css?v=20260712-ui-v22");
+@import url("./css/sidebar.css?v=20260712-ui-v22");
+@import url("./css/header.css?v=20260712-ui-v22");
+@import url("./css/workflow-runner.css?v=20260712-ui-v22");
+@import url("./css/modal.css?v=20260712-ui-v22");
+@import url("./css/workflow-designer.css?v=20260712-ui-v22");
+@import url("./css/responsive.css?v=20260712-ui-v22");
 
 
 .workflow-console-head {

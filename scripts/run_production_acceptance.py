@@ -4,36 +4,59 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shutil
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(REPO_ROOT))
+from app.agents.process_supervisor import terminate_popen_tree
+
 DEFAULT_OUTPUT = REPO_ROOT / "reports" / "production-acceptance"
 
 
 def run_cmd(name: str, cmd: list[str], *, timeout: int = 300) -> dict[str, Any]:
     started = time.monotonic()
-    proc = subprocess.run(
-        cmd,
-        cwd=REPO_ROOT,
-        text=True,
-        capture_output=True,
-        encoding="utf-8",
-        errors="replace",
-        timeout=timeout,
-        env={**os.environ, "PYTEST_DISABLE_PLUGIN_AUTOLOAD": os.environ.get("PYTEST_DISABLE_PLUGIN_AUTOLOAD", "1")},
-    )
+    timed_out = False
+    returncode = 0
+    with tempfile.TemporaryDirectory(prefix="aiwf-acceptance-") as tmp:
+        stdout_path = Path(tmp) / "stdout.log"
+        stderr_path = Path(tmp) / "stderr.log"
+        with stdout_path.open("w", encoding="utf-8", errors="replace") as stdout_file, stderr_path.open("w", encoding="utf-8", errors="replace") as stderr_file:
+            process = subprocess.Popen(
+                cmd,
+                cwd=REPO_ROOT,
+                text=True,
+                stdout=stdout_file,
+                stderr=stderr_file,
+                env={**os.environ, "PYTEST_DISABLE_PLUGIN_AUTOLOAD": os.environ.get("PYTEST_DISABLE_PLUGIN_AUTOLOAD", "1")},
+                start_new_session=(os.name != "nt"),
+            )
+            while True:
+                returncode = process.poll()
+                if returncode is not None:
+                    break
+                if time.monotonic() - started > timeout:
+                    timed_out = True
+                    terminate_popen_tree(process, grace_sec=2.0)
+                    returncode = 124
+                    break
+                time.sleep(0.1)
+        stdout = stdout_path.read_text(encoding="utf-8", errors="replace")
+        stderr = stderr_path.read_text(encoding="utf-8", errors="replace")
     return {
         "name": name,
         "command": " ".join(cmd),
-        "returncode": proc.returncode,
-        "status": "PASS" if proc.returncode == 0 else "FAIL",
+        "returncode": returncode,
+        "status": "PASS" if returncode == 0 else "FAIL",
+        "timed_out": timed_out,
         "duration_sec": round(time.monotonic() - started, 2),
-        "stdout_tail": "\n".join(proc.stdout.splitlines()[-80:]),
-        "stderr_tail": "\n".join(proc.stderr.splitlines()[-80:]),
+        "stdout_tail": "\n".join(stdout.splitlines()[-80:]),
+        "stderr_tail": "\n".join(stderr.splitlines()[-80:]),
     }
 
 
@@ -43,6 +66,22 @@ def node_check_commands() -> list[list[str]]:
         return []
     return [["node", "--check", str(path.relative_to(REPO_ROOT))] for path in paths]
 
+
+
+
+def browser_smoke_command() -> list[str]:
+    command = [sys.executable, "scripts/run_browser_ui_smoke.py"]
+    executable = os.environ.get("AIWF_BROWSER_EXECUTABLE") or next(
+        (path for name in ("chromium", "chromium-browser", "google-chrome", "google-chrome-stable") if (path := shutil.which(name))),
+        None,
+    )
+    try:
+        import playwright  # type: ignore  # noqa: F401
+    except Exception:
+        return command
+    if executable:
+        command.append("--browser")
+    return command
 
 def render_report(result: dict[str, Any]) -> str:
     status = result["status"]
@@ -102,8 +141,8 @@ def main() -> int:
     for index, cmd in enumerate(node_check_commands(), start=1):
         checks.append(run_cmd(f"node-check-{index}", cmd, timeout=30))
     checks.append(run_cmd("workflow-assets", [sys.executable, "scripts/validate_workflow_assets.py"], timeout=120))
-    checks.append(run_cmd("browser-ui-smoke", [sys.executable, "scripts/run_browser_ui_smoke.py"], timeout=60))
-    checks.append(run_cmd("crash-recovery-simulation", [sys.executable, "scripts/run_crash_recovery_test.py"], timeout=120))
+    checks.append(run_cmd("browser-ui-smoke", browser_smoke_command(), timeout=120))
+    checks.append(run_cmd("crash-recovery-simulation", [sys.executable, "scripts/run_crash_recovery_test.py", "--output", str(Path(args.output) / "crash-recovery")], timeout=120))
     checks.append(run_cmd(
         "agent-slash-command-routes",
         [
@@ -120,7 +159,14 @@ def main() -> int:
         timeout=120,
     ))
     if not args.quick:
-        checks.append(run_cmd("pytest-targeted-hardening", [sys.executable, "-m", "pytest", "-q", "tests/test_production_hardening_round2.py", "tests/test_production_hardening_round3.py", "tests/test_reliability_hardening_round5.py"], timeout=300))
+        for test_file in (
+            "tests/test_production_hardening_round2.py",
+            "tests/test_production_hardening_round3.py",
+            "tests/test_reliability_hardening_round5.py",
+            "tests/test_unattended_stability_v16.py",
+            "tests/test_v17_runtime_ui_regressions.py",
+        ):
+            checks.append(run_cmd(f"pytest-{Path(test_file).stem}", [sys.executable, "-m", "pytest", "-q", test_file], timeout=180))
         checks.append(run_cmd("ci-matrix-all-isolated", [sys.executable, "scripts/run_tests.py", "--mode", "all", "--isolate-all", "--file-timeout", "240"], timeout=2400))
         checks.append(run_cmd("self-prompt-e2e", [sys.executable, "scripts/run_self_prompt_workflow_e2e.py", str(Path(args.output) / "self-prompt")], timeout=300))
         checks.append(run_cmd("regression-workflow-e2e", [sys.executable, "scripts/run_regression_workflow_e2e.py", str(Path(args.output) / "regression")], timeout=300))

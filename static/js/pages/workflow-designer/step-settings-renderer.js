@@ -1,4 +1,4 @@
-import { tabsForStep } from "./step-tabs.js?v=20260711-ui-v12";
+import { tabsForStep } from "./step-tabs.js?v=20260712-ui-v22";
 
 export function installStepSettingsRenderer(ctx) {
   const {

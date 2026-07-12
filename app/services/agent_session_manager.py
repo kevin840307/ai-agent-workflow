@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from app.core.paths import utc_now
+from app.workflow_runtime.step_metadata import step_session_role
 
 
 ROLE_ALIASES = {
@@ -35,14 +36,10 @@ class AgentSessionManager:
     """
 
     @staticmethod
-    def role_for_step(step_key: str | None) -> str:
-        key = str(step_key or "").lower()
-        if any(token in key for token in ("plan", "prompt")):
-            return "planning"
-        if "review" in key:
-            return "review"
-        if any(token in key for token in ("test", "validation", "gate")):
-            return "validation"
+    def role_for_step(step: dict[str, Any] | str | None) -> str:
+        if isinstance(step, dict):
+            return step_session_role(step)
+        # A bare key carries no semantics. Callers should pass the step contract.
         return "build"
 
     def resolve(
@@ -54,7 +51,8 @@ class AgentSessionManager:
         fresh: bool = False,
         reason: str | None = None,
     ) -> SessionDecision:
-        role = self.role_for_step(step_key)
+        step = next((item for item in run.get("steps", []) if item.get("key") == step_key), {"key": step_key})
+        role = self.role_for_step(step)
         if fresh:
             return SessionDecision(role, agent, None, True, reason or "fresh_session_requested")
         role_sessions = run.get("role_session_ids") or {}
@@ -113,7 +111,8 @@ class AgentSessionManager:
 
     @staticmethod
     def invalidate(run: dict[str, Any], *, step_key: str, agent: str, reason: str) -> None:
-        role = AgentSessionManager.role_for_step(step_key)
+        step = next((item for item in run.get("steps", []) if item.get("key") == step_key), {"key": step_key})
+        role = AgentSessionManager.role_for_step(step)
         role_sessions = run.get("role_session_ids") or {}
         value = role_sessions.get(role) if isinstance(role_sessions, dict) else None
         if isinstance(value, dict):

@@ -4,6 +4,7 @@ from typing import Any, Protocol
 
 from app.core.paths import utc_now
 from app.workflow_engine.state_machine import append_transition, validate_transition
+from app.workflow_runtime.failure_normalizer import normalize_failure
 
 from .run_store import RunStore
 
@@ -58,10 +59,12 @@ class FileStepStore:
                         step["ended_at"] = None
                         step["error"] = None
                         step["error_code"] = None
+                        step["failure"] = None
                     if status in {"passed", "failed", "skipped", "waiting_input", "cancelled"}:
                         step["ended_at"] = utc_now()
                         step["error"] = error
                         step["error_code"] = error_code
+                        step["failure"] = normalize_failure(error, source=step_key, step_key=step_key, error_code=error_code) if error else None
                     break
             run["updated_at"] = utc_now()
 
@@ -89,6 +92,7 @@ class FileStepStore:
                     step["ended_at"] = None
                     step["error"] = None
                     step["error_code"] = None
+                    step["failure"] = None
             run["status"] = "queued"
             run["error"] = None
             run["error_code"] = None

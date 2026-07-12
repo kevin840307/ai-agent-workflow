@@ -1,0 +1,507 @@
+{
+  "schema": "aiwf.production-acceptance.v1",
+  "generated_at": "2026-07-12T05:57:34Z",
+  "status": "PASS",
+  "checks": [
+    {
+      "name": "compileall",
+      "command": "/opt/pyvenv/bin/python -m compileall app tests scripts -q",
+      "returncode": 0,
+      "status": "PASS",
+      "timed_out": false,
+      "duration_sec": 1.87,
+      "stdout_tail": "",
+      "stderr_tail": ""
+    },
+    {
+      "name": "node-check-1",
+      "command": "node --check static/js/components/sidebar.js",
+      "returncode": 0,
+      "status": "PASS",
+      "timed_out": false,
+      "duration_sec": 0.11,
+      "stdout_tail": "",
+      "stderr_tail": ""
+    },
+    {
+      "name": "node-check-2",
+      "command": "node --check static/js/core/api.js",
+      "returncode": 0,
+      "status": "PASS",
+      "timed_out": false,
+      "duration_sec": 0.11,
+      "stdout_tail": "",
+      "stderr_tail": ""
+    },
+    {
+      "name": "node-check-3",
+      "command": "node --check static/js/core/context.js",
+      "returncode": 0,
+      "status": "PASS",
+      "timed_out": false,
+      "duration_sec": 0.1,
+      "stdout_tail": "",
+      "stderr_tail": ""
+    },
+    {
+      "name": "node-check-4",
+      "command": "node --check static/js/core/dom.js",
+      "returncode": 0,
+      "status": "PASS",
+      "timed_out": false,
+      "duration_sec": 0.1,
+      "stdout_tail": "",
+      "stderr_tail": ""
+    },
+    {
+      "name": "node-check-5",
+      "command": "node --check static/js/core/state.js",
+      "returncode": 0,
+      "status": "PASS",
+      "timed_out": false,
+      "duration_sec": 0.1,
+      "stdout_tail": "",
+      "stderr_tail": ""
+    },
+    {
+      "name": "node-check-6",
+      "command": "node --check static/js/core/storage.js",
+      "returncode": 0,
+      "status": "PASS",
+      "timed_out": false,
+      "duration_sec": 0.11,
+      "stdout_tail": "",
+      "stderr_tail": ""
+    },
+    {
+      "name": "node-check-7",
+      "command": "node --check static/js/features/artifacts.js",
+      "returncode": 0,
+      "status": "PASS",
+      "timed_out": false,
+      "duration_sec": 0.1,
+      "stdout_tail": "",
+      "stderr_tail": ""
+    },
+    {
+      "name": "node-check-8",
+      "command": "node --check static/js/features/chat.js",
+      "returncode": 0,
+      "status": "PASS",
+      "timed_out": false,
+      "duration_sec": 0.1,
+      "stdout_tail": "",
+      "stderr_tail": ""
+    },
+    {
+      "name": "node-check-9",
+      "command": "node --check static/js/features/composer.js",
+      "returncode": 0,
+      "status": "PASS",
+      "timed_out": false,
+      "duration_sec": 0.1,
+      "stdout_tail": "",
+      "stderr_tail": ""
+    },
+    {
+      "name": "node-check-10",
+      "command": "node --check static/js/features/config.js",
+      "returncode": 0,
+      "status": "PASS",
+      "timed_out": false,
+      "duration_sec": 0.11,
+      "stdout_tail": "",
+      "stderr_tail": ""
+    },
+    {
+      "name": "node-check-11",
+      "command": "node --check static/js/features/console.js",
+      "returncode": 0,
+      "status": "PASS",
+      "timed_out": false,
+      "duration_sec": 0.1,
+      "stdout_tail": "",
+      "stderr_tail": ""
+    },
+    {
+      "name": "node-check-12",
+      "command": "node --check static/js/features/diagnostics.js",
+      "returncode": 0,
+      "status": "PASS",
+      "timed_out": false,
+      "duration_sec": 0.1,
+      "stdout_tail": "",
+      "stderr_tail": ""
+    },
+    {
+      "name": "node-check-13",
+      "command": "node --check static/js/features/event-stream.js",
+      "returncode": 0,
+      "status": "PASS",
+      "timed_out": false,
+      "duration_sec": 0.1,
+      "stdout_tail": "",
+      "stderr_tail": ""
+    },
+    {
+      "name": "node-check-14",
+      "command": "node --check static/js/features/events.js",
+      "returncode": 0,
+      "status": "PASS",
+      "timed_out": false,
+      "duration_sec": 0.1,
+      "stdout_tail": "",
+      "stderr_tail": ""
+    },
+    {
+      "name": "node-check-15",
+      "command": "node --check static/js/features/interactions.js",
+      "returncode": 0,
+      "status": "PASS",
+      "timed_out": false,
+      "duration_sec": 0.1,
+      "stdout_tail": "",
+      "stderr_tail": ""
+    },
+    {
+      "name": "node-check-16",
+      "command": "node --check static/js/features/layout.js",
+      "returncode": 0,
+      "status": "PASS",
+      "timed_out": false,
+      "duration_sec": 0.11,
+      "stdout_tail": "",
+      "stderr_tail": ""
+    },
+    {
+      "name": "node-check-17",
+      "command": "node --check static/js/features/messages.js",
+      "returncode": 0,
+      "status": "PASS",
+      "timed_out": false,
+      "duration_sec": 0.1,
+      "stdout_tail": "",
+      "stderr_tail": ""
+    },
+    {
+      "name": "node-check-18",
+      "command": "node --check static/js/features/modal.js",
+      "returncode": 0,
+      "status": "PASS",
+      "timed_out": false,
+      "duration_sec": 0.1,
+      "stdout_tail": "",
+      "stderr_tail": ""
+    },
+    {
+      "name": "node-check-19",
+      "command": "node --check static/js/features/optimization.js",
+      "returncode": 0,
+      "status": "PASS",
+      "timed_out": false,
+      "duration_sec": 0.11,
+      "stdout_tail": "",
+      "stderr_tail": ""
+    },
+    {
+      "name": "node-check-20",
+      "command": "node --check static/js/features/patch-review.js",
+      "returncode": 0,
+      "status": "PASS",
+      "timed_out": false,
+      "duration_sec": 0.11,
+      "stdout_tail": "",
+      "stderr_tail": ""
+    },
+    {
+      "name": "node-check-21",
+      "command": "node --check static/js/features/project-profile.js",
+      "returncode": 0,
+      "status": "PASS",
+      "timed_out": false,
+      "duration_sec": 0.11,
+      "stdout_tail": "",
+      "stderr_tail": ""
+    },
+    {
+      "name": "node-check-22",
+      "command": "node --check static/js/features/requirements.js",
+      "returncode": 0,
+      "status": "PASS",
+      "timed_out": false,
+      "duration_sec": 0.11,
+      "stdout_tail": "",
+      "stderr_tail": ""
+    },
+    {
+      "name": "node-check-23",
+      "command": "node --check static/js/features/runs.js",
+      "returncode": 0,
+      "status": "PASS",
+      "timed_out": false,
+      "duration_sec": 0.11,
+      "stdout_tail": "",
+      "stderr_tail": ""
+    },
+    {
+      "name": "node-check-24",
+      "command": "node --check static/js/features/sessions.js",
+      "returncode": 0,
+      "status": "PASS",
+      "timed_out": false,
+      "duration_sec": 0.1,
+      "stdout_tail": "",
+      "stderr_tail": ""
+    },
+    {
+      "name": "node-check-25",
+      "command": "node --check static/js/features/setup.js",
+      "returncode": 0,
+      "status": "PASS",
+      "timed_out": false,
+      "duration_sec": 0.11,
+      "stdout_tail": "",
+      "stderr_tail": ""
+    },
+    {
+      "name": "node-check-26",
+      "command": "node --check static/js/features/workflows.js",
+      "returncode": 0,
+      "status": "PASS",
+      "timed_out": false,
+      "duration_sec": 0.1,
+      "stdout_tail": "",
+      "stderr_tail": ""
+    },
+    {
+      "name": "node-check-27",
+      "command": "node --check static/js/main.js",
+      "returncode": 0,
+      "status": "PASS",
+      "timed_out": false,
+      "duration_sec": 0.1,
+      "stdout_tail": "",
+      "stderr_tail": ""
+    },
+    {
+      "name": "node-check-28",
+      "command": "node --check static/js/pages/ai-workflow-assets/asset-manager.js",
+      "returncode": 0,
+      "status": "PASS",
+      "timed_out": false,
+      "duration_sec": 0.1,
+      "stdout_tail": "",
+      "stderr_tail": ""
+    },
+    {
+      "name": "node-check-29",
+      "command": "node --check static/js/pages/ai-workflow-assets/markdown-preview.js",
+      "returncode": 0,
+      "status": "PASS",
+      "timed_out": false,
+      "duration_sec": 0.1,
+      "stdout_tail": "",
+      "stderr_tail": ""
+    },
+    {
+      "name": "node-check-30",
+      "command": "node --check static/js/pages/ai-workflow-assets.js",
+      "returncode": 0,
+      "status": "PASS",
+      "timed_out": false,
+      "duration_sec": 0.1,
+      "stdout_tail": "",
+      "stderr_tail": ""
+    },
+    {
+      "name": "node-check-31",
+      "command": "node --check static/js/pages/workflow-designer/asset-tools.js",
+      "returncode": 0,
+      "status": "PASS",
+      "timed_out": false,
+      "duration_sec": 0.11,
+      "stdout_tail": "",
+      "stderr_tail": ""
+    },
+    {
+      "name": "node-check-32",
+      "command": "node --check static/js/pages/workflow-designer/controller.js",
+      "returncode": 0,
+      "status": "PASS",
+      "timed_out": false,
+      "duration_sec": 0.1,
+      "stdout_tail": "",
+      "stderr_tail": ""
+    },
+    {
+      "name": "node-check-33",
+      "command": "node --check static/js/pages/workflow-designer/function-catalog.js",
+      "returncode": 0,
+      "status": "PASS",
+      "timed_out": false,
+      "duration_sec": 0.11,
+      "stdout_tail": "",
+      "stderr_tail": ""
+    },
+    {
+      "name": "node-check-34",
+      "command": "node --check static/js/pages/workflow-designer/import-export.js",
+      "returncode": 0,
+      "status": "PASS",
+      "timed_out": false,
+      "duration_sec": 0.11,
+      "stdout_tail": "",
+      "stderr_tail": ""
+    },
+    {
+      "name": "node-check-35",
+      "command": "node --check static/js/pages/workflow-designer/layout-renderer.js",
+      "returncode": 0,
+      "status": "PASS",
+      "timed_out": false,
+      "duration_sec": 0.1,
+      "stdout_tail": "",
+      "stderr_tail": ""
+    },
+    {
+      "name": "node-check-36",
+      "command": "node --check static/js/pages/workflow-designer/model.js",
+      "returncode": 0,
+      "status": "PASS",
+      "timed_out": false,
+      "duration_sec": 0.1,
+      "stdout_tail": "",
+      "stderr_tail": ""
+    },
+    {
+      "name": "node-check-37",
+      "command": "node --check static/js/pages/workflow-designer/step-settings-renderer.js",
+      "returncode": 0,
+      "status": "PASS",
+      "timed_out": false,
+      "duration_sec": 0.1,
+      "stdout_tail": "",
+      "stderr_tail": ""
+    },
+    {
+      "name": "node-check-38",
+      "command": "node --check static/js/pages/workflow-designer/step-tabs.js",
+      "returncode": 0,
+      "status": "PASS",
+      "timed_out": false,
+      "duration_sec": 0.1,
+      "stdout_tail": "",
+      "stderr_tail": ""
+    },
+    {
+      "name": "node-check-39",
+      "command": "node --check static/js/pages/workflow-designer/template-editor.js",
+      "returncode": 0,
+      "status": "PASS",
+      "timed_out": false,
+      "duration_sec": 0.11,
+      "stdout_tail": "",
+      "stderr_tail": ""
+    },
+    {
+      "name": "node-check-40",
+      "command": "node --check static/js/pages/workflow-designer/utils.js",
+      "returncode": 0,
+      "status": "PASS",
+      "timed_out": false,
+      "duration_sec": 0.11,
+      "stdout_tail": "",
+      "stderr_tail": ""
+    },
+    {
+      "name": "node-check-41",
+      "command": "node --check static/js/pages/workflow-designer/workflow-selection.js",
+      "returncode": 0,
+      "status": "PASS",
+      "timed_out": false,
+      "duration_sec": 0.1,
+      "stdout_tail": "",
+      "stderr_tail": ""
+    },
+    {
+      "name": "node-check-42",
+      "command": "node --check static/js/pages/workflow-designer-constants.js",
+      "returncode": 0,
+      "status": "PASS",
+      "timed_out": false,
+      "duration_sec": 0.1,
+      "stdout_tail": "",
+      "stderr_tail": ""
+    },
+    {
+      "name": "node-check-43",
+      "command": "node --check static/js/pages/workflow-designer.js",
+      "returncode": 0,
+      "status": "PASS",
+      "timed_out": false,
+      "duration_sec": 0.1,
+      "stdout_tail": "",
+      "stderr_tail": ""
+    },
+    {
+      "name": "node-check-44",
+      "command": "node --check static/js/pages/workflow-runner.js",
+      "returncode": 0,
+      "status": "PASS",
+      "timed_out": false,
+      "duration_sec": 0.1,
+      "stdout_tail": "",
+      "stderr_tail": ""
+    },
+    {
+      "name": "node-check-45",
+      "command": "node --check static/js/shared/sidebar.js",
+      "returncode": 0,
+      "status": "PASS",
+      "timed_out": false,
+      "duration_sec": 0.1,
+      "stdout_tail": "",
+      "stderr_tail": ""
+    },
+    {
+      "name": "workflow-assets",
+      "command": "/opt/pyvenv/bin/python scripts/validate_workflow_assets.py",
+      "returncode": 0,
+      "status": "PASS",
+      "timed_out": false,
+      "duration_sec": 2.98,
+      "stdout_tail": "schema: aiwf.workflow-validator.v3\nstatus: PASS\nworkflows: 3 errors: 0 warnings: 0\n- general-auto-development: PASS, errors=0, warnings=0\n- adaptive-auto-workflow: PASS, errors=0, warnings=0\n- security-scan: PASS, errors=0, warnings=0",
+      "stderr_tail": ""
+    },
+    {
+      "name": "browser-ui-smoke",
+      "command": "/opt/pyvenv/bin/python scripts/run_browser_ui_smoke.py --browser",
+      "returncode": 0,
+      "status": "PASS",
+      "timed_out": false,
+      "duration_sec": 5.51,
+      "stdout_tail": "{\n  \"schema\": \"aiwf.browser-ui-smoke.v22\",\n  \"mode\": \"browser\",\n  \"ok\": true,\n  \"baseUrl\": \"http://127.0.0.1:8000\",\n  \"browserExecutable\": \"/usr/bin/chromium\",\n  \"navigationMode\": \"inline-layout\",\n  \"checks\": {\n    \"two_tabs\": true,\n    \"validation_layout\": true,\n    \"near_fullscreen_patch\": true,\n    \"compact_patch_chrome\": true,\n    \"patch_master_detail\": true,\n    \"independent_patch_scroll\": true,\n    \"equal_split_columns\": true,\n    \"focus_mode\": true,\n    \"artifact_master_detail\": true,\n    \"artifact_independent_scroll\": true,\n    \"patch_removed_from_diagnostics\": true,\n    \"explicit_reject_target\": true,\n    \"artifact_storage_controls\": true,\n    \"artifact_preview_content\": true,\n    \"step_scoped_artifact_dialog\": true\n  },\n  \"geometry\": {\n    \"viewport\": {\n      \"width\": 1920,\n      \"height\": 1080\n    },\n    \"tabCount\": 2,\n    \"changesTabCount\": 0,\n    \"tabsHeight\": 43,\n    \"validationBelowTabs\": true,\n    \"validationScrollable\": true,\n    \"patchWidth\": 1904,\n    \"patchHeight\": 1064,\n    \"patchHeaderHeight\": 56,\n    \"patchFooterHeight\": 68,\n    \"patchSidebarWidth\": 280,\n    \"patchContentWidth\": 1622,\n    \"patchFilesScrollable\": true,\n    \"patchFilesClient\": 809,\n    \"patchFilesScroll\": 7456,\n    \"patchCodeScrollable\": true,\n    \"patchCodeClient\": 888,\n    \"patchCodeScroll\": 14700,\n    \"patchContentClient\": 938,\n    \"patchReviewClient\": 938,\n    \"patchBodyClient\": 938,\n    \"splitCellWidths\": [\n      806,\n      806\n    ],\n    \"splitLabelWidths\": [\n      806,\n      806\n    ],\n    \"splitColumnsEqual\": true,\n    \"focusContentExpanded\": true,\n    \"focusFooterHidden\": true,\n    \"artifactLayoutWidth\": 1882,\n    \"artifactListWidth\": 280,\n    \"artifactPaneWidth\": 1602,\n    \"artifactListScrollable\": true,\n    \"artifactContentScrollable\": true,\n    \"diagnosticPatchCount\": 0,\n    \"rejectTargetPresent\": true,\n    \"artifactStorageSummaryPresent\": true,\n    \"artifactLoadMorePresent\": true,\n    \"globalArtifactPreviewWorks\": true,\n    \"stepDialogVisible\": true,\n    \"stepDialogTitle\": \"Build · 對應文件\",\n    \"stepDialogTabs\": 1,\n    \"stepDialogPreviewWorks\": true\n  }\n}",
+      "stderr_tail": ""
+    },
+    {
+      "name": "crash-recovery-simulation",
+      "command": "/opt/pyvenv/bin/python scripts/run_crash_recovery_test.py --output reports/production-acceptance-v22-quick/crash-recovery",
+      "returncode": 0,
+      "status": "PASS",
+      "timed_out": false,
+      "duration_sec": 2.38,
+      "stdout_tail": "{\n  \"schema\": \"aiwf.crash-recovery-test.v1\",\n  \"status\": \"PASS\",\n  \"changed_count\": 1,\n  \"cleanup\": {\n    \"removed\": true,\n    \"reason\": \"stale_lock\",\n    \"lock\": {\n      \"schema\": \"aiwf.project-run-lock.v1\",\n      \"run_id\": \"crash-run\",\n      \"session_id\": \"session-crash\",\n      \"workflow_id\": \"crash-recovery-test\",\n      \"status\": \"running\",\n      \"project_path\": \"/tmp/aiwf-crash-recovery-szb3ymek/project\",\n      \"effective_project_path\": \"/tmp/aiwf-crash-recovery-szb3ymek/project\",\n      \"owner\": {\n        \"id\": \"6b5cf39580ee:50591\",\n        \"host\": \"6b5cf39580ee\",\n        \"pid\": 50591,\n        \"started_at\": \"2026-07-12T05:57:24.967962+00:00\"\n      },\n      \"created_at\": \"2026-07-12T05:57:25.363122+00:00\",\n      \"updated_at\": \"2026-07-12T05:57:25.364568+00:00\"\n    }\n  },\n  \"consistency\": {\n    \"schema\": \"aiwf.store-consistency.v1\",\n    \"status\": \"PASS\",\n    \"checked_at\": \"2026-07-12T05:57:25.376939+00:00\",\n    \"run_count\": 1,\n    \"error_count\": 0,\n    \"warning_count\": 0,\n    \"runs\": [\n      {\n        \"schema\": \"aiwf.run-consistency.v1\",\n        \"run_id\": \"crash-run\",\n        \"status\": \"PASS\",\n        \"checked_at\": \"2026-07-12T05:57:25.376902+00:00\",\n        \"issue_count\": 0,\n        \"error_count\": 0,\n        \"warning_count\": 0,\n        \"issues\": []\n      }\n    ]\n  }\n}",
+      "stderr_tail": ""
+    },
+    {
+      "name": "agent-slash-command-routes",
+      "command": "/opt/pyvenv/bin/python -c import json,tempfile; from pathlib import Path; from scripts.install_agent_commands import verify_command_routes; d=tempfile.TemporaryDirectory(); print(json.dumps(verify_command_routes(project=Path(d.name)), ensure_ascii=False)); d.cleanup()",
+      "returncode": 0,
+      "status": "PASS",
+      "timed_out": false,
+      "duration_sec": 9.21,
+      "stdout_tail": "{\"schema\": \"aiwf.agent-command-verification.v1\", \"ok\": true, \"routes\": {\"wf\": {\"schema\": \"aiwf.agent-command-dry-run.v1\", \"ok\": true, \"project_path\": \"/tmp/tmp5tmu7yk4\", \"workflow_id\": \"general-auto-development\", \"skill\": null, \"config\": null, \"agent\": null, \"run_profile\": null, \"thinking_level\": null, \"test_command\": null, \"validation_script\": null, \"requirement\": \"slash command smoke\"}, \"wstep\": {\"schema\": \"aiwf.agent-command-dry-run.v1\", \"ok\": true, \"project_path\": \"/tmp/tmp5tmu7yk4\", \"workflow_id\": null, \"skill\": \"/build\", \"config\": \"build.yaml\", \"agent\": null, \"run_profile\": null, \"thinking_level\": null, \"test_command\": null, \"validation_script\": null, \"requirement\": \"slash command smoke\"}}}",
+      "stderr_tail": ""
+    }
+  ]
+}

@@ -1,79 +1,68 @@
 from __future__ import annotations
 
-import asyncio
 import json
-import os
 import re
 from pathlib import Path
 from typing import Any
 
 from app.auto_workflow import orchestrator
-from app.runtime_modules.errors import UserInputRequired, ValidationError, WorkflowError
+from app.core.paths import ROOT, read_text, write_text
+from app.runtime_modules.errors import UserInputRequired, WorkflowError
 from app.runtime_modules.files import (
-    apply_build_files,
     failure_feedback_for_step,
-    apply_extracted_files,
-    extract_build_files,
+    only_test_files,
     project_content_snapshot,
     project_file_snapshot,
-    changed_snapshot_paths,
-    files_from_changed_snapshot,
-    render_file_blocks,
-    project_has_user_files,
-    project_overview,
-    project_profile,
-    render_project_index_markdown,
-    only_test_files,
-    non_test_files,
-    should_ask_for_spec_input,
     snapshot_changed,
-    restore_project_content_snapshot,
-    spec_input_questions,
-    split_build_files,
-    render_generic_spec_from_requirement,
-    render_generic_todo_from_spec,
-    build_generic_python_import_smoke_test,
-    build_validation_script_pytest_wrapper,
-    existing_validation_scripts,
     validate_build_files_do_not_overwrite_validation_scripts,
-    validate_build_files_are_not_tests,
     validate_generated_code_files_are_clean,
     validate_generated_test_files,
     validate_test_code_is_separate,
 )
-from app.core.paths import ROOT, read_text, write_text
-from app.security.workspace_guard import resolve_project_relative_write
-from app.security.agent_project_config import ensure_agent_project_configs
-from app.workflow_runtime.builtin_functions.registry import PYTHON_FUNCTIONS
-from app.workflow_runtime.builtin_functions.base import WorkflowFunctionError
+from app.workflow_runtime.task_acceptance import normalize_task_contract
+from app.workflow_runtime.candidate_validation import validate_agent_candidate
 from app.workflow_runtime.test_layout import repair_run_owned_test_layout, write_test_layout_repair_report
 
-from .actions_registry import builtin_action_for_step
-from .action_helpers import (
-    config_for_step,
-    fresh_session_for_step,
-    is_adaptive_workflow,
-    is_auto_development_workflow,
-    is_general_auto_development_workflow,
-)
-from .agent_step_runner import AgentStepRunner
-from .complexity import classify_workflow_complexity
-from .task_checkpoints import create_task_checkpoint
 from .completion_gate import evaluate_completion
-from .step_utils import (
-    bool_config,
-    normalize_artifact_name,
-    step_agent_name,
-    step_artifact_name,
-    step_config,
-    step_prompt_name,
-    step_review_mode,
-    step_function_name,
-    step_function_names,
-)
+from .complexity import classify_workflow_complexity
+from .step_utils import bool_config, normalize_artifact_name, step_config
+from .task_checkpoints import create_task_checkpoint
 
 
 class AdaptiveWorkflowActionsMixin:
+    async def _repair_and_validate_adaptive_candidate(
+        self,
+        run: dict[str, Any],
+        project_dir: Path,
+        direct_files: list[tuple[str, str]],
+        *,
+        log_prefix: str,
+    ) -> list[tuple[str, str]]:
+        """Normalize run-owned test layout before validating the candidate.
+
+        The repair is deliberately narrow: ``repair_run_owned_test_layout``
+        only removes a new root test when a canonical counterpart already
+        exists under ``tests/``. Validation then evaluates the resulting
+        cumulative Agent-owned filesystem state.
+        """
+        workspace = Path(run["workspace"])
+        layout_repair = repair_run_owned_test_layout(project_dir, workspace)
+        write_test_layout_repair_report(workspace, layout_repair)
+        filtered = list(direct_files)
+        if layout_repair.get("removed_files"):
+            removed = {str(path).replace("\\", "/") for path in layout_repair["removed_files"]}
+            filtered = [item for item in filtered if item[0].replace("\\", "/") not in removed]
+            await self.log(run, f"{log_prefix}: removed current-run duplicate root test(s): " + ", ".join(sorted(removed)))
+        candidate = validate_agent_candidate(
+            run=run,
+            project_dir=project_dir,
+            run_workspace=workspace,
+            direct_files=filtered,
+            validation_script=run.get("validation_script"),
+            fallback_scripts=self._fallback_validation_scripts(run),
+        )
+        return filtered or candidate
+
     async def generate_task_prompts_step(
         self,
         run: dict[str, Any],
@@ -82,7 +71,7 @@ class AdaptiveWorkflowActionsMixin:
         *,
         agent_name: str | None = None,
     ) -> None:
-        """Ask the agent to author Adaptive task prompts, then validate and materialize prompt files."""
+        """Ask the agent to author Adaptive task prompts, then validate and persist controller-owned prompt assets."""
         output_dir = Path(run["workspace"]) / "output"
         artifact = normalize_artifact_name(artifact)
         output = await self.run_agent_step(
@@ -159,15 +148,18 @@ class AdaptiveWorkflowActionsMixin:
                 acceptance_items = [str(line).strip() for line in acceptance if str(line).strip()]
             else:
                 acceptance_items = []
-            tasks.append(
+            kind = str(item.get("kind") or item.get("owner") or "implementation").strip() or "implementation"
+            tasks.append(normalize_task_contract(
                 {
+                    **item,
                     "id": task_id,
                     "title": title,
                     "prompt": prompt,
                     "acceptance": acceptance_items,
-                    "kind": str(item.get("kind") or item.get("owner") or "implementation").strip() or "implementation",
-                }
-            )
+                    "kind": kind,
+                },
+                owner=self.TASK_KIND_OWNERS.get(kind.lower(), "build"),
+            ))
         spec = str(
             raw.get("spec")
             or raw.get("spec_markdown")
@@ -196,7 +188,6 @@ class AdaptiveWorkflowActionsMixin:
         normal edit tools.
         """
         text = (prompt or "").strip()
-        lowered = text.lower()
         if re.match(r"^\s*(mkdir|md|echo|copy|xcopy|move|del|erase|type|cat|printf|powershell|pwsh|cmd|touch)\b", text, flags=re.I):
             raise WorkflowError(
                 f"{step_key}: {task_id} prompt must be a concise natural-language CLI instruction, not a shell command."
@@ -217,11 +208,6 @@ class AdaptiveWorkflowActionsMixin:
             raise WorkflowError(
                 f"{step_key}: {task_id} prompt is too long; keep task prompts short and concrete."
             )
-        code_markers = ["def ", "class ", "import ", "return ", "function ", "public ", "private "]
-        if sum(1 for marker in code_markers if marker in lowered) >= 3:
-            raise WorkflowError(
-                f"{step_key}: {task_id} prompt looks like source code; output a human instruction instead."
-            )
 
     def _write_ai_task_prompt_manifest(self, output_dir: Path, manifest: dict[str, Any], *, source_label: str = "AI-generated task prompts") -> None:
         task_prompt_dir = output_dir / "task-prompts"
@@ -231,7 +217,15 @@ class AdaptiveWorkflowActionsMixin:
         tasks = [task for task in manifest.get("tasks") or [] if isinstance(task, dict)]
         canonical_manifest = dict(manifest)
         canonical_manifest.setdefault("status", "READY")
-        canonical_manifest.setdefault("schema_version", 1)
+        canonical_manifest.setdefault("schema_version", 2)
+        canonical_manifest.setdefault(
+            "final_acceptance",
+            {
+                "automated_tests_required": True,
+                "external_validation_required_when_configured": True,
+                "verifier_report_required": True,
+            },
+        )
         canonical_manifest["tasks"] = tasks
         spec = str(canonical_manifest.get("spec") or "").strip()
         write_text(output_dir / "spec.md", spec.rstrip() + "\n")
@@ -257,7 +251,8 @@ class AdaptiveWorkflowActionsMixin:
             task_id = str(task.get("id") or f"TASK-{index:03d}")
             title = str(task.get("title") or task_id)
             kind = str(task.get("kind") or "implementation")
-            lines.append(f"{index}. {task_id} [kind={kind}]: {title}")
+            owner = self._task_owner_from_entry(task)
+            lines.append(f"{index}. {task_id} [owner={owner}]: {title}")
             prompt_text = str(task.get("prompt") or "").strip()
             acceptance = task.get("acceptance") or []
             acceptance_lines = "\n".join(f"- {item}" for item in acceptance) if acceptance else "- Complete the current task and keep the project runnable."
@@ -374,10 +369,7 @@ class AdaptiveWorkflowActionsMixin:
                 if (
                     task_artifact_path.is_file()
                     and not task_has_feedback
-                    and (
-                        self._task_direct_state_is_satisfied(output_dir, project_dir, task_id, "auto_generation")
-                        or (self._file_blocks_allowed_as_direct_edits(run, "auto_generation") and self._task_artifact_is_satisfied(project_dir, task_artifact_path))
-                    )
+                    and self._task_direct_state_is_satisfied(output_dir, project_dir, task_id, "auto_generation")
                 ):
                     task_result = read_text(task_artifact_path)
                     task_artifacts.append((task_id, task_title, task_result))
@@ -412,35 +404,16 @@ class AdaptiveWorkflowActionsMixin:
                         project_file_snapshot(project_dir),
                     )
                     if not direct_files:
-                        direct_files = self._apply_file_blocks_for_direct_edit(
-                            project_dir,
-                            read_text(task_artifact_path),
-                            run=run,
-                            step_key="auto_generation",
-                            validation_script=run.get("validation_script"),
-                            fallback_scripts=self._fallback_validation_scripts(run),
-                            output_label=f"agent adaptive task {task_id} file block direct edit",
-                        )
-                    if not direct_files:
                         raise WorkflowError(
                             f"auto_generation task {task_id} did not directly create or modify files under Project Path: {project_dir}. "
                             "Use Qwen/OpenCode file edit/write tools to directly modify files inside Project Path."
                         )
-                    validate_build_files_do_not_overwrite_validation_scripts(
+                    direct_files = await self._repair_and_validate_adaptive_candidate(
+                        run,
                         project_dir,
                         direct_files,
-                        validation_script=run.get("validation_script"),
-                        fallback_scripts=self._fallback_validation_scripts(run),
+                        log_prefix=f"auto_generation/{task_id}",
                     )
-                    validate_test_code_is_separate(direct_files)
-                    validate_generated_code_files_are_clean(direct_files)
-                    validate_generated_test_files(only_test_files(direct_files), project_dir=project_dir) if only_test_files(direct_files) else None
-                    layout_repair = repair_run_owned_test_layout(project_dir, Path(run["workspace"]))
-                    write_test_layout_repair_report(Path(run["workspace"]), layout_repair)
-                    if layout_repair.get("removed_files"):
-                        removed = set(layout_repair["removed_files"])
-                        direct_files = [item for item in direct_files if item[0].replace("\\", "/") not in removed]
-                        await self.log(run, f"auto_generation/{task_id}: removed current-run duplicate root test(s): " + ", ".join(sorted(removed)))
                     self._write_task_direct_state(output_dir, project_dir, task_id, "auto_generation", direct_files)
                     self._validate_previous_direct_task_states_preserved(
                         output_dir,
@@ -453,22 +426,27 @@ class AdaptiveWorkflowActionsMixin:
                     candidate_files = self._candidate_files_after_agent_failure(project_dir, task_before, exc)
                     if candidate_files:
                         direct_files = candidate_files
-                        validate_build_files_do_not_overwrite_validation_scripts(
-                            project_dir,
-                            direct_files,
-                            validation_script=run.get("validation_script"),
-                            fallback_scripts=self._fallback_validation_scripts(run),
-                        )
-                        validate_test_code_is_separate(direct_files)
-                        validate_generated_code_files_are_clean(direct_files)
-                        if only_test_files(direct_files):
-                            validate_generated_test_files(only_test_files(direct_files), project_dir=project_dir)
-                        layout_repair = repair_run_owned_test_layout(project_dir, Path(run["workspace"]))
-                        write_test_layout_repair_report(Path(run["workspace"]), layout_repair)
-                        if layout_repair.get("removed_files"):
-                            removed = set(layout_repair["removed_files"])
-                            direct_files = [item for item in direct_files if item[0].replace("\\", "/") not in removed]
-                            await self.log(run, f"auto_generation/{task_id}: removed current-run duplicate root test(s) after agent failure: " + ", ".join(sorted(removed)))
+                        try:
+                            direct_files = await self._repair_and_validate_adaptive_candidate(
+                                run,
+                                project_dir,
+                                direct_files,
+                                log_prefix=f"auto_generation/{task_id} after agent failure",
+                            )
+                        except Exception as candidate_exc:
+                            self._append_workflow_decision(
+                                output_dir,
+                                task_id=task_id,
+                                task_title=task_title,
+                                status="fail",
+                                next_action="repair_current_task",
+                                reason=str(candidate_exc)[:500],
+                            )
+                            await self.log(
+                                run,
+                                f"auto_generation/{task_id}: cumulative candidate validation failed; preserving Agent edits for targeted repair: {str(candidate_exc)[:500]}",
+                            )
+                            raise WorkflowError(f"{task_id}: {candidate_exc}") from candidate_exc
                         self._write_task_direct_state(output_dir, project_dir, task_id, "auto_generation", direct_files)
                         self._validate_previous_direct_task_states_preserved(
                             output_dir,
@@ -540,50 +518,26 @@ class AdaptiveWorkflowActionsMixin:
                 project_file_snapshot(project_dir),
             )
             if not direct_files:
-                direct_files = self._apply_file_blocks_for_direct_edit(
-                    project_dir,
-                    read_text(output_dir / artifact),
-                    run=run,
-                    step_key="auto_generation",
-                    validation_script=run.get("validation_script"),
-                    fallback_scripts=self._fallback_validation_scripts(run),
-                    output_label="agent adaptive file block direct edit",
-                )
-            if not direct_files:
                 raise WorkflowError(
                     f"auto_generation did not directly create or modify files under Project Path: {project_dir}. "
                     "Use Qwen/OpenCode file edit/write tools to directly modify files inside Project Path."
                 )
-            validate_build_files_do_not_overwrite_validation_scripts(
+            direct_files = await self._repair_and_validate_adaptive_candidate(
+                run,
                 project_dir,
                 direct_files,
-                validation_script=run.get("validation_script"),
-                fallback_scripts=self._fallback_validation_scripts(run),
+                log_prefix="auto_generation",
             )
-            validate_test_code_is_separate(direct_files)
-            validate_generated_code_files_are_clean(direct_files)
-            layout_repair = repair_run_owned_test_layout(project_dir, Path(run["workspace"]))
-            write_test_layout_repair_report(Path(run["workspace"]), layout_repair)
-            if layout_repair.get("removed_files"):
-                removed = set(layout_repair["removed_files"])
-                direct_files = [item for item in direct_files if item[0].replace("\\", "/") not in removed]
-                await self.log(run, "auto_generation: removed current-run duplicate root test(s): " + ", ".join(sorted(removed)))
         except Exception as exc:
             candidate_files = self._candidate_files_after_agent_failure(project_dir, before, exc)
             if candidate_files:
                 direct_files = candidate_files
-                validate_build_files_do_not_overwrite_validation_scripts(
-                    project_dir, direct_files, validation_script=run.get("validation_script"),
-                    fallback_scripts=self._fallback_validation_scripts(run),
+                direct_files = await self._repair_and_validate_adaptive_candidate(
+                    run,
+                    project_dir,
+                    direct_files,
+                    log_prefix="auto_generation after agent failure",
                 )
-                validate_test_code_is_separate(direct_files)
-                validate_generated_code_files_are_clean(direct_files)
-                layout_repair = repair_run_owned_test_layout(project_dir, Path(run["workspace"]))
-                write_test_layout_repair_report(Path(run["workspace"]), layout_repair)
-                if layout_repair.get("removed_files"):
-                    removed = set(layout_repair["removed_files"])
-                    direct_files = [item for item in direct_files if item[0].replace("\\", "/") not in removed]
-                    await self.log(run, "auto_generation: removed current-run duplicate root test(s) after agent failure: " + ", ".join(sorted(removed)))
                 await self.log(run, f"auto_generation: accepted filesystem candidate edits despite agent summary failure: {str(exc)[:300]}")
             else:
                 await self._restore_failed_project_attempt(run, project_dir, attempt_snapshot, "auto_generation", exc)

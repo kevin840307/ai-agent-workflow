@@ -9,6 +9,7 @@ from unittest.mock import patch
 from app.main import app
 from app.persistence.json_store import Store
 from app.runtime_modules import api as runtime
+from app.services.workflow_service import _workspace_run_dir
 from app.workflow_runtime.run_lifecycle import (
     cleanup_stale_project_lock,
     mark_cancel_requested,
@@ -39,8 +40,14 @@ class TestPipelineContractTests(unittest.TestCase):
 
 class RunLifecycleContractTests(unittest.TestCase):
 
+    def test_workspace_path_is_compact_and_session_is_kept_in_state(self) -> None:
+        root = Path("C:/deep/project")
+        workspace = _workspace_run_dir(root, "session-" + "a" * 36, "run-" + "b" * 36)
+        self.assertEqual(workspace.parent, root / ".ai-workflow" / "runs")
+        self.assertLessEqual(len(workspace.name), len("run-") + 12)
+
     def test_lifecycle_api_route_is_registered(self) -> None:
-        routes = {getattr(route, "path", "") for route in app.routes}
+        routes = set(app.openapi().get("paths", {}))
         self.assertIn("/api/workflow-runs/{run_id}/lifecycle", routes)
 
     def test_project_run_lock_is_written_and_stale_lock_is_removed(self) -> None:

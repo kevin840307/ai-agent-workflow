@@ -1,7 +1,9 @@
 id: build
 key: build
 name: Execute Task Loop
-description: Execute AI-generated task prompts one by one in the same Qwen/OpenCode session. The platform checks direct project edits but does not write files for the agent.
+description: Execute AI-generated task prompts one by one in the same Qwen/OpenCode
+  session. The platform checks direct project edits but does not write files for the
+  agent.
 enabled: true
 type: ai
 skill: steps/general-auto-development/03_build.md
@@ -10,12 +12,12 @@ agent: qwen
 outputs:
 - build-result.md
 function: ''
-retry: 3
+retry: 99
 failAction: same_step
 retryFromStepKey: build
 keepSameSession: true
 injectFailureFeedback: true
-stopAfterFailures: 3
+stopAfterFailures: 99
 requireSubstantiveBuild: true
 allowTestFilesInTaskLoop: false
 allowInteraction: false
@@ -39,5 +41,27 @@ enableTaskLoop: true
 repromptOnToolCallJson: false
 includeSkillContext: false
 compactRetryPromptWhenReusingSession: true
-
+recoverRepeatedFailure: true
+maxRetries: 99
+retryPolicy:
+  defaultRetryTo: build
+  maxRetries: 99
+  recoveryBudget:
+    maxRunFailures: 40
+    maxStepFailures: 24
+    maxTaskFailures: 12
+    maxFailureClass: 12
+    maxFingerprint: 9
+    wallClockMinutes: 60
+    freshSessionEvery: 3
 taskTimeoutSec: 300
+recoveryBudget:
+  maxRunFailures: 40
+  maxStepFailures: 24
+  maxTaskFailures: 12
+  maxFailureClass: 12
+  maxFingerprint: 9
+  wallClockMinutes: 60
+  freshSessionEvery: 3
+phase: executing
+sessionRole: build

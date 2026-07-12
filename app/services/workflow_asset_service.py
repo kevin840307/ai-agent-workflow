@@ -247,8 +247,8 @@ PROMPT_PARAMS = [
     {"id": "test_plan", "label": "Test Plan", "description": "Content of output/test-plan.md.", "sample": "## Test Plan\n- TEST-001 Verify output."},
     {"id": "test_result", "label": "Test Result", "description": "Content of output/test-result.md.", "sample": "Status: FAIL\nAssertionError: expected file missing."},
     {"id": "external_validation_result", "label": "External Validation Result", "description": "Content of output/external-validation-result.md from a project-provided validation script.", "sample": "Status: PASS\nScript: validation.py"},
-    {"id": "build_result", "label": "Build Result", "description": "Content of output/build-result.md.", "sample": "FILE: app/main.py\nCONTENT:\n..."},
-    {"id": "auto_generation_result", "label": "Auto Generation Result", "description": "Content of output/auto-generation-result.md.", "sample": "Status: READY\nFILE: app/main.py\nCONTENT:\n..."},
+    {"id": "build_result", "label": "Build Result", "description": "Content of output/build-result.md.", "sample": "Status: READY\nChanged files:\n- app/main.py"},
+    {"id": "auto_generation_result", "label": "Auto Generation Result", "description": "Content of output/auto-generation-result.md.", "sample": "Status: READY\nDirect Agent edits:\n- app/main.py"},
     {"id": "python_gate_result", "label": "Python Gate Result", "description": "Content of output/python-gate-result.md.", "sample": "Status: PASS\nMode: pytest"},
     {"id": "final_review", "label": "Final Review", "description": "Content of output/final-review.md.", "sample": "Status: PASS"},
     {"id": "raw_spec", "label": "Raw Spec", "description": "Alias of output/spec.md for older templates.", "sample": "## Goal\nBuild the requested workflow feature."},
@@ -442,6 +442,16 @@ def normalize_contract(contract: dict[str, Any], *, fallback_id: str = "contract
         "review_mode": "reviewMode",
         "session_mode": "sessionMode",
         "agent_options": "agentOptions",
+        "session_role": "sessionRole",
+        "evidence_category": "evidenceCategory",
+        "risk_metadata": "riskMetadata",
+        "require_project_changes": "requireProjectChanges",
+        "artifact_contracts": "artifactContracts",
+        "artifact_category": "artifactCategory",
+        "artifact_role": "artifactRole",
+        "artifact_display_name": "artifactDisplayName",
+        "artifact_visibility": "artifactVisibility",
+        "artifact_display_order": "artifactDisplayOrder",
     }
     for old_key, new_key in aliases.items():
         if old_key in item and new_key not in item:
@@ -579,9 +589,20 @@ def apply_contract_to_step(step: dict[str, Any], contract: dict[str, Any]) -> di
         "retryEscalationStepKey": str,
         "approvalMessage": str,
         "sessionMode": str,
+        "phase": str,
+        "sessionRole": str,
+        "evidenceCategory": str,
+        "artifactCategory": str,
+        "artifactRole": str,
+        "artifactDisplayName": str,
+        "artifactVisibility": str,
     }
     for field, transform in direct_fields.items():
         _set_if_present(item, metadata, field, field, transform=transform)
+    if metadata.get("artifactDisplayOrder") is not None:
+        item["artifactDisplayOrder"] = int(metadata.get("artifactDisplayOrder") or 0)
+    if metadata.get("artifactContracts") is not None:
+        item["artifactContracts"] = metadata.get("artifactContracts")
 
     if metadata.get("thinkingLevel") is not None or metadata.get("thinking") is not None:
         item["thinkingLevel"] = normalize_thinking_level(
@@ -589,7 +610,7 @@ def apply_contract_to_step(step: dict[str, Any], contract: dict[str, Any]) -> di
             default="none",
         )
         item["thinking"] = thinking_enabled(item["thinkingLevel"])
-    for field in ["enabled", "keepSameSession", "injectFailureFeedback", "allowInteraction", "requiresValidationScript"]:
+    for field in ["enabled", "keepSameSession", "injectFailureFeedback", "allowInteraction", "requiresValidationScript", "recoverRepeatedFailure", "requireProjectChanges"]:
         _set_if_present(item, metadata, field, field, transform=_coerce_bool)
     for field in ["stopAfterFailures", "retryEscalationEvery"]:
         _set_if_present(item, metadata, field, field, transform=lambda value: int(value or 0))
@@ -640,6 +661,8 @@ def apply_contract_to_step(step: dict[str, Any], contract: dict[str, Any]) -> di
         item["sources"] = deepcopy(metadata["sources"])
     if isinstance(metadata.get("agentOptions"), dict):
         item["agentOptions"] = deepcopy(metadata["agentOptions"])
+    if isinstance(metadata.get("retryPolicy"), dict):
+        item["retryPolicy"] = deepcopy(metadata["retryPolicy"])
     if isinstance(metadata.get("fallbackValidationScripts"), list):
         item["fallbackValidationScripts"] = [str(value) for value in metadata["fallbackValidationScripts"]]
     elif isinstance(metadata.get("fallbackValidationScripts"), str):
@@ -825,6 +848,12 @@ def step_from_contract(contract: dict[str, Any], index: int = 0) -> dict[str, An
         "filename": output_file,
         "outputFile": output_file,
         "expectedFiles": [str(item) for item in outputs],
+        "artifactContracts": metadata.get("artifactContracts") or [],
+        "artifactCategory": str(metadata.get("artifactCategory") or ""),
+        "artifactRole": str(metadata.get("artifactRole") or ""),
+        "artifactDisplayName": str(metadata.get("artifactDisplayName") or ""),
+        "artifactVisibility": str(metadata.get("artifactVisibility") or ""),
+        "artifactDisplayOrder": int(metadata.get("artifactDisplayOrder") or 0),
         "functions": parse_function_refs(metadata.get("functions") if metadata.get("functions") is not None else metadata.get("function")),
         "function": (parse_function_refs(metadata.get("functions") if metadata.get("functions") is not None else metadata.get("function")) or [""])[0],
         "maxRetries": int(metadata.get("retry") or metadata.get("maxRetries") or 0),
@@ -848,6 +877,11 @@ def step_from_contract(contract: dict[str, Any], index: int = 0) -> dict[str, An
         "keepSameSession": _coerce_bool(metadata.get("keepSameSession", True)) and str(metadata.get("sessionMode") or "") not in {"isolated", "fresh", "new"},
         "injectFailureFeedback": bool(metadata.get("injectFailureFeedback", True)),
         "stopAfterFailures": int(metadata.get("stopAfterFailures") or 3),
+        "phase": str(metadata.get("phase") or ""),
+        "sessionRole": str(metadata.get("sessionRole") or ""),
+        "evidenceCategory": str(metadata.get("evidenceCategory") or ""),
+        "riskMetadata": metadata.get("riskMetadata") if isinstance(metadata.get("riskMetadata"), dict) else {},
+        "requireProjectChanges": _coerce_bool(metadata.get("requireProjectChanges", False)),
         "templateContent": "",
     }
     # Runtime behavior flags must survive contract -> workflow step normalization.
@@ -878,6 +912,8 @@ def step_from_contract(contract: dict[str, Any], index: int = 0) -> dict[str, An
         "dependsOnArtifacts",
         "retryEscalationEvery",
         "retryEscalationStepKey",
+        "recoverRepeatedFailure",
+        "retryPolicy",
     ):
         if field in metadata:
             step[field] = metadata[field]

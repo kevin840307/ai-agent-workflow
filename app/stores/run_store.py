@@ -4,6 +4,7 @@ from typing import Any, Awaitable, Callable, Protocol
 
 from app.core.paths import utc_now
 from app.workflow_engine.state_machine import append_transition, validate_transition
+from app.workflow_runtime.failure_normalizer import normalize_failure
 
 ReadFn = Callable[[], Awaitable[dict[str, Any]]]
 MutateFn = Callable[[Callable[[dict[str, Any]], Any]], Awaitable[Any]]
@@ -57,6 +58,7 @@ class FileRunStore:
             for run in data.get("runs", []):
                 if run.get("id") == run_id:
                     fn(run)
+                    run["state_version"] = int(run.get("state_version") or 0) + 1
                     return run
             return None
 
@@ -82,8 +84,10 @@ class FileRunStore:
                 run["ended_at"] = utc_now()
             if error is not None:
                 run["error"] = error
+                run["failure"] = normalize_failure(error, source="workflow", error_code=error_code)
             elif status in {"queued", "running", "done"}:
                 run["error"] = None
+                run["failure"] = None
             if error_code is not None:
                 run["error_code"] = error_code
             elif status in {"queued", "running", "done"}:

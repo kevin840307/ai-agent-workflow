@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import shutil
+import time
 from pathlib import Path
 from typing import Any
 
@@ -116,12 +117,16 @@ async def setup_smoke_test(
     import tempfile
     import uuid
 
+    from app.core.provider_slots import provider_execution_slot
     from app.security.agent_project_config import ensure_agent_project_configs
+    from app.security.redaction import redact_text
+    from app.workflow_runtime.capability_calibration import derive_capability_calibration, save_capability_calibration
     from app.workflow.agents import AgentRequest
     from app.workflow_runtime.agents import AgentManager
 
     status = await setup_status(project_path)
     steps: list[dict[str, Any]] = []
+    smoke_started = time.monotonic()
 
     project = Path(str((status.get("project") or {}).get("path") or project_path or runtime.ROOT)).expanduser()
     write_probe = project / ".ai-workflow" / f"setup-controller-probe-{uuid.uuid4().hex}.tmp"
@@ -175,37 +180,49 @@ async def setup_smoke_test(
             try:
                 manager = AgentManager()
                 agent = manager.resolve({"timeoutSec": 90, "reuseSession": False}, agent_name=selected_agent)
-                result = await agent.run_stream(
-                    AgentRequest(
-                        run_id=f"setup-smoke-{uuid.uuid4()}",
-                        step_key="setup_smoke",
-                        prompt=prompt,
-                        cwd=temp_project,
-                        session_id=None,
-                        metadata={"project_path": str(temp_project), "write_root": str(temp_project), "read_policy": "project_only"},
+                async with provider_execution_slot(selected_agent):
+                    result = await agent.run_stream(
+                        AgentRequest(
+                            run_id=f"setup-smoke-{uuid.uuid4()}",
+                            step_key="setup_smoke",
+                            prompt=prompt,
+                            cwd=temp_project,
+                            session_id=None,
+                            metadata={"project_path": str(temp_project), "write_root": str(temp_project), "read_policy": "project_only"},
+                        )
                     )
-                )
                 output_ok = "AIWF_SETUP_MODEL_OK" in str(result.output or "")
                 marker_ok = marker.is_file() and marker.read_text(encoding="utf-8-sig").strip() == "AIWF_SETUP_TOOL_OK"
                 steps.extend([
-                    {"id": "model_response", "status": "passed" if output_ok else "failed", "detail": str(result.output or "")[:300]},
+                    {"id": "model_response", "status": "passed" if output_ok else "failed", "detail": redact_text(str(result.output or ""))[:300]},
                     {"id": "session_create", "status": "passed", "detail": result.session_id or "fresh session completed"},
                     {"id": "tool_write", "status": "passed" if marker_ok else "failed", "detail": str(marker)},
                 ])
             except Exception as exc:
                 steps.extend([
-                    {"id": "model_response", "status": "failed", "detail": str(exc)[:500]},
-                    {"id": "session_create", "status": "failed", "detail": str(exc)[:500]},
+                    {"id": "model_response", "status": "failed", "detail": redact_text(str(exc))[:500]},
+                    {"id": "session_create", "status": "failed", "detail": redact_text(str(exc))[:500]},
                     {"id": "tool_write", "status": "failed", "detail": "agent probe did not complete"},
                 ])
 
     blocking = [step for step in steps if step["status"] == "failed"]
+    model_info = status.get("model") or {}
+    calibration = derive_capability_calibration(
+        agent_name=selected_agent,
+        model_name=str(model_info.get("name") or "") or None,
+        context_window=model_info.get("context_window"),
+        steps=steps,
+        duration_sec=time.monotonic() - smoke_started,
+    )
+    calibration_path = save_capability_calibration(calibration)
     return {
-        "schema": "aiwf.setup-smoke.v1",
+        "schema": "aiwf.setup-smoke.v2",
         "ready": not blocking,
         "agent": selected_agent,
         "isolated_agent_probe": True,
         "steps": steps,
+        "calibration": calibration,
+        "calibration_path": str(calibration_path),
         "recommendations": [f"修正 {step['id']}: {step.get('detail') or ''}" for step in blocking],
     }
 

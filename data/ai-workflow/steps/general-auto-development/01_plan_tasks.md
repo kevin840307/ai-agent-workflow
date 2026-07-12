@@ -30,6 +30,7 @@ Rules:
 - Use the minimum sufficient implementation. Do not add unrequested features, duplicate modules, extra examples, or documentation.
 - Respect the controller complexity profile and hard maximum task count. Tiny requests should normally be 1 task, or at most 2 when tests are separate.
 - If retry feedback exists, revise the plan/task prompts to address that concrete failure.
+- File scope fields are optional. Only include paths supported by current project evidence; never invent them.
 
 Output one JSON object only:
 {
@@ -41,7 +42,13 @@ Output one JSON object only:
       "title": "short task title",
       "kind": "implementation|test|repair|assembly",
       "prompt": "short human CLI instruction for Qwen/OpenCode",
-      "acceptance": ["concrete acceptance item"]
+      "acceptance": ["concrete acceptance item"],
+      "scope": ["optional relative path or glob"],
+      "mustChange": ["optional relative path or glob"],
+      "mustNotChange": ["optional protected relative path or glob"],
+      "validation": ["optional project-native validation expectation"],
+      "dependencies": ["optional TASK-xxx dependency"],
+      "risk": "low|normal|medium|high"
     }
   ]
 }

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import argparse
 import json
 import shutil
 import sys
@@ -45,6 +46,9 @@ def _fake_run(project: Path, run_id: str, status: str = "running") -> dict:
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser(description="Simulate interrupted-run recovery and stale-lock cleanup.")
+    parser.add_argument("--output", default=str(ROOT / "reports" / "crash-recovery-test"))
+    args = parser.parse_args()
     tmp = Path(tempfile.mkdtemp(prefix="aiwf-crash-recovery-"))
     try:
         project = tmp / "project"
@@ -67,7 +71,7 @@ def main() -> int:
             "cleanup": cleanup,
             "consistency": consistency,
         }
-        out = ROOT / "reports" / "crash-recovery-test"
+        out = Path(args.output).expanduser().resolve()
         out.mkdir(parents=True, exist_ok=True)
         (out / "crash-recovery-test-report.json").write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
         print(json.dumps(report, indent=2, ensure_ascii=False))

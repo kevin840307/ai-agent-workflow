@@ -97,25 +97,25 @@ class StaticArchitectureContractTests(unittest.TestCase):
         styles = (ROOT / "static/styles.css").read_text(encoding="utf-8")
         html = (ROOT / "static/index.html").read_text(encoding="utf-8")
         tab_count = len(re.findall(r'class="tab(?: active)?" data-tab=', html))
-        self.assertEqual(tab_count, 3)
-        self.assertNotIn("grid-template-columns: repeat(4, 1fr)", css)
+        self.assertEqual(tab_count, 2)
+        self.assertIn(".run-center-tabs { grid-template-columns: repeat(2, minmax(0, 1fr)); }", css)
         self.assertIn(".run-center-tabs", css)
         self.assertNotIn("var(--border)", css + styles)
         self.assertIn("Run detail stability / overflow hardening", css)
 
     def test_workflow_console_tabs_do_not_consume_panel_space(self):
         layout_css = (ROOT / "static/css/layout.css").read_text(encoding="utf-8")
-        self.assertIn("grid-template-rows: auto auto minmax(0, 1fr)", layout_css)
+        self.assertIn("grid-template-rows: auto auto auto minmax(0, 1fr)", layout_css)
         self.assertNotIn("grid-template-rows: auto 1fr", layout_css)
         self.assertRegex(layout_css, r"\.details\s*\{[^}]*overflow:\s*hidden;")
 
 
     def test_workflow_runner_inactive_panels_are_hidden_before_js_loads(self):
         html = (ROOT / "static/index.html").read_text(encoding="utf-8")
-        for panel_id in ["changesPanel", "validationPanel"]:
+        for panel_id in ["validationPanel"]:
             with self.subTest(panel_id=panel_id):
                 self.assertRegex(html, rf'<section id="{panel_id}" class="panel" hidden>')
-        for panel_id in ["diagnosticAgent", "diagnosticLogs", "diagnosticArtifacts", "diagnosticPatch", "diagnosticRepair"]:
+        for panel_id in ["diagnosticAgent", "diagnosticLogs", "diagnosticArtifacts", "diagnosticRepair"]:
             with self.subTest(panel_id=panel_id):
                 self.assertRegex(html, rf'<section id="{panel_id}" class="diagnostic-section" hidden>')
 
@@ -129,7 +129,7 @@ class StaticArchitectureContractTests(unittest.TestCase):
                 continue
             source = path.read_text(encoding="utf-8")
             versions.update(re.findall(r"\?v=([A-Za-z0-9_-]+)", source))
-        self.assertEqual(versions, {"20260711-ui-v12"})
+        self.assertEqual(versions, {"20260712-ui-v22"})
 
 
     def test_workflow_designer_sidebar_uses_shared_workflow_scroll(self):
@@ -171,10 +171,12 @@ class StaticArchitectureContractTests(unittest.TestCase):
     def test_bilingual_documentation_entrypoints_exist(self):
         expected = [
             "README.md",
-            "AGENT_INSTALLATION.md",
-            "ADAPTIVE_AUTO_WORKFLOW.md",
-            "WORKFLOW_METADATA.md",
-            "FRONTEND_STRUCTURE.md",
+            "QUICKSTART.md",
+            "USER_GUIDE.md",
+            "VALIDATION.md",
+            "ARCHITECTURE.md",
+            "OPERATIONS.md",
+            "EXTENDING.md",
             "TESTING.md",
         ]
         for rel in expected:
@@ -182,7 +184,9 @@ class StaticArchitectureContractTests(unittest.TestCase):
                 self.assertTrue((ROOT / "doc" / "en" / rel).exists())
                 self.assertTrue((ROOT / "doc" / "zh-TW" / rel).exists())
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
-        self.assertLess(readme.index("# Qwen Workflow Web"), readme.index("# 中文簡介"))
+        self.assertIn("Local AI Engineering Workflow", readme)
+        self.assertIn("doc/en/README.md", readme)
+        self.assertIn("doc/zh-TW/README.md", readme)
 
 
     def test_workflow_designer_floating_panel_uses_icon_only_actions(self):
@@ -226,7 +230,7 @@ class StaticArchitectureContractTests(unittest.TestCase):
         self.assertIn('key: "current_task"', source)
 
     def test_static_structure_document_mentions_designer_modules(self):
-        source = (ROOT / "doc/FRONTEND_STRUCTURE.md").read_text(encoding="utf-8")
+        source = (ROOT / "doc/en/ARCHITECTURE.md").read_text(encoding="utf-8")
         for text in [
             "workflow-designer.js             # thin page entry",
             "workflow-designer/",

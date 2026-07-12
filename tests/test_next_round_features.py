@@ -34,7 +34,8 @@ class NextRoundFeatureTests(unittest.TestCase):
         with TestClient(app) as client:
             template = client.get("/api/regression-workflow/template")
             self.assertEqual(template.status_code, 200, template.text)
-            self.assertEqual(template.json()["workflow_id"], "regression-test-case-generation")
+            self.assertEqual(template.json()["template_id"], "regression-test-case-generation")
+            self.assertEqual(template.json()["workflow_id"], "general-auto-development")
             self.assertIn("runtime-test-data.sql", template.json()["outputs"])
 
             repair = client.post("/api/small-model-repair-policy", json={"message": "No files changed under Project Path", "retry_count": 3})
@@ -44,10 +45,10 @@ class NextRoundFeatureTests(unittest.TestCase):
 
             matrix = client.post(
                 "/api/real-agent-matrix",
-                json={"agents": ["qwen"], "workflows": ["regression-test-case-generation"], "cases": ["sort"], "mode": "self-prompt-test"},
+                json={"agents": ["qwen"], "workflows": ["general-auto-development"], "cases": ["sort"], "mode": "self-prompt-test"},
             )
             self.assertEqual(matrix.status_code, 200, matrix.text)
-            self.assertEqual(matrix.json()["schema"], "aiwf.real-agent-matrix.v2")
+            self.assertEqual(matrix.json()["schema"], "aiwf.real-agent-matrix.v4")
             self.assertIn("--self-prompt-test", matrix.json()["rows"][0]["command"])
 
     def test_product_workflow_runs_and_writes_compact_artifact_index(self) -> None:
@@ -123,7 +124,12 @@ class NextRoundFeatureTests(unittest.TestCase):
             timeout=30,
         )
         self.assertEqual(proc.returncode, 0, proc.stderr + proc.stdout)
-        self.assertIn('"schema": "aiwf.real-agent-matrix.v2"', proc.stdout)
+        self.assertIn('"schema": "aiwf.real-agent-matrix.v4"', proc.stdout)
+        matrix_source = Path("scripts/run_real_agent_matrix.py").read_text(encoding="utf-8")
+        self.assertIn('parser.add_argument("--resume"', matrix_source)
+        self.assertIn('existing.get("schema") == "aiwf.real-agent-acceptance-cell.v1"', matrix_source)
+        self.assertIn('existing.get("run_status") == "done"', matrix_source)
+        self.assertIn('external_validation_passed', matrix_source)
 
 
 if __name__ == "__main__":

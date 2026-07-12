@@ -14,6 +14,7 @@ from .run_console import build_run_console
 from .patch_approval import write_patch_artifacts
 from .versioning import build_version_metadata
 from .run_artifacts import write_standard_run_artifacts
+from .step_metadata import is_validation_step, step_phase
 
 
 def write_run_trace_artifacts(run: dict[str, Any], run_dir: Path) -> None:
@@ -212,15 +213,11 @@ def _aggregate_status(steps: list[dict[str, Any]]) -> str:
 
 
 def _is_validation_step(step: dict[str, Any]) -> bool:
-    key = str(step.get("key") or "").lower()
-    typ = str(step.get("type") or "").lower()
-    return "validation" in key or "gate" in key or typ in {"validation", "gate", "test"}
+    return is_validation_step(step)
 
 
 def _is_review_step(step: dict[str, Any]) -> bool:
-    key = str(step.get("key") or "").lower()
-    typ = str(step.get("type") or "").lower()
-    return "review" in key or typ == "review"
+    return step_phase(step) == "reviewing"
 
 
 def _step_changed_files(key: str, log_text: str) -> list[str]:
@@ -305,14 +302,10 @@ def _file_chars(path: Path) -> int:
 def _project_changes_from_log(log_text: str) -> list[str]:
     changes: list[str] = []
     patterns = [
-        r"build: materialized files:\s*(.+)",
-        r"generate_tests: materialized test files:\s*(.+)",
         r"auto_generation(?:/[^:]+)?: accepted direct agent edit\(s\):\s*(.+)",
         r"build(?:/[^:]+)?: accepted direct agent edit\(s\):\s*(.+)",
         r"build(?:/[^:]+)?: accepted direct agent production edit\(s\):\s*(.+)",
         r"generate_tests(?:/[^:]+)?: accepted project test file\(s\):\s*(.+)",
-        r"prepare_project: architecture\.md updated",
-        r"prepare_project: wrote architecture\.md",
     ]
     for pattern in patterns:
         for match in re.finditer(pattern, log_text):

@@ -1,0 +1,703 @@
+{
+  "schema": "aiwf.real-agent-matrix.v4",
+  "mode": "plan",
+  "agents": [
+    "qwen",
+    "opencode"
+  ],
+  "workflows": [
+    "general-auto-development",
+    "adaptive-auto-workflow"
+  ],
+  "cases": [
+    "sort",
+    "config-loader",
+    "readme",
+    "code-with-validation",
+    "simple-code-generation"
+  ],
+  "rows": [
+    {
+      "agent": "qwen",
+      "workflow_id": "general-auto-development",
+      "case_id": "sort",
+      "mode": "plan",
+      "status": "planned",
+      "output": "reports/real-agent-matrix/qwen-general-auto-development-sort",
+      "command": "python scripts/run_real_agent_smoke.py --agent qwen --workflow general-auto-development --case sort --output reports/real-agent-matrix/qwen-general-auto-development-sort",
+      "argv": [
+        "python",
+        "scripts/run_real_agent_smoke.py",
+        "--agent",
+        "qwen",
+        "--workflow",
+        "general-auto-development",
+        "--case",
+        "sort",
+        "--output",
+        "reports/real-agent-matrix/qwen-general-auto-development-sort"
+      ],
+      "acceptance": {
+        "run_status": "done",
+        "external_validation": "passed",
+        "project_files_generated_by_agent": true,
+        "workspace_isolation": true,
+        "scope_violation_count": 0
+      }
+    },
+    {
+      "agent": "qwen",
+      "workflow_id": "general-auto-development",
+      "case_id": "config-loader",
+      "mode": "plan",
+      "status": "planned",
+      "output": "reports/real-agent-matrix/qwen-general-auto-development-config-loader",
+      "command": "python scripts/run_real_agent_smoke.py --agent qwen --workflow general-auto-development --case config-loader --output reports/real-agent-matrix/qwen-general-auto-development-config-loader",
+      "argv": [
+        "python",
+        "scripts/run_real_agent_smoke.py",
+        "--agent",
+        "qwen",
+        "--workflow",
+        "general-auto-development",
+        "--case",
+        "config-loader",
+        "--output",
+        "reports/real-agent-matrix/qwen-general-auto-development-config-loader"
+      ],
+      "acceptance": {
+        "run_status": "done",
+        "external_validation": "passed",
+        "project_files_generated_by_agent": true,
+        "workspace_isolation": true,
+        "scope_violation_count": 0
+      }
+    },
+    {
+      "agent": "qwen",
+      "workflow_id": "general-auto-development",
+      "case_id": "readme",
+      "mode": "plan",
+      "status": "planned",
+      "output": "reports/real-agent-matrix/qwen-general-auto-development-readme",
+      "command": "python scripts/run_real_agent_smoke.py --agent qwen --workflow general-auto-development --case readme --output reports/real-agent-matrix/qwen-general-auto-development-readme",
+      "argv": [
+        "python",
+        "scripts/run_real_agent_smoke.py",
+        "--agent",
+        "qwen",
+        "--workflow",
+        "general-auto-development",
+        "--case",
+        "readme",
+        "--output",
+        "reports/real-agent-matrix/qwen-general-auto-development-readme"
+      ],
+      "acceptance": {
+        "run_status": "done",
+        "external_validation": "passed",
+        "project_files_generated_by_agent": true,
+        "workspace_isolation": true,
+        "scope_violation_count": 0
+      }
+    },
+    {
+      "agent": "qwen",
+      "workflow_id": "general-auto-development",
+      "case_id": "code-with-validation",
+      "mode": "plan",
+      "status": "planned",
+      "output": "reports/real-agent-matrix/qwen-general-auto-development-code-with-validation",
+      "command": "python scripts/run_real_agent_smoke.py --agent qwen --workflow general-auto-development --case code-with-validation --output reports/real-agent-matrix/qwen-general-auto-development-code-with-validation",
+      "argv": [
+        "python",
+        "scripts/run_real_agent_smoke.py",
+        "--agent",
+        "qwen",
+        "--workflow",
+        "general-auto-development",
+        "--case",
+        "code-with-validation",
+        "--output",
+        "reports/real-agent-matrix/qwen-general-auto-development-code-with-validation"
+      ],
+      "acceptance": {
+        "run_status": "done",
+        "external_validation": "passed",
+        "project_files_generated_by_agent": true,
+        "workspace_isolation": true,
+        "scope_violation_count": 0
+      }
+    },
+    {
+      "agent": "qwen",
+      "workflow_id": "general-auto-development",
+      "case_id": "simple-code-generation",
+      "mode": "plan",
+      "status": "planned",
+      "output": "reports/real-agent-matrix/qwen-general-auto-development-simple-code-generation",
+      "command": "python scripts/run_real_agent_smoke.py --agent qwen --workflow general-auto-development --case simple-code-generation --output reports/real-agent-matrix/qwen-general-auto-development-simple-code-generation",
+      "argv": [
+        "python",
+        "scripts/run_real_agent_smoke.py",
+        "--agent",
+        "qwen",
+        "--workflow",
+        "general-auto-development",
+        "--case",
+        "simple-code-generation",
+        "--output",
+        "reports/real-agent-matrix/qwen-general-auto-development-simple-code-generation"
+      ],
+      "acceptance": {
+        "run_status": "done",
+        "external_validation": "passed",
+        "project_files_generated_by_agent": true,
+        "workspace_isolation": true,
+        "scope_violation_count": 0
+      }
+    },
+    {
+      "agent": "qwen",
+      "workflow_id": "adaptive-auto-workflow",
+      "case_id": "sort",
+      "mode": "plan",
+      "status": "planned",
+      "output": "reports/real-agent-matrix/qwen-adaptive-auto-workflow-sort",
+      "command": "python scripts/run_real_agent_smoke.py --agent qwen --workflow adaptive-auto-workflow --case sort --output reports/real-agent-matrix/qwen-adaptive-auto-workflow-sort",
+      "argv": [
+        "python",
+        "scripts/run_real_agent_smoke.py",
+        "--agent",
+        "qwen",
+        "--workflow",
+        "adaptive-auto-workflow",
+        "--case",
+        "sort",
+        "--output",
+        "reports/real-agent-matrix/qwen-adaptive-auto-workflow-sort"
+      ],
+      "acceptance": {
+        "run_status": "done",
+        "external_validation": "passed",
+        "project_files_generated_by_agent": true,
+        "workspace_isolation": true,
+        "scope_violation_count": 0
+      }
+    },
+    {
+      "agent": "qwen",
+      "workflow_id": "adaptive-auto-workflow",
+      "case_id": "config-loader",
+      "mode": "plan",
+      "status": "planned",
+      "output": "reports/real-agent-matrix/qwen-adaptive-auto-workflow-config-loader",
+      "command": "python scripts/run_real_agent_smoke.py --agent qwen --workflow adaptive-auto-workflow --case config-loader --output reports/real-agent-matrix/qwen-adaptive-auto-workflow-config-loader",
+      "argv": [
+        "python",
+        "scripts/run_real_agent_smoke.py",
+        "--agent",
+        "qwen",
+        "--workflow",
+        "adaptive-auto-workflow",
+        "--case",
+        "config-loader",
+        "--output",
+        "reports/real-agent-matrix/qwen-adaptive-auto-workflow-config-loader"
+      ],
+      "acceptance": {
+        "run_status": "done",
+        "external_validation": "passed",
+        "project_files_generated_by_agent": true,
+        "workspace_isolation": true,
+        "scope_violation_count": 0
+      }
+    },
+    {
+      "agent": "qwen",
+      "workflow_id": "adaptive-auto-workflow",
+      "case_id": "readme",
+      "mode": "plan",
+      "status": "planned",
+      "output": "reports/real-agent-matrix/qwen-adaptive-auto-workflow-readme",
+      "command": "python scripts/run_real_agent_smoke.py --agent qwen --workflow adaptive-auto-workflow --case readme --output reports/real-agent-matrix/qwen-adaptive-auto-workflow-readme",
+      "argv": [
+        "python",
+        "scripts/run_real_agent_smoke.py",
+        "--agent",
+        "qwen",
+        "--workflow",
+        "adaptive-auto-workflow",
+        "--case",
+        "readme",
+        "--output",
+        "reports/real-agent-matrix/qwen-adaptive-auto-workflow-readme"
+      ],
+      "acceptance": {
+        "run_status": "done",
+        "external_validation": "passed",
+        "project_files_generated_by_agent": true,
+        "workspace_isolation": true,
+        "scope_violation_count": 0
+      }
+    },
+    {
+      "agent": "qwen",
+      "workflow_id": "adaptive-auto-workflow",
+      "case_id": "code-with-validation",
+      "mode": "plan",
+      "status": "planned",
+      "output": "reports/real-agent-matrix/qwen-adaptive-auto-workflow-code-with-validation",
+      "command": "python scripts/run_real_agent_smoke.py --agent qwen --workflow adaptive-auto-workflow --case code-with-validation --output reports/real-agent-matrix/qwen-adaptive-auto-workflow-code-with-validation",
+      "argv": [
+        "python",
+        "scripts/run_real_agent_smoke.py",
+        "--agent",
+        "qwen",
+        "--workflow",
+        "adaptive-auto-workflow",
+        "--case",
+        "code-with-validation",
+        "--output",
+        "reports/real-agent-matrix/qwen-adaptive-auto-workflow-code-with-validation"
+      ],
+      "acceptance": {
+        "run_status": "done",
+        "external_validation": "passed",
+        "project_files_generated_by_agent": true,
+        "workspace_isolation": true,
+        "scope_violation_count": 0
+      }
+    },
+    {
+      "agent": "qwen",
+      "workflow_id": "adaptive-auto-workflow",
+      "case_id": "simple-code-generation",
+      "mode": "plan",
+      "status": "planned",
+      "output": "reports/real-agent-matrix/qwen-adaptive-auto-workflow-simple-code-generation",
+      "command": "python scripts/run_real_agent_smoke.py --agent qwen --workflow adaptive-auto-workflow --case simple-code-generation --output reports/real-agent-matrix/qwen-adaptive-auto-workflow-simple-code-generation",
+      "argv": [
+        "python",
+        "scripts/run_real_agent_smoke.py",
+        "--agent",
+        "qwen",
+        "--workflow",
+        "adaptive-auto-workflow",
+        "--case",
+        "simple-code-generation",
+        "--output",
+        "reports/real-agent-matrix/qwen-adaptive-auto-workflow-simple-code-generation"
+      ],
+      "acceptance": {
+        "run_status": "done",
+        "external_validation": "passed",
+        "project_files_generated_by_agent": true,
+        "workspace_isolation": true,
+        "scope_violation_count": 0
+      }
+    },
+    {
+      "agent": "opencode",
+      "workflow_id": "general-auto-development",
+      "case_id": "sort",
+      "mode": "plan",
+      "status": "planned",
+      "output": "reports/real-agent-matrix/opencode-general-auto-development-sort",
+      "command": "python scripts/run_real_agent_smoke.py --agent opencode --workflow general-auto-development --case sort --output reports/real-agent-matrix/opencode-general-auto-development-sort",
+      "argv": [
+        "python",
+        "scripts/run_real_agent_smoke.py",
+        "--agent",
+        "opencode",
+        "--workflow",
+        "general-auto-development",
+        "--case",
+        "sort",
+        "--output",
+        "reports/real-agent-matrix/opencode-general-auto-development-sort"
+      ],
+      "acceptance": {
+        "run_status": "done",
+        "external_validation": "passed",
+        "project_files_generated_by_agent": true,
+        "workspace_isolation": true,
+        "scope_violation_count": 0
+      }
+    },
+    {
+      "agent": "opencode",
+      "workflow_id": "general-auto-development",
+      "case_id": "config-loader",
+      "mode": "plan",
+      "status": "planned",
+      "output": "reports/real-agent-matrix/opencode-general-auto-development-config-loader",
+      "command": "python scripts/run_real_agent_smoke.py --agent opencode --workflow general-auto-development --case config-loader --output reports/real-agent-matrix/opencode-general-auto-development-config-loader",
+      "argv": [
+        "python",
+        "scripts/run_real_agent_smoke.py",
+        "--agent",
+        "opencode",
+        "--workflow",
+        "general-auto-development",
+        "--case",
+        "config-loader",
+        "--output",
+        "reports/real-agent-matrix/opencode-general-auto-development-config-loader"
+      ],
+      "acceptance": {
+        "run_status": "done",
+        "external_validation": "passed",
+        "project_files_generated_by_agent": true,
+        "workspace_isolation": true,
+        "scope_violation_count": 0
+      }
+    },
+    {
+      "agent": "opencode",
+      "workflow_id": "general-auto-development",
+      "case_id": "readme",
+      "mode": "plan",
+      "status": "planned",
+      "output": "reports/real-agent-matrix/opencode-general-auto-development-readme",
+      "command": "python scripts/run_real_agent_smoke.py --agent opencode --workflow general-auto-development --case readme --output reports/real-agent-matrix/opencode-general-auto-development-readme",
+      "argv": [
+        "python",
+        "scripts/run_real_agent_smoke.py",
+        "--agent",
+        "opencode",
+        "--workflow",
+        "general-auto-development",
+        "--case",
+        "readme",
+        "--output",
+        "reports/real-agent-matrix/opencode-general-auto-development-readme"
+      ],
+      "acceptance": {
+        "run_status": "done",
+        "external_validation": "passed",
+        "project_files_generated_by_agent": true,
+        "workspace_isolation": true,
+        "scope_violation_count": 0
+      }
+    },
+    {
+      "agent": "opencode",
+      "workflow_id": "general-auto-development",
+      "case_id": "code-with-validation",
+      "mode": "plan",
+      "status": "planned",
+      "output": "reports/real-agent-matrix/opencode-general-auto-development-code-with-validation",
+      "command": "python scripts/run_real_agent_smoke.py --agent opencode --workflow general-auto-development --case code-with-validation --output reports/real-agent-matrix/opencode-general-auto-development-code-with-validation",
+      "argv": [
+        "python",
+        "scripts/run_real_agent_smoke.py",
+        "--agent",
+        "opencode",
+        "--workflow",
+        "general-auto-development",
+        "--case",
+        "code-with-validation",
+        "--output",
+        "reports/real-agent-matrix/opencode-general-auto-development-code-with-validation"
+      ],
+      "acceptance": {
+        "run_status": "done",
+        "external_validation": "passed",
+        "project_files_generated_by_agent": true,
+        "workspace_isolation": true,
+        "scope_violation_count": 0
+      }
+    },
+    {
+      "agent": "opencode",
+      "workflow_id": "general-auto-development",
+      "case_id": "simple-code-generation",
+      "mode": "plan",
+      "status": "planned",
+      "output": "reports/real-agent-matrix/opencode-general-auto-development-simple-code-generation",
+      "command": "python scripts/run_real_agent_smoke.py --agent opencode --workflow general-auto-development --case simple-code-generation --output reports/real-agent-matrix/opencode-general-auto-development-simple-code-generation",
+      "argv": [
+        "python",
+        "scripts/run_real_agent_smoke.py",
+        "--agent",
+        "opencode",
+        "--workflow",
+        "general-auto-development",
+        "--case",
+        "simple-code-generation",
+        "--output",
+        "reports/real-agent-matrix/opencode-general-auto-development-simple-code-generation"
+      ],
+      "acceptance": {
+        "run_status": "done",
+        "external_validation": "passed",
+        "project_files_generated_by_agent": true,
+        "workspace_isolation": true,
+        "scope_violation_count": 0
+      }
+    },
+    {
+      "agent": "opencode",
+      "workflow_id": "adaptive-auto-workflow",
+      "case_id": "sort",
+      "mode": "plan",
+      "status": "planned",
+      "output": "reports/real-agent-matrix/opencode-adaptive-auto-workflow-sort",
+      "command": "python scripts/run_real_agent_smoke.py --agent opencode --workflow adaptive-auto-workflow --case sort --output reports/real-agent-matrix/opencode-adaptive-auto-workflow-sort",
+      "argv": [
+        "python",
+        "scripts/run_real_agent_smoke.py",
+        "--agent",
+        "opencode",
+        "--workflow",
+        "adaptive-auto-workflow",
+        "--case",
+        "sort",
+        "--output",
+        "reports/real-agent-matrix/opencode-adaptive-auto-workflow-sort"
+      ],
+      "acceptance": {
+        "run_status": "done",
+        "external_validation": "passed",
+        "project_files_generated_by_agent": true,
+        "workspace_isolation": true,
+        "scope_violation_count": 0
+      }
+    },
+    {
+      "agent": "opencode",
+      "workflow_id": "adaptive-auto-workflow",
+      "case_id": "config-loader",
+      "mode": "plan",
+      "status": "planned",
+      "output": "reports/real-agent-matrix/opencode-adaptive-auto-workflow-config-loader",
+      "command": "python scripts/run_real_agent_smoke.py --agent opencode --workflow adaptive-auto-workflow --case config-loader --output reports/real-agent-matrix/opencode-adaptive-auto-workflow-config-loader",
+      "argv": [
+        "python",
+        "scripts/run_real_agent_smoke.py",
+        "--agent",
+        "opencode",
+        "--workflow",
+        "adaptive-auto-workflow",
+        "--case",
+        "config-loader",
+        "--output",
+        "reports/real-agent-matrix/opencode-adaptive-auto-workflow-config-loader"
+      ],
+      "acceptance": {
+        "run_status": "done",
+        "external_validation": "passed",
+        "project_files_generated_by_agent": true,
+        "workspace_isolation": true,
+        "scope_violation_count": 0
+      }
+    },
+    {
+      "agent": "opencode",
+      "workflow_id": "adaptive-auto-workflow",
+      "case_id": "readme",
+      "mode": "plan",
+      "status": "planned",
+      "output": "reports/real-agent-matrix/opencode-adaptive-auto-workflow-readme",
+      "command": "python scripts/run_real_agent_smoke.py --agent opencode --workflow adaptive-auto-workflow --case readme --output reports/real-agent-matrix/opencode-adaptive-auto-workflow-readme",
+      "argv": [
+        "python",
+        "scripts/run_real_agent_smoke.py",
+        "--agent",
+        "opencode",
+        "--workflow",
+        "adaptive-auto-workflow",
+        "--case",
+        "readme",
+        "--output",
+        "reports/real-agent-matrix/opencode-adaptive-auto-workflow-readme"
+      ],
+      "acceptance": {
+        "run_status": "done",
+        "external_validation": "passed",
+        "project_files_generated_by_agent": true,
+        "workspace_isolation": true,
+        "scope_violation_count": 0
+      }
+    },
+    {
+      "agent": "opencode",
+      "workflow_id": "adaptive-auto-workflow",
+      "case_id": "code-with-validation",
+      "mode": "plan",
+      "status": "planned",
+      "output": "reports/real-agent-matrix/opencode-adaptive-auto-workflow-code-with-validation",
+      "command": "python scripts/run_real_agent_smoke.py --agent opencode --workflow adaptive-auto-workflow --case code-with-validation --output reports/real-agent-matrix/opencode-adaptive-auto-workflow-code-with-validation",
+      "argv": [
+        "python",
+        "scripts/run_real_agent_smoke.py",
+        "--agent",
+        "opencode",
+        "--workflow",
+        "adaptive-auto-workflow",
+        "--case",
+        "code-with-validation",
+        "--output",
+        "reports/real-agent-matrix/opencode-adaptive-auto-workflow-code-with-validation"
+      ],
+      "acceptance": {
+        "run_status": "done",
+        "external_validation": "passed",
+        "project_files_generated_by_agent": true,
+        "workspace_isolation": true,
+        "scope_violation_count": 0
+      }
+    },
+    {
+      "agent": "opencode",
+      "workflow_id": "adaptive-auto-workflow",
+      "case_id": "simple-code-generation",
+      "mode": "plan",
+      "status": "planned",
+      "output": "reports/real-agent-matrix/opencode-adaptive-auto-workflow-simple-code-generation",
+      "command": "python scripts/run_real_agent_smoke.py --agent opencode --workflow adaptive-auto-workflow --case simple-code-generation --output reports/real-agent-matrix/opencode-adaptive-auto-workflow-simple-code-generation",
+      "argv": [
+        "python",
+        "scripts/run_real_agent_smoke.py",
+        "--agent",
+        "opencode",
+        "--workflow",
+        "adaptive-auto-workflow",
+        "--case",
+        "simple-code-generation",
+        "--output",
+        "reports/real-agent-matrix/opencode-adaptive-auto-workflow-simple-code-generation"
+      ],
+      "acceptance": {
+        "run_status": "done",
+        "external_validation": "passed",
+        "project_files_generated_by_agent": true,
+        "workspace_isolation": true,
+        "scope_violation_count": 0
+      }
+    }
+  ],
+  "count": 20,
+  "certification": {
+    "scenarios": [
+      {
+        "id": "CERT-001",
+        "title": "Single-file addition",
+        "layer": "real-agent",
+        "executable_case": "sort"
+      },
+      {
+        "id": "CERT-002",
+        "title": "Existing bug repair",
+        "layer": "benchmark",
+        "benchmark_id": "BENCH-003"
+      },
+      {
+        "id": "CERT-003",
+        "title": "Multi-file feature",
+        "layer": "benchmark",
+        "benchmark_id": "BENCH-002"
+      },
+      {
+        "id": "CERT-004",
+        "title": "Test-only update",
+        "layer": "real-agent",
+        "executable_case": "code-with-validation"
+      },
+      {
+        "id": "CERT-005",
+        "title": "Validation failure repair",
+        "layer": "benchmark",
+        "benchmark_id": "BENCH-011"
+      },
+      {
+        "id": "CERT-006",
+        "title": "No-file-change recovery",
+        "layer": "benchmark",
+        "benchmark_id": "BENCH-012"
+      },
+      {
+        "id": "CERT-007",
+        "title": "Transient agent interruption",
+        "layer": "benchmark",
+        "benchmark_id": "BENCH-005"
+      },
+      {
+        "id": "CERT-008",
+        "title": "Lost session recovery",
+        "layer": "benchmark",
+        "benchmark_id": "BENCH-006"
+      },
+      {
+        "id": "CERT-009",
+        "title": "Context handoff",
+        "layer": "benchmark",
+        "benchmark_id": "BENCH-007"
+      },
+      {
+        "id": "CERT-010",
+        "title": "Large legacy project local change",
+        "layer": "benchmark",
+        "benchmark_id": "BENCH-013"
+      },
+      {
+        "id": "CERT-011",
+        "title": "Multi-language validation",
+        "layer": "benchmark",
+        "benchmark_id": "BENCH-014"
+      },
+      {
+        "id": "CERT-012",
+        "title": "Protected-file and scope guard",
+        "layer": "benchmark",
+        "benchmark_id": "BENCH-010"
+      }
+    ],
+    "scenario_count": 12,
+    "quality_thresholds": {
+      "success_after_repair_min": 0.9,
+      "manual_intervention_max": 0.1,
+      "scope_violation_max": 0,
+      "external_validation_pass_rate_min": 0.95
+    },
+    "metrics": {
+      "executed": 0,
+      "success_at_1": null,
+      "success_after_repair": null,
+      "external_validation_pass_rate": null,
+      "no_file_change_rate": null,
+      "manual_intervention_rate": null,
+      "scope_violation_count": 0,
+      "average_retries": null,
+      "average_duration_seconds": null,
+      "context_handoff_count": 0,
+      "fresh_session_count": 0,
+      "certified": null
+    }
+  },
+  "summary": {
+    "planned": 20,
+    "real_execution_requires_local_agent_cli": true,
+    "safe_modes": [
+      "plan",
+      "dry-run",
+      "self-prompt-test"
+    ],
+    "execution_modes": [
+      "real"
+    ],
+    "entrypoints": [
+      "web-api",
+      "python-cli",
+      "/wf",
+      "/wstep"
+    ],
+    "shared_core": [
+      "AgentManager",
+      "AgentExecutionService",
+      "AgentSessionManager",
+      "WorkflowExecutor"
+    ]
+  }
+}

@@ -38,12 +38,12 @@ def test_model_capability_profiles_change_prompt_and_task_limits() -> None:
 
 
 def test_risk_engine_selects_review_and_dry_run_for_sensitive_work() -> None:
-    high = assess_risk("Modify authentication and database migration code")
+    high = assess_risk("Arbitrary requirement text", risk_metadata={"level": "high", "operations": ["migration"], "reasons": ["Declared by workflow contract"]})
     assert high["level"] in {"high", "critical"}
     assert high["recommended"]["patch_mode"] in {"review", "dry_run"}
     assert high["approval_required"] is True
     assert should_pause_for_approval(high, "review_before_apply", "before_apply") is True
-    critical = assess_risk("Drop table from production database and rotate private key")
+    critical = assess_risk("Different arbitrary text", risk_metadata={"level": "critical", "operations": ["delete", "credential_change"]})
     assert critical["level"] == "critical"
     assert critical["recommended"]["approval_mode"] == "plan_and_patch_only"
 
@@ -52,11 +52,11 @@ def test_scope_delta_reports_unrequested_docs_and_examples() -> None:
     result = analyze_scope_delta(
         "Create a bubble_sort function",
         file_changes=[{"path": "bubble_sort.py"}, {"path": "README.md"}, {"path": "example.py"}],
-        planned_tasks=[{"id": "TASK-001"}],
+        planned_tasks=[{"id": "TASK-001", "expected_files": ["bubble_sort.py"]}],
     )
     assert result["status"] == "warning"
     assert result["unrequested_count"] == 2
-    assert {item["kind"] for item in result["expansions"]} >= {"unrequested_documentation", "unrequested_example"}
+    assert {item["kind"] for item in result["expansions"]} == {"outside_declared_contract"}
 
 
 def test_context_handoff_is_structured_bounded_and_written(tmp_path: Path) -> None:
@@ -144,7 +144,7 @@ def test_agent_adapter_capabilities_and_error_normalization(monkeypatch: pytest.
 
 def test_release_manifest_and_upgrade_readiness(tmp_path: Path) -> None:
     manifest = version_manifest()
-    assert manifest["app_version"] == "1.0.0"
+    assert manifest["app_version"] == "1.9.0"
     assert manifest["database_schema"] == 9
     path = write_version_manifest(tmp_path)
     assert json.loads(path.read_text(encoding="utf-8"))["workflow_schema"] == 6
@@ -155,7 +155,7 @@ def test_release_manifest_and_upgrade_readiness(tmp_path: Path) -> None:
 
 def test_benchmark_catalog_and_summary_track_real_run_outcomes() -> None:
     catalog = benchmark_catalog()
-    assert catalog["count"] == 10
+    assert catalog["count"] == 14
     summary = benchmark_summary([
         {"benchmark_id": "BENCH-001", "status": "done", "steps": [{"retry_count": 0}]},
         {"benchmark_id": "BENCH-001", "status": "failed", "steps": [{"retry_count": 2}]},
@@ -192,6 +192,7 @@ def test_high_risk_run_defaults_to_isolated_patch_and_approval(tmp_path: Path, m
                 "workflow_id": "general-auto-development",
                 "requirement": "Modify authentication and database migration code safely.",
                 "runProfile": "normal",
+                "riskMetadata": {"level": "high", "operations": ["migration"], "reasons": ["Declared high-risk change"]},
             },
         )
         assert run.status_code == 200, run.text
@@ -203,7 +204,7 @@ def test_high_risk_run_defaults_to_isolated_patch_and_approval(tmp_path: Path, m
         client.post(f"/api/workflow-runs/{payload['id']}/terminate")
 
 def test_v9_productization_routes_are_exposed() -> None:
-    paths = {route.path for route in app.routes}
+    paths = set(app.openapi()["paths"])
     assert {
         "/api/productization/version",
         "/api/productization/upgrade-readiness",
@@ -220,7 +221,7 @@ def test_v9_route_payloads_work_with_test_client(tmp_path: Path, monkeypatch: py
     (tmp_path / "config.xml").write_text("<root />", encoding="utf-8")
     with TestClient(app) as client:
         version = client.get("/api/productization/version")
-        assert version.status_code == 200 and version.json()["version"]["app_version"] == "1.0.0"
+        assert version.status_code == 200 and version.json()["version"]["app_version"] == "1.9.0"
         validators = client.get("/api/productization/validators", params={"project_path": str(tmp_path)})
         assert validators.status_code == 200
         result = client.post("/api/productization/validators/run", json={"project_path": str(tmp_path), "validator_id": "xml", "timeout_sec": 10})
@@ -262,14 +263,20 @@ def test_ui_changes_and_patch_are_file_first_with_split_and_unified_views() -> N
     root = Path(__file__).resolve().parents[1]
     html = (root / "static" / "index.html").read_text(encoding="utf-8")
     runs = (root / "static" / "js" / "features" / "runs.js").read_text(encoding="utf-8")
+    patch_review = (root / "static" / "js" / "features" / "patch-review.js").read_text(encoding="utf-8")
     diagnostics = (root / "static" / "js" / "features" / "diagnostics.js").read_text(encoding="utf-8")
-    assert "先選檔案、看差異，再決定套用。" in html
-    assert "data-patch-view=\"split\"" in html and "data-patch-view=\"unified\"" in html
-    assert "change-filter-group" in runs and "change-owner" in runs and "scope-warning" in runs
-    assert "diff-code-row" in runs and "change-approval-bar" in runs
-    assert "patch-file-option" in diagnostics and "selectedPatchFiles" in diagnostics
-    assert "data-patch-search" in diagnostics and "data-patch-select" in diagnostics
-    assert "核准此 Patch" in diagnostics and "applySelectedPatch" in diagnostics
+    assert "Patch 審核" in html
+    assert 'data-patch-view="split"' in html and 'data-patch-view="unified"' in html
+    assert 'id="diffDialog"' in html and 'id="diffDialogFileList"' in html and 'id="diffDialogContent"' in html
+    assert "parseUnifiedPatch" in patch_review and "patchFor" in patch_review
+    assert "patch-workbench-file" in patch_review and "diff-code-row" in patch_review
+    assert 'id="toggleRunCenterSize"' not in html
+    assert "toggleRunCenterSize" not in runs
+    assert 'id="diagnosticPatch"' not in html
+    assert "applyDiagnosticPatch" not in diagnostics
+    assert 'id="approvePatch"' in html and 'id="approveApplyPatch"' in html
+    assert 'id="patchRejectStep"' in html
+    assert "/patch/validate-selection" in patch_review
 
 
 def test_ui_run_center_has_collapsed_timeline_and_human_retry() -> None:
@@ -287,4 +294,4 @@ def test_v9_docs_and_benchmark_runner_are_included() -> None:
     for name in ("CHANGELOG.md", "UPGRADE.md", "MIGRATIONS.md"):
         assert (root / name).is_file()
     runner = (root / "scripts" / "run_productization_benchmarks.py").read_text(encoding="utf-8")
-    assert "BENCH-010" in runner and "--real" in runner and "--execute" in runner
+    assert "BENCH-014" in runner and "--real" in runner and "--execute" in runner

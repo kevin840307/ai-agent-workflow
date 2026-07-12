@@ -84,7 +84,10 @@ def test_review_format_and_mutation_failures_retry_review_not_build_or_planner(t
 def test_tiny_complexity_caps_plan_at_two_tasks() -> None:
     with TemporaryDirectory() as tmp:
         result = classify_workflow_complexity("用 Python 建立泡沫排序", Path(tmp))
-    assert result == {"profile": "tiny", "max_tasks": 2, "recommended_tasks": "1-2"}
+    assert result["profile"] == "tiny"
+    assert result["max_tasks"] == 2
+    assert result["recommended_tasks"] == "1-2"
+    assert result["source"] == "project_metrics"
 
 
 def test_project_hygiene_rejects_duplicate_implementations_and_embedded_test_code() -> None:

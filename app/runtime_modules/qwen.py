@@ -8,7 +8,7 @@ import threading
 from pathlib import Path
 from typing import Any
 
-from app.testing.mock_agent import mock_qwen_response
+from app.testing.mock_agent import apply_mock_agent_file_edits, mock_qwen_response
 from app.runtime_modules.errors import WorkflowError
 from app.security.workspace_guard import apply_workspace_env
 from app.workflow_runtime.agent_stream_events import AgentJsonStreamParser
@@ -130,7 +130,9 @@ class QwenCliClient:
 
     def run(self, prompt: str, cwd: Path, qwen_session_id: str | None = None, timeout_sec: int | None = None) -> str:
         if self.mock:
-            return mock_qwen_response(prompt)
+            output = mock_qwen_response(prompt)
+            apply_mock_agent_file_edits(output, cwd)
+            return output
         if shutil.which(self.bin) is None:
             raise WorkflowError(f"Qwen CLI not found: {self.bin}. Set QWEN_MOCK=1 for demo mode.")
         env = apply_workspace_env(os.environ, project_path=cwd, workspace_path=cwd / ".ai-workflow")
@@ -178,6 +180,7 @@ class QwenCliClient:
     ) -> str:
         if self.mock:
             output = mock_qwen_response(prompt)
+            apply_mock_agent_file_edits(output, cwd)
             if on_output:
                 for line in output.splitlines():
                     await on_output("stdout", line)

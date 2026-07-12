@@ -1,0 +1,47 @@
+{
+  "schema": "aiwf.real-agent-acceptance-cell.v1",
+  "status": "FAIL",
+  "workflow": "adaptive-auto-workflow",
+  "agent": "opencode",
+  "case": "config-loader",
+  "run_id": "abd5d202-e8b0-4d0e-8026-3da7bd2e6ccc",
+  "run_status": "failed",
+  "error": "WorkflowError: Retry recovery budget stopped generate_task_prompts: task failure budget reached (12/12).",
+  "output": "C:\\Users\\kevin\\testllm\\reports\\stability-v20\\opencode-real-cells\\opencode-adaptive-auto-workflow-config-loader",
+  "self_prompt_review": {
+    "status": "PASS",
+    "summary": "self-prompt smoke payload is ready",
+    "problems": [],
+    "prompt_to_review": "Review this real-agent smoke request before running Qwen/OpenCode. Confirm it is a concise human CLI instruction, includes validation.py, and only targets the fixture project.\n\nWorkflow: adaptive-auto-workflow\nAgent: opencode\nRequirement: Create config_loader.py with load_config(path) that loads a JSON file and returns a dictionary. Add focused tests when useful.\n"
+  },
+  "acceptance": {
+    "external_validation_passed": false,
+    "retry_total": 11,
+    "recovery_counters": {
+      "agent_attempts": 12,
+      "deterministic_repairs": 0,
+      "session_restarts": 3,
+      "replans": 0,
+      "manual_actions": 0,
+      "consecutive_failures": 12
+    },
+    "session_count": 0,
+    "steps": [
+      {
+        "key": "generate_task_prompts",
+        "status": "failed",
+        "retry_count": 11
+      },
+      {
+        "key": "auto_generation",
+        "status": "pending",
+        "retry_count": 0
+      },
+      {
+        "key": "ai_review",
+        "status": "pending",
+        "retry_count": 0
+      }
+    ]
+  }
+}

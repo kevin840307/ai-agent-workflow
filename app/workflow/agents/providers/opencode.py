@@ -5,7 +5,7 @@ import shutil
 from pathlib import Path
 from typing import Any
 
-from app.testing.mock_agent import mock_qwen_response
+from app.testing.mock_agent import apply_mock_agent_file_edits, mock_qwen_response
 from app.runtime_modules.errors import WorkflowError
 from app.security.workspace_guard import apply_workspace_env
 from app.workflow.agents.errors import classify_agent_error
@@ -83,6 +83,7 @@ class OpenCodeCliAdapter:
     async def run_stream(self, request: AgentRequest, on_output: AgentOutputCallback | None = None) -> AgentResult:
         if self.mock:
             output = mock_qwen_response(request.prompt)
+            apply_mock_agent_file_edits(output, request.cwd)
             if on_output:
                 for line in output.splitlines():
                     await on_output("stdout", line)

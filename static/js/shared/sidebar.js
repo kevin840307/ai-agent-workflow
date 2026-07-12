@@ -1,4 +1,4 @@
-import { LocalStore, StorageKeys } from "../core/storage.js?v=20260711-ui-v12";
+import { LocalStore, StorageKeys } from "../core/storage.js?v=20260712-ui-v22";
 
 function applyActiveNav() {
   const page = document.body?.dataset.page || "";

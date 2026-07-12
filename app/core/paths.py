@@ -49,8 +49,15 @@ def _replace_with_retry(tmp: Path, path: Path, *, attempts: int = 12, delay_sec:
 
 
 def atomic_write_text(path: Path, content: str, *, encoding: str = "utf-8") -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    fd, tmp_name = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=str(path.parent))
+    for attempt in range(3):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            fd, tmp_name = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=str(path.parent))
+            break
+        except FileNotFoundError:
+            if attempt >= 2:
+                raise
+            time.sleep(0.01 * (attempt + 1))
     tmp = Path(tmp_name)
     try:
         with os.fdopen(fd, "w", encoding=encoding, newline="") as handle:

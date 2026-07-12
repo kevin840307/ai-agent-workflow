@@ -17,6 +17,10 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+# This is a deterministic platform E2E, not a real-agent certification.
+os.environ.setdefault("QWEN_MOCK", "1")
+os.environ.setdefault("QWEN_WORKFLOW_SHOW_AGENT_STDOUT", "0")
+
 from app.main import app
 
 
@@ -52,7 +56,7 @@ def main() -> int:
         run_resp = client.post(
             f"/api/sessions/{session['id']}/workflow-runs",
             json={
-                "workflow_id": "regression-test-case-generation",
+                "workflow_id": "general-auto-development",
                 "project_path": str(project),
                 "requirement": requirement,
                 "runProfile": "small",
@@ -69,6 +73,7 @@ def main() -> int:
     (output / "run-workspace.txt").write_text(str(workspace), encoding="utf-8")
     summary = {
         "status": "PASS" if run.get("status") == "done" else "FAIL",
+        "agent_mode": "deterministic_mock",
         "run_id": run_id,
         "workflow": run.get("workflow_id"),
         "console_summary": console.get("summary"),
@@ -83,6 +88,7 @@ def main() -> int:
         f"- Status: {summary['status']}\n"
         f"- Run ID: {run_id}\n"
         f"- Workflow: {run.get('workflow_id')}\n"
+        f"- Agent Mode: {summary['agent_mode']} (not real-agent certification)\n"
         f"- Artifact Schema: {artifact_index.get('schema')}\n"
         f"- Error: {run.get('error') or '-'}\n",
         encoding="utf-8",

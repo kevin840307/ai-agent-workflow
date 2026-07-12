@@ -48,7 +48,7 @@ class GeneralAutoDevelopmentWorkflowTests(unittest.TestCase):
     def test_workflow_is_fixed_evidence_based_sop_controller(self) -> None:
         workflow = workflow_asset_service.load_workflow_asset("general-auto-development")
         keys = [step["key"] for step in workflow["steps"]]
-        self.assertEqual(keys, ["plan_tasks", "build", "generate_tests", "run_test", "implementation_review", "run_external_validation", "final_review", "final_gate"])
+        self.assertEqual(keys, ["plan_tasks", "build", "generate_tests", "run_test", "implementation_review", "run_external_validation", "final_review"])
 
         plan = next(step for step in workflow["steps"] if step["key"] == "plan_tasks")
         self.assertEqual(plan["type"], "ai")
@@ -59,12 +59,16 @@ class GeneralAutoDevelopmentWorkflowTests(unittest.TestCase):
         self.assertTrue(build["enableTaskLoop"])
         self.assertFalse(build["allowTestFilesInTaskLoop"])
         self.assertEqual(build["retryFromStepKey"], "build")
+        self.assertEqual(build["maxRetries"], 99)
+        self.assertTrue(build["recoverRepeatedFailure"])
         self.assertNotIn("retryEscalationEvery", build)
         self.assertNotIn("retryEscalationStepKey", build)
 
         generate_tests = next(step for step in workflow["steps"] if step["key"] == "generate_tests")
         self.assertEqual(generate_tests["type"], "ai")
         self.assertEqual(generate_tests["outputFile"], "test-plan.md")
+        self.assertTrue(generate_tests["keepSameSession"])
+        self.assertEqual(generate_tests["maxRetries"], 99)
 
         run_test = next(step for step in workflow["steps"] if step["key"] == "run_test")
         self.assertEqual(run_test["type"], "python")
@@ -80,6 +84,7 @@ class GeneralAutoDevelopmentWorkflowTests(unittest.TestCase):
         self.assertEqual(validation["function"], "run_external_validation")
         self.assertEqual(validation["retryFromStepKey"], "build")
         self.assertFalse(validation["requiresValidationScript"])
+        self.assertEqual(validation["maxRetries"], 99)
 
         final_review = next(step for step in workflow["steps"] if step["key"] == "final_review")
         self.assertEqual(final_review["type"], "python")
@@ -92,10 +97,8 @@ class GeneralAutoDevelopmentWorkflowTests(unittest.TestCase):
     def _run_general_e2e(self, *, project: Path, requirement: str, qwen_response) -> dict:
         old_mock = os.environ.get("QWEN_MOCK")
         old_use_serve = os.environ.get("QWEN_USE_SERVE")
-        old_file_block = os.environ.get("QWEN_WORKFLOW_MOCK_FILE_BLOCK_NORMALIZATION")
         os.environ["QWEN_MOCK"] = "1"
         os.environ["QWEN_USE_SERVE"] = "0"
-        os.environ["QWEN_WORKFLOW_MOCK_FILE_BLOCK_NORMALIZATION"] = "1"
         try:
             with patch("app.runtime_modules.qwen.mock_qwen_response", side_effect=qwen_response):
                 with TestClient(app) as client:
@@ -118,10 +121,6 @@ class GeneralAutoDevelopmentWorkflowTests(unittest.TestCase):
                 os.environ.pop("QWEN_USE_SERVE", None)
             else:
                 os.environ["QWEN_USE_SERVE"] = old_use_serve
-            if old_file_block is None:
-                os.environ.pop("QWEN_WORKFLOW_MOCK_FILE_BLOCK_NORMALIZATION", None)
-            else:
-                os.environ["QWEN_WORKFLOW_MOCK_FILE_BLOCK_NORMALIZATION"] = old_file_block
 
     @staticmethod
     def _json_plan(spec: str, prompt: str, title: str = "Implement requested change") -> str:
@@ -182,7 +181,7 @@ END_FILE
             self.assertTrue((project / "calculator.py").exists())
             self.assertTrue((project / "tests" / "test_calculator.py").exists())
             keys = [step["key"] for step in run["steps"]]
-            self.assertEqual(keys, ["plan_tasks", "build", "generate_tests", "run_test", "implementation_review", "run_external_validation", "final_review", "final_gate"])
+            self.assertEqual(keys, ["plan_tasks", "build", "generate_tests", "run_test", "implementation_review", "run_external_validation", "final_review"])
             self.assertIn("external validation ok", (Path(run["workspace"]) / "output" / "external-validation-result.md").read_text(encoding="utf-8"))
 
     def test_general_auto_development_can_complete_bubble_sort_from_prompt_only(self) -> None:

@@ -11,6 +11,7 @@ def test_self_prompt_sorting_runs_general_and_adaptive_workflows(tmp_path: Path)
     output = tmp_path / "self-prompt-logs"
     env = os.environ.copy()
     env["PYTHONPATH"] = str(Path(__file__).resolve().parents[1])
+    env["PYTHONIOENCODING"] = "utf-8"
     process_log = tmp_path / "self-prompt-subprocess.log"
     with process_log.open("w", encoding="utf-8") as log_file:
         proc = subprocess.run(

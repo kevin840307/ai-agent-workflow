@@ -9,11 +9,15 @@ export function createEvents(ctx) {
       });
       ui.on("settingsMenu", "click", (event) => event.stopPropagation());
       ui.on("toggleDetails", "click", () => ctx.features.layout.toggleDetails());
+      ui.on("collapseRunCenter", "click", () => ctx.features.layout.setDetailsCollapsed(true));
+      ui.on("expandRunCenter", "click", () => ctx.features.layout.setDetailsCollapsed(false));
       ui.on("openDiagnostics", "click", () => ctx.features.diagnostics.open());
       ui.on("openRunResult", "click", () => ctx.features.runs.openResultModal());
+      ui.on("openSelectedStepDetail", "click", () => ctx.features.runs.openSelectedStepDetail());
       ui.on("closeDiagnostics", "click", () => ctx.features.diagnostics.close());
+      ui.on("closeDiffDialog", "click", () => ctx.features.runs.closeDiffDialog());
+      ui.on("toggleDiagnosticsSize", "click", () => ctx.features.diagnostics.toggleSize());
       ui.on("compactArtifacts", "click", () => ctx.features.diagnostics.compactArtifacts());
-      ui.on("applyDiagnosticPatch", "click", () => ctx.features.diagnostics.applySelectedPatch());
       ui.on("downloadDebugBundle", "click", () => ctx.features.diagnostics.downloadDebugBundle());
       ui.on("exportRunBundle", "click", () => ctx.features.runs.exportRun());
       ui.on("openSetupWizard", "click", () => ctx.features.setup.openWizard());
@@ -27,7 +31,6 @@ export function createEvents(ctx) {
         button.setAttribute("aria-expanded", String(open));
         button.classList.toggle("active", open);
       });
-      ui.on("artifactSearch", "input", () => ctx.features.artifacts.renderList());
       ui.on("messageInput", "input", () => { ctx.features.composer.autoResize(); ctx.features.optimization.schedule(); });
       ui.on("messageInput", "keydown", (event) => {
         if (event.key === "Enter" && event.ctrlKey && !ui.byKey("runWorkflow").disabled) {
@@ -45,6 +48,7 @@ export function createEvents(ctx) {
       });
       ui.on("runProfile", "change", (event) => ctx.features.workflows.selectRunProfile(event.target.value || "normal"));
       ui.on("advancedMode", "change", (event) => ctx.features.layout.setAdvancedMode(Boolean(event.target.checked)));
+      ui.on("unattendedMode", "change", (event) => ctx.features.projectProfile.setUnattended(Boolean(event.target.checked)));
       ui.on("thinkingDropdownButton", "click", (event) => {
         event.stopPropagation();
         ctx.features.workflows.toggleThinkingDropdown();
@@ -85,6 +89,9 @@ export function createEvents(ctx) {
       ui.byKey("diagnosticsBackdrop")?.addEventListener("click", (event) => {
         if (event.target === ui.byKey("diagnosticsBackdrop")) ctx.features.diagnostics.close();
       });
+      ui.byKey("diffDialogBackdrop")?.addEventListener("click", (event) => {
+        if (event.target === ui.byKey("diffDialogBackdrop")) ctx.features.runs.closeDiffDialog();
+      });
       ui.byKey("runResultPanel")?.addEventListener("click", (event) => {
         if (event.target === ui.byKey("runResultPanel")) ctx.features.runs.closeResultModal({ remember: true });
       });
@@ -105,6 +112,7 @@ export function createEvents(ctx) {
           ctx.features.workflows.closeDropdown();
           ctx.features.workflows.closeThinkingDropdown();
           ctx.features.diagnostics.close();
+          ctx.features.runs.closeDiffDialog();
           ctx.features.runs.closeResultModal({ remember: true });
           const recommendation = ui.byKey("planningRecommendation")?.querySelector("details");
           if (recommendation) recommendation.open = false;

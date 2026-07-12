@@ -1,1 +1,1 @@
-export { initSharedSidebar } from "../shared/sidebar.js?v=20260711-ui-v12";
+export { initSharedSidebar } from "../shared/sidebar.js?v=20260712-ui-v22";

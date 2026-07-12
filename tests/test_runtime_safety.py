@@ -18,12 +18,30 @@ from app.workflow_runtime.builtin_functions.security_candidates import _security
 from app.workflow_runtime.step_config import initial_steps
 from app.security.agent_project_config import ensure_agent_project_configs
 from app.security.workspace_guard import resolve_project_relative_write
-from app.runtime_modules.files import apply_extracted_files
 from app.runtime_modules.errors import WorkflowError
 import json
 
 
 class RuntimeSafetyTests(unittest.TestCase):
+    def test_atomic_write_recovers_when_parent_disappears_before_temp_creation(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "nested" / "result.md"
+            real_mkstemp = tempfile.mkstemp
+            attempts = 0
+
+            def racing_mkstemp(*args, **kwargs):
+                nonlocal attempts
+                attempts += 1
+                if attempts == 1:
+                    raise FileNotFoundError("simulated compaction race")
+                return real_mkstemp(*args, **kwargs)
+
+            with patch("app.core.paths.tempfile.mkstemp", side_effect=racing_mkstemp):
+                atomic_write_text(target, "ok")
+
+            self.assertEqual(target.read_text(encoding="utf-8"), "ok")
+            self.assertEqual(attempts, 2)
+
     def test_rejects_drive_stripped_absolute_paths_inside_project(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             project = Path(tmp).resolve()
@@ -220,14 +238,6 @@ Status: DONE
             self.assertEqual(opencode["permission"]["edit"]["opencode.json"], "deny")
             self.assertEqual(opencode["permission"]["bash"]["*"], "deny")
 
-    def test_agent_file_blocks_cannot_edit_managed_agent_config(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            project = Path(tmp) / "project"
-            project.mkdir()
-            with self.assertRaisesRegex(WorkflowError, "managed agent guard config"):
-                apply_extracted_files(project, [("opencode.json", "{}\n")])
-            with self.assertRaisesRegex(WorkflowError, "reserved directory"):
-                apply_extracted_files(project, [(".qwen/settings.json", "{}\n")])
 
 
 if __name__ == "__main__":

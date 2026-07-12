@@ -11,7 +11,8 @@ from pathlib import Path
 from app.workflow_runtime.builtin_functions.base import WorkflowFunctionContext, WorkflowFunctionError
 from app.workflow_runtime.completion_gate import evaluate_completion
 from app.workflow_runtime.project_hygiene import inspect_project_hygiene
-from app.workflow_runtime.validators import execute_validator_plan, primary_validator
+from app.workflow_runtime.run_diff import build_run_diff
+from app.workflow_runtime.validators import execute_validation_plan, primary_validator
 from app.workflow_runtime.validation_contract import ValidationContractError, verify_validation_contract
 from app.workflow_runtime.test_layout import (
     is_pytest_import_mismatch,
@@ -122,6 +123,23 @@ def _upsert_validation_result(
         results.append(item)
 
 
+def normalize_shell_command(command: str) -> str:
+    """Quote an unquoted absolute executable without changing shell syntax."""
+    value = str(command or "").strip()
+    if not value or value.startswith(('"', "'")):
+        return value
+    lower = value.lower()
+    for suffix in (".exe", ".cmd", ".bat", ".com"):
+        end = lower.find(suffix)
+        if end < 0:
+            continue
+        end += len(suffix)
+        executable = value[:end]
+        if Path(executable).is_file():
+            return f'"{executable}"{value[end:]}'
+    return value
+
+
 async def run_pytest(ctx: WorkflowFunctionContext) -> None:
     run_workspace = Path(ctx.run["workspace"])
     preflight = repair_run_owned_test_layout(ctx.project_dir, run_workspace)
@@ -135,7 +153,7 @@ async def run_pytest(ctx: WorkflowFunctionContext) -> None:
 
     explicit = ctx.run.get("test_command") or os.environ.get("WORKFLOW_TEST_COMMAND")
     if explicit:
-        command = str(explicit)
+        command = normalize_shell_command(str(explicit))
     elif _project_has_pytest_files(ctx.project_dir):
         command = "python -m pytest"
     elif (ctx.project_dir / "run_tests.py").is_file():
@@ -214,15 +232,18 @@ async def run_pytest(ctx: WorkflowFunctionContext) -> None:
 
 
 async def adaptive_python_gate(ctx: WorkflowFunctionContext, artifact: str = "python-gate-result.md") -> None:
-    """Run project tests first, then the immutable user validation contract.
+    """Run project tests first, then the immutable external validation contract.
 
-    User validation is an additional acceptance oracle.  It never replaces
-    pytest/run_tests.py, and a required validation contract can never be
-    silently reported as skipped.
+    A configured external validator is executable acceptance evidence when a
+    project has no native test command. A required validation contract can
+    never be silently reported as skipped.
     """
     run_workspace = Path(ctx.run["workspace"])
     output_dir = run_workspace / "output"
     output_dir.mkdir(parents=True, exist_ok=True)
+    current_diff = build_run_diff(ctx.run, run_workspace)
+    changed_files = current_diff.get("files") or []
+    ctx.run["file_changes"] = changed_files
     layout_repair = repair_run_owned_test_layout(ctx.project_dir, run_workspace)
     write_test_layout_repair_report(run_workspace, layout_repair)
     if layout_repair.get("removed_files"):
@@ -231,15 +252,29 @@ async def adaptive_python_gate(ctx: WorkflowFunctionContext, artifact: str = "py
     script = _find_project_validation_script(ctx)
     has_pytest = _project_has_pytest_files(ctx.project_dir)
     has_run_tests = (ctx.project_dir / "run_tests.py").is_file()
+    validation_path = script.resolve() if script is not None else None
     has_python = any(
-        path.is_file() for path in ctx.project_dir.rglob("*.py")
+        path.is_file()
+        and (validation_path is None or path.resolve() != validation_path)
+        for path in ctx.project_dir.rglob("*.py")
         if ".ai-workflow" not in path.parts and "__pycache__" not in path.parts
     )
     modes: list[str] = []
 
     if has_pytest:
+        focused = await execute_validation_plan(
+            ctx.project_dir,
+            timeout_sec=int(os.environ.get("AIWF_VALIDATOR_TIMEOUT_SEC", "900")),
+            categories={"focused_test"},
+            fail_fast=True,
+            changed_files=changed_files,
+        )
+        if focused.get("status") == "failed":
+            raise WorkflowFunctionError("FOCUSED_TEST_FAILED: impacted tests failed before the full Python test gate.")
         await run_pytest(ctx)
         modes.append("pytest")
+        if focused.get("executed"):
+            modes.append("focused_tests")
     elif has_run_tests:
         await _run_project_python_file(ctx, ctx.project_dir / "run_tests.py", artifact)
         modes.append("run_tests.py")
@@ -250,11 +285,50 @@ async def adaptive_python_gate(ctx: WorkflowFunctionContext, artifact: str = "py
     elif not has_python:
         plan = primary_validator(ctx.project_dir)
         if plan and plan.get("id") != "python":
-            result = await execute_validator_plan(ctx.project_dir, validator_id=str(plan.get("id")), timeout_sec=int(os.environ.get("AIWF_VALIDATOR_TIMEOUT_SEC", "900")))
-            _upsert_validation_result(ctx.run, key=str(plan.get("id")), status=str(result.get("status") or "error"), command=str(plan.get("command_text") or ""), exit_code=result.get("exit_code"), summary=(result.get("stderr") or result.get("stdout") or result.get("reason") or "")[-1200:])
-            if result.get("status") not in {"passed", "skipped"}:
-                raise WorkflowFunctionError(f"VALIDATION_FAILED: {plan.get('title')} did not pass.")
-            modes.append(str(plan.get("id")))
+            result = await execute_validation_plan(
+                ctx.project_dir,
+                timeout_sec=int(os.environ.get("AIWF_VALIDATOR_TIMEOUT_SEC", "900")),
+                fail_fast=True,
+                changed_files=changed_files,
+            )
+            for item in result.get("results", []):
+                _upsert_validation_result(
+                    ctx.run,
+                    key=str(item.get("id") or "validation"),
+                    status=str(item.get("status") or "error"),
+                    command=str(item.get("command_text") or ""),
+                    exit_code=item.get("exit_code"),
+                    summary=(item.get("stderr") or item.get("stdout") or item.get("reason") or "")[-1200:],
+                )
+            ctx.write_text(output_dir / "engineering-validation-result.json", json.dumps(result, indent=2, ensure_ascii=False))
+            if result.get("status") == "failed":
+                failed = next((item for item in result.get("results", []) if item.get("required") and item.get("status") != "passed"), {})
+                raise WorkflowFunctionError(f"VALIDATION_FAILED: {failed.get('title') or plan.get('title')} did not pass.")
+            modes.append("engineering_validation")
+
+    if has_python:
+        engineering = await execute_validation_plan(
+            ctx.project_dir,
+            timeout_sec=int(os.environ.get("AIWF_VALIDATOR_TIMEOUT_SEC", "900")),
+            exclude_categories={"test", "focused_test"},
+            fail_fast=True,
+            changed_files=changed_files,
+        )
+        ctx.write_text(output_dir / "engineering-validation-result.json", json.dumps(engineering, indent=2, ensure_ascii=False))
+        for item in engineering.get("results", []):
+            _upsert_validation_result(
+                ctx.run,
+                key=str(item.get("id") or "validation"),
+                status=str(item.get("status") or "error"),
+                command=str(item.get("command_text") or ""),
+                exit_code=item.get("exit_code"),
+                summary=(item.get("stderr") or item.get("stdout") or item.get("reason") or "")[-1200:],
+            )
+        if engineering.get("status") == "failed":
+            failed = next((item for item in engineering.get("results", []) if item.get("required") and item.get("status") != "passed"), {})
+            raise WorkflowFunctionError(f"VALIDATION_FAILED: {failed.get('title') or 'engineering validation'} did not pass.")
+        if engineering.get("executed"):
+            modes.append("engineering_validation")
 
     if script is not None:
         await _run_validation_script(ctx, script, artifact)
@@ -440,41 +514,53 @@ def _contains_status_pass(text: str) -> bool:
 
 
 def validate_general_auto_plan(ctx: WorkflowFunctionContext, artifact: str = "implementation-review.md") -> None:
-    """Deterministic gate for General Auto Development todo.md.
+    """Validate the explicit task-manifest contract without reading prose semantics."""
+    manifest_path = ctx.output_dir / "task-manifest.json"
+    raw = ctx.read_text(manifest_path)
+    if not raw.strip():
+        raise WorkflowFunctionError("task-manifest.json is missing or empty.")
+    try:
+        manifest = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise WorkflowFunctionError(f"task-manifest.json is invalid JSON: {exc}") from exc
+    if not isinstance(manifest, dict):
+        raise WorkflowFunctionError("task-manifest.json must contain an object.")
+    if str(manifest.get("status") or "READY").upper() != "READY":
+        raise WorkflowFunctionError("task-manifest.json status must be READY.")
 
-    This replaces fragile AI self-review for the default fully-automated path.
-    It accepts the project's task plan only when it is concrete enough for Build
-    and explicitly includes tests plus the external validation stage.
-    """
-    todo = ctx.read_text(ctx.output_dir / "todo.md")
-    if not todo.strip():
-        raise WorkflowFunctionError("todo.md is empty.")
+    tasks = manifest.get("tasks")
+    if not isinstance(tasks, list) or not tasks:
+        raise WorkflowFunctionError("task-manifest.json must contain at least one task.")
+    if len(tasks) > 12:
+        raise WorkflowFunctionError(
+            f"task-manifest.json has too many tasks for General Auto Development: {len(tasks)} > 12"
+        )
 
-    required_markers = [
-        "Status: READY",
-        "## Task Index",
-        "## Tasks",
-        "## External Validation",
-    ]
-    missing = [marker for marker in required_markers if marker not in todo]
-    if missing:
-        raise WorkflowFunctionError(f"todo.md missing required General Auto Development marker(s): {', '.join(missing)}")
+    seen: set[str] = set()
+    findings: list[str] = []
+    for index, task in enumerate(tasks, start=1):
+        if not isinstance(task, dict):
+            findings.append(f"Task #{index} must be an object.")
+            continue
+        task_id = str(task.get("id") or "")
+        if not re.fullmatch(r"TASK-\d{3}", task_id):
+            findings.append(f"Task #{index} has invalid id {task_id or '<empty>'}.")
+        elif task_id in seen:
+            findings.append(f"Duplicate task id: {task_id}.")
+        seen.add(task_id)
+        if not str(task.get("title") or "").strip():
+            findings.append(f"{task_id or f'Task #{index}'}: title is required.")
+        if not str(task.get("prompt") or "").strip():
+            findings.append(f"{task_id or f'Task #{index}'}: prompt is required.")
+        acceptance = task.get("acceptance")
+        if not isinstance(acceptance, list) or not any(str(item).strip() for item in acceptance):
+            findings.append(f"{task_id or f'Task #{index}'}: acceptance must be a non-empty list.")
+    if findings:
+        raise WorkflowFunctionError("General Auto Development task contract is invalid: " + " ".join(findings))
 
-    import re
-
-    task_ids = sorted(set(re.findall(r"\bTASK-\d{3}\b", todo)))
-    if not task_ids:
-        raise WorkflowFunctionError("todo.md must include at least one TASK-001 style task id.")
-    if len(task_ids) > 12:
-        raise WorkflowFunctionError(f"todo.md has too many tasks for General Auto Development: {len(task_ids)} > 12")
-    if "Acceptance Criteria" not in todo and "AC-" not in todo:
-        raise WorkflowFunctionError("todo.md must include acceptance criteria for each task.")
-
-    lowered = todo.lower()
-    if "test" not in lowered and "pytest" not in lowered and "測試" not in todo:
-        raise WorkflowFunctionError("todo.md must include an automated test strategy before external validation.")
-    if "validation" not in lowered:
-        raise WorkflowFunctionError("todo.md must include the external validation step.")
+    final_acceptance = manifest.get("final_acceptance")
+    if final_acceptance is not None and not isinstance(final_acceptance, dict):
+        raise WorkflowFunctionError("task-manifest.json final_acceptance must be an object when provided.")
 
     lines = [
         "# Implementation Review",
@@ -483,19 +569,17 @@ def validate_general_auto_plan(ctx: WorkflowFunctionContext, artifact: str = "im
         "Confidence: 1.00",
         "",
         "## Checks",
-        f"- Task count is bounded: {len(task_ids)} task(s).",
-        "- Plan contains TASK ids, acceptance criteria, automated test coverage, and external validation handling.",
+        f"- Explicit task contract is valid: {len(tasks)} task(s).",
+        "- Every task has a machine-readable id, title, prompt, and acceptance list.",
+        "- Test and external-validation phases are enforced by the fixed workflow contract, not inferred from task prose.",
         "- No user question is required for this deterministic gate.",
         "",
         "## Findings",
-        "- PASS: todo.md is concrete enough for Build to proceed.",
+        "- PASS: task-manifest.json is structurally valid and Build may proceed.",
         "",
     ]
     ctx.write_text(ctx.output_dir / artifact, "\n".join(lines))
 
-
-def _file_block_paths(text: str) -> list[str]:
-    return sorted(set(re.findall(r"^FILE:\s*(.+?)\s*$", text or "", flags=re.MULTILINE)))
 
 
 def _direct_state_paths(output_dir: Path, phase: str) -> list[str]:
@@ -538,15 +622,13 @@ def _diff_context(ctx: WorkflowFunctionContext, build_result: str, test_plan: st
     git_changed = _git_output(project_dir, ["diff", "--name-only"])
     git_stat = _git_output(project_dir, ["diff", "--stat"])
     git_diff = _git_output(project_dir, ["diff", "--", "."], timeout=8.0)
-    file_block_changed = sorted(set(_file_block_paths(build_result) + _file_block_paths(test_plan)))
     direct_state_changed = sorted(set(_direct_state_paths(ctx.output_dir, "build") + _direct_state_paths(ctx.output_dir, "generate_tests")))
-    changed_files = [line.strip() for line in git_changed.splitlines() if line.strip()] or file_block_changed or direct_state_changed
+    changed_files = [line.strip() for line in git_changed.splitlines() if line.strip()] or direct_state_changed
     diff_context = {
         "changed_files": changed_files,
         "git_diff_available": bool(git_changed or git_stat or git_diff),
         "git_stat": git_stat,
         "git_diff_excerpt": git_diff[:12000],
-        "file_block_paths": file_block_changed,
         "direct_state_paths": direct_state_changed,
     }
     lines = [
@@ -559,12 +641,12 @@ def _diff_context(ctx: WorkflowFunctionContext, build_result: str, test_plan: st
         "",
         "## Git Diff Stat",
         "```text",
-        git_stat or "No git diff stat available. Using direct-edit state or FILE block paths as fallback evidence.",
+        git_stat or "No git diff stat available. Using recorded direct-edit state as fallback evidence.",
         "```",
         "",
         "## Git Diff Excerpt",
         "```diff",
-        git_diff[:12000] or "No git diff available. The project may not be a git repository, or changes may come from direct-edit state / generated FILE block evidence.",
+        git_diff[:12000] or "No git diff available. The project may not be a git repository, or changes may be recorded in direct-edit state.",
         "```",
         "",
     ]
@@ -642,7 +724,6 @@ def validate_general_auto_final(ctx: WorkflowFunctionContext, artifact: str = "f
         "evidence": {
             "changed_files": diff_context.get("changed_files", []),
             "git_diff_available": diff_context.get("git_diff_available", False),
-            "file_block_paths": diff_context.get("file_block_paths", []),
             "direct_state_paths": diff_context.get("direct_state_paths", []),
             "artifacts": [
                 "output/task-manifest.md",
@@ -716,14 +797,19 @@ def _regression_requirement(ctx: WorkflowFunctionContext) -> str:
     return ctx.read_text(Path(ctx.run["workspace"]) / "requirement.md").strip()
 
 
-def _regression_case_id(requirement: str) -> str:
-    match = re.search(r"\b(WORKITEM\d+|CASE[-_ ]?\d+|SOP[-_ ]?\d+)\b", requirement or "", flags=re.IGNORECASE)
-    return (match.group(1).replace(" ", "_").upper() if match else "WORKITEM0001")
+def _regression_case_id(ctx: WorkflowFunctionContext) -> str:
+    """Read the case id from an explicit workflow input; never parse requirement prose."""
+    inputs = ctx.run.get("workflow_inputs") if isinstance(ctx.run, dict) else None
+    raw = (inputs or {}).get("caseId") if isinstance(inputs, dict) else None
+    value = str(raw or "WORKITEM0001").strip().upper().replace(" ", "_")
+    if not re.fullmatch(r"[A-Z][A-Z0-9_-]{2,63}", value):
+        raise WorkflowFunctionError("workflowInputs.caseId must match [A-Z][A-Z0-9_-]{2,63}.")
+    return value
 
 
 def collect_regression_context(ctx: WorkflowFunctionContext, artifact: str = "regression-context.md") -> None:
     requirement = _regression_requirement(ctx)
-    case_id = _regression_case_id(requirement)
+    case_id = _regression_case_id(ctx)
     lines = [
         "# Regression Context",
         "",
@@ -751,7 +837,7 @@ def collect_regression_context(ctx: WorkflowFunctionContext, artifact: str = "re
 
 def generate_regression_sop_sql(ctx: WorkflowFunctionContext, artifact: str = "sop-definition.sql") -> None:
     requirement = _regression_requirement(ctx)
-    case_id = _regression_case_id(requirement)
+    case_id = _regression_case_id(ctx)
     sql = f"""-- SOP / Block definition SQL generated by AI Workflow Controller
 -- CaseId: {case_id}
 -- Review before applying to any shared database.
@@ -768,7 +854,7 @@ VALUES ('{case_id}', 'BLOCK_001', 'TYPE_COMBINATION', 'typeA,typeB');
 
 def generate_regression_runtime_sql(ctx: WorkflowFunctionContext, artifact: str = "runtime-test-data.sql") -> None:
     requirement = _regression_requirement(ctx)
-    case_id = _regression_case_id(requirement)
+    case_id = _regression_case_id(ctx)
     sql = f"""-- Runtime test data SQL generated by AI Workflow Controller
 -- CaseId: {case_id}
 -- This data should be inserted per test run and cleaned up by CaseId.
@@ -785,7 +871,7 @@ VALUES ('{case_id}', 'typeB', '{{"type":"typeB","value":200}}', 'SUCCESS');
 
 def generate_regression_validation(ctx: WorkflowFunctionContext, artifact: str = "validation.py") -> None:
     requirement = _regression_requirement(ctx)
-    case_id = _regression_case_id(requirement)
+    case_id = _regression_case_id(ctx)
     script = f'''from pathlib import Path
 
 required = [
@@ -813,7 +899,7 @@ print("regression workflow validation ok: {case_id}")
 
 def generate_regression_case_doc(ctx: WorkflowFunctionContext, artifact: str = "regression-test-case.md") -> None:
     requirement = _regression_requirement(ctx)
-    case_id = _regression_case_id(requirement)
+    case_id = _regression_case_id(ctx)
     lines = [
         "# Regression Test Case",
         "",

@@ -34,6 +34,7 @@ PYTEST_GROUPS: list[tuple[str, list[str]]] = [
     (
         "A_core_cli_api",
         [
+            "tests/test_agent_execution_service.py",
             "tests/test_agent_runner.py",
             "tests/test_ai_workflow_assets_ui.py",
             "tests/test_aiwf_cli.py",
@@ -68,6 +69,7 @@ PYTEST_GROUPS: list[tuple[str, list[str]]] = [
         [
             "tests/test_real_qwen_workflow_manual.py",
             "tests/test_release_and_ui_manual.py",
+            "tests/test_real_qwen_unattended_manual.py",
             "tests/test_run_state.py",
         ],
     ),
@@ -91,7 +93,15 @@ PYTEST_GROUPS: list[tuple[str, list[str]]] = [
             "tests/test_system_productization_v9.py",
             "tests/test_production_readiness_v10.py",
             "tests/test_stability_v11.py",
+            "tests/test_stability_completion_v15.py",
+            "tests/test_unattended_stability_v16.py",
+            "tests/test_v17_runtime_ui_regressions.py",
+            "tests/test_reliability_v18.py",
             "tests/test_ui_and_local_qwen_v12.py",
+            "tests/test_unattended_v20.py",
+            "tests/test_v21_patch_review_artifacts.py",
+            "tests/test_v22_artifact_diff_step_preview.py",
+            "tests/test_real_qwen_unattended_e2e_contract.py",
         ],
     ),
     (
@@ -207,6 +217,8 @@ def _env_for_group(group_name: str) -> dict[str, str]:
         "RUN_REAL_QWEN_STABILITY",
         "RUN_CLEAN_REPO_SMOKE",
         "RUN_PLAYWRIGHT_UI",
+        "RUN_REAL_QWEN_UNATTENDED",
+        "RUN_REAL_QWEN_UNATTENDED_PARALLEL",
     ]:
         env.pop(key, None)
     return env
@@ -217,6 +229,12 @@ def _tail(text: str, max_lines: int = 40) -> str:
     if len(lines) <= max_lines:
         return "\n".join(lines)
     return "\n".join(["...", *lines[-max_lines:]])
+
+
+def _console_safe(text: str) -> str:
+    """Keep UTF-8 logs intact while tolerating legacy Windows consoles."""
+    encoding = getattr(sys.stdout, "encoding", None) or "utf-8"
+    return text.encode(encoding, errors="backslashreplace").decode(encoding)
 
 
 def _terminate_process_tree(process: subprocess.Popen) -> None:
@@ -256,7 +274,7 @@ def run_pytest(label: str, test_files: list[str], timeout_seconds: int, *, extra
     elapsed = time.monotonic() - start
     output = log_path.read_text(encoding="utf-8", errors="replace")
     print(f"\n=== {label} ({elapsed:.1f}s) ===", flush=True)
-    print(_tail(output), flush=True)
+    print(_console_safe(_tail(output)), flush=True)
     if return_code != 0:
         suffix = " timed out" if timed_out else " failed"
         print(f"Group {label}{suffix}. See {log_path}", file=sys.stderr, flush=True)
@@ -337,7 +355,6 @@ def write_shell_pipeline(groups: list[tuple[str, list[str]]], group_timeout: int
                 "if [ \"$RC\" -ne 0 ]; then",
                 f"  echo '- {group_name}: FAIL rc='\"$RC\"' log={log_path.relative_to(REPO_ROOT).as_posix()}' >> \"$SUMMARY\"",
                 "  STATUS=$RC",
-                "  break",
                 "else",
                 f"  echo '- {group_name}: PASS log={log_path.relative_to(REPO_ROOT).as_posix()}' >> \"$SUMMARY\"",
                 "fi",

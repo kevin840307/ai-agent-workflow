@@ -10,11 +10,14 @@ from app.core.locks import reject_if_chat_busy
 from app.core.metrics import metrics
 from app.persistence.repositories import store as store_repository
 from app.services.agent_session_service import get_agent_session_id, update_agent_session_id
+from app.services.agent_execution_service import AgentExecutionService
 from app.workflow_runtime.agents import AgentRequest
 from app.workflow_runtime.thinking import normalize_thinking_level, thinking_enabled, thinking_label
 
 
 CHAT_HISTORY_LIMIT = 16
+CHAT_RECOVERY_HISTORY_LIMIT = 6
+execution_service = AgentExecutionService()
 
 
 def _chat_thinking_guidance(level: str) -> str:
@@ -86,6 +89,25 @@ def _chat_repair_prompt(content: str, thinking_level: str = "none") -> str:
     )
 
 
+def _chat_recovery_prompt(history: list[dict], content: str, thinking_level: str = "none") -> str:
+    lines = [
+        "Continue this chat after automatic context/session recovery.",
+        "Use only the compact context below and answer the latest user message directly.",
+        "Do not explain the recovery process unless the user asks.",
+        "",
+    ]
+    guidance = _chat_thinking_guidance(thinking_level)
+    if guidance:
+        lines.extend([guidance, ""])
+    for message in history[-CHAT_RECOVERY_HISTORY_LIMIT:]:
+        role = "User" if message.get("role") == "user" else "Assistant"
+        text = str(message.get("content") or "").strip()
+        if text:
+            lines.append(f"{role}: {text[:2000]}")
+    lines.extend(["", f"Latest User: {content.strip()}", "Assistant:"])
+    return "\n".join(lines)
+
+
 async def chat(session_id: str, body: runtime.CreateMessageRequest) -> dict:
     data = await store_repository.read()
     session = next((item for item in data["sessions"] if item["id"] == session_id), None)
@@ -154,7 +176,12 @@ async def chat(session_id: str, body: runtime.CreateMessageRequest) -> dict:
             agent_health = agent.health()
             reuse_session = bool(agent_health.get("reuse_session"))
             prompt = _chat_prompt(history, body.content, reuse_session=reuse_session, thinking_level=thinking_level)
-            agent_session_id = get_agent_session_id(session, agent.name, session_id)
+            session_decision = execution_service.session_manager.resolve(
+                session,
+                step_key="chat",
+                agent=agent.name,
+            )
+            agent_session_id = session_decision.session_id or get_agent_session_id(session, agent.name, session_id)
             repaired_tool_call = False
             chat_stream_id = f"chat-{session_id}"
 
@@ -176,22 +203,28 @@ async def chat(session_id: str, body: runtime.CreateMessageRequest) -> dict:
                 chat_stream_id,
                 {"type": "agent_status", "agent": agent.name, "step": "chat", "message": f"{agent.name} is running..."},
             )
-            result = await agent.run_stream(
-                AgentRequest(
+            request = AgentRequest(
                     run_id=f"chat-{session_id}",
                     step_key="chat",
                     prompt=prompt,
                     cwd=project_path,
                     session_id=agent_session_id,
-                ),
+                )
+            outcome = await execution_service.execute(
+                agent,
+                request,
                 on_output=publish_chat_output,
+                on_status=lambda message: publish_chat_output("status", message),
+                recovery_prompt_factory=lambda _failure, _request, _attempt: _chat_recovery_prompt(history, body.content, thinking_level),
             )
+            result = outcome.result
             if result.session_id != agent_session_id:
                 await update_agent_session_id(session_id, agent.name, result.session_id)
             answer = result.output
             if _looks_like_tool_call_json(answer):
                 repaired_tool_call = True
-                repair_result = await agent.run_stream(
+                repair_outcome = await execution_service.execute(
+                    agent,
                     AgentRequest(
                         run_id=f"chat-{session_id}-repair",
                         step_key="chat",
@@ -200,7 +233,9 @@ async def chat(session_id: str, body: runtime.CreateMessageRequest) -> dict:
                         session_id=result.session_id,
                     ),
                     on_output=publish_chat_output,
+                    on_status=lambda message: publish_chat_output("status", message),
                 )
+                repair_result = repair_outcome.result
                 if repair_result.session_id != result.session_id:
                     await update_agent_session_id(session_id, agent.name, repair_result.session_id)
                 answer = repair_result.output
@@ -233,6 +268,8 @@ async def chat(session_id: str, body: runtime.CreateMessageRequest) -> dict:
                 "duration_ms": int((time.perf_counter() - chat_started) * 1000),
                 "repaired_tool_call": repaired_tool_call,
                 "thinking_level": thinking_level,
+                "agent_attempts": outcome.attempts,
+                "recoveries": outcome.recoveries,
             },
         )
         await runtime.bus.publish(

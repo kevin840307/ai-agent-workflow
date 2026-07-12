@@ -4,7 +4,7 @@ from fastapi import APIRouter, Query
 
 from app.domain.schemas import SetupSmokeRequest
 
-from app.services import setup_service
+from app.services import setup_service, provider_connectivity_service
 
 router = APIRouter()
 
@@ -21,3 +21,8 @@ async def setup_smoke(body: SetupSmokeRequest):
         agent_name=body.agent,
         run_agent=body.run_agent,
     )
+
+
+@router.get("/api/setup/connectivity")
+async def setup_connectivity(projectPath: str | None = None, agent: str | None = None):
+    return await provider_connectivity_service.connectivity_status(projectPath, agent)

@@ -149,7 +149,8 @@ def test_recovery_and_change_preview_ui_are_single_source() -> None:
     assert "target.hidden = true" in script
     assert "服務已重新啟動，進度已保留" in script
     assert script.count("${recoveryHtml}") == 1
-    assert "singleFileMode" in script
-    assert "change-preview-label" in script
-    assert "#changesPanel.active" in css
-    assert 'grid-template-areas:' in css
+    patch_review = (ROOT / "static/js/features/patch-review.js").read_text(encoding="utf-8")
+    assert "openDiffDialog" in script
+    assert "diffDialogFileList" in patch_review
+    assert ".patch-review-workbench" in css
+    assert 'grid-template-columns: minmax(240px, 280px) minmax(0, 1fr)' in css

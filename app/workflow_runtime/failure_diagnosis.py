@@ -43,7 +43,7 @@ _DIAGNOSES = {
         "FILE_BLOCK_OUTPUT",
         "Agent emitted FILE blocks",
         "The agent returned file block artifacts instead of directly editing the project. Real mode does not materialize these blocks.",
-        "Retry with a direct-edit instruction. Use FILE blocks only in mock/test mode.",
+        "Retry with a direct-edit instruction. Do not use FILE blocks in any runtime mode.",
     ),
     "TEST_ONLY_CHANGE": AgentFailureDiagnosis(
         "TEST_ONLY_CHANGE",

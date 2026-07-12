@@ -31,3 +31,6 @@ failKeywords: FAIL, BLOCKED
 aggregatorFunction: ''
 agentOptions: {}
 path: contracts/security-scan/combine_security_findings.yaml
+phase: reviewing
+sessionRole: review
+evidenceCategory: validation

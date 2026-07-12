@@ -1,0 +1,287 @@
+{
+  "schema": "aiwf.workflow-validator.v3",
+  "ok": true,
+  "workflow_count": 3,
+  "error_count": 0,
+  "warning_count": 0,
+  "workflows": [
+    {
+      "id": "general-auto-development",
+      "name": "General Auto Development",
+      "version": "2026-07-05T00:00:00+08:00",
+      "schema": "aiwf.workflow-contract.v1",
+      "step_contracts": [
+        {
+          "key": "plan_tasks",
+          "type": "ai",
+          "prompt": "steps/general-auto-development/01_plan_tasks.md",
+          "artifact": "spec.md",
+          "functions": [],
+          "expected_files": [
+            "spec.md",
+            "todo.md",
+            "task-manifest.md",
+            "task-manifest.json"
+          ],
+          "retry_target": "plan_tasks",
+          "ai_decision_allowed": true,
+          "deterministic_validation": false
+        },
+        {
+          "key": "build",
+          "type": "ai",
+          "prompt": "steps/general-auto-development/03_build.md",
+          "artifact": "build-result.md",
+          "functions": [],
+          "expected_files": [
+            "build-result.md"
+          ],
+          "retry_target": "build",
+          "ai_decision_allowed": true,
+          "deterministic_validation": false
+        },
+        {
+          "key": "generate_tests",
+          "type": "ai",
+          "prompt": "steps/general-auto-development/03_generate_tests.md",
+          "artifact": "test-plan.md",
+          "functions": [],
+          "expected_files": [
+            "test-plan.md"
+          ],
+          "retry_target": "generate_tests",
+          "ai_decision_allowed": true,
+          "deterministic_validation": false
+        },
+        {
+          "key": "run_test",
+          "type": "python",
+          "prompt": "steps/general-auto-development/run_test.md",
+          "artifact": "test-result.md",
+          "functions": [
+            "run_pytest"
+          ],
+          "expected_files": [
+            "test-result.md"
+          ],
+          "retry_target": "build",
+          "ai_decision_allowed": false,
+          "deterministic_validation": true
+        },
+        {
+          "key": "implementation_review",
+          "type": "review",
+          "prompt": "steps/general-auto-development/02_implementation_review.md",
+          "artifact": "final-review.md",
+          "functions": [],
+          "expected_files": [
+            "final-review.md"
+          ],
+          "retry_target": "build",
+          "ai_decision_allowed": true,
+          "deterministic_validation": false
+        },
+        {
+          "key": "run_external_validation",
+          "type": "python",
+          "prompt": "steps/general-auto-development/04_run_external_validation.md",
+          "artifact": "external-validation-result.md",
+          "functions": [
+            "run_external_validation"
+          ],
+          "expected_files": [
+            "external-validation-result.md"
+          ],
+          "retry_target": "build",
+          "ai_decision_allowed": false,
+          "deterministic_validation": true
+        },
+        {
+          "key": "final_review",
+          "type": "python",
+          "prompt": "steps/general-auto-development/05_final_review.md",
+          "artifact": "final-review.md",
+          "functions": [
+            "validate_general_auto_final"
+          ],
+          "expected_files": [
+            "final-review.md",
+            "verifier-report.json",
+            "diff-context.md"
+          ],
+          "retry_target": "build",
+          "ai_decision_allowed": false,
+          "deterministic_validation": true
+        }
+      ],
+      "error_count": 0,
+      "warning_count": 0,
+      "issue_count": 0,
+      "issues": []
+    },
+    {
+      "id": "adaptive-auto-workflow",
+      "name": "Adaptive Auto Workflow",
+      "version": "2026-07-05T00:00:00+08:00",
+      "schema": "aiwf.workflow-contract.v1",
+      "step_contracts": [
+        {
+          "key": "generate_task_prompts",
+          "type": "ai",
+          "prompt": "steps/adaptive-auto-workflow/00_generate_task_prompts.md",
+          "artifact": "spec.md",
+          "functions": [],
+          "expected_files": [
+            "spec.md",
+            "task-manifest.md",
+            "task-manifest.json"
+          ],
+          "retry_target": "generate_task_prompts",
+          "ai_decision_allowed": true,
+          "deterministic_validation": false
+        },
+        {
+          "key": "auto_generation",
+          "type": "ai",
+          "prompt": "steps/adaptive-auto-workflow/00_auto_generation.md",
+          "artifact": "auto-generation-result.md",
+          "functions": [],
+          "expected_files": [
+            "auto-generation-result.md"
+          ],
+          "retry_target": "auto_generation",
+          "ai_decision_allowed": true,
+          "deterministic_validation": false
+        },
+        {
+          "key": "ai_review",
+          "type": "review",
+          "prompt": "steps/adaptive-auto-workflow/01_ai_review.md",
+          "artifact": "ai-review.md",
+          "functions": [
+            "adaptive_python_gate"
+          ],
+          "expected_files": [
+            "ai-review.md",
+            "external-validation-result.md"
+          ],
+          "retry_target": "auto_generation",
+          "ai_decision_allowed": true,
+          "deterministic_validation": true
+        }
+      ],
+      "error_count": 0,
+      "warning_count": 0,
+      "issue_count": 0,
+      "issues": []
+    },
+    {
+      "id": "security-scan",
+      "name": "Security Vulnerability Scan",
+      "version": "2026-06-28T12:00:00+00:00",
+      "schema": "aiwf.workflow-contract.v1",
+      "step_contracts": [
+        {
+          "key": "collect_security_manifest",
+          "type": "python",
+          "prompt": "steps/security-scan/collect_security_context.md",
+          "artifact": "security-context.md",
+          "functions": [
+            "collect_security_context"
+          ],
+          "expected_files": [
+            "security-context.md"
+          ],
+          "retry_target": "collect_security_manifest",
+          "ai_decision_allowed": false,
+          "deterministic_validation": true
+        },
+        {
+          "key": "consensus_security_scan",
+          "type": "python",
+          "prompt": "steps/security-scan/00_security_candidate_scan.md",
+          "artifact": "security-candidates-agent-1.md",
+          "functions": [
+            "consensus_agent"
+          ],
+          "expected_files": [
+            "security-candidates-agent-1.md",
+            "security-candidates-agent-1-score.md",
+            "security-candidates-agent-2.md",
+            "security-candidates-agent-2-score.md",
+            "security-candidates-agent-3.md",
+            "security-candidates-agent-3-score.md"
+          ],
+          "retry_target": "consensus_security_scan",
+          "ai_decision_allowed": false,
+          "deterministic_validation": true
+        },
+        {
+          "key": "combine_security_findings",
+          "type": "python",
+          "prompt": "steps/security-scan/combine_security_candidates.md",
+          "artifact": "security-findings.md",
+          "functions": [
+            "combine_security_candidates"
+          ],
+          "expected_files": [
+            "security-findings.md"
+          ],
+          "retry_target": "combine_security_findings",
+          "ai_decision_allowed": false,
+          "deterministic_validation": true
+        },
+        {
+          "key": "generate_security_report",
+          "type": "python",
+          "prompt": "steps/security-scan/01_security_report.md",
+          "artifact": "security-report.md",
+          "functions": [
+            "generate_security_report"
+          ],
+          "expected_files": [
+            "security-report.md"
+          ],
+          "retry_target": "generate_security_report",
+          "ai_decision_allowed": false,
+          "deterministic_validation": true
+        },
+        {
+          "key": "validate_security_report",
+          "type": "python",
+          "prompt": "steps/security-scan/validate_security_report.md",
+          "artifact": "security-report.md",
+          "functions": [
+            "validate_security_report"
+          ],
+          "expected_files": [
+            "security-report.md",
+            "security-report-score.md"
+          ],
+          "retry_target": "generate_security_report",
+          "ai_decision_allowed": false,
+          "deterministic_validation": true
+        },
+        {
+          "key": "finalize_security_report",
+          "type": "python",
+          "prompt": "steps/security-scan/finalize_security_report.md",
+          "artifact": "security-final.md",
+          "functions": [
+            "finalize_security_report"
+          ],
+          "expected_files": [
+            "security-final.md"
+          ],
+          "retry_target": "finalize_security_report",
+          "ai_decision_allowed": false,
+          "deterministic_validation": true
+        }
+      ],
+      "error_count": 0,
+      "warning_count": 0,
+      "issue_count": 0,
+      "issues": []
+    }
+  ]
+}

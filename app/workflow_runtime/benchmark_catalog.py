@@ -14,6 +14,10 @@ BENCHMARK_CASES = [
     {"id": "BENCH-008", "title": "Controller restart", "profile": "recovery", "expected": ["checkpoint resume", "lock released"]},
     {"id": "BENCH-009", "title": "Project lock conflict", "profile": "recovery", "expected": ["single writer"]},
     {"id": "BENCH-010", "title": "Scope expansion cleanup", "profile": "quality", "expected": ["unrequested output reported"]},
+    {"id": "BENCH-011", "title": "Validation failure repair", "profile": "failure", "expected": ["owning task repair", "final validation pass"]},
+    {"id": "BENCH-012", "title": "Repeated no-file-change recovery", "profile": "failure", "expected": ["fresh session rotation", "bounded recovery"]},
+    {"id": "BENCH-013", "title": "Large legacy project local change", "profile": "complex", "expected": ["incremental index", "focused scope", "full gate"]},
+    {"id": "BENCH-014", "title": "Multi-language validation plan", "profile": "quality", "expected": ["detected build", "tests", "lint/type check when configured"]},
 ]
 
 

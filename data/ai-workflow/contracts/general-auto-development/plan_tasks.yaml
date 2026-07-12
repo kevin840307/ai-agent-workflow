@@ -1,7 +1,8 @@
 id: plan_tasks
 key: plan_tasks
 name: Plan Tasks
-description: AI creates SPEC, todo, task-manifest JSON, and short human-style task prompts for the fixed SOP development loop. Python validates schema only.
+description: AI creates SPEC, todo, task-manifest JSON, and short human-style task
+  prompts for the fixed SOP development loop. Python validates schema only.
 enabled: true
 type: ai
 skill: steps/general-auto-development/01_plan_tasks.md
@@ -13,12 +14,12 @@ outputs:
 - task-manifest.md
 - task-manifest.json
 function: ''
-retry: 2
+retry: 99
 failAction: same_step
 retryFromStepKey: plan_tasks
 keepSameSession: true
 injectFailureFeedback: true
-stopAfterFailures: 2
+stopAfterFailures: 99
 allowInteraction: false
 thinking: true
 thinkingLevel: medium
@@ -38,3 +39,26 @@ path: contracts/general-auto-development/plan_tasks.yaml
 compactPrompt: true
 includeSkillContext: false
 compactRetryPromptWhenReusingSession: true
+recoverRepeatedFailure: true
+maxRetries: 99
+retryPolicy:
+  defaultRetryTo: plan_tasks
+  maxRetries: 99
+  recoveryBudget:
+    maxRunFailures: 40
+    maxStepFailures: 24
+    maxTaskFailures: 12
+    maxFailureClass: 12
+    maxFingerprint: 9
+    wallClockMinutes: 60
+    freshSessionEvery: 3
+recoveryBudget:
+  maxRunFailures: 40
+  maxStepFailures: 24
+  maxTaskFailures: 12
+  maxFailureClass: 12
+  maxFingerprint: 9
+  wallClockMinutes: 60
+  freshSessionEvery: 3
+phase: planning
+sessionRole: planning

@@ -7,16 +7,43 @@ from typing import Any
 
 from app.core.paths import read_text, write_text
 from app.runtime_modules.errors import WorkflowError
+from app.workflow_runtime.task_acceptance import normalize_task_contract, validate_task_file_changes
 from app.runtime_modules.files import (
     existing_validation_scripts,
-    extract_build_files,
     failure_feedback_for_step,
     project_file_snapshot,
 )
 from .step_utils import step_config
+from .repair_task_policy import (
+    append_generic_repair_task,
+    is_generic_task_loop_feedback,
+    latest_feedback_task_id,
+    latest_retry_feedback_block,
+    retry_feedback_blocks,
+)
 
 
 class TaskLoopActionsMixin:
+
+    TASK_KIND_OWNERS = {
+        "implementation": "build",
+        "build": "build",
+        "code": "build",
+        "test": "generate_tests",
+        "tests": "generate_tests",
+        "validation": "run_external_validation",
+        "review": "planning",
+        "planning": "planning",
+        "plan": "planning",
+    }
+
+    @classmethod
+    def _task_owner_from_entry(cls, task: dict[str, Any]) -> str:
+        explicit = str(task.get("owner") or "").strip().lower()
+        if explicit:
+            return explicit
+        kind = str(task.get("kind") or "implementation").strip().lower()
+        return cls.TASK_KIND_OWNERS.get(kind, "build")
 
     @staticmethod
     def _ordered_task_ids(todo: str) -> list[str]:
@@ -48,24 +75,11 @@ class TaskLoopActionsMixin:
         return match.group(0).strip() if match else ""
 
     def _task_owner(self, todo: str, task_id: str) -> str:
-        title = self._task_title(todo, task_id)
         section = self._task_section(todo, task_id)
-        header = title.lower()
-        goal_match = re.search(r"(?im)^\s*-\s*goal:\s*(.+)$", section or "")
-        goal = goal_match.group(1).lower() if goal_match else ""
-        primary = f"{header}\n{goal}"
-        text = f"{primary}\n{section}".lower()
-        change_pattern = r"\b(implement|create|modify|update|write|add|generate|produce|build)\b"
-        if re.search(change_pattern, primary) or re.search(r"(實作|新增|建立|修改|產生|製作)", primary):
-            if not re.search(r"\btests?\b", primary) and "測試" not in primary:
-                return "build"
-        if re.search(r"\b(generate|create|write|add)\s+(focused\s+)?(automated\s+)?tests?\b", primary) or "test files only" in text:
-            return "generate_tests"
-        if "external validation" in primary and not re.search(r"\b(implement|create|modify|update|write|add|build)\b", primary):
-            return "run_external_validation"
-        if re.search(r"\b(review|analyze|analyse|inspect|scan|understand|plan)\b", primary) and not re.search(change_pattern, primary):
-            return "planning"
-        return "build"
+        match = re.search(r"(?im)^\s*-\s*owner:\s*([a-z_]+)\s*$", section or "")
+        owner = str(match.group(1) if match else "build").strip().lower()
+        return owner if owner in {"planning", "build", "generate_tests", "run_external_validation"} else "build"
+
 
     @staticmethod
     def _fallback_validation_scripts(run: dict[str, Any]) -> list[str]:
@@ -232,17 +246,25 @@ class TaskLoopActionsMixin:
     def _task_entries_from_manifest(manifest: str, *, owner: str | None = None) -> list[dict[str, Any]]:
         entries: list[dict[str, Any]] = []
         seen: set[tuple[str, str]] = set()
-        pattern = re.compile(r"^\s*\d+\.\s+(TASK-\d{3})(?:\s+\[owner=([^\]]+)\])?:\s*(.+?)\s*$", re.MULTILINE)
+        pattern = re.compile(r"^\s*\d+\.\s+(TASK-\d{3})(?:\s+\[(owner|kind)=([^\]]+)\])?:\s*(.+?)\s*$", re.MULTILINE)
         for match in pattern.finditer(manifest or ""):
-            task_owner = (match.group(2) or "build").strip()
+            label = (match.group(2) or "owner").strip().lower()
+            value = (match.group(3) or "build").strip()
+            task_owner = value if label == "owner" else TaskLoopActionsMixin.TASK_KIND_OWNERS.get(value.lower(), "build")
             if owner and task_owner != owner:
                 continue
             key = (match.group(1), task_owner)
             if key in seen:
                 continue
             seen.add(key)
-            entries.append({"id": match.group(1), "owner": task_owner, "title": match.group(3).strip()})
+            entries.append(normalize_task_contract({"id": match.group(1), "owner": task_owner, "title": match.group(4).strip()}, owner=task_owner))
         return entries
+
+    @staticmethod
+    def _validate_task_acceptance_files(task: dict[str, Any], files: list[tuple[str, str]]) -> None:
+        violations = validate_task_file_changes(task, [path for path, _ in files])
+        if violations:
+            raise WorkflowError("TASK_ACCEPTANCE_SCOPE_FAILED: " + "; ".join(violations))
 
     def _task_run(self, run: dict[str, Any], task: dict[str, Any], *, index: int, total: int, phase: str) -> dict[str, Any]:
         scoped = dict(run)
@@ -258,6 +280,7 @@ class TaskLoopActionsMixin:
             "total": total,
             "phase": phase,
             "todo_path": f"output/todos/{self._safe_task_id(task_id)}.md",
+            "acceptance_contract": normalize_task_contract(task).get("acceptance_contract"),
         }
         return scoped
 
@@ -310,81 +333,28 @@ class TaskLoopActionsMixin:
 
     @staticmethod
     def _retry_feedback_blocks(feedback: str) -> list[str]:
-        if not feedback.strip():
-            return []
-        return [
-            match.group(0).strip()
-            for match in re.finditer(
-                r"^## Retry Feedback for .*?(?=^## Retry Feedback for |\Z)",
-                feedback,
-                flags=re.MULTILINE | re.DOTALL,
-            )
-        ]
+        return retry_feedback_blocks(feedback)
 
     @classmethod
     def _latest_retry_feedback_block(cls, feedback: str) -> str:
-        blocks = cls._retry_feedback_blocks(feedback)
-        return blocks[-1] if blocks else ""
+        return latest_retry_feedback_block(feedback)
 
     @classmethod
     def _latest_feedback_task_id(cls, feedback: str) -> str:
-        block = cls._latest_retry_feedback_block(feedback)
-        if not block:
-            return ""
-        match = re.search(r"\bTASK-\d{3}\b", block)
-        return match.group(0) if match else ""
+        return latest_feedback_task_id(feedback)
 
     @classmethod
     def _latest_feedback_mentions_task(cls, feedback: str, task_id: str) -> bool:
-        block = cls._latest_retry_feedback_block(feedback)
+        block = latest_retry_feedback_block(feedback)
         return cls._feedback_mentions_task(block, task_id)
 
     @staticmethod
     def _feedback_is_generic_for_task_loop(feedback: str) -> bool:
-        block = TaskLoopActionsMixin._latest_retry_feedback_block(feedback)
-        if not block.strip() or re.search(r"\bTASK-\d{3}\b", block):
-            return False
-        # Deterministic test/layout/validation failures already have a precise
-        # owner step. Appending a synthetic TASK-999 causes Adaptive/General to
-        # redo unrelated production work instead of repairing tests/validation.
-        deterministic_markers = (
-            "TEST_DEFINITION_INVALID",
-            "TEST_LAYOUT_CONFLICT",
-            "VALIDATION_FILE_NOT_FOUND",
-            "VALIDATION_FILE_MUTATED",
-            "VALIDATION_NOT_EXECUTED",
-            "pytest collection",
-            "import file mismatch",
-            "unresolved required fixture arguments",
-        )
-        upper = block.upper()
-        lower = block.lower()
-        if any(marker in upper for marker in deterministic_markers[:5]):
-            return False
-        if any(marker in lower for marker in deterministic_markers[5:]):
-            return False
-        return True
+        return is_generic_task_loop_feedback(feedback)
 
     @staticmethod
     def _with_generic_repair_task(tasks: list[dict[str, Any]], *, owner: str) -> list[dict[str, Any]]:
-        used_ids = {str(task.get("id") or "") for task in tasks}
-        repair_id = ""
-        for number in range(999, 899, -1):
-            candidate = f"TASK-{number:03d}"
-            if candidate not in used_ids:
-                repair_id = candidate
-                break
-        if not repair_id:
-            repair_id = "TASK-REPAIR"
-        return [
-            *tasks,
-            {
-                "id": repair_id,
-                "owner": owner,
-                "title": "Repair assembled project from latest workflow failure feedback",
-                "_generic_repair_task": True,
-            },
-        ]
+        return append_generic_repair_task(tasks, owner=owner)
 
     @staticmethod
     def _content_markers(content: str) -> list[str]:
@@ -494,196 +464,3 @@ class TaskLoopActionsMixin:
                 "A direct agent edit removed previously completed task behavior. "
                 "Retry the current task and preserve earlier task results. " + "; ".join(missing)
             )
-
-    def _task_artifact_is_satisfied(self, project_dir: Path, artifact_path: Path) -> bool:
-        files = extract_build_files(read_text(artifact_path))
-        if not files:
-            return False
-        for rel_path, expected in files:
-            target = project_dir / rel_path.strip().strip("`").replace("\\", "/")
-            if not target.is_file():
-                return False
-            try:
-                actual = target.read_text(encoding="utf-8")
-            except (UnicodeDecodeError, OSError):
-                return False
-            markers = self._content_markers(expected)
-            if markers:
-                if any(marker not in actual for marker in markers):
-                    return False
-            elif actual != expected:
-                return False
-        return True
-
-    def _previous_task_artifacts(self, output_dir: Path, current_index: int, filename: str) -> list[tuple[str, Path]]:
-        artifacts: list[tuple[str, Path]] = []
-        task_root = output_dir / "tasks"
-        if not task_root.exists():
-            return artifacts
-        for task_dir in sorted(path for path in task_root.iterdir() if path.is_dir()):
-            match = re.fullmatch(r"TASK-(\d{3})", task_dir.name)
-            if not match:
-                continue
-            if int(match.group(1)) >= current_index:
-                continue
-            artifact_path = task_dir / filename
-            if artifact_path.is_file():
-                artifacts.append((task_dir.name, artifact_path))
-        return artifacts
-
-    def _validate_previous_task_markers_preserved(
-        self,
-        project_dir: Path,
-        output_dir: Path,
-        *,
-        current_task_id: str,
-        current_index: int,
-        current_files: list[tuple[str, str]],
-        filename: str,
-    ) -> None:
-        changed_paths = {rel_path.strip().strip("`").replace("\\", "/") for rel_path, _ in current_files}
-        if not changed_paths:
-            return
-        missing: list[str] = []
-        for previous_task_id, artifact_path in self._previous_task_artifacts(output_dir, current_index, filename):
-            for rel_path, previous_content in extract_build_files(read_text(artifact_path)):
-                normalized = rel_path.strip().strip("`").replace("\\", "/")
-                if normalized not in changed_paths:
-                    continue
-                markers = self._content_markers(previous_content)
-                if not markers:
-                    continue
-                target = project_dir / normalized
-                try:
-                    actual = target.read_text(encoding="utf-8")
-                except (UnicodeDecodeError, OSError):
-                    actual = ""
-                lost = [marker for marker in markers if marker not in actual]
-                if lost:
-                    missing.append(
-                        f"{current_task_id} overwrote previous task output from {previous_task_id} in {normalized}; "
-                        f"missing preserved marker(s): {', '.join(lost[:8])}"
-                    )
-        if missing:
-            raise WorkflowError(
-                "Task output appears to have overwritten already completed task behavior. "
-                "When editing a shared file, output the complete file and preserve previous task results. "
-                + "; ".join(missing)
-            )
-
-    @staticmethod
-    def _loose_code_from_agent_output(output: str) -> str:
-        text = (output or "").strip()
-        if not text or "FILE:" in text:
-            return ""
-        fences = list(re.finditer(r"```(?P<lang>[A-Za-z0-9_.+-]*)\s*\r?\n(?P<body>.*?)\r?\n```", text, flags=re.DOTALL))
-        if fences:
-            # Prefer an explicit source-code fence.  Ignore prose-only markdown fences.
-            for match in reversed(fences):
-                lang = (match.group("lang") or "").lower()
-                body = match.group("body").strip()
-                if lang in {"python", "py", "javascript", "js", "typescript", "ts", "java", "csharp", "cs", "go", "rust", "rs"}:
-                    return body.rstrip() + "\n"
-            if len(fences) == 1:
-                body = fences[0].group("body").strip()
-                if re.search(r"(?m)^\s*(?:def|class|import|from)\s+", body):
-                    return body.rstrip() + "\n"
-            return ""
-        if re.search(r"(?m)^\s*(?:def|class|import|from)\s+", text):
-            return text.rstrip() + "\n"
-        return ""
-
-    @staticmethod
-    def _is_python_like_code(content: str) -> bool:
-        return bool(re.search(r"(?m)^\s*(?:def|class|import|from)\s+", content or ""))
-
-    @staticmethod
-    def _sanitized_module_name(name: str) -> str:
-        cleaned = re.sub(r"[^A-Za-z0-9_]+", "_", (name or "main").strip().lower()).strip("_")
-        return cleaned or "main"
-
-    def _preferred_loose_output_path(self, project_dir: Path, output_dir: Path, current_index: int, filename: str, content: str) -> str:
-        # A model that omits FILE blocks usually emitted a fragment for the same
-        # shared file used by earlier tasks.  Prefer the most recent earlier
-        # production path so the task loop converges instead of restarting from
-        # TASK-001.
-        previous = self._previous_task_artifacts(output_dir, current_index, filename)
-        for _task_id, artifact_path in reversed(previous):
-            paths = [rel_path.strip().strip("`").replace("\\", "/") for rel_path, _ in extract_build_files(read_text(artifact_path))]
-            for rel_path in reversed(paths):
-                if rel_path and not rel_path.startswith("tests/"):
-                    return rel_path
-        snapshot = project_file_snapshot(project_dir)
-        source_paths = [path.replace("\\", "/") for path in sorted(snapshot) if not path.replace("\\", "/").startswith("tests/") and Path(path).suffix.lower() in {".py", ".js", ".ts", ".java", ".cs", ".go", ".rs"}]
-        if len(source_paths) == 1:
-            return source_paths[0]
-        if self._is_python_like_code(content):
-            return f"src/{self._sanitized_module_name(project_dir.name)}.py"
-        return "src/main.txt"
-
-    def _coerce_loose_task_output_to_files(
-        self,
-        project_dir: Path,
-        output_dir: Path,
-        *,
-        current_index: int,
-        filename: str,
-        output: str,
-    ) -> list[tuple[str, str]]:
-        code = self._loose_code_from_agent_output(output)
-        if not code:
-            return []
-        rel_path = self._preferred_loose_output_path(project_dir, output_dir, current_index, filename, code)
-        target = project_dir / rel_path
-        content = code.rstrip() + "\n"
-        if target.is_file():
-            try:
-                existing = target.read_text(encoding="utf-8")
-            except (UnicodeDecodeError, OSError):
-                existing = ""
-            existing_markers = self._content_markers(existing)
-            new_markers = self._content_markers(content)
-            if existing.strip() and existing_markers and new_markers:
-                missing_existing = [marker for marker in existing_markers if marker not in content]
-                novel_new = [marker for marker in new_markers if marker not in existing]
-                if missing_existing and novel_new:
-                    content = existing.rstrip() + "\n\n" + content.lstrip()
-        return [(rel_path, content)]
-
-    def _merge_candidate_with_existing_if_needed(
-        self,
-        project_dir: Path,
-        output_dir: Path,
-        *,
-        current_index: int,
-        files: list[tuple[str, str]],
-        filename: str,
-    ) -> tuple[list[tuple[str, str]], list[str]]:
-        adjusted: list[tuple[str, str]] = []
-        notes: list[str] = []
-        for rel_path, content in files:
-            normalized = rel_path.strip().strip("`").replace("\\", "/")
-            expected_markers: list[str] = []
-            for _previous_task_id, artifact_path in self._previous_task_artifacts(output_dir, current_index, filename):
-                for previous_rel, previous_content in extract_build_files(read_text(artifact_path)):
-                    if previous_rel.strip().strip("`").replace("\\", "/") != normalized:
-                        continue
-                    for marker in self._content_markers(previous_content):
-                        if marker not in expected_markers:
-                            expected_markers.append(marker)
-            missing = [marker for marker in expected_markers if marker not in content]
-            target = project_dir / normalized
-            if missing and target.is_file():
-                try:
-                    existing = target.read_text(encoding="utf-8")
-                except (UnicodeDecodeError, OSError):
-                    existing = ""
-                new_markers = [marker for marker in self._content_markers(content) if marker not in existing]
-                if existing.strip() and new_markers:
-                    merged = existing.rstrip() + "\n\n" + content.lstrip().rstrip() + "\n"
-                    adjusted.append((rel_path, merged))
-                    notes.append(f"{normalized} preserved previous marker(s): {', '.join(missing[:6])}")
-                    continue
-            adjusted.append((rel_path, content))
-        return adjusted, notes
-

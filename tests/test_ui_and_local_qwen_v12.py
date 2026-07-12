@@ -8,28 +8,18 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_changes_panel_is_stacked_and_preview_owns_scroll() -> None:
-    css = (ROOT / "static/css/workflow-runner.css").read_text(encoding="utf-8")
-    assert "V12 focused review UX" in css
-    block = css.split("/* V12 focused review UX", 1)[1]
-    assert '#changesPanel.active' in block
-    assert 'grid-template-areas: "summary" "files" "preview"' in block
-    assert 'grid-template-columns: minmax(0, 1fr)' in block
-    assert '#changesList' in block and 'scrollbar-gutter: stable' in block
-    assert '#changePreview .diff-code' in block
-    assert 'scrollbar-gutter: stable both-edges' in block
-
-
-def test_patch_unified_and_split_views_have_independent_scrollbars() -> None:
+def test_run_center_and_diagnostics_use_one_vertical_scroll_owner() -> None:
     css = (ROOT / "static/css/workflow-runner.css").read_text(encoding="utf-8")
     diagnostics = (ROOT / "static/js/features/diagnostics.js").read_text(encoding="utf-8")
-    block = css.split("/* V12 focused review UX", 1)[1]
-    assert '.diagnostics-drawer.patch-review-mode' in block
-    assert '.patch-preview-pane' in block and 'overflow: auto !important' in block
-    assert '.patch-preview-pane > pre' in block and 'width: max-content' in block
-    assert '.patch-preview-pane > .patch-split' in block
-    assert 'patch-view-unified' in diagnostics and 'patch-view-split' in diagnostics
-    assert 'patch-review-mode' in diagnostics
+    patch_review = (ROOT / "static/js/features/patch-review.js").read_text(encoding="utf-8")
+    block = css.split("/* V17 single-scroll workspace contract", 1)[1]
+    assert ".run-center > .panel.active" in block
+    assert ".diagnostic-section.active" in block
+    assert "overflow-y: auto" in block
+    assert ".patch-review-workbench" in css
+    assert ".artifact-viewer-layout" in css
+    assert "diagnosticPatch" not in diagnostics
+    assert "data-patch-view" in patch_review and '"split"' in patch_review and '"unified"' in patch_review
 
 
 def test_result_is_center_modal_and_can_be_closed_three_ways() -> None:
@@ -96,7 +86,7 @@ def test_local_qwen_case_runner_lists_and_dry_runs(tmp_path: Path) -> None:
 
 def test_windows_qwen_wrapper_and_user_guide_are_shipped() -> None:
     assert (ROOT / "scripts/run_local_qwen_cases.ps1").is_file()
-    guide = (ROOT / "doc/zh-TW/LOCAL_REAL_QWEN_CASES.md").read_text(encoding="utf-8")
+    guide = (ROOT / "doc/zh-TW/TESTING.md").read_text(encoding="utf-8")
     assert "run_local_qwen_cases.ps1" in guide
     assert "validation.py" in guide
     assert "Repeat 5" in guide

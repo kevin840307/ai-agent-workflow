@@ -1,0 +1,2162 @@
+{
+  "sessions": [
+    {
+      "id": "9ef46c1c-0c8e-4e6a-a3fa-da8d2c335172",
+      "qwen_session_id": "9ef46c1c-0c8e-4e6a-a3fa-da8d2c335172",
+      "agent_session_ids": {
+        "qwen": "9ef46c1c-0c8e-4e6a-a3fa-da8d2c335172",
+        "opencode": "9ef46c1c-0c8e-4e6a-a3fa-da8d2c335172"
+      },
+      "title": "Seven Sort adaptive",
+      "project_path": "C:\\Users\\kevin\\testllm\\reports\\qwen-seven-sort-v19\\adaptive-project",
+      "created_at": "2026-07-11T19:44:53.442003+00:00",
+      "updated_at": "2026-07-11T19:44:53.442003+00:00"
+    }
+  ],
+  "messages": [],
+  "runs": [
+    {
+      "id": "4badad66-a186-4942-ba4d-09587b9c1bdb",
+      "session_id": "9ef46c1c-0c8e-4e6a-a3fa-da8d2c335172",
+      "qwen_session_id": "9ef46c1c-0c8e-4e6a-a3fa-da8d2c335172",
+      "agent_session_ids": {
+        "qwen": "9ef46c1c-0c8e-4e6a-a3fa-da8d2c335172",
+        "opencode": "9ef46c1c-0c8e-4e6a-a3fa-da8d2c335172"
+      },
+      "status": "done",
+      "error": null,
+      "run_owner": {
+        "id": "DESKTOP-HA3SSPJ:36124",
+        "host": "DESKTOP-HA3SSPJ",
+        "pid": 36124,
+        "started_at": "2026-07-11T19:44:53.166956+00:00"
+      },
+      "workspace": "C:\\Users\\kevin\\testllm\\reports\\qwen-seven-sort-v19\\adaptive-project\\.ai-workflow\\runs\\run-4badad66a186",
+      "project_path": "C:\\Users\\kevin\\testllm\\reports\\qwen-seven-sort-v19\\adaptive-project",
+      "original_project_path": "C:\\Users\\kevin\\testllm\\reports\\qwen-seven-sort-v19\\adaptive-project",
+      "isolated_project_path": null,
+      "patch_mode": "auto_apply",
+      "patch_status": "not_required",
+      "unattended": false,
+      "original_project_hashes": {},
+      "workflow_id": "adaptive-auto-workflow",
+      "workflow_folder": "adaptive-auto-workflow",
+      "workflow_name": "Adaptive Auto Workflow",
+      "skill_root": ".ai-workflow",
+      "agent": "qwen",
+      "test_command": null,
+      "validation_script": null,
+      "validation_contract": null,
+      "run_profile": "deep",
+      "thinking_level": "high",
+      "thinking_level_override": true,
+      "run_timeout_sec": null,
+      "workflow_version": "2026-07-05T00:00:00+08:00",
+      "prompt_version": "current",
+      "contract_version": "current",
+      "context_pack": null,
+      "approval_mode": "fully_automatic",
+      "approval_state": "not_required",
+      "risk_assessment": {
+        "schema": "aiwf.risk-assessment.v1",
+        "level": "low",
+        "score": 0,
+        "reasons": [
+          "No sensitive subsystem or destructive operation detected"
+        ],
+        "matched_terms": [],
+        "project_path": "C:\\Users\\kevin\\testllm\\reports\\qwen-seven-sort-v19\\adaptive-project",
+        "recommended": {
+          "patch_mode": "auto_apply",
+          "approval_mode": "fully_automatic",
+          "reviewers": 1,
+          "checkpoint": "per_step"
+        },
+        "approval_required": false,
+        "high_risk": false
+      },
+      "model_capability": {
+        "label": "Balanced coding model",
+        "context_window": 65536,
+        "tool_calling": "reliable",
+        "structured_output": "medium",
+        "coding_level": "medium",
+        "max_task_profile": "standard",
+        "max_files_per_task": 10,
+        "prompt_budget_chars": 32000,
+        "compact_prompt": true,
+        "preferred_workflow": "general-auto-development",
+        "review_mode": "fresh_read_only",
+        "id": "normal",
+        "context_window_source": "profile_default",
+        "calibration_status": "ready",
+        "calibration": {
+          "schema": "aiwf.capability-calibration.v1",
+          "agent": "qwen",
+          "model": null,
+          "context_window": null,
+          "measured_at": "2026-07-11T14:45:36.417116+00:00",
+          "duration_sec": 0.016,
+          "checks": {
+            "model_response": true,
+            "session_create": true,
+            "tool_write": true
+          },
+          "recommended_profile": "normal",
+          "ready_for_workflow": true,
+          "max_files_per_task": 10,
+          "prompt_budget_chars": 32000,
+          "preferred_workflow": "general-auto-development",
+          "sample_count": 1
+        },
+        "calibrated_preferred_workflow": "general-auto-development"
+      },
+      "validator_plans": [],
+      "project_validation_profile": {
+        "schema": "aiwf.project-validation-profile.v1",
+        "project_path": "C:\\Users\\kevin\\testllm\\reports\\qwen-seven-sort-v19\\adaptive-project",
+        "project_key": "7d7713138a338506eb66b09d",
+        "status": "draft",
+        "source": "auto_detected",
+        "primary_validator": null,
+        "phases": [],
+        "baseline_categories": [
+          "build",
+          "test",
+          "configuration",
+          "syntax"
+        ],
+        "fast_categories": [
+          "build",
+          "focused_test",
+          "syntax",
+          "configuration"
+        ],
+        "full_categories": [
+          "build",
+          "test",
+          "lint",
+          "typecheck",
+          "configuration",
+          "syntax",
+          "custom"
+        ],
+        "descriptor_fingerprint": {
+          "schema": "aiwf.project-descriptor-fingerprint.v1",
+          "value": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "files": []
+        },
+        "verification": null,
+        "successful_verifications": 0,
+        "created_at": "2026-07-11T19:44:53.518004+00:00",
+        "updated_at": "2026-07-11T19:44:53.519003+00:00"
+      },
+      "benchmark_id": null,
+      "steps": [
+        {
+          "key": "generate_task_prompts",
+          "title": "Generate Execution Prompts",
+          "kind": "agent",
+          "type": "ai",
+          "agent": "qwen",
+          "status": "passed",
+          "started_at": "2026-07-11T19:44:53.688004+00:00",
+          "ended_at": "2026-07-11T19:45:49.540085+00:00",
+          "error": null,
+          "error_code": null,
+          "retry_count": 0,
+          "config": {
+            "id": "asset-generate_task_prompts",
+            "key": "generate_task_prompts",
+            "name": "Generate Execution Prompts",
+            "description": "AI generates SPEC plus short execution prompts that will be sent to Qwen/OpenCode like human CLI instructions.",
+            "type": "ai",
+            "enabled": true,
+            "contractId": "generate_task_prompts",
+            "contractPath": "contracts/adaptive-auto-workflow/generate_task_prompts.yaml",
+            "metadataPath": "contracts/adaptive-auto-workflow/generate_task_prompts.yaml",
+            "skillPath": "steps/adaptive-auto-workflow/00_generate_task_prompts.md",
+            "templatePath": "steps/adaptive-auto-workflow/00_generate_task_prompts.md",
+            "command": "",
+            "agent": "qwen",
+            "provider": "qwen",
+            "filename": "spec.md",
+            "outputFile": "spec.md",
+            "expectedFiles": [
+              "spec.md",
+              "task-manifest.md",
+              "task-manifest.json"
+            ],
+            "functions": [],
+            "function": "",
+            "maxRetries": 99,
+            "timeoutEnabled": true,
+            "timeoutMinutes": 3.0,
+            "allowInteraction": false,
+            "requiresValidationScript": false,
+            "thinkingLevel": "high",
+            "thinking": true,
+            "pauseAfterStep": false,
+            "approvalRequired": false,
+            "sources": [],
+            "reviewers": [],
+            "reviewMode": "none",
+            "confidenceThreshold": 0.75,
+            "passKeywords": "PASS, APPROVED",
+            "failKeywords": "FAIL, BLOCKED",
+            "aggregatorFunction": "",
+            "failAction": "same_step",
+            "retryFromStepKey": "generate_task_prompts",
+            "keepSameSession": true,
+            "injectFailureFeedback": true,
+            "stopAfterFailures": 99,
+            "templateContent": "You are planning the next prompts for a CLI coding agent.\n\n{{thinking_guidance}}\nUser request:\n{{requirement_brief}}\n\nProject snapshot, brief:\n{{project_profile_brief}}\n{{project_index_brief}}\n\nRetry feedback from the last failed run, if any:\n{{latest_failure_feedback}}\n\nController complexity profile: {{complexity_profile}}\nRecommended task count: {{recommended_task_count}}\nHard maximum task count: {{max_planned_tasks}}\n\nCreate the SPEC and the short prompts that a human would type next into Qwen/OpenCode.\n\nRules:\n- Do not implement code in this step.\n- Do not create workflow docs or explain this workflow platform.\n- The SPEC must be a faithful acceptance checklist derived from the user request.\n- Python will only validate JSON shape and task prompt format; you must make the SPEC useful for the later review.\n- Each task prompt must be a short natural-language CLI instruction for the selected project.\n- Do not include shell commands, tool-call JSON, code blocks, absolute paths, or file contents.\n- Use the minimum sufficient implementation. Do not add unrequested features, duplicate modules, extra examples, or documentation.\n- Respect the controller complexity profile and hard maximum task count. Prefer 1 task for tiny requests and use additional tasks only for genuinely independent work.\n- If retry feedback exists, revise the SPEC/task prompts to fix that concrete failure.\n\nOutput one JSON object only:\n{\n  \"goal\": \"short goal\",\n  \"spec\": \"Markdown SPEC with Goal, Scope, Acceptance Criteria, Test Expectations, Review Checklist\",\n  \"tasks\": [\n    {\n      \"id\": \"TASK-001\",\n      \"title\": \"short task title\",\n      \"kind\": \"implementation|test|repair|assembly\",\n      \"prompt\": \"short human CLI instruction for Qwen/OpenCode\",\n      \"acceptance\": [\"concrete acceptance item\"]\n    }\n  ]\n}\n",
+            "compactPrompt": true,
+            "includeSkillContext": false,
+            "recoverRepeatedFailure": true,
+            "retryPolicy": {
+              "defaultRetryTo": "generate_task_prompts",
+              "maxRetries": 99,
+              "recoveryBudget": {
+                "maxRunFailures": 40,
+                "maxStepFailures": 24,
+                "maxTaskFailures": 12,
+                "maxFailureClass": 12,
+                "maxFingerprint": 9,
+                "wallClockMinutes": 60,
+                "freshSessionEvery": 3
+              }
+            },
+            "approvalMessage": "",
+            "agentOptions": {
+              "thinking": true,
+              "thinkingLevel": "high"
+            },
+            "requireProjectChanges": false
+          },
+          "max_retries": 99,
+          "retry_from_step_key": "generate_task_prompts",
+          "fail_action": "same_step",
+          "allow_interaction": false,
+          "thinking": true,
+          "pause_after_step": false,
+          "maxRetries": 99,
+          "thinkingLevel": "high",
+          "events": [
+            {
+              "time": "2026-07-11T19:44:53.711004+00:00",
+              "ts": "2026-07-11T19:44:53.711004+00:00",
+              "step_key": "generate_task_prompts",
+              "stepKey": "generate_task_prompts",
+              "kind": "started",
+              "type": "started",
+              "message": "generate_task_prompts: started"
+            },
+            {
+              "time": "2026-07-11T19:45:49.558085+00:00",
+              "ts": "2026-07-11T19:45:49.558085+00:00",
+              "step_key": "generate_task_prompts",
+              "stepKey": "generate_task_prompts",
+              "kind": "passed",
+              "type": "passed",
+              "message": "generate_task_prompts: passed"
+            }
+          ],
+          "transitions": [
+            {
+              "kind": "step",
+              "from": "pending",
+              "to": "running",
+              "reason": "step status update",
+              "at": "2026-07-11T19:44:53.688004+00:00"
+            },
+            {
+              "kind": "step",
+              "from": "running",
+              "to": "passed",
+              "reason": "step status update",
+              "at": "2026-07-11T19:45:49.540085+00:00"
+            }
+          ],
+          "failure": null,
+          "last_event": "generate_task_prompts: passed"
+        },
+        {
+          "key": "auto_generation",
+          "title": "Execute Prompts",
+          "kind": "agent",
+          "type": "ai",
+          "agent": "qwen",
+          "status": "passed",
+          "started_at": "2026-07-11T19:47:14.397036+00:00",
+          "ended_at": "2026-07-11T19:48:39.670948+00:00",
+          "error": null,
+          "error_code": null,
+          "retry_count": 2,
+          "config": {
+            "id": "asset-auto_generation",
+            "key": "auto_generation",
+            "name": "Execute Prompts",
+            "description": "Execute AI-generated prompts through the same Qwen/OpenCode CLI session with direct project edits and optional tests.",
+            "type": "ai",
+            "enabled": true,
+            "contractId": "auto_generation",
+            "contractPath": "contracts/adaptive-auto-workflow/auto_generation.yaml",
+            "metadataPath": "contracts/adaptive-auto-workflow/auto_generation.yaml",
+            "skillPath": "steps/adaptive-auto-workflow/00_auto_generation.md",
+            "templatePath": "steps/adaptive-auto-workflow/00_auto_generation.md",
+            "command": "",
+            "agent": "qwen",
+            "provider": "qwen",
+            "filename": "auto-generation-result.md",
+            "outputFile": "auto-generation-result.md",
+            "expectedFiles": [
+              "auto-generation-result.md"
+            ],
+            "functions": [],
+            "function": "",
+            "maxRetries": 99,
+            "timeoutEnabled": true,
+            "timeoutMinutes": 5.0,
+            "allowInteraction": false,
+            "requiresValidationScript": false,
+            "thinkingLevel": "high",
+            "thinking": true,
+            "pauseAfterStep": false,
+            "approvalRequired": false,
+            "sources": [],
+            "reviewers": [],
+            "reviewMode": "none",
+            "confidenceThreshold": 0.75,
+            "passKeywords": "PASS, APPROVED",
+            "failKeywords": "FAIL, BLOCKED",
+            "aggregatorFunction": "",
+            "failAction": "selected_step",
+            "retryFromStepKey": "auto_generation",
+            "keepSameSession": true,
+            "injectFailureFeedback": true,
+            "stopAfterFailures": 99,
+            "templateContent": "Continue the same CLI coding session and execute the current AI-generated prompt.\n\n{{thinking_guidance}}\nUser request:\n{{requirement_brief}}\n\nSPEC to satisfy:\n{{spec}}\n\nCurrent task:\n{{current_task}}\n\nPrompt to type into Qwen/OpenCode:\n{{current_task_prompt}}\n\nProject snapshot, brief:\n{{project_profile_brief}}\n{{project_index_brief}}\n\nRetry feedback for this task, if any:\n{{current_task_failure_feedback}}\n\nDo:\n- Directly edit real files inside the selected project.\n- Keep earlier completed work intact.\n- Keep all tasks for the same user request in one coherent product and architecture. Extend the existing owner module from earlier tasks when practical instead of creating a parallel implementation.\n- Before creating a new file, inspect the project snapshot and earlier task results for the existing file that owns this behavior.\n- Do not write generated source under `output/`, run artifact folders, path fragments copied from absolute paths, or ad-hoc nested roots unless the existing project architecture already uses them.\n- Use the minimum sufficient implementation; do not add unrequested public parameters or parallel/duplicate implementations.\n- Keep one canonical production implementation and one canonical test layout.\n- Add or update tests when the task prompt asks for tests or when needed to prove the change.\n- When this is a repair retry, fix only the concrete failure feedback and preserve working code.\n- Do not edit workflow/run files, validation scripts, `.git`, `.qwen`, `.qwen-workflow`, `.ai-workflow`, or files outside the project.\n- Do not return tool-call JSON, FILE blocks, code fences, shell scripts, or prompt explanations.\n\nReturn a short Markdown summary with changed files, tests added/updated, and what was done.\n",
+            "compactPrompt": true,
+            "includeSkillContext": false,
+            "enableTaskLoop": true,
+            "recoverRepeatedFailure": true,
+            "retryPolicy": {
+              "defaultRetryTo": "auto_generation",
+              "maxRetries": 99,
+              "recoveryBudget": {
+                "maxRunFailures": 40,
+                "maxStepFailures": 24,
+                "maxTaskFailures": 12,
+                "maxFailureClass": 12,
+                "maxFingerprint": 9,
+                "wallClockMinutes": 60,
+                "freshSessionEvery": 3
+              }
+            },
+            "approvalMessage": "",
+            "agentOptions": {
+              "thinking": true,
+              "thinkingLevel": "high"
+            },
+            "requireProjectChanges": false
+          },
+          "max_retries": 99,
+          "retry_from_step_key": "auto_generation",
+          "fail_action": "selected_step",
+          "allow_interaction": false,
+          "thinking": true,
+          "pause_after_step": false,
+          "maxRetries": 99,
+          "thinkingLevel": "high",
+          "events": [
+            {
+              "time": "2026-07-11T19:45:49.638085+00:00",
+              "ts": "2026-07-11T19:45:49.638085+00:00",
+              "step_key": "auto_generation",
+              "stepKey": "auto_generation",
+              "kind": "started",
+              "type": "started",
+              "message": "auto_generation: started"
+            },
+            {
+              "time": "2026-07-11T19:46:20.209061+00:00",
+              "ts": "2026-07-11T19:46:20.209061+00:00",
+              "step_key": "auto_generation",
+              "stepKey": "auto_generation",
+              "kind": "failed",
+              "type": "failed",
+              "message": "TASK-001: test code must be separated from production files. Put pytest tests under tests/ instead of embedding them in production artifacts or project-root files. Invalid file(s): test_sorts.py"
+            },
+            {
+              "time": "2026-07-11T19:46:20.335060+00:00",
+              "ts": "2026-07-11T19:46:20.335060+00:00",
+              "step_key": "auto_generation",
+              "stepKey": "auto_generation",
+              "kind": "retry",
+              "type": "retry",
+              "message": "Retry 1/99 from auto_generation: TASK-001: test code must be separated from production files. Put pytest tests under tests/ instead of embedding them in production artifacts or project-root files. Invalid file(s): test_sorts.py",
+              "source_step": "auto_generation",
+              "target_step": "auto_generation",
+              "retry_count": 1,
+              "max_retries": 99,
+              "error": "TASK-001: test code must be separated from production files. Put pytest tests under tests/ instead of embedding them in production artifacts or project-root files. Invalid file(s): test_sorts.py",
+              "error_class": "UNKNOWN",
+              "failure_class": {
+                "code": "TEST_FAILED",
+                "title": "Automated tests failed",
+                "description": "The configured test command or pytest/unittest step failed.",
+                "retry_target": "implementation step",
+                "repair_prompt_hint": "Repair production code first using the failing assertions. Change tests only when they are clearly invalid.",
+                "severity": "high",
+                "user_message": "自動化測試未通過。",
+                "auto_repairable": false,
+                "recommended_action": "依失敗案例修正 production code，除非測試本身明確錯誤。"
+              },
+              "agent_diagnosis": {
+                "code": "UNKNOWN",
+                "title": "Unclassified workflow failure",
+                "explanation": "The controller could not map this failure to a known agent behavior class.",
+                "suggested_action": "Inspect the effective prompt, agent output, run-log, and gate report before retrying."
+              },
+              "repair_policy": {
+                "schema": "aiwf.small-model-repair-policy.v1",
+                "generated_at": "2026-07-11T19:46:20.321060+00:00",
+                "failure": {
+                  "code": "TEST_FAILED",
+                  "title": "Automated tests failed",
+                  "description": "The configured test command or pytest/unittest step failed.",
+                  "retry_target": "implementation step",
+                  "repair_prompt_hint": "Repair production code first using the failing assertions. Change tests only when they are clearly invalid.",
+                  "severity": "high",
+                  "user_message": "自動化測試未通過。",
+                  "auto_repairable": false,
+                  "recommended_action": "依失敗案例修正 production code，除非測試本身明確錯誤。"
+                },
+                "retry_count": 1,
+                "retry_target_hint": "build",
+                "prompt_mode": "test_failure_repair",
+                "repair_instruction": "以測試 stdout/stderr 為唯一修復依據，優先修 production code；只有測試明顯錯誤時才改 tests。",
+                "escalation": null
+              }
+            },
+            {
+              "time": "2026-07-11T19:46:20.465059+00:00",
+              "ts": "2026-07-11T19:46:20.465059+00:00",
+              "step_key": "auto_generation",
+              "stepKey": "auto_generation",
+              "kind": "started",
+              "type": "started",
+              "message": "auto_generation: started"
+            },
+            {
+              "time": "2026-07-11T19:47:14.142401+00:00",
+              "ts": "2026-07-11T19:47:14.142401+00:00",
+              "step_key": "auto_generation",
+              "stepKey": "auto_generation",
+              "kind": "failed",
+              "type": "failed",
+              "message": "TASK-001: test code must be separated from production files. Put pytest tests under tests/ instead of embedding them in production artifacts or project-root files. Invalid file(s): test_sorts.py"
+            },
+            {
+              "time": "2026-07-11T19:47:14.282919+00:00",
+              "ts": "2026-07-11T19:47:14.282919+00:00",
+              "step_key": "auto_generation",
+              "stepKey": "auto_generation",
+              "kind": "retry",
+              "type": "retry",
+              "message": "Retry 2/99 from auto_generation: TASK-001: test code must be separated from production files. Put pytest tests under tests/ instead of embedding them in production artifacts or project-root files. Invalid file(s): test_sorts.py",
+              "source_step": "auto_generation",
+              "target_step": "auto_generation",
+              "retry_count": 2,
+              "max_retries": 99,
+              "error": "TASK-001: test code must be separated from production files. Put pytest tests under tests/ instead of embedding them in production artifacts or project-root files. Invalid file(s): test_sorts.py",
+              "error_class": "UNKNOWN",
+              "failure_class": {
+                "code": "TEST_FAILED",
+                "title": "Automated tests failed",
+                "description": "The configured test command or pytest/unittest step failed.",
+                "retry_target": "implementation step",
+                "repair_prompt_hint": "Repair production code first using the failing assertions. Change tests only when they are clearly invalid.",
+                "severity": "high",
+                "user_message": "自動化測試未通過。",
+                "auto_repairable": false,
+                "recommended_action": "依失敗案例修正 production code，除非測試本身明確錯誤。"
+              },
+              "agent_diagnosis": {
+                "code": "UNKNOWN",
+                "title": "Unclassified workflow failure",
+                "explanation": "The controller could not map this failure to a known agent behavior class.",
+                "suggested_action": "Inspect the effective prompt, agent output, run-log, and gate report before retrying."
+              },
+              "repair_policy": {
+                "schema": "aiwf.small-model-repair-policy.v1",
+                "generated_at": "2026-07-11T19:47:14.257921+00:00",
+                "failure": {
+                  "code": "TEST_FAILED",
+                  "title": "Automated tests failed",
+                  "description": "The configured test command or pytest/unittest step failed.",
+                  "retry_target": "implementation step",
+                  "repair_prompt_hint": "Repair production code first using the failing assertions. Change tests only when they are clearly invalid.",
+                  "severity": "high",
+                  "user_message": "自動化測試未通過。",
+                  "auto_repairable": false,
+                  "recommended_action": "依失敗案例修正 production code，除非測試本身明確錯誤。"
+                },
+                "retry_count": 2,
+                "retry_target_hint": "build",
+                "prompt_mode": "test_failure_repair",
+                "repair_instruction": "以測試 stdout/stderr 為唯一修復依據，優先修 production code；只有測試明顯錯誤時才改 tests。",
+                "escalation": null
+              }
+            },
+            {
+              "time": "2026-07-11T19:47:14.412037+00:00",
+              "ts": "2026-07-11T19:47:14.412037+00:00",
+              "step_key": "auto_generation",
+              "stepKey": "auto_generation",
+              "kind": "started",
+              "type": "started",
+              "message": "auto_generation: started"
+            },
+            {
+              "time": "2026-07-11T19:48:39.690949+00:00",
+              "ts": "2026-07-11T19:48:39.690949+00:00",
+              "step_key": "auto_generation",
+              "stepKey": "auto_generation",
+              "kind": "passed",
+              "type": "passed",
+              "message": "auto_generation: passed"
+            }
+          ],
+          "transitions": [
+            {
+              "kind": "step",
+              "from": "pending",
+              "to": "running",
+              "reason": "step status update",
+              "at": "2026-07-11T19:45:49.624086+00:00"
+            },
+            {
+              "kind": "step",
+              "from": "running",
+              "to": "failed",
+              "reason": "TASK-001: test code must be separated from production files. Put pytest tests under tests/ instead of embedding them in production artifacts or project-root files. Invalid file(s): test_sorts.py",
+              "at": "2026-07-11T19:46:20.201059+00:00"
+            },
+            {
+              "kind": "step",
+              "from": "pending",
+              "to": "running",
+              "reason": "step status update",
+              "at": "2026-07-11T19:46:20.449060+00:00"
+            },
+            {
+              "kind": "step",
+              "from": "running",
+              "to": "failed",
+              "reason": "TASK-001: test code must be separated from production files. Put pytest tests under tests/ instead of embedding them in production artifacts or project-root files. Invalid file(s): test_sorts.py",
+              "at": "2026-07-11T19:47:14.136399+00:00"
+            },
+            {
+              "kind": "step",
+              "from": "pending",
+              "to": "running",
+              "reason": "step status update",
+              "at": "2026-07-11T19:47:14.397036+00:00"
+            },
+            {
+              "kind": "step",
+              "from": "running",
+              "to": "passed",
+              "reason": "step status update",
+              "at": "2026-07-11T19:48:39.670948+00:00"
+            }
+          ],
+          "failure": null,
+          "last_event": "auto_generation: passed",
+          "retry_history": [
+            {
+              "time": "2026-07-11T19:46:20.335060+00:00",
+              "ts": "2026-07-11T19:46:20.335060+00:00",
+              "step_key": "auto_generation",
+              "stepKey": "auto_generation",
+              "kind": "retry",
+              "type": "retry",
+              "message": "Retry 1/99 from auto_generation: TASK-001: test code must be separated from production files. Put pytest tests under tests/ instead of embedding them in production artifacts or project-root files. Invalid file(s): test_sorts.py",
+              "source_step": "auto_generation",
+              "target_step": "auto_generation",
+              "retry_count": 1,
+              "max_retries": 99,
+              "error": "TASK-001: test code must be separated from production files. Put pytest tests under tests/ instead of embedding them in production artifacts or project-root files. Invalid file(s): test_sorts.py",
+              "error_class": "UNKNOWN",
+              "failure_class": {
+                "code": "TEST_FAILED",
+                "title": "Automated tests failed",
+                "description": "The configured test command or pytest/unittest step failed.",
+                "retry_target": "implementation step",
+                "repair_prompt_hint": "Repair production code first using the failing assertions. Change tests only when they are clearly invalid.",
+                "severity": "high",
+                "user_message": "自動化測試未通過。",
+                "auto_repairable": false,
+                "recommended_action": "依失敗案例修正 production code，除非測試本身明確錯誤。"
+              },
+              "agent_diagnosis": {
+                "code": "UNKNOWN",
+                "title": "Unclassified workflow failure",
+                "explanation": "The controller could not map this failure to a known agent behavior class.",
+                "suggested_action": "Inspect the effective prompt, agent output, run-log, and gate report before retrying."
+              },
+              "repair_policy": {
+                "schema": "aiwf.small-model-repair-policy.v1",
+                "generated_at": "2026-07-11T19:46:20.321060+00:00",
+                "failure": {
+                  "code": "TEST_FAILED",
+                  "title": "Automated tests failed",
+                  "description": "The configured test command or pytest/unittest step failed.",
+                  "retry_target": "implementation step",
+                  "repair_prompt_hint": "Repair production code first using the failing assertions. Change tests only when they are clearly invalid.",
+                  "severity": "high",
+                  "user_message": "自動化測試未通過。",
+                  "auto_repairable": false,
+                  "recommended_action": "依失敗案例修正 production code，除非測試本身明確錯誤。"
+                },
+                "retry_count": 1,
+                "retry_target_hint": "build",
+                "prompt_mode": "test_failure_repair",
+                "repair_instruction": "以測試 stdout/stderr 為唯一修復依據，優先修 production code；只有測試明顯錯誤時才改 tests。",
+                "escalation": null
+              }
+            },
+            {
+              "time": "2026-07-11T19:47:14.282919+00:00",
+              "ts": "2026-07-11T19:47:14.282919+00:00",
+              "step_key": "auto_generation",
+              "stepKey": "auto_generation",
+              "kind": "retry",
+              "type": "retry",
+              "message": "Retry 2/99 from auto_generation: TASK-001: test code must be separated from production files. Put pytest tests under tests/ instead of embedding them in production artifacts or project-root files. Invalid file(s): test_sorts.py",
+              "source_step": "auto_generation",
+              "target_step": "auto_generation",
+              "retry_count": 2,
+              "max_retries": 99,
+              "error": "TASK-001: test code must be separated from production files. Put pytest tests under tests/ instead of embedding them in production artifacts or project-root files. Invalid file(s): test_sorts.py",
+              "error_class": "UNKNOWN",
+              "failure_class": {
+                "code": "TEST_FAILED",
+                "title": "Automated tests failed",
+                "description": "The configured test command or pytest/unittest step failed.",
+                "retry_target": "implementation step",
+                "repair_prompt_hint": "Repair production code first using the failing assertions. Change tests only when they are clearly invalid.",
+                "severity": "high",
+                "user_message": "自動化測試未通過。",
+                "auto_repairable": false,
+                "recommended_action": "依失敗案例修正 production code，除非測試本身明確錯誤。"
+              },
+              "agent_diagnosis": {
+                "code": "UNKNOWN",
+                "title": "Unclassified workflow failure",
+                "explanation": "The controller could not map this failure to a known agent behavior class.",
+                "suggested_action": "Inspect the effective prompt, agent output, run-log, and gate report before retrying."
+              },
+              "repair_policy": {
+                "schema": "aiwf.small-model-repair-policy.v1",
+                "generated_at": "2026-07-11T19:47:14.257921+00:00",
+                "failure": {
+                  "code": "TEST_FAILED",
+                  "title": "Automated tests failed",
+                  "description": "The configured test command or pytest/unittest step failed.",
+                  "retry_target": "implementation step",
+                  "repair_prompt_hint": "Repair production code first using the failing assertions. Change tests only when they are clearly invalid.",
+                  "severity": "high",
+                  "user_message": "自動化測試未通過。",
+                  "auto_repairable": false,
+                  "recommended_action": "依失敗案例修正 production code，除非測試本身明確錯誤。"
+                },
+                "retry_count": 2,
+                "retry_target_hint": "build",
+                "prompt_mode": "test_failure_repair",
+                "repair_instruction": "以測試 stdout/stderr 為唯一修復依據，優先修 production code；只有測試明顯錯誤時才改 tests。",
+                "escalation": null
+              }
+            }
+          ]
+        },
+        {
+          "key": "ai_review",
+          "title": "AI Review + Validation",
+          "kind": "agent",
+          "type": "review",
+          "agent": "qwen",
+          "status": "passed",
+          "started_at": "2026-07-11T19:48:39.763785+00:00",
+          "ended_at": "2026-07-11T19:49:25.654020+00:00",
+          "error": null,
+          "error_code": null,
+          "retry_count": 0,
+          "config": {
+            "id": "asset-ai_review",
+            "key": "ai_review",
+            "name": "AI Review + Validation",
+            "description": "Run AI review against SPEC, check tests, then run validation.py or project tests. Failures repair from Execute Prompts, with periodic escalation back to Generate Execution Prompts.",
+            "type": "review",
+            "enabled": true,
+            "contractId": "ai_review",
+            "contractPath": "contracts/adaptive-auto-workflow/ai_review.yaml",
+            "metadataPath": "contracts/adaptive-auto-workflow/ai_review.yaml",
+            "skillPath": "steps/adaptive-auto-workflow/01_ai_review.md",
+            "templatePath": "steps/adaptive-auto-workflow/01_ai_review.md",
+            "command": "",
+            "agent": "qwen",
+            "provider": "qwen",
+            "filename": "ai-review.md",
+            "outputFile": "ai-review.md",
+            "expectedFiles": [
+              "ai-review.md",
+              "external-validation-result.md"
+            ],
+            "functions": [
+              "adaptive_python_gate"
+            ],
+            "function": "adaptive_python_gate",
+            "maxRetries": 99,
+            "timeoutEnabled": true,
+            "timeoutMinutes": 3.0,
+            "allowInteraction": false,
+            "requiresValidationScript": false,
+            "thinkingLevel": "high",
+            "thinking": true,
+            "pauseAfterStep": false,
+            "approvalRequired": false,
+            "sources": [],
+            "reviewers": [],
+            "reviewMode": "new_agent",
+            "confidenceThreshold": 0.7,
+            "passKeywords": "PASS",
+            "failKeywords": "FAIL, BLOCKED, RISK",
+            "aggregatorFunction": "keyword_confidence",
+            "failAction": "selected_step",
+            "retryFromStepKey": "auto_generation",
+            "keepSameSession": false,
+            "injectFailureFeedback": true,
+            "stopAfterFailures": 99,
+            "templateContent": "Review the completed project change against the SPEC after the controller has already run validation/test gates.\n\n{{thinking_guidance}}\nUser request:\n{{requirement_brief}}\n\nSPEC:\n{{spec}}\n\nTask manifest:\n{{task_manifest}}\n\nExecution result:\n{{auto_generation_result}}\n\nValidation/test result:\n{{external_validation_result}}\n{{python_gate_result}}\n\nProject snapshot, brief:\n{{project_profile_brief}}\n{{project_index_brief}}\n\nPass only if:\n- The project satisfies the SPEC and user request.\n- Tests exist, or tests are clearly not applicable for this request.\n- The validation/test result above is PASS or skipped for a valid reason.\n- Existing behavior appears preserved.\n\nReturn ONLY a JSON object in this shape:\n{\n  \"status\": \"PASS or FAIL\",\n  \"confidence\": 0.0,\n  \"summary\": \"one short sentence\",\n  \"criteria\": [{\"criterion\": \"acceptance item\", \"status\": \"PASS or FAIL\", \"evidence\": \"test/artifact/file evidence\"}],\n  \"missing_items\": [\"concrete missing item, empty when PASS\"],\n  \"test_check\": \"tests present / validation passed / tests not applicable because ...\",\n  \"repair_prompt\": \"concrete prompt for Execute Prompts retry, or empty when PASS\"\n}\n",
+            "compactPrompt": true,
+            "includeSkillContext": false,
+            "contextArtifacts": [
+              "spec.md",
+              "auto-generation-result.md"
+            ],
+            "retryEscalationEvery": 3,
+            "retryEscalationStepKey": "generate_task_prompts",
+            "recoverRepeatedFailure": true,
+            "retryPolicy": {
+              "defaultRetryTo": "auto_generation",
+              "escalateEvery": 3,
+              "escalateTo": "generate_task_prompts",
+              "maxRetries": 99,
+              "recoveryBudget": {
+                "maxRunFailures": 40,
+                "maxStepFailures": 24,
+                "maxTaskFailures": 12,
+                "maxFailureClass": 12,
+                "maxFingerprint": 9,
+                "wallClockMinutes": 60,
+                "freshSessionEvery": 3
+              }
+            },
+            "approvalMessage": "",
+            "agentOptions": {
+              "thinking": true,
+              "thinkingLevel": "high"
+            },
+            "fallbackValidationScripts": [
+              "validation.py",
+              "validate.py",
+              "verify.py",
+              "check.py"
+            ],
+            "requireProjectChanges": false
+          },
+          "max_retries": 99,
+          "retry_from_step_key": "auto_generation",
+          "fail_action": "selected_step",
+          "allow_interaction": false,
+          "thinking": true,
+          "pause_after_step": false,
+          "maxRetries": 99,
+          "thinkingLevel": "high",
+          "events": [
+            {
+              "time": "2026-07-11T19:48:39.781194+00:00",
+              "ts": "2026-07-11T19:48:39.781194+00:00",
+              "step_key": "ai_review",
+              "stepKey": "ai_review",
+              "kind": "started",
+              "type": "started",
+              "message": "ai_review: started"
+            },
+            {
+              "time": "2026-07-11T19:49:25.674020+00:00",
+              "ts": "2026-07-11T19:49:25.674020+00:00",
+              "step_key": "ai_review",
+              "stepKey": "ai_review",
+              "kind": "passed",
+              "type": "passed",
+              "message": "ai_review: passed"
+            }
+          ],
+          "failure": null,
+          "transitions": [
+            {
+              "kind": "step",
+              "from": "pending",
+              "to": "running",
+              "reason": "step status update",
+              "at": "2026-07-11T19:48:39.763785+00:00"
+            },
+            {
+              "kind": "step",
+              "from": "running",
+              "to": "passed",
+              "reason": "step status update",
+              "at": "2026-07-11T19:49:25.654020+00:00"
+            }
+          ],
+          "last_event": "ai_review: passed"
+        }
+      ],
+      "tasks": [
+        {
+          "id": "TASK-001",
+          "status": "passed",
+          "step_key": "auto_generation",
+          "checkpoint_id": "task-001-TASK-001",
+          "updated_at": "2026-07-11T19:47:58.039423+00:00"
+        },
+        {
+          "id": "TASK-002",
+          "status": "passed",
+          "step_key": "auto_generation",
+          "checkpoint_id": "task-002-TASK-002",
+          "updated_at": "2026-07-11T19:48:39.593951+00:00"
+        }
+      ],
+      "role_session_ids": {
+        "planning": {
+          "qwen": "9ef46c1c-0c8e-4e6a-a3fa-da8d2c335172"
+        },
+        "build": {
+          "qwen": "9ef46c1c-0c8e-4e6a-a3fa-da8d2c335172"
+        },
+        "review": {}
+      },
+      "artifacts": [
+        {
+          "id": "4badad66-a186-4942-ba4d-09587b9c1bdb:requirement.md",
+          "name": "requirement.md",
+          "path": "requirement.md",
+          "size": 129,
+          "visibility": "supporting",
+          "updated_at": "2026-07-11T19:49:26.084591+00:00"
+        },
+        {
+          "id": "4badad66-a186-4942-ba4d-09587b9c1bdb:input|failure-feedback.md",
+          "name": "failure-feedback.md",
+          "path": "input/failure-feedback.md",
+          "size": 1951,
+          "visibility": "supporting",
+          "updated_at": "2026-07-11T19:49:26.084591+00:00"
+        },
+        {
+          "id": "4badad66-a186-4942-ba4d-09587b9c1bdb:.workflow|run-log.md",
+          "name": "run-log.md",
+          "path": ".workflow/run-log.md",
+          "size": 14840,
+          "visibility": "supporting",
+          "updated_at": "2026-07-11T19:49:26.085592+00:00"
+        },
+        {
+          "id": "4badad66-a186-4942-ba4d-09587b9c1bdb:.workflow|run-summary.md",
+          "name": "run-summary.md",
+          "path": ".workflow/run-summary.md",
+          "size": 3276,
+          "visibility": "essential",
+          "updated_at": "2026-07-11T19:49:26.085592+00:00"
+        },
+        {
+          "id": "4badad66-a186-4942-ba4d-09587b9c1bdb:.workflow|run-trace.json",
+          "name": "run-trace.json",
+          "path": ".workflow/run-trace.json",
+          "size": 29571,
+          "visibility": "diagnostic",
+          "updated_at": "2026-07-11T19:49:26.085592+00:00"
+        },
+        {
+          "id": "4badad66-a186-4942-ba4d-09587b9c1bdb:.workflow|gate-report.md",
+          "name": "gate-report.md",
+          "path": ".workflow/gate-report.md",
+          "size": 900,
+          "visibility": "essential",
+          "updated_at": "2026-07-11T19:49:26.085592+00:00"
+        },
+        {
+          "id": "4badad66-a186-4942-ba4d-09587b9c1bdb:.workflow|gate-report.json",
+          "name": "gate-report.json",
+          "path": ".workflow/gate-report.json",
+          "size": 6560,
+          "visibility": "essential",
+          "updated_at": "2026-07-11T19:49:26.085592+00:00"
+        },
+        {
+          "id": "4badad66-a186-4942-ba4d-09587b9c1bdb:.workflow|run-diff.md",
+          "name": "run-diff.md",
+          "path": ".workflow/run-diff.md",
+          "size": 7737,
+          "visibility": "essential",
+          "updated_at": "2026-07-11T19:49:26.085592+00:00"
+        },
+        {
+          "id": "4badad66-a186-4942-ba4d-09587b9c1bdb:.workflow|run-diff.json",
+          "name": "run-diff.json",
+          "path": ".workflow/run-diff.json",
+          "size": 17386,
+          "visibility": "essential",
+          "updated_at": "2026-07-11T19:49:26.085592+00:00"
+        },
+        {
+          "id": "4badad66-a186-4942-ba4d-09587b9c1bdb:.workflow|project-snapshot-before.json",
+          "name": "project-snapshot-before.json",
+          "path": ".workflow/project-snapshot-before.json",
+          "size": 157,
+          "visibility": "supporting",
+          "updated_at": "2026-07-11T19:49:26.085592+00:00"
+        },
+        {
+          "id": "4badad66-a186-4942-ba4d-09587b9c1bdb:.workflow|state.json",
+          "name": "state.json",
+          "path": ".workflow/state.json",
+          "size": 81220,
+          "visibility": "diagnostic",
+          "updated_at": "2026-07-11T19:49:26.085592+00:00"
+        },
+        {
+          "id": "4badad66-a186-4942-ba4d-09587b9c1bdb:.workflow|events.jsonl",
+          "name": "events.jsonl",
+          "path": ".workflow/events.jsonl",
+          "size": 27741,
+          "visibility": "diagnostic",
+          "updated_at": "2026-07-11T19:49:26.085592+00:00"
+        },
+        {
+          "id": "4badad66-a186-4942-ba4d-09587b9c1bdb:.workflow|artifacts|index.json",
+          "name": "index.json",
+          "path": ".workflow/artifacts/index.json",
+          "size": 3471,
+          "visibility": "supporting",
+          "updated_at": "2026-07-11T19:49:26.085592+00:00"
+        },
+        {
+          "id": "4badad66-a186-4942-ba4d-09587b9c1bdb:.workflow|artifacts|reports|agent-safety-report.md",
+          "name": "agent-safety-report.md",
+          "path": ".workflow/artifacts/reports/agent-safety-report.md",
+          "size": 709,
+          "visibility": "supporting",
+          "updated_at": "2026-07-11T19:49:26.085592+00:00"
+        },
+        {
+          "id": "4badad66-a186-4942-ba4d-09587b9c1bdb:.workflow|artifacts|reports|agent-safety-report.json",
+          "name": "agent-safety-report.json",
+          "path": ".workflow/artifacts/reports/agent-safety-report.json",
+          "size": 978,
+          "visibility": "supporting",
+          "updated_at": "2026-07-11T19:49:26.085592+00:00"
+        },
+        {
+          "id": "4badad66-a186-4942-ba4d-09587b9c1bdb:prompts|generate_task_prompts.md",
+          "name": "generate_task_prompts.md",
+          "path": "prompts/generate_task_prompts.md",
+          "size": 2891,
+          "visibility": "diagnostic",
+          "updated_at": "2026-07-11T19:49:26.085592+00:00"
+        },
+        {
+          "id": "4badad66-a186-4942-ba4d-09587b9c1bdb:prompts|generate_task_prompts.effective.md",
+          "name": "generate_task_prompts.effective.md",
+          "path": "prompts/generate_task_prompts.effective.md",
+          "size": 4112,
+          "visibility": "diagnostic",
+          "updated_at": "2026-07-11T19:49:26.086592+00:00"
+        },
+        {
+          "id": "4badad66-a186-4942-ba4d-09587b9c1bdb:prompts|generate_task_prompts.prompt-meta.json",
+          "name": "generate_task_prompts.prompt-meta.json",
+          "path": "prompts/generate_task_prompts.prompt-meta.json",
+          "size": 421,
+          "visibility": "diagnostic",
+          "updated_at": "2026-07-11T19:49:26.086592+00:00"
+        },
+        {
+          "id": "4badad66-a186-4942-ba4d-09587b9c1bdb:output|spec.md",
+          "name": "spec.md",
+          "path": "output/spec.md",
+          "size": 1306,
+          "visibility": "supporting",
+          "updated_at": "2026-07-11T19:49:26.086592+00:00"
+        },
+        {
+          "id": "4badad66-a186-4942-ba4d-09587b9c1bdb:output|task-manifest.md",
+          "name": "task-manifest.md",
+          "path": "output/task-manifest.md",
+          "size": 275,
+          "visibility": "supporting",
+          "updated_at": "2026-07-11T19:49:26.086592+00:00"
+        },
+        {
+          "id": "4badad66-a186-4942-ba4d-09587b9c1bdb:output|task-manifest.json",
+          "name": "task-manifest.json",
+          "path": "output/task-manifest.json",
+          "size": 3889,
+          "visibility": "supporting",
+          "updated_at": "2026-07-11T19:49:26.086592+00:00"
+        },
+        {
+          "id": "4badad66-a186-4942-ba4d-09587b9c1bdb:prompts|auto_generation.md",
+          "name": "auto_generation.md",
+          "path": "prompts/auto_generation.md",
+          "size": 5267,
+          "visibility": "diagnostic",
+          "updated_at": "2026-07-11T19:49:26.086592+00:00"
+        },
+        {
+          "id": "4badad66-a186-4942-ba4d-09587b9c1bdb:prompts|auto_generation.effective.md",
+          "name": "auto_generation.effective.md",
+          "path": "prompts/auto_generation.effective.md",
+          "size": 4500,
+          "visibility": "diagnostic",
+          "updated_at": "2026-07-11T19:49:26.086592+00:00"
+        },
+        {
+          "id": "4badad66-a186-4942-ba4d-09587b9c1bdb:prompts|auto_generation.prompt-meta.json",
+          "name": "auto_generation.prompt-meta.json",
+          "path": "prompts/auto_generation.prompt-meta.json",
+          "size": 402,
+          "visibility": "diagnostic",
+          "updated_at": "2026-07-11T19:49:26.086592+00:00"
+        },
+        {
+          "id": "4badad66-a186-4942-ba4d-09587b9c1bdb:output|auto-generation-result.md",
+          "name": "auto-generation-result.md",
+          "path": "output/auto-generation-result.md",
+          "size": 865,
+          "visibility": "supporting",
+          "updated_at": "2026-07-11T19:49:26.086592+00:00"
+        },
+        {
+          "id": "4badad66-a186-4942-ba4d-09587b9c1bdb:prompts|ai_review.md",
+          "name": "ai_review.md",
+          "path": "prompts/ai_review.md",
+          "size": 6933,
+          "visibility": "diagnostic",
+          "updated_at": "2026-07-11T19:49:26.086592+00:00"
+        },
+        {
+          "id": "4badad66-a186-4942-ba4d-09587b9c1bdb:prompts|ai_review.effective.md",
+          "name": "ai_review.effective.md",
+          "path": "prompts/ai_review.effective.md",
+          "size": 8154,
+          "visibility": "diagnostic",
+          "updated_at": "2026-07-11T19:49:26.086592+00:00"
+        },
+        {
+          "id": "4badad66-a186-4942-ba4d-09587b9c1bdb:prompts|ai_review.prompt-meta.json",
+          "name": "ai_review.prompt-meta.json",
+          "path": "prompts/ai_review.prompt-meta.json",
+          "size": 351,
+          "visibility": "diagnostic",
+          "updated_at": "2026-07-11T19:49:26.086592+00:00"
+        },
+        {
+          "id": "4badad66-a186-4942-ba4d-09587b9c1bdb:output|ai-review.md",
+          "name": "ai-review.md",
+          "path": "output/ai-review.md",
+          "size": 2414,
+          "visibility": "supporting",
+          "updated_at": "2026-07-11T19:49:26.086592+00:00"
+        },
+        {
+          "id": "4badad66-a186-4942-ba4d-09587b9c1bdb:output|external-validation-result.md",
+          "name": "external-validation-result.md",
+          "path": "output/external-validation-result.md",
+          "size": 689,
+          "visibility": "essential",
+          "updated_at": "2026-07-11T19:49:26.086592+00:00"
+        },
+        {
+          "id": "4badad66-a186-4942-ba4d-09587b9c1bdb:output|architecture-contract.json",
+          "name": "architecture-contract.json",
+          "path": "output/architecture-contract.json",
+          "size": 1498,
+          "visibility": "supporting",
+          "updated_at": "2026-07-11T19:49:26.086592+00:00"
+        },
+        {
+          "id": "4badad66-a186-4942-ba4d-09587b9c1bdb:output|completion-gate.json",
+          "name": "completion-gate.json",
+          "path": "output/completion-gate.json",
+          "size": 766,
+          "visibility": "supporting",
+          "updated_at": "2026-07-11T19:49:26.087592+00:00"
+        },
+        {
+          "id": "4badad66-a186-4942-ba4d-09587b9c1bdb:output|engineering-validation-result.json",
+          "name": "engineering-validation-result.json",
+          "path": "output/engineering-validation-result.json",
+          "size": 2474,
+          "visibility": "essential",
+          "updated_at": "2026-07-11T19:49:26.087592+00:00"
+        },
+        {
+          "id": "4badad66-a186-4942-ba4d-09587b9c1bdb:output|generated-workflow-instance.json",
+          "name": "generated-workflow-instance.json",
+          "path": "output/generated-workflow-instance.json",
+          "size": 1883,
+          "visibility": "supporting",
+          "updated_at": "2026-07-11T19:49:26.087592+00:00"
+        },
+        {
+          "id": "4badad66-a186-4942-ba4d-09587b9c1bdb:output|project-hygiene.json",
+          "name": "project-hygiene.json",
+          "path": "output/project-hygiene.json",
+          "size": 267,
+          "visibility": "supporting",
+          "updated_at": "2026-07-11T19:49:26.087592+00:00"
+        },
+        {
+          "id": "4badad66-a186-4942-ba4d-09587b9c1bdb:output|project-index.md",
+          "name": "project-index.md",
+          "path": "output/project-index.md",
+          "size": 903,
+          "visibility": "supporting",
+          "updated_at": "2026-07-11T19:49:26.087592+00:00"
+        },
+        {
+          "id": "4badad66-a186-4942-ba4d-09587b9c1bdb:output|scope-delta.json",
+          "name": "scope-delta.json",
+          "path": "output/scope-delta.json",
+          "size": 430,
+          "visibility": "supporting",
+          "updated_at": "2026-07-11T19:49:26.087592+00:00"
+        },
+        {
+          "id": "4badad66-a186-4942-ba4d-09587b9c1bdb:output|test-layout-repair.json",
+          "name": "test-layout-repair.json",
+          "path": "output/test-layout-repair.json",
+          "size": 561,
+          "visibility": "supporting",
+          "updated_at": "2026-07-11T19:49:26.087592+00:00"
+        },
+        {
+          "id": "4badad66-a186-4942-ba4d-09587b9c1bdb:output|test-result.md",
+          "name": "test-result.md",
+          "path": "output/test-result.md",
+          "size": 536,
+          "visibility": "essential",
+          "updated_at": "2026-07-11T19:49:26.087592+00:00"
+        },
+        {
+          "id": "4badad66-a186-4942-ba4d-09587b9c1bdb:output|todo.md",
+          "name": "todo.md",
+          "path": "output/todo.md",
+          "size": 509,
+          "visibility": "supporting",
+          "updated_at": "2026-07-11T19:49:26.087592+00:00"
+        },
+        {
+          "id": "4badad66-a186-4942-ba4d-09587b9c1bdb:output|workflow-decision-log.md",
+          "name": "workflow-decision-log.md",
+          "path": "output/workflow-decision-log.md",
+          "size": 1040,
+          "visibility": "supporting",
+          "updated_at": "2026-07-11T19:49:26.087592+00:00"
+        },
+        {
+          "id": "4badad66-a186-4942-ba4d-09587b9c1bdb:output|workflow-instance-validation.md",
+          "name": "workflow-instance-validation.md",
+          "path": "output/workflow-instance-validation.md",
+          "size": 450,
+          "visibility": "supporting",
+          "updated_at": "2026-07-11T19:49:26.087592+00:00"
+        },
+        {
+          "id": "4badad66-a186-4942-ba4d-09587b9c1bdb:output|workflow-run-trace.md",
+          "name": "workflow-run-trace.md",
+          "path": "output/workflow-run-trace.md",
+          "size": 795,
+          "visibility": "diagnostic",
+          "updated_at": "2026-07-11T19:49:26.087592+00:00"
+        },
+        {
+          "id": "4badad66-a186-4942-ba4d-09587b9c1bdb:output|task-prompts|TASK-001.md",
+          "name": "TASK-001.md",
+          "path": "output/task-prompts/TASK-001.md",
+          "size": 547,
+          "visibility": "diagnostic",
+          "updated_at": "2026-07-11T19:49:26.087592+00:00"
+        },
+        {
+          "id": "4badad66-a186-4942-ba4d-09587b9c1bdb:output|task-prompts|TASK-002.md",
+          "name": "TASK-002.md",
+          "path": "output/task-prompts/TASK-002.md",
+          "size": 338,
+          "visibility": "diagnostic",
+          "updated_at": "2026-07-11T19:49:26.087592+00:00"
+        },
+        {
+          "id": "4badad66-a186-4942-ba4d-09587b9c1bdb:output|tasks|TASK-001|adaptive-generation-result.md",
+          "name": "adaptive-generation-result.md",
+          "path": "output/tasks/TASK-001/adaptive-generation-result.md",
+          "size": 299,
+          "visibility": "supporting",
+          "updated_at": "2026-07-11T19:49:26.087592+00:00"
+        },
+        {
+          "id": "4badad66-a186-4942-ba4d-09587b9c1bdb:output|tasks|TASK-001|architecture-delta.md",
+          "name": "architecture-delta.md",
+          "path": "output/tasks/TASK-001/architecture-delta.md",
+          "size": 544,
+          "visibility": "supporting",
+          "updated_at": "2026-07-11T19:49:26.088592+00:00"
+        },
+        {
+          "id": "4badad66-a186-4942-ba4d-09587b9c1bdb:output|tasks|TASK-001|auto_generation-state.json",
+          "name": "auto_generation-state.json",
+          "path": "output/tasks/TASK-001/auto_generation-state.json",
+          "size": 72,
+          "visibility": "diagnostic",
+          "updated_at": "2026-07-11T19:49:26.088592+00:00"
+        },
+        {
+          "id": "4badad66-a186-4942-ba4d-09587b9c1bdb:output|tasks|TASK-002|adaptive-generation-result.md",
+          "name": "adaptive-generation-result.md",
+          "path": "output/tasks/TASK-002/adaptive-generation-result.md",
+          "size": 412,
+          "visibility": "supporting",
+          "updated_at": "2026-07-11T19:49:26.088592+00:00"
+        },
+        {
+          "id": "4badad66-a186-4942-ba4d-09587b9c1bdb:output|tasks|TASK-002|architecture-delta.md",
+          "name": "architecture-delta.md",
+          "path": "output/tasks/TASK-002/architecture-delta.md",
+          "size": 569,
+          "visibility": "supporting",
+          "updated_at": "2026-07-11T19:49:26.088592+00:00"
+        },
+        {
+          "id": "4badad66-a186-4942-ba4d-09587b9c1bdb:output|tasks|TASK-002|auto_generation-state.json",
+          "name": "auto_generation-state.json",
+          "path": "output/tasks/TASK-002/auto_generation-state.json",
+          "size": 236,
+          "visibility": "diagnostic",
+          "updated_at": "2026-07-11T19:49:26.088592+00:00"
+        },
+        {
+          "id": "4badad66-a186-4942-ba4d-09587b9c1bdb:output|todos|INDEX.md",
+          "name": "INDEX.md",
+          "path": "output/todos/INDEX.md",
+          "size": 88,
+          "visibility": "supporting",
+          "updated_at": "2026-07-11T19:49:26.088592+00:00"
+        },
+        {
+          "id": "4badad66-a186-4942-ba4d-09587b9c1bdb:output|todos|TASK-001.md",
+          "name": "TASK-001.md",
+          "path": "output/todos/TASK-001.md",
+          "size": 547,
+          "visibility": "supporting",
+          "updated_at": "2026-07-11T19:49:26.088592+00:00"
+        },
+        {
+          "id": "4badad66-a186-4942-ba4d-09587b9c1bdb:output|todos|TASK-002.md",
+          "name": "TASK-002.md",
+          "path": "output/todos/TASK-002.md",
+          "size": 338,
+          "visibility": "supporting",
+          "updated_at": "2026-07-11T19:49:26.088592+00:00"
+        },
+        {
+          "id": "4badad66-a186-4942-ba4d-09587b9c1bdb:.workflow|run-console.json",
+          "name": "run-console.json",
+          "path": ".workflow/run-console.json",
+          "size": 14650,
+          "visibility": "diagnostic",
+          "updated_at": "2026-07-11T19:49:26.088592+00:00"
+        },
+        {
+          "id": "4badad66-a186-4942-ba4d-09587b9c1bdb:.workflow|version-metadata.json",
+          "name": "version-metadata.json",
+          "path": ".workflow/version-metadata.json",
+          "size": 993,
+          "visibility": "supporting",
+          "updated_at": "2026-07-11T19:49:26.088592+00:00"
+        },
+        {
+          "id": "4badad66-a186-4942-ba4d-09587b9c1bdb:.workflow|artifacts|compaction.json",
+          "name": "compaction.json",
+          "path": ".workflow/artifacts/compaction.json",
+          "size": 265,
+          "visibility": "supporting",
+          "updated_at": "2026-07-11T19:49:26.088592+00:00"
+        },
+        {
+          "id": "4badad66-a186-4942-ba4d-09587b9c1bdb:.workflow|artifacts|diagnostics.zip",
+          "name": "diagnostics.zip",
+          "path": ".workflow/artifacts/diagnostics.zip",
+          "size": 38905,
+          "visibility": "supporting",
+          "updated_at": "2026-07-11T19:49:26.088592+00:00"
+        },
+        {
+          "id": "4badad66-a186-4942-ba4d-09587b9c1bdb:.workflow|artifacts|diff|run-diff.json",
+          "name": "run-diff.json",
+          "path": ".workflow/artifacts/diff/run-diff.json",
+          "size": 17386,
+          "visibility": "essential",
+          "updated_at": "2026-07-11T19:49:26.088592+00:00"
+        },
+        {
+          "id": "4badad66-a186-4942-ba4d-09587b9c1bdb:.workflow|artifacts|diff|run-diff.md",
+          "name": "run-diff.md",
+          "path": ".workflow/artifacts/diff/run-diff.md",
+          "size": 7737,
+          "visibility": "essential",
+          "updated_at": "2026-07-11T19:49:26.088592+00:00"
+        },
+        {
+          "id": "4badad66-a186-4942-ba4d-09587b9c1bdb:.workflow|artifacts|metadata|debug-bundle.json",
+          "name": "debug-bundle.json",
+          "path": ".workflow/artifacts/metadata/debug-bundle.json",
+          "size": 953,
+          "visibility": "diagnostic",
+          "updated_at": "2026-07-11T19:49:26.088592+00:00"
+        },
+        {
+          "id": "4badad66-a186-4942-ba4d-09587b9c1bdb:.workflow|artifacts|reports|final-report.md",
+          "name": "final-report.md",
+          "path": ".workflow/artifacts/reports/final-report.md",
+          "size": 387,
+          "visibility": "essential",
+          "updated_at": "2026-07-11T19:49:26.088592+00:00"
+        },
+        {
+          "id": "4badad66-a186-4942-ba4d-09587b9c1bdb:.workflow|artifacts|reports|gate-report.json",
+          "name": "gate-report.json",
+          "path": ".workflow/artifacts/reports/gate-report.json",
+          "size": 6560,
+          "visibility": "essential",
+          "updated_at": "2026-07-11T19:49:26.089591+00:00"
+        },
+        {
+          "id": "4badad66-a186-4942-ba4d-09587b9c1bdb:.workflow|artifacts|reports|gate-report.md",
+          "name": "gate-report.md",
+          "path": ".workflow/artifacts/reports/gate-report.md",
+          "size": 900,
+          "visibility": "essential",
+          "updated_at": "2026-07-11T19:49:26.089591+00:00"
+        },
+        {
+          "id": "4badad66-a186-4942-ba4d-09587b9c1bdb:.workflow|artifacts|reports|run-summary.md",
+          "name": "run-summary.md",
+          "path": ".workflow/artifacts/reports/run-summary.md",
+          "size": 3276,
+          "visibility": "essential",
+          "updated_at": "2026-07-11T19:49:26.089591+00:00"
+        },
+        {
+          "id": "4badad66-a186-4942-ba4d-09587b9c1bdb:.workflow|artifacts|validation|external-validation-result.md",
+          "name": "external-validation-result.md",
+          "path": ".workflow/artifacts/validation/external-validation-result.md",
+          "size": 689,
+          "visibility": "essential",
+          "updated_at": "2026-07-11T19:49:26.089591+00:00"
+        },
+        {
+          "id": "4badad66-a186-4942-ba4d-09587b9c1bdb:.workflow|artifacts|validation|test-result.md",
+          "name": "test-result.md",
+          "path": ".workflow/artifacts/validation/test-result.md",
+          "size": 536,
+          "visibility": "essential",
+          "updated_at": "2026-07-11T19:49:26.089591+00:00"
+        },
+        {
+          "id": "4badad66-a186-4942-ba4d-09587b9c1bdb:.workflow|checkpoints|task-001-TASK-001.json",
+          "name": "task-001-TASK-001.json",
+          "path": ".workflow/checkpoints/task-001-TASK-001.json",
+          "size": 1232,
+          "visibility": "supporting",
+          "updated_at": "2026-07-11T19:49:26.089591+00:00"
+        },
+        {
+          "id": "4badad66-a186-4942-ba4d-09587b9c1bdb:.workflow|checkpoints|task-001-TASK-001.zip",
+          "name": "task-001-TASK-001.zip",
+          "path": ".workflow/checkpoints/task-001-TASK-001.zip",
+          "size": 2082,
+          "visibility": "supporting",
+          "updated_at": "2026-07-11T19:49:26.089591+00:00"
+        },
+        {
+          "id": "4badad66-a186-4942-ba4d-09587b9c1bdb:.workflow|checkpoints|task-002-TASK-002.json",
+          "name": "task-002-TASK-002.json",
+          "path": ".workflow/checkpoints/task-002-TASK-002.json",
+          "size": 1262,
+          "visibility": "supporting",
+          "updated_at": "2026-07-11T19:49:26.089591+00:00"
+        },
+        {
+          "id": "4badad66-a186-4942-ba4d-09587b9c1bdb:.workflow|checkpoints|task-002-TASK-002.zip",
+          "name": "task-002-TASK-002.zip",
+          "path": ".workflow/checkpoints/task-002-TASK-002.zip",
+          "size": 2158,
+          "visibility": "supporting",
+          "updated_at": "2026-07-11T19:49:26.089591+00:00"
+        },
+        {
+          "id": "4badad66-a186-4942-ba4d-09587b9c1bdb:.workflow|repair-policy|auto_generation.json",
+          "name": "auto_generation.json",
+          "path": ".workflow/repair-policy/auto_generation.json",
+          "size": 920,
+          "visibility": "diagnostic",
+          "updated_at": "2026-07-11T19:49:26.089591+00:00"
+        },
+        {
+          "id": "4badad66-a186-4942-ba4d-09587b9c1bdb:.workflow|repair-policy|auto_generation.md",
+          "name": "auto_generation.md",
+          "path": ".workflow/repair-policy/auto_generation.md",
+          "size": 274,
+          "visibility": "diagnostic",
+          "updated_at": "2026-07-11T19:49:26.089591+00:00"
+        }
+      ],
+      "timeline": [
+        {
+          "time": "2026-07-11T19:44:53.711004+00:00",
+          "ts": "2026-07-11T19:44:53.711004+00:00",
+          "step_key": "generate_task_prompts",
+          "stepKey": "generate_task_prompts",
+          "kind": "started",
+          "type": "started",
+          "message": "generate_task_prompts: started"
+        },
+        {
+          "time": "2026-07-11T19:45:49.558085+00:00",
+          "ts": "2026-07-11T19:45:49.558085+00:00",
+          "step_key": "generate_task_prompts",
+          "stepKey": "generate_task_prompts",
+          "kind": "passed",
+          "type": "passed",
+          "message": "generate_task_prompts: passed"
+        },
+        {
+          "time": "2026-07-11T19:45:49.638085+00:00",
+          "ts": "2026-07-11T19:45:49.638085+00:00",
+          "step_key": "auto_generation",
+          "stepKey": "auto_generation",
+          "kind": "started",
+          "type": "started",
+          "message": "auto_generation: started"
+        },
+        {
+          "time": "2026-07-11T19:46:20.209061+00:00",
+          "ts": "2026-07-11T19:46:20.209061+00:00",
+          "step_key": "auto_generation",
+          "stepKey": "auto_generation",
+          "kind": "failed",
+          "type": "failed",
+          "message": "TASK-001: test code must be separated from production files. Put pytest tests under tests/ instead of embedding them in production artifacts or project-root files. Invalid file(s): test_sorts.py"
+        },
+        {
+          "time": "2026-07-11T19:46:20.335060+00:00",
+          "ts": "2026-07-11T19:46:20.335060+00:00",
+          "step_key": "auto_generation",
+          "stepKey": "auto_generation",
+          "kind": "retry",
+          "type": "retry",
+          "message": "Retry 1/99 from auto_generation: TASK-001: test code must be separated from production files. Put pytest tests under tests/ instead of embedding them in production artifacts or project-root files. Invalid file(s): test_sorts.py",
+          "source_step": "auto_generation",
+          "target_step": "auto_generation",
+          "retry_count": 1,
+          "max_retries": 99,
+          "error": "TASK-001: test code must be separated from production files. Put pytest tests under tests/ instead of embedding them in production artifacts or project-root files. Invalid file(s): test_sorts.py",
+          "error_class": "UNKNOWN",
+          "failure_class": {
+            "code": "TEST_FAILED",
+            "title": "Automated tests failed",
+            "description": "The configured test command or pytest/unittest step failed.",
+            "retry_target": "implementation step",
+            "repair_prompt_hint": "Repair production code first using the failing assertions. Change tests only when they are clearly invalid.",
+            "severity": "high",
+            "user_message": "自動化測試未通過。",
+            "auto_repairable": false,
+            "recommended_action": "依失敗案例修正 production code，除非測試本身明確錯誤。"
+          },
+          "agent_diagnosis": {
+            "code": "UNKNOWN",
+            "title": "Unclassified workflow failure",
+            "explanation": "The controller could not map this failure to a known agent behavior class.",
+            "suggested_action": "Inspect the effective prompt, agent output, run-log, and gate report before retrying."
+          },
+          "repair_policy": {
+            "schema": "aiwf.small-model-repair-policy.v1",
+            "generated_at": "2026-07-11T19:46:20.321060+00:00",
+            "failure": {
+              "code": "TEST_FAILED",
+              "title": "Automated tests failed",
+              "description": "The configured test command or pytest/unittest step failed.",
+              "retry_target": "implementation step",
+              "repair_prompt_hint": "Repair production code first using the failing assertions. Change tests only when they are clearly invalid.",
+              "severity": "high",
+              "user_message": "自動化測試未通過。",
+              "auto_repairable": false,
+              "recommended_action": "依失敗案例修正 production code，除非測試本身明確錯誤。"
+            },
+            "retry_count": 1,
+            "retry_target_hint": "build",
+            "prompt_mode": "test_failure_repair",
+            "repair_instruction": "以測試 stdout/stderr 為唯一修復依據，優先修 production code；只有測試明顯錯誤時才改 tests。",
+            "escalation": null
+          }
+        },
+        {
+          "time": "2026-07-11T19:46:20.465059+00:00",
+          "ts": "2026-07-11T19:46:20.465059+00:00",
+          "step_key": "auto_generation",
+          "stepKey": "auto_generation",
+          "kind": "started",
+          "type": "started",
+          "message": "auto_generation: started"
+        },
+        {
+          "time": "2026-07-11T19:47:14.142401+00:00",
+          "ts": "2026-07-11T19:47:14.142401+00:00",
+          "step_key": "auto_generation",
+          "stepKey": "auto_generation",
+          "kind": "failed",
+          "type": "failed",
+          "message": "TASK-001: test code must be separated from production files. Put pytest tests under tests/ instead of embedding them in production artifacts or project-root files. Invalid file(s): test_sorts.py"
+        },
+        {
+          "time": "2026-07-11T19:47:14.282919+00:00",
+          "ts": "2026-07-11T19:47:14.282919+00:00",
+          "step_key": "auto_generation",
+          "stepKey": "auto_generation",
+          "kind": "retry",
+          "type": "retry",
+          "message": "Retry 2/99 from auto_generation: TASK-001: test code must be separated from production files. Put pytest tests under tests/ instead of embedding them in production artifacts or project-root files. Invalid file(s): test_sorts.py",
+          "source_step": "auto_generation",
+          "target_step": "auto_generation",
+          "retry_count": 2,
+          "max_retries": 99,
+          "error": "TASK-001: test code must be separated from production files. Put pytest tests under tests/ instead of embedding them in production artifacts or project-root files. Invalid file(s): test_sorts.py",
+          "error_class": "UNKNOWN",
+          "failure_class": {
+            "code": "TEST_FAILED",
+            "title": "Automated tests failed",
+            "description": "The configured test command or pytest/unittest step failed.",
+            "retry_target": "implementation step",
+            "repair_prompt_hint": "Repair production code first using the failing assertions. Change tests only when they are clearly invalid.",
+            "severity": "high",
+            "user_message": "自動化測試未通過。",
+            "auto_repairable": false,
+            "recommended_action": "依失敗案例修正 production code，除非測試本身明確錯誤。"
+          },
+          "agent_diagnosis": {
+            "code": "UNKNOWN",
+            "title": "Unclassified workflow failure",
+            "explanation": "The controller could not map this failure to a known agent behavior class.",
+            "suggested_action": "Inspect the effective prompt, agent output, run-log, and gate report before retrying."
+          },
+          "repair_policy": {
+            "schema": "aiwf.small-model-repair-policy.v1",
+            "generated_at": "2026-07-11T19:47:14.257921+00:00",
+            "failure": {
+              "code": "TEST_FAILED",
+              "title": "Automated tests failed",
+              "description": "The configured test command or pytest/unittest step failed.",
+              "retry_target": "implementation step",
+              "repair_prompt_hint": "Repair production code first using the failing assertions. Change tests only when they are clearly invalid.",
+              "severity": "high",
+              "user_message": "自動化測試未通過。",
+              "auto_repairable": false,
+              "recommended_action": "依失敗案例修正 production code，除非測試本身明確錯誤。"
+            },
+            "retry_count": 2,
+            "retry_target_hint": "build",
+            "prompt_mode": "test_failure_repair",
+            "repair_instruction": "以測試 stdout/stderr 為唯一修復依據，優先修 production code；只有測試明顯錯誤時才改 tests。",
+            "escalation": null
+          }
+        },
+        {
+          "time": "2026-07-11T19:47:14.412037+00:00",
+          "ts": "2026-07-11T19:47:14.412037+00:00",
+          "step_key": "auto_generation",
+          "stepKey": "auto_generation",
+          "kind": "started",
+          "type": "started",
+          "message": "auto_generation: started"
+        },
+        {
+          "time": "2026-07-11T19:48:39.690949+00:00",
+          "ts": "2026-07-11T19:48:39.690949+00:00",
+          "step_key": "auto_generation",
+          "stepKey": "auto_generation",
+          "kind": "passed",
+          "type": "passed",
+          "message": "auto_generation: passed"
+        },
+        {
+          "time": "2026-07-11T19:48:39.781194+00:00",
+          "ts": "2026-07-11T19:48:39.781194+00:00",
+          "step_key": "ai_review",
+          "stepKey": "ai_review",
+          "kind": "started",
+          "type": "started",
+          "message": "ai_review: started"
+        },
+        {
+          "time": "2026-07-11T19:49:25.674020+00:00",
+          "ts": "2026-07-11T19:49:25.674020+00:00",
+          "step_key": "ai_review",
+          "stepKey": "ai_review",
+          "kind": "passed",
+          "type": "passed",
+          "message": "ai_review: passed"
+        }
+      ],
+      "validation_results": [
+        {
+          "key": "test",
+          "status": "passed",
+          "command": "python -m pytest",
+          "exit_code": 0,
+          "summary": "configfile: pytest.ini\nplugins: anyio-4.14.1\ncollected 71 items\ntests\\test_sorts.py .................................................... [ 73%]\n...................                                                      [100%]\n============================= 71 passed in 0.09s =============================="
+        },
+        {
+          "key": "python-compile",
+          "status": "passed",
+          "command": "C:\\Program Files\\Python310\\python.exe -m compileall -q .",
+          "exit_code": 0,
+          "summary": ""
+        }
+      ],
+      "file_changes": [],
+      "checkpoints": [
+        {
+          "id": "baseline",
+          "step_key": null,
+          "status": "ready",
+          "created_at": "2026-07-11T19:44:53.529004+00:00",
+          "path": ".workflow/project-snapshot-before.json",
+          "description": "Project state before workflow execution."
+        },
+        {
+          "id": "step-generate_task_prompts-2",
+          "kind": "step_completed",
+          "step_key": "generate_task_prompts",
+          "status": "passed",
+          "created_at": "2026-07-11T19:45:49.554085+00:00",
+          "retry_count": 0,
+          "changed_files": []
+        },
+        {
+          "id": "step-auto_generation-3",
+          "kind": "step_completed",
+          "step_key": "auto_generation",
+          "status": "passed",
+          "created_at": "2026-07-11T19:48:39.685948+00:00",
+          "retry_count": 2,
+          "changed_files": []
+        },
+        {
+          "id": "step-ai_review-4",
+          "kind": "step_completed",
+          "step_key": "ai_review",
+          "status": "passed",
+          "created_at": "2026-07-11T19:49:25.668019+00:00",
+          "retry_count": 0,
+          "changed_files": []
+        }
+      ],
+      "task_checkpoints": [
+        {
+          "id": "task-001-TASK-001",
+          "kind": "task_completed",
+          "task_id": "TASK-001",
+          "step_key": "auto_generation",
+          "status": "passed",
+          "created_at": "2026-07-11T19:47:58.039423+00:00",
+          "archive": ".workflow/checkpoints/task-001-TASK-001.zip",
+          "file_count": 3,
+          "archive_bytes": 2082,
+          "source_bytes": 6759,
+          "complete": true,
+          "skipped_file_count": 0,
+          "changed_files": [],
+          "session_roles": {
+            "planning": {
+              "qwen": "9ef46c1c-0c8e-4e6a-a3fa-da8d2c335172"
+            },
+            "build": {
+              "qwen": "9ef46c1c-0c8e-4e6a-a3fa-da8d2c335172"
+            }
+          },
+          "retry_counters": {
+            "agent_attempts": 2,
+            "deterministic_repairs": 0,
+            "session_restarts": 0,
+            "replans": 0,
+            "manual_actions": 0,
+            "consecutive_failures": 2
+          }
+        },
+        {
+          "id": "task-002-TASK-002",
+          "kind": "task_completed",
+          "task_id": "TASK-002",
+          "step_key": "auto_generation",
+          "status": "passed",
+          "created_at": "2026-07-11T19:48:39.593951+00:00",
+          "archive": ".workflow/checkpoints/task-002-TASK-002.zip",
+          "file_count": 3,
+          "archive_bytes": 2158,
+          "source_bytes": 6954,
+          "complete": true,
+          "skipped_file_count": 0,
+          "changed_files": [
+            "tests/test_sorts.py"
+          ],
+          "session_roles": {
+            "planning": {
+              "qwen": "9ef46c1c-0c8e-4e6a-a3fa-da8d2c335172"
+            },
+            "build": {
+              "qwen": "9ef46c1c-0c8e-4e6a-a3fa-da8d2c335172"
+            }
+          },
+          "retry_counters": {
+            "agent_attempts": 2,
+            "deterministic_repairs": 0,
+            "session_restarts": 0,
+            "replans": 0,
+            "manual_actions": 0,
+            "consecutive_failures": 2
+          }
+        }
+      ],
+      "transitions": [
+        {
+          "kind": "run",
+          "from": null,
+          "to": "queued",
+          "reason": "run created",
+          "at": "2026-07-11T19:44:53.522003+00:00"
+        },
+        {
+          "kind": "run",
+          "from": "queued",
+          "to": "running",
+          "reason": "status update",
+          "at": "2026-07-11T19:44:53.600004+00:00"
+        },
+        {
+          "kind": "run",
+          "from": "queued",
+          "to": "done",
+          "reason": "status update",
+          "at": "2026-07-11T19:49:25.745024+00:00"
+        }
+      ],
+      "phase": "reviewing",
+      "created_at": "2026-07-11T19:44:53.522003+00:00",
+      "updated_at": "2026-07-11T19:49:26.103593+00:00",
+      "started_at": "2026-07-11T19:44:53.599004+00:00",
+      "ended_at": "2026-07-11T19:49:25.745024+00:00",
+      "project_lock": null,
+      "state_version": 114,
+      "failure": null,
+      "error_code": null,
+      "events": [
+        {
+          "type": "run.running",
+          "status": "running",
+          "message": "run running",
+          "error_code": null,
+          "ts": "2026-07-11T19:44:53.616002+00:00",
+          "time": "2026-07-11T19:44:53.616002+00:00"
+        },
+        {
+          "type": "started",
+          "step_key": "generate_task_prompts",
+          "message": "generate_task_prompts: started",
+          "ts": "2026-07-11T19:44:53.724003+00:00",
+          "time": "2026-07-11T19:44:53.724003+00:00"
+        },
+        {
+          "type": "passed",
+          "step_key": "generate_task_prompts",
+          "message": "generate_task_prompts: passed",
+          "ts": "2026-07-11T19:45:49.571086+00:00",
+          "time": "2026-07-11T19:45:49.571086+00:00"
+        },
+        {
+          "type": "started",
+          "step_key": "auto_generation",
+          "message": "auto_generation: started",
+          "ts": "2026-07-11T19:45:49.651085+00:00",
+          "time": "2026-07-11T19:45:49.651085+00:00"
+        },
+        {
+          "type": "failed",
+          "step_key": "auto_generation",
+          "message": "TASK-001: test code must be separated from production files. Put pytest tests under tests/ instead of embedding them in production artifacts or project-root files. Invalid file(s): test_sorts.py",
+          "ts": "2026-07-11T19:46:20.225060+00:00",
+          "time": "2026-07-11T19:46:20.225060+00:00"
+        },
+        {
+          "type": "retry.incremented",
+          "step_key": "auto_generation",
+          "retry_count": 1,
+          "message": "auto_generation retry 1",
+          "ts": "2026-07-11T19:46:20.308059+00:00",
+          "time": "2026-07-11T19:46:20.308059+00:00"
+        },
+        {
+          "type": "retry",
+          "step_key": "auto_generation",
+          "message": "Retry 1/99 from auto_generation: TASK-001: test code must be separated from production files. Put pytest tests under tests/ instead of embedding them in production artifacts or project-root files. Invalid file(s): test_sorts.py",
+          "source_step": "auto_generation",
+          "target_step": "auto_generation",
+          "retry_count": 1,
+          "max_retries": 99,
+          "error": "TASK-001: test code must be separated from production files. Put pytest tests under tests/ instead of embedding them in production artifacts or project-root files. Invalid file(s): test_sorts.py",
+          "error_class": "UNKNOWN",
+          "failure_class": {
+            "code": "TEST_FAILED",
+            "title": "Automated tests failed",
+            "description": "The configured test command or pytest/unittest step failed.",
+            "retry_target": "implementation step",
+            "repair_prompt_hint": "Repair production code first using the failing assertions. Change tests only when they are clearly invalid.",
+            "severity": "high",
+            "user_message": "自動化測試未通過。",
+            "auto_repairable": false,
+            "recommended_action": "依失敗案例修正 production code，除非測試本身明確錯誤。"
+          },
+          "agent_diagnosis": {
+            "code": "UNKNOWN",
+            "title": "Unclassified workflow failure",
+            "explanation": "The controller could not map this failure to a known agent behavior class.",
+            "suggested_action": "Inspect the effective prompt, agent output, run-log, and gate report before retrying."
+          },
+          "repair_policy": {
+            "schema": "aiwf.small-model-repair-policy.v1",
+            "generated_at": "2026-07-11T19:46:20.321060+00:00",
+            "failure": {
+              "code": "TEST_FAILED",
+              "title": "Automated tests failed",
+              "description": "The configured test command or pytest/unittest step failed.",
+              "retry_target": "implementation step",
+              "repair_prompt_hint": "Repair production code first using the failing assertions. Change tests only when they are clearly invalid.",
+              "severity": "high",
+              "user_message": "自動化測試未通過。",
+              "auto_repairable": false,
+              "recommended_action": "依失敗案例修正 production code，除非測試本身明確錯誤。"
+            },
+            "retry_count": 1,
+            "retry_target_hint": "build",
+            "prompt_mode": "test_failure_repair",
+            "repair_instruction": "以測試 stdout/stderr 為唯一修復依據，優先修 production code；只有測試明顯錯誤時才改 tests。",
+            "escalation": null
+          },
+          "ts": "2026-07-11T19:46:20.349060+00:00",
+          "time": "2026-07-11T19:46:20.349060+00:00"
+        },
+        {
+          "type": "steps.reset",
+          "start_index": 1,
+          "message": "steps reset from 1",
+          "ts": "2026-07-11T19:46:20.416061+00:00",
+          "time": "2026-07-11T19:46:20.416061+00:00"
+        },
+        {
+          "type": "started",
+          "step_key": "auto_generation",
+          "message": "auto_generation: started",
+          "ts": "2026-07-11T19:46:20.479060+00:00",
+          "time": "2026-07-11T19:46:20.479060+00:00"
+        },
+        {
+          "type": "failed",
+          "step_key": "auto_generation",
+          "message": "TASK-001: test code must be separated from production files. Put pytest tests under tests/ instead of embedding them in production artifacts or project-root files. Invalid file(s): test_sorts.py",
+          "ts": "2026-07-11T19:47:14.155399+00:00",
+          "time": "2026-07-11T19:47:14.155399+00:00"
+        },
+        {
+          "type": "retry.incremented",
+          "step_key": "auto_generation",
+          "retry_count": 2,
+          "message": "auto_generation retry 2",
+          "ts": "2026-07-11T19:47:14.243920+00:00",
+          "time": "2026-07-11T19:47:14.243920+00:00"
+        },
+        {
+          "type": "retry",
+          "step_key": "auto_generation",
+          "message": "Retry 2/99 from auto_generation: TASK-001: test code must be separated from production files. Put pytest tests under tests/ instead of embedding them in production artifacts or project-root files. Invalid file(s): test_sorts.py",
+          "source_step": "auto_generation",
+          "target_step": "auto_generation",
+          "retry_count": 2,
+          "max_retries": 99,
+          "error": "TASK-001: test code must be separated from production files. Put pytest tests under tests/ instead of embedding them in production artifacts or project-root files. Invalid file(s): test_sorts.py",
+          "error_class": "UNKNOWN",
+          "failure_class": {
+            "code": "TEST_FAILED",
+            "title": "Automated tests failed",
+            "description": "The configured test command or pytest/unittest step failed.",
+            "retry_target": "implementation step",
+            "repair_prompt_hint": "Repair production code first using the failing assertions. Change tests only when they are clearly invalid.",
+            "severity": "high",
+            "user_message": "自動化測試未通過。",
+            "auto_repairable": false,
+            "recommended_action": "依失敗案例修正 production code，除非測試本身明確錯誤。"
+          },
+          "agent_diagnosis": {
+            "code": "UNKNOWN",
+            "title": "Unclassified workflow failure",
+            "explanation": "The controller could not map this failure to a known agent behavior class.",
+            "suggested_action": "Inspect the effective prompt, agent output, run-log, and gate report before retrying."
+          },
+          "repair_policy": {
+            "schema": "aiwf.small-model-repair-policy.v1",
+            "generated_at": "2026-07-11T19:47:14.257921+00:00",
+            "failure": {
+              "code": "TEST_FAILED",
+              "title": "Automated tests failed",
+              "description": "The configured test command or pytest/unittest step failed.",
+              "retry_target": "implementation step",
+              "repair_prompt_hint": "Repair production code first using the failing assertions. Change tests only when they are clearly invalid.",
+              "severity": "high",
+              "user_message": "自動化測試未通過。",
+              "auto_repairable": false,
+              "recommended_action": "依失敗案例修正 production code，除非測試本身明確錯誤。"
+            },
+            "retry_count": 2,
+            "retry_target_hint": "build",
+            "prompt_mode": "test_failure_repair",
+            "repair_instruction": "以測試 stdout/stderr 為唯一修復依據，優先修 production code；只有測試明顯錯誤時才改 tests。",
+            "escalation": null
+          },
+          "ts": "2026-07-11T19:47:14.295520+00:00",
+          "time": "2026-07-11T19:47:14.295520+00:00"
+        },
+        {
+          "type": "steps.reset",
+          "start_index": 1,
+          "message": "steps reset from 1",
+          "ts": "2026-07-11T19:47:14.362039+00:00",
+          "time": "2026-07-11T19:47:14.362039+00:00"
+        },
+        {
+          "type": "started",
+          "step_key": "auto_generation",
+          "message": "auto_generation: started",
+          "ts": "2026-07-11T19:47:14.425036+00:00",
+          "time": "2026-07-11T19:47:14.425036+00:00"
+        },
+        {
+          "type": "passed",
+          "step_key": "auto_generation",
+          "message": "auto_generation: passed",
+          "ts": "2026-07-11T19:48:39.704949+00:00",
+          "time": "2026-07-11T19:48:39.704949+00:00"
+        },
+        {
+          "type": "started",
+          "step_key": "ai_review",
+          "message": "ai_review: started",
+          "ts": "2026-07-11T19:48:39.794196+00:00",
+          "time": "2026-07-11T19:48:39.794196+00:00"
+        },
+        {
+          "type": "passed",
+          "step_key": "ai_review",
+          "message": "ai_review: passed",
+          "ts": "2026-07-11T19:49:25.687019+00:00",
+          "time": "2026-07-11T19:49:25.687019+00:00"
+        },
+        {
+          "type": "run.done",
+          "status": "done",
+          "message": "run done",
+          "error_code": null,
+          "ts": "2026-07-11T19:49:25.752022+00:00",
+          "time": "2026-07-11T19:49:25.752022+00:00"
+        }
+      ],
+      "run_lease": null,
+      "attempts": [
+        {
+          "id": "attempt-1",
+          "step_key": "generate_task_prompts",
+          "idempotency_key": "33d49e6e47f768b3f178cfbd",
+          "owner_id": "DESKTOP-HA3SSPJ:36124",
+          "status": "completed",
+          "started_at": "2026-07-11T19:44:53.669003+00:00",
+          "ended_at": "2026-07-11T19:45:49.599086+00:00",
+          "error": null
+        },
+        {
+          "id": "attempt-2",
+          "step_key": "auto_generation",
+          "idempotency_key": "101fe1f47abe2ad0440b40a4",
+          "owner_id": "DESKTOP-HA3SSPJ:36124",
+          "status": "failed",
+          "started_at": "2026-07-11T19:45:49.613086+00:00",
+          "ended_at": "2026-07-11T19:46:20.248059+00:00",
+          "error": "TASK-001: test code must be separated from production files. Put pytest tests under tests/ instead of embedding them in production artifacts or project-root files. Invalid file(s): test_sorts.py"
+        },
+        {
+          "id": "attempt-3",
+          "step_key": "auto_generation",
+          "idempotency_key": "3e6c5e262f376bfc1d9afe9f",
+          "owner_id": "DESKTOP-HA3SSPJ:36124",
+          "status": "failed",
+          "started_at": "2026-07-11T19:46:20.437061+00:00",
+          "ended_at": "2026-07-11T19:47:14.175399+00:00",
+          "error": "TASK-001: test code must be separated from production files. Put pytest tests under tests/ instead of embedding them in production artifacts or project-root files. Invalid file(s): test_sorts.py"
+        },
+        {
+          "id": "attempt-4",
+          "step_key": "auto_generation",
+          "idempotency_key": "20943e5a03907e68bfaacbe9",
+          "owner_id": "DESKTOP-HA3SSPJ:36124",
+          "status": "completed",
+          "started_at": "2026-07-11T19:47:14.384039+00:00",
+          "ended_at": "2026-07-11T19:48:39.734948+00:00",
+          "error": null
+        },
+        {
+          "id": "attempt-5",
+          "step_key": "ai_review",
+          "idempotency_key": "e2fc1dd55d17383c483f69b2",
+          "owner_id": "DESKTOP-HA3SSPJ:36124",
+          "status": "completed",
+          "started_at": "2026-07-11T19:48:39.750948+00:00",
+          "ended_at": "2026-07-11T19:49:25.720023+00:00",
+          "error": null
+        }
+      ],
+      "active_attempt": null,
+      "session_records": [
+        {
+          "role": "planning",
+          "agent": "qwen",
+          "session_id": "9ef46c1c-0c8e-4e6a-a3fa-da8d2c335172",
+          "status": "active",
+          "recovery_reason": null,
+          "updated_at": "2026-07-11T19:45:49.392084+00:00"
+        },
+        {
+          "role": "build",
+          "agent": "qwen",
+          "session_id": "9ef46c1c-0c8e-4e6a-a3fa-da8d2c335172",
+          "status": "active",
+          "recovery_reason": null,
+          "updated_at": "2026-07-11T19:46:20.070060+00:00"
+        },
+        {
+          "role": "build",
+          "agent": "qwen",
+          "session_id": "9ef46c1c-0c8e-4e6a-a3fa-da8d2c335172",
+          "status": "active",
+          "recovery_reason": null,
+          "updated_at": "2026-07-11T19:47:14.037400+00:00"
+        },
+        {
+          "role": "build",
+          "agent": "qwen",
+          "session_id": "9ef46c1c-0c8e-4e6a-a3fa-da8d2c335172",
+          "status": "active",
+          "recovery_reason": null,
+          "updated_at": "2026-07-11T19:47:57.901422+00:00"
+        },
+        {
+          "role": "build",
+          "agent": "qwen",
+          "session_id": "9ef46c1c-0c8e-4e6a-a3fa-da8d2c335172",
+          "status": "active",
+          "recovery_reason": null,
+          "updated_at": "2026-07-11T19:48:39.467948+00:00"
+        },
+        {
+          "role": "review",
+          "agent": "qwen",
+          "session_id": null,
+          "status": "active",
+          "recovery_reason": null,
+          "updated_at": "2026-07-11T19:49:25.569009+00:00"
+        }
+      ],
+      "session_invalidations": [],
+      "last_task_checkpoint_id": "task-002-TASK-002",
+      "recovery_counters": {
+        "agent_attempts": 2,
+        "deterministic_repairs": 0,
+        "session_restarts": 0,
+        "replans": 0,
+        "manual_actions": 0,
+        "consecutive_failures": 0
+      },
+      "retry_guard_history": [],
+      "retry_streaks": {
+        "generate_task_prompts": 0,
+        "auto_generation": 0,
+        "ai_review": 0
+      },
+      "last_checkpoint_id": "step-ai_review-4",
+      "retry_budget_counters": {
+        "total": 2,
+        "steps": {
+          "auto_generation": 2
+        },
+        "tasks": {
+          "auto_generation:TASK-001": 2
+        },
+        "classes": {
+          "auto_generation:TASK-001:TEST_FAILED": 2
+        },
+        "fingerprints": {
+          "auto_generation:TASK-001:TEST_FAILED:d48f8234f7bd0df9:a9f9181e89e25a7f6966": 1,
+          "auto_generation:TASK-001:TEST_FAILED:d48f8234f7bd0df9:28fadbcb4994c45b4c09": 1
+        },
+        "no_file_change": {}
+      },
+      "last_run_lease": {
+        "schema": "aiwf.run-lease.v1",
+        "owner_id": "DESKTOP-HA3SSPJ:36124",
+        "owner": {
+          "id": "DESKTOP-HA3SSPJ:36124",
+          "host": "DESKTOP-HA3SSPJ",
+          "pid": 36124,
+          "started_at": "2026-07-11T19:44:53.166956+00:00"
+        },
+        "acquired_at": "2026-07-11T19:44:53.643006+00:00",
+        "heartbeat_at": "2026-07-11T19:48:39.750948+00:00",
+        "expires_at": "2026-07-11T19:50:09.750948+00:00",
+        "ttl_sec": 90,
+        "released_at": "2026-07-11T19:49:26.125591+00:00"
+      }
+    }
+  ],
+  "workflow_configs": []
+}

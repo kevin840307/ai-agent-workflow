@@ -30,3 +30,5 @@ failKeywords: FAIL, BLOCKED
 aggregatorFunction: ''
 sources: []
 agentOptions: {}
+phase: executing
+sessionRole: build

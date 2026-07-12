@@ -58,9 +58,7 @@ class ControllerProductizationTests(unittest.TestCase):
 
     def test_export_and_replay_endpoints(self) -> None:
         previous_mock = os.environ.get("QWEN_MOCK")
-        previous_norm = os.environ.get("QWEN_WORKFLOW_MOCK_FILE_BLOCK_NORMALIZATION")
         os.environ["QWEN_MOCK"] = "1"
-        os.environ["QWEN_WORKFLOW_MOCK_FILE_BLOCK_NORMALIZATION"] = "1"
         try:
             with TemporaryDirectory() as tmp, TestClient(app) as client:
                 project = Path(tmp) / "project"
@@ -94,10 +92,6 @@ class ControllerProductizationTests(unittest.TestCase):
                 os.environ.pop("QWEN_MOCK", None)
             else:
                 os.environ["QWEN_MOCK"] = previous_mock
-            if previous_norm is None:
-                os.environ.pop("QWEN_WORKFLOW_MOCK_FILE_BLOCK_NORMALIZATION", None)
-            else:
-                os.environ["QWEN_WORKFLOW_MOCK_FILE_BLOCK_NORMALIZATION"] = previous_norm
 
     def test_ui_contains_novice_advanced_and_profile_controls(self) -> None:
         root = Path(__file__).resolve().parents[1]
@@ -113,17 +107,20 @@ class ControllerProductizationTests(unittest.TestCase):
 
     def test_product_docs_exist(self) -> None:
         root = Path(__file__).resolve().parents[1]
-        for name in [
+        expected = [
+            "README.md",
             "QUICKSTART.md",
-            "WORKFLOW_DESIGN.md",
-            "RETRY_POLICY.md",
-            "VALIDATION_SCRIPT.md",
-            "REAL_AGENT_SMOKE.md",
-            "RUN_REPLAY_EXPORT.md",
-            "AGENT_FAILURE_DIAGNOSIS.md",
-        ]:
-            with self.subTest(name=name):
-                self.assertTrue((root / "doc" / name).exists())
+            "USER_GUIDE.md",
+            "VALIDATION.md",
+            "ARCHITECTURE.md",
+            "OPERATIONS.md",
+            "EXTENDING.md",
+            "TESTING.md",
+        ]
+        for language in ("en", "zh-TW"):
+            for name in expected:
+                with self.subTest(language=language, name=name):
+                    self.assertTrue((root / "doc" / language / name).exists())
 
 
 if __name__ == "__main__":

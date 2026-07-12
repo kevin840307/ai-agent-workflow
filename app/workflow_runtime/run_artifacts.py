@@ -1,15 +1,18 @@
 from __future__ import annotations
 
+import hashlib
 import json
+import mimetypes
 import os
 import shutil
 from pathlib import Path
 from typing import Any
 
 from app.core.paths import read_text, utc_now, write_text
-from app.workflow_runtime.artifact_policy import artifact_visibility, enrich_artifact_records
+from app.workflow_runtime.artifact_policy import artifact_display_metadata, artifact_preview_kind, enrich_artifact_records
 
 ARTIFACT_SCHEMA = "aiwf.run-artifacts.v2"
+ARTIFACT_METADATA_SCHEMA = "aiwf.artifact-metadata.v2"
 STANDARD_DIRS = [
     "steps",
     "diff",
@@ -38,19 +41,82 @@ def _json_or_none(path: Path) -> Any | None:
         return None
 
 
-def _record(run_id: str, run_dir: Path, rel: str, *, category: str, role: str) -> dict[str, Any]:
+def _content_hash(path: Path) -> str | None:
+    if not path.is_file():
+        return None
+    digest = hashlib.sha256()
+    try:
+        with path.open("rb") as handle:
+            for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                digest.update(chunk)
+    except OSError:
+        return None
+    return digest.hexdigest()
+
+
+def _record(
+    run_id: str,
+    run_dir: Path,
+    rel: str,
+    *,
+    category: str,
+    role: str,
+    display_name: str | None = None,
+    display_order: int | None = None,
+    producer_step_key: str | None = None,
+    visibility: str | None = None,
+) -> dict[str, Any]:
     path = run_dir / rel
+    defaults = artifact_display_metadata(category=category, role=role)
+    guessed_media, _encoding = mimetypes.guess_type(path.name)
+    normalized_rel = rel.replace("\\", "/")
+    storage_rel = f".workflow/artifacts/{normalized_rel}"
+    resolved_media = guessed_media or "text/plain"
     return {
+        "id": f"{run_id}:{storage_rel.replace('/', '|')}",
         "run_id": run_id,
-        "path": rel.replace("\\", "/"),
+        "path": normalized_rel,
+        "storage_path": storage_rel,
         "name": Path(rel).name,
         "category": category,
         "role": role,
+        "display_name": display_name or defaults["display_name"],
+        "display_order": int(display_order if display_order is not None else defaults["display_order"]),
+        "producer_step_key": producer_step_key,
+        "media_type": resolved_media,
+        "preview_kind": artifact_preview_kind(media_type=resolved_media, role=role),
+        "metadata_schema": ARTIFACT_METADATA_SCHEMA,
         "size": path.stat().st_size if path.exists() else 0,
+        "content_hash": _content_hash(path),
         "exists": path.exists(),
-        "visibility": artifact_visibility(rel.replace("\\", "/"), category=category, role=role),
+        "visibility": visibility or defaults["visibility"],
         "updated_at": utc_now(),
     }
+
+
+def _producer_for_artifact(run: dict[str, Any], source_rel: str, role: str) -> str | None:
+    normalized = str(source_rel or "").replace("\\", "/")
+    for step in run.get("steps") or []:
+        config = step.get("config") or {}
+        explicit_role = str(config.get("artifactRole") or config.get("artifact_role") or "")
+        def values(value: Any) -> list[Any]:
+            if value is None:
+                return []
+            if isinstance(value, (list, tuple, set)):
+                return list(value)
+            return [value]
+
+        outputs = [*values(config.get("outputs")), *values(config.get("expectedFiles")), config.get("outputFile"), config.get("filename")]
+        normalized_outputs: set[str] = set()
+        for value in outputs:
+            output = str(value or "").replace("\\", "/").strip()
+            if output and not output.startswith(("output/", "input/", "prompts/", ".workflow/")):
+                output = f"output/{output}"
+            if output:
+                normalized_outputs.add(output)
+        if explicit_role == role or normalized in normalized_outputs:
+            return str(step.get("key") or "") or None
+    return None
 
 
 def write_standard_run_artifacts(run: dict[str, Any], run_dir: Path) -> dict[str, Any]:
@@ -101,7 +167,11 @@ def write_standard_run_artifacts(run: dict[str, Any], run_dir: Path) -> dict[str
     records: list[dict[str, Any]] = []
     for src_rel, dst_rel, category, role in copies:
         if _safe_copy(run_dir / src_rel, artifacts_dir / dst_rel):
-            records.append(_record(str(run.get("id") or ""), artifacts_dir, dst_rel, category=category, role=role))
+            records.append(_record(
+                str(run.get("id") or ""), artifacts_dir, dst_rel,
+                category=category, role=role,
+                producer_step_key=_producer_for_artifact(run, src_rel, role),
+            ))
 
     if artifact_mode == "full":
         for step in run.get("steps") or []:
@@ -123,7 +193,7 @@ def write_standard_run_artifacts(run: dict[str, Any], run_dir: Path) -> dict[str
             }
             rel = f"steps/{safe_key}.json"
             write_text(artifacts_dir / rel, json.dumps(step_payload, indent=2, ensure_ascii=False))
-            records.append(_record(str(run.get("id") or ""), artifacts_dir, rel, category="step", role="step-state"))
+            records.append(_record(str(run.get("id") or ""), artifacts_dir, rel, category="step", role="step-state", display_name=str(step.get("title") or key), producer_step_key=key))
 
     # Always emit a compact final report and debug bundle so local users have a
     # stable artifact to export even when the workflow failed early.

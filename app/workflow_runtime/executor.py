@@ -4,6 +4,7 @@ import asyncio
 import copy
 import json
 import re
+from contextlib import suppress
 from pathlib import Path
 from typing import Any, Awaitable, Callable
 
@@ -24,11 +25,19 @@ from .event_log import append_event as append_workflow_event
 from .run_lifecycle import cancel_requested, write_project_lock
 from .artifact_policy import compact_run_diagnostics
 from app.workflow_engine.state_machine import phase_for_step
-from .retry_guard import should_stop_retry, clear_retry_history
+from .retry_guard import should_stop_retry, clear_retry_history, progress_signature
 from .recovery_counters import increment_recovery_counter, reset_consecutive_failures
 from .run_diff import build_run_diff
 from .scope_control import analyze_scope_delta
 from .completion_gate import evaluate_completion
+from .autopilot_preflight import ensure_autopilot_preflight
+from .autopilot_state import set_autopilot_state
+from .atomic_delivery import deliver_isolated_changes
+from .run_lease import (
+    acquire_run_lease, assert_run_lease, attempt_idempotency_key, begin_attempt, finish_attempt,
+    lease_heartbeat_seconds, release_run_lease, renew_run_lease, RunLeaseConflict,
+)
+from .step_metadata import step_phase
 
 
 class WorkflowExecutor:
@@ -71,6 +80,11 @@ class WorkflowExecutor:
         run_dir = Path(run["workspace"])
         output_dir = run_dir / "output"
         run_started = now()
+        heartbeat_stop = asyncio.Event()
+        heartbeat_failure: list[str] = []
+        heartbeat_task: asyncio.Task | None = None
+        execution_task = asyncio.current_task()
+        lease_token: int | None = None
         try:
             if self.transition_run_status:
                 running_run = await self.transition_run_status(
@@ -95,7 +109,27 @@ class WorkflowExecutor:
             if running_run:
                 run = running_run
                 write_project_lock(run)
-            await self.log(run, "workflow: started")
+            owner = current_run_owner()
+            owner_id = str(owner.get("id") or owner.get("pid") or "controller")
+            try:
+                leased_run = await self.update_run(run_id, lambda item: acquire_run_lease(item, owner))
+            except RunLeaseConflict as exc:
+                await self.log(run, f"workflow: execution skipped because another live controller owns the Run: {exc}")
+                return
+            if leased_run:
+                run = leased_run
+            lease_token = int((run.get("run_lease") or {}).get("fencing_token") or 0)
+            heartbeat_task = asyncio.create_task(
+                self._heartbeat_run_lease(
+                    run_id, owner, lease_token, heartbeat_stop, heartbeat_failure, execution_task
+                )
+            )
+            await self.log(run, f"workflow: started with lease fence {lease_token}")
+            if bool(run.get("unattended")):
+                await set_autopilot_state(run_id, "discovering", update_run=self.update_run, detail="Preparing project context and validation baseline.")
+            if start_index == 0 and bool(run.get("unattended")):
+                run = await ensure_autopilot_preflight(run, update_run=self.update_run, log=self.log)
+                await set_autopilot_state(run_id, "executing", update_run=self.update_run, detail="Project baseline is ready; executing task contracts.")
 
             # Actions close over this stable run object. Runtime-only flags such
             # as fresh-session recovery must be written here even when store
@@ -111,13 +145,39 @@ class WorkflowExecutor:
             while index < len(action_records):
                 key, action, step_record = action_records[index]
                 await self._raise_if_cancel_requested(run_id)
+                retry_count_for_attempt = int(step_record.get("retry_count") or 0) + int(action_run.get("retry_streaks", {}).get(key, 0) or 0)
+                idempotency_key = attempt_idempotency_key(action_run, key, retry_count=retry_count_for_attempt)
+                attempt_state: dict[str, Any] = {}
+
+                def start_attempt(item: dict[str, Any]) -> None:
+                    nonlocal attempt_state
+                    renew_run_lease(item, owner, fencing_token=lease_token)
+                    attempt_state = begin_attempt(item, step_key=key, idempotency_key=idempotency_key, owner_id=owner_id)
+
+                try:
+                    latest_attempt_run = await self.update_run(run_id, start_attempt)
+                except RunLeaseConflict as exc:
+                    await self.log(action_run, f"{key}: duplicate execution prevented: {exc}")
+                    return
+                if latest_attempt_run:
+                    run = latest_attempt_run
+                if attempt_state.get("duplicate_completed"):
+                    await self.log(action_run, f"{key}: skipped duplicate completed attempt {idempotency_key}")
+                    index += 1
+                    continue
                 try:
                     await self._run_step(run_id, action_run, key, action)
+                    await self.update_run(run_id, lambda item: finish_attempt(item, idempotency_key, status="completed"))
                     await self._raise_if_cancel_requested(run_id)
                     index += 1
-                except UserInputRequired:
+                except UserInputRequired as exc:
+                    await self.update_run(run_id, lambda item: finish_attempt(item, idempotency_key, status="waiting_input", error=str(exc)))
+                    raise
+                except asyncio.CancelledError:
+                    await self.update_run(run_id, lambda item: finish_attempt(item, idempotency_key, status="cancelled", error="cancelled"))
                     raise
                 except Exception as exc:
+                    await self.update_run(run_id, lambda item: finish_attempt(item, idempotency_key, status="failed", error=str(exc)))
                     base_retry_key = retry_target_for_failure(action_run, step_record, step_records, index, output_dir, error=exc)
                     if base_retry_key is None:
                         raise
@@ -176,7 +236,8 @@ class WorkflowExecutor:
                         if failure_code == "TIMEOUT":
                             item["_fresh_agent_session_once"] = True
                             increment_recovery_counter(item, "session_restarts")
-                        if retry_key != key and any(token in str(retry_key).lower() for token in ("plan", "prompt")):
+                        target_step = next((candidate for candidate in step_records if candidate.get("key") == retry_key), None)
+                        if retry_key != key and target_step and step_phase(target_step) == "planning":
                             increment_recovery_counter(item, "replans")
                         if bool(classify_failure(exc, step_key=key).get("auto_repairable")):
                             increment_recovery_counter(item, "deterministic_repairs")
@@ -197,6 +258,7 @@ class WorkflowExecutor:
                             error=exc,
                             task_id=self._task_id_from_error(exc),
                             retry_target=retry_key,
+                            progress=progress_signature(item, item.get("project_path")),
                         )
                         attempt["stop"] = stop
                         attempt["stop_reason"] = stop_reason
@@ -206,9 +268,25 @@ class WorkflowExecutor:
                         run = latest_for_guard
                     if guard_payload.get("stop"):
                         message = str(guard_payload.get("stop_reason") or f"Retry loop guard stopped {retry_key}.")
-                        await self.set_step(run_id, key, "failed", message, error_code="RETRY_LOOP_DETECTED")
-                        await self.log(run, message)
-                        raise WorkflowError(message) from exc
+                        config = step_config(step_record)
+                        recover_repeated = bool_config(config, "recoverRepeatedFailure", False)
+                        hard_stop = bool(guard_payload.get("hard_stop"))
+                        if recover_repeated and not hard_stop and source_retry_streak < max_retries:
+                            action_run["_fresh_agent_session_once"] = True
+
+                            def recover_retry_loop(item: dict[str, Any]) -> None:
+                                item["_fresh_agent_session_once"] = True
+                                clear_retry_history(item, step_key=key, task_id=self._task_id_from_error(exc))
+                                increment_recovery_counter(item, "session_restarts")
+
+                            recovered_run = await self.update_run(run_id, recover_retry_loop)
+                            if recovered_run:
+                                run = recovered_run
+                            await self.log(run, f"{message} Starting the configured fresh-session recovery and continuing from {retry_key}.")
+                        else:
+                            await self.set_step(run_id, key, "failed", message, error_code="RETRY_LOOP_DETECTED")
+                            await self.log(run, message)
+                            raise WorkflowError(message) from exc
                     if self._same_failure_repeated(run, key, exc):
                         await self.log(run, f"{key}: same failure observed again; retry target={retry_key}; retry guard count={guard_payload.get('same_failure_count')}: {exc}")
                     retry_count = await self.increment_step_retry(run_id, key)
@@ -228,11 +306,19 @@ class WorkflowExecutor:
                         run = action_run
                     index = target_index
 
+            if bool(run.get("unattended")):
+                await set_autopilot_state(run_id, "finalizing", update_run=self.update_run, detail="Completion gates passed; preparing verified delivery.")
             await self._mark_done(run_id, run, run_dir)
             metrics.observe("workflow.durationSec", now() - run_started)
         except UserInputRequired as exc:
             await self._mark_waiting_input(run_id, run, run_dir, exc)
         except asyncio.CancelledError:
+            if heartbeat_failure:
+                exc = WorkflowError("RUN_LEASE_LOST: " + heartbeat_failure[-1])
+                await self._mark_failed(run_id, run, run_dir, exc)
+                metrics.increment("workflow.failed")
+                metrics.observe("workflow.durationSec", now() - run_started)
+                return
             await self._mark_cancelled(run_id, run, run_dir)
             metrics.increment("workflow.cancelled")
             raise
@@ -240,6 +326,53 @@ class WorkflowExecutor:
             await self._mark_failed(run_id, run, run_dir, exc)
             metrics.increment("workflow.failed")
             metrics.observe("workflow.durationSec", now() - run_started)
+        finally:
+            heartbeat_stop.set()
+            if heartbeat_task:
+                heartbeat_task.cancel()
+                with suppress(asyncio.CancelledError):
+                    await heartbeat_task
+
+
+    async def _heartbeat_run_lease(
+        self,
+        run_id: str,
+        owner: dict[str, Any],
+        fencing_token: int,
+        stop: asyncio.Event,
+        failure: list[str],
+        execution_task: asyncio.Task | None,
+    ) -> None:
+        interval = lease_heartbeat_seconds()
+        while not stop.is_set():
+            try:
+                await asyncio.wait_for(stop.wait(), timeout=interval)
+                return
+            except asyncio.TimeoutError:
+                pass
+            try:
+                def renew(item: dict[str, Any]) -> None:
+                    if item.get("status") not in {"queued", "running", "cancelling"}:
+                        return
+                    assert_run_lease(
+                        item,
+                        owner_id=str(owner.get("id") or owner.get("pid") or "controller"),
+                        fencing_token=fencing_token,
+                    )
+                    renew_run_lease(item, owner, fencing_token=fencing_token)
+
+                await self.update_run(run_id, renew)
+            except Exception as exc:
+                failure.append(str(exc))
+                if execution_task and not execution_task.done():
+                    execution_task.cancel()
+                return
+
+
+    async def _release_run_lease(self, run_id: str) -> None:
+        owner = current_run_owner()
+        owner_id = str(owner.get("id") or owner.get("pid") or "controller")
+        await self.update_run(run_id, lambda item: release_run_lease(item, owner_id=owner_id))
 
 
     async def _raise_if_cancel_requested(self, run_id: str) -> None:
@@ -433,6 +566,10 @@ class WorkflowExecutor:
         if completion.get("status") != "PASS":
             raise WorkflowError("FINAL_COMPLETION_GATE_FAILED: " + "; ".join(completion.get("errors") or []))
 
+        if bool(run.get("unattended")):
+            await deliver_isolated_changes(run, update_run=self.update_run, log=self.log)
+            await set_autopilot_state(run_id, "verified", update_run=self.update_run, detail="Verified changes were delivered to the original project.")
+
         def finish(r: dict[str, Any]) -> None:
             r["status"] = "done"
             r["error"] = None
@@ -461,7 +598,10 @@ class WorkflowExecutor:
         write_agent_safety_report(final_run)
         append_workflow_event(final_run, "run.completed", message="workflow: done", status="done")
         await self._finalize_artifacts(run_id, final_run)
+        if bool(run.get("unattended")):
+            await set_autopilot_state(run_id, "completed", update_run=self.update_run, detail="All deterministic completion gates passed.")
         await self.log(run, "workflow: done")
+        await self._release_run_lease(run_id)
         await self.bus.publish(run_id, {"type": "done"})
 
     async def _mark_waiting_input(self, run_id: str, run: dict[str, Any], run_dir: Path, exc: UserInputRequired) -> None:
@@ -483,6 +623,7 @@ class WorkflowExecutor:
         write_agent_safety_report(waiting_run)
         append_workflow_event(waiting_run, "run.waiting_input", message=str(exc), status="waiting_input", error_code=waiting_run.get("error_code"))
         await self.refresh_artifacts(run_id)
+        await self._release_run_lease(run_id)
         await self.bus.publish(run_id, {"type": "waiting_input", "error": str(exc)})
 
     async def _mark_cancelled(self, run_id: str, run: dict[str, Any], run_dir: Path) -> None:
@@ -513,11 +654,16 @@ class WorkflowExecutor:
             fallback_run = dict(run)
             cancel(fallback_run)
             cancelled_run = fallback_run
-        write_text(run_dir / ".workflow" / "state.json", json.dumps(cancelled_run, indent=2, ensure_ascii=False))
-        write_run_trace_artifacts(cancelled_run, run_dir)
-        write_agent_safety_report(cancelled_run)
-        append_workflow_event(cancelled_run, "run.cancelled", message="Workflow cancelled by user.", status="cancelled", error_code=cancelled_run.get("error_code"))
-        await self._finalize_artifacts(run_id, cancelled_run)
+        # A concurrent isolated-workspace cleanup may remove diagnostic folders
+        # after cancellation has already succeeded. Diagnostics are best-effort
+        # here and must not turn a terminate request into HTTP 500.
+        with suppress(OSError):
+            write_text(run_dir / ".workflow" / "state.json", json.dumps(cancelled_run, indent=2, ensure_ascii=False))
+            write_run_trace_artifacts(cancelled_run, run_dir)
+            write_agent_safety_report(cancelled_run)
+            append_workflow_event(cancelled_run, "run.cancelled", message="Workflow cancelled by user.", status="cancelled", error_code=cancelled_run.get("error_code"))
+            await self._finalize_artifacts(run_id, cancelled_run)
+        await self._release_run_lease(run_id)
         await self.bus.publish(run_id, {"type": "cancelled", "error": "Workflow cancelled by user."})
 
     async def _mark_failed(self, run_id: str, run: dict[str, Any], run_dir: Path, exc: Exception) -> None:
@@ -541,4 +687,5 @@ class WorkflowExecutor:
         write_agent_safety_report(failed_run)
         append_workflow_event(failed_run, "run.failed", message=str(error), status="failed", error_code=error_code)
         await self._finalize_artifacts(run_id, failed_run)
+        await self._release_run_lease(run_id)
         await self.bus.publish(run_id, {"type": "failed", "error": str(error)})

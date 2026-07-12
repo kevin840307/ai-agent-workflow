@@ -7,7 +7,7 @@ from typing import Any
 
 from app.core.paths import DATA_DIR, ROOT, utc_now, write_text
 
-APP_VERSION = "1.0.0"
+APP_VERSION = "1.9.0"
 DATABASE_SCHEMA_VERSION = 9
 WORKFLOW_SCHEMA_VERSION = 6
 CONFIG_SCHEMA_VERSION = 5

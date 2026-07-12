@@ -1,4 +1,4 @@
-import { ReviewModes, StepTypes } from "../workflow-designer-constants.js?v=20260711-ui-v12";
+import { ReviewModes, StepTypes } from "../workflow-designer-constants.js?v=20260712-ui-v22";
 
 function options(items, selected) {
   return items.map(([value, label]) => `

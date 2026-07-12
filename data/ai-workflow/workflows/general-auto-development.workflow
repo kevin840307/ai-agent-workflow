@@ -1,6 +1,6 @@
 id: general-auto-development
 name: General Auto Development
-description: 'Fixed SOP development controller: AI plans SPEC/TODO/task prompts, controller executes the task loop, ensures tests exist, runs pytest, performs AI implementation review, runs external validation, then Python final verifier and final gate decide PASS from evidence.'
+description: 'Fixed SOP development controller: AI plans SPEC/TODO/task prompts, controller executes the task loop, ensures tests exist, runs pytest, performs AI implementation review, runs external validation, then the Python final verifier and global completion gate decide PASS from evidence.'
 kind: system
 active: true
 protected: true
@@ -17,4 +17,3 @@ steps:
 - contract: contracts/general-auto-development/implementation_review.yaml
 - contract: contracts/general-auto-development/run_external_validation.yaml
 - contract: contracts/general-auto-development/final_review.yaml
-- contract: contracts/general-auto-development/final_gate.yaml

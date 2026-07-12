@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import os
+import re
+from pathlib import Path
 from collections import defaultdict
 
 from app.testing.self_prompt_sorting_agent import self_prompt_sorting_response
@@ -13,6 +15,35 @@ def _scenario_once(key: str) -> bool:
     _SCENARIO_COUNTS[key] += 1
     return _SCENARIO_COUNTS[key] == 1
 
+
+
+
+def apply_mock_agent_file_edits(output: str, cwd: str | Path) -> list[str]:
+    """Simulate the mock coding agent's own file-edit tool.
+
+    Production runtime never materializes FILE blocks. This helper exists only
+    inside the deterministic mock provider so E2E tests exercise the same
+    before/after project-diff contract as Qwen/OpenCode.
+    """
+    root = Path(cwd).expanduser().resolve()
+    written: list[str] = []
+    pattern = re.compile(
+        r"(?ms)^FILE:\s*(.+?)\s*$\n^CONTENT:\s*\n(.*?)\n^END_FILE\s*$"
+    )
+    for match in pattern.finditer(output or ""):
+        raw = match.group(1).strip().strip("`").replace("\\", "/")
+        candidate = Path(raw)
+        if candidate.is_absolute() or ".." in candidate.parts:
+            continue
+        target = (root / candidate).resolve()
+        try:
+            target.relative_to(root)
+        except ValueError:
+            continue
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(match.group(2).rstrip("\n") + "\n", encoding="utf-8")
+        written.append(candidate.as_posix())
+    return written
 
 def mock_qwen_response(prompt: str) -> str:
     """Deterministic Qwen-like output for local UI and workflow E2E tests.
@@ -406,7 +437,7 @@ END_FILE
 - Python standard library is sufficient.
 
 ## Risks
-- Build output must include production FILE/CONTENT/END_FILE blocks.
+- Build must directly edit production files and leave a verifiable project diff.
 """
 
     if "reviewing `output/spec.md`" in normalized or "reviewing `output/todo.md`" in normalized:

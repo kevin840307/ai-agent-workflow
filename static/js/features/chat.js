@@ -1,4 +1,4 @@
-import { LocalStore, StorageKeys } from "../core/storage.js?v=20260711-ui-v12";
+import { LocalStore, StorageKeys } from "../core/storage.js?v=20260712-ui-v22";
 
 export function createChat(ctx) {
   const { api, state, ui } = ctx;
@@ -57,7 +57,7 @@ export function createChat(ctx) {
       const workflowPicker = ui.byKey("workflowPicker");
       if (workflowButton) workflowButton.classList.toggle("active", state.runMode === "workflow");
       if (chatButton) chatButton.classList.toggle("active", state.runMode === "chat");
-      if (workflowPicker) workflowPicker.hidden = state.runMode !== "workflow";
+      if (workflowPicker) workflowPicker.hidden = false;
 
       ctx.features.composer.updatePrimaryAction();
       ctx.features.messages.renderEmptyState();

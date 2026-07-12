@@ -1,0 +1,8 @@
+{
+  "schema": "aiwf.reliability-soak.v1",
+  "status": "PASS",
+  "iterations": 200,
+  "completed": 200,
+  "open_processes": 0,
+  "active_leases": 0
+}

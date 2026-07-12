@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>AI Workflow Controller</title>
-    <link rel="stylesheet" href="/static/styles.css?v=20260711-ui-v12" />
+    <link rel="stylesheet" href="/static/styles.css?v=20260712-ui-v22" />
   </head>
   <body data-page="workflow-runner">
     <!-- App region: Project sessions -->
@@ -26,7 +26,13 @@
     <main class="workspace">
       <header class="header">
         <div class="title-block">
-          <h1 id="sessionTitle">Select a project</h1>
+          <div class="title-line">
+            <h1 id="sessionTitle">Select a project</h1>
+            <button id="modelConnectivity" class="model-connectivity state-checking" type="button" title="檢查模型連線" aria-live="polite">
+              <span class="model-connectivity-dot" aria-hidden="true"></span>
+              <span class="model-connectivity-text">檢查模型</span>
+            </button>
+          </div>
           <p id="runMeta">No active run</p>
         </div>
         <div class="header-tools">
@@ -144,9 +150,13 @@
                 <input id="advancedMode" type="checkbox" />
                 <span>進階模式</span>
               </label>
+              <label class="advanced-mode-toggle" title="由平台自動建立 Baseline、修復、驗證與恢復。">
+                <input id="unattendedMode" type="checkbox" checked />
+                <span>無人值守</span>
+              </label>
             </div>
           </div>
-          <textarea id="messageInput" placeholder="Describe what to build..." rows="2"></textarea>
+          <textarea id="messageInput" placeholder="描述要完成的功能或修復內容..." rows="2"></textarea>
           <div class="composer-footer">
             <div class="composer-left">
               <div class="composer-run-mode">
@@ -170,16 +180,27 @@
 
     <!-- App region: Run Center -->
     <aside class="details workflow-console run-center" aria-label="Run Center">
+      <button id="expandRunCenter" class="run-center-collapsed-launch" type="button" aria-label="展開 Run Center" title="展開 Run Center">
+        <span class="run-center-collapsed-status" aria-hidden="true"></span>
+        <span class="run-center-collapsed-label">RUN CENTER</span>
+        <span class="run-center-collapsed-arrow" aria-hidden="true">‹</span>
+      </button>
       <div class="workflow-console-head run-center-head">
         <div>
           <span class="eyebrow">RUN CENTER</span>
-          <strong>看懂目前進度、變更與驗證結果</strong>
+          <strong>看懂目前進度與驗證結果</strong>
         </div>
-        <div class="run-center-actions"><button id="openRunResult" class="diagnostics-button" type="button" title="查看最近一次結果" hidden>結果</button><button id="openDiagnostics" class="diagnostics-button" type="button" title="開啟技術診斷">技術診斷</button></div>
+        <div class="run-center-actions"><button id="openRunResult" class="diagnostics-button" type="button" title="查看最近一次結果" hidden>結果</button><button id="openDiagnostics" class="diagnostics-button" type="button" title="開啟技術診斷">技術診斷</button><button id="collapseRunCenter" class="diagnostics-button" type="button" title="收合 Run Center" aria-label="收合 Run Center">收合</button></div>
       </div>
+      <ol id="productFlow" class="product-flow" aria-label="Workflow progress">
+        <li data-flow-stage="requirement"><span>1</span><strong>需求</strong></li>
+        <li data-flow-stage="progress"><span>2</span><strong>執行</strong></li>
+        <li data-flow-stage="changes"><span>3</span><strong>變更</strong></li>
+        <li data-flow-stage="validation"><span>4</span><strong>驗證</strong></li>
+        <li data-flow-stage="complete"><span>5</span><strong>完成</strong></li>
+      </ol>
       <div class="tabs run-center-tabs">
         <button class="tab active" data-tab="overviewPanel">總覽</button>
-        <button class="tab" data-tab="changesPanel">變更</button>
         <button class="tab" data-tab="validationPanel">驗證</button>
       </div>
 
@@ -191,22 +212,18 @@
           <small>完成後會自動整理變更與驗證結果。</small>
         </article>
         <div id="overviewMetrics" class="overview-metrics"></div>
+        <section id="overviewChangeCard" class="overview-change-card"></section>
         <details id="runTimelineCard" class="run-timeline-card">
           <summary><span>執行時間線</span><small id="runTimelineCount">0 events</small></summary>
           <ol id="runTimeline" class="run-timeline"></ol>
         </details>
-        <div class="overview-section-head"><strong>執行步驟</strong><span id="overviewProgressLabel">0 / 0</span></div>
+        <div class="overview-section-head">
+          <div class="overview-section-title"><strong>執行步驟</strong><span id="overviewProgressLabel">0 / 0</span></div>
+          <button id="openSelectedStepDetail" class="mini-button" type="button" title="放大目前步驟">放大檢視</button>
+        </div>
         <div class="step-panel-layout overview-step-layout">
           <div id="steps" class="steps"></div>
-          <div id="stepDetails" class="step-details"></div>
         </div>
-        <div id="runDetail" class="run-detail-view overview-run-detail">No run selected.</div>
-      </section>
-
-      <section id="changesPanel" class="panel" hidden>
-        <div id="changesSummary" class="changes-summary"></div>
-        <div id="changesList" class="changes-list"></div>
-        <section id="changePreview" class="change-review-stage change-review-empty">選擇檔案查看變更摘要。</section>
       </section>
 
       <section id="validationPanel" class="panel" hidden>
@@ -215,19 +232,60 @@
       </section>
     </aside>
 
+    <div id="diffDialogBackdrop" class="diff-dialog-backdrop" hidden>
+      <section id="diffDialog" class="diff-dialog patch-review-workbench" role="dialog" aria-modal="true" aria-labelledby="diffDialogTitle">
+        <header class="diff-dialog-head patch-review-toolbar">
+          <div class="patch-review-heading"><span class="eyebrow">PATCH REVIEW</span><h2 id="diffDialogTitle">Patch 審核</h2><p id="diffDialogSubtitle">載入變更與驗證證據中。</p></div>
+          <div class="patch-review-toolbar-actions">
+            <button id="togglePatchFiles" class="mini-button" type="button" aria-pressed="false" title="顯示或隱藏檔案清單">檔案</button>
+            <div class="patch-view-switch" role="group" aria-label="Diff 顯示方式"><button class="mini-button active" data-patch-view="unified" type="button">單欄</button><button class="mini-button" data-patch-view="split" type="button">並排</button></div>
+            <div class="patch-font-controls" role="group" aria-label="Diff 字體大小"><button class="mini-button" data-patch-font="down" type="button">A−</button><button class="mini-button" data-patch-font="reset" type="button">100%</button><button class="mini-button" data-patch-font="up" type="button">A+</button></div>
+            <button id="togglePatchFocus" class="mini-button" type="button" aria-pressed="false" title="專注模式（F）">專注</button>
+            <button id="closeDiffDialog" class="modal-close" type="button" aria-label="關閉 Patch 審核">×</button>
+          </div>
+        </header>
+        <div class="diff-dialog-body patch-review-body">
+          <aside id="diffDialogFiles" class="diff-dialog-files patch-workbench-sidebar">
+            <div id="diffDialogSummary" class="diff-dialog-summary"></div>
+            <div class="patch-file-tools">
+              <input id="patchFileSearch" type="search" placeholder="搜尋檔案…" aria-label="搜尋 Patch 檔案" />
+              <div class="patch-file-filters" role="group" aria-label="檔案變更類型"><button class="active" data-patch-filter="all" type="button">全部</button><button data-patch-filter="added" type="button">新增</button><button data-patch-filter="modified" type="button">修改</button><button data-patch-filter="deleted" type="button">刪除</button></div>
+            </div>
+            <div id="diffDialogFileList" class="diff-dialog-file-list"></div>
+          </aside>
+          <main id="diffDialogContent" class="diff-dialog-content"></main>
+        </div>
+        <footer id="patchReviewFooter" class="patch-review-footer">
+          <div id="patchReviewSelection" class="patch-review-selection"></div>
+          <div id="patchReviewValidation" class="patch-review-validation"></div>
+          <div class="patch-review-decisions">
+            <button id="validatePatchSelection" class="mini-button" type="button" hidden>重新驗證選取範圍</button>
+            <button id="rejectPatch" class="mini-button danger-action" type="button">拒絕並要求修正</button>
+            <button id="approvePatch" class="mini-button" type="button">僅核准</button>
+            <button id="approveApplyPatch" class="mini-button primary-action" type="button">核准並套用</button>
+          </div>
+        </footer>
+        <section id="patchRejectPanel" class="patch-reject-panel" hidden>
+          <div class="patch-reject-card"><header><div><strong>拒絕並要求 Agent 修正</strong><small>原因會以結構化資料和原始說明交給 Agent，不做關鍵字判斷。</small></div><button id="cancelRejectPatch" class="modal-close" type="button" aria-label="取消拒絕">×</button></header><label>送回階段<select id="patchRejectStep"><option value="">僅記錄拒絕，不自動重試</option></select></label><label>原因<select id="patchRejectReason"><option value="functional_mismatch">功能不符合需求</option><option value="scope_too_large">修改範圍過大</option><option value="insufficient_tests">測試不足</option><option value="architecture_mismatch">架構不一致</option><option value="other">其他</option></select></label><label>補充說明<textarea id="patchRejectComment" rows="5" placeholder="直接描述需要修正的內容"></textarea></label><footer><button id="confirmRejectPatch" class="mini-button danger-action" type="button">送回 Agent 修正</button></footer></div>
+        </section>
+      </section>
+    </div>
+
     <!-- Technical diagnostics are intentionally lazy-loaded and kept out of the normal workflow. -->
     <div id="diagnosticsBackdrop" class="diagnostics-backdrop" hidden>
       <aside id="diagnosticsDrawer" class="diagnostics-drawer" role="dialog" aria-modal="true" aria-labelledby="diagnosticsTitle">
         <header class="diagnostics-head">
-          <div><span class="eyebrow">ADVANCED</span><h2 id="diagnosticsTitle">技術診斷</h2><p>只有除錯或人工處理時才需要查看。</p></div>
-          <button id="closeDiagnostics" class="modal-close" type="button" aria-label="關閉技術診斷">×</button>
+          <div class="diagnostics-title-line"><span class="eyebrow">ADVANCED</span><h2 id="diagnosticsTitle">技術診斷</h2><p>Agent 輸出、完整 Logs、執行產物與自動修復證據。</p></div>
+          <div class="diagnostics-head-actions">
+            <button id="toggleDiagnosticsSize" class="mini-button diagnostics-size-button" type="button" aria-pressed="false" title="放大技術診斷">放大</button>
+            <button id="closeDiagnostics" class="modal-close" type="button" aria-label="關閉技術診斷">×</button>
+          </div>
         </header>
         <nav class="diagnostics-nav" aria-label="Diagnostic sections">
           <button class="diagnostic-nav-button active" data-diagnostic="diagnosticConsole">執行時間線</button>
           <button class="diagnostic-nav-button" data-diagnostic="diagnosticAgent">Agent 原始輸出</button>
           <button class="diagnostic-nav-button" data-diagnostic="diagnosticLogs">完整 Logs</button>
-          <button class="diagnostic-nav-button" data-diagnostic="diagnosticArtifacts">技術檔案</button>
-          <button class="diagnostic-nav-button" data-diagnostic="diagnosticPatch">Patch 審核</button>
+          <button class="diagnostic-nav-button" data-diagnostic="diagnosticArtifacts">執行產物</button>
           <button class="diagnostic-nav-button" data-diagnostic="diagnosticRepair">修復策略</button>
           <button class="diagnostic-nav-button" data-diagnostic="diagnosticHealth">系統健康</button>
         </nav>
@@ -235,14 +293,20 @@
         <section id="diagnosticAgent" class="diagnostic-section" hidden><pre id="qwenLive" class="console">No agent output yet.</pre></section>
         <section id="diagnosticLogs" class="diagnostic-section" hidden><pre id="logs" class="console"></pre></section>
         <section id="diagnosticArtifacts" class="diagnostic-section" hidden>
-          <div class="diagnostic-toolbar"><input id="artifactSearch" class="artifact-search" placeholder="搜尋技術檔案..." /><button id="compactArtifacts" class="mini-button" type="button">壓縮診斷檔</button></div>
-          <div id="artifacts" class="artifacts"></div>
-          <pre id="artifactContent" class="artifact-content"></pre>
-        </section>
-        <section id="diagnosticPatch" class="diagnostic-section" hidden>
-          <div class="patch-review-head"><div><strong>變更審核</strong><small>先選檔案、看差異，再決定套用。</small></div><div class="patch-view-switch"><button class="mini-button active" data-patch-view="split" type="button">並排</button><button class="mini-button" data-patch-view="unified" type="button">單欄</button></div></div>
-          <div id="diagnosticPatchContent" class="patch-review-host">尚未載入。</div>
-          <div class="diagnostic-actions patch-actions"><span id="patchSelectionSummary">尚未選擇檔案</span><button id="applyDiagnosticPatch" class="mini-button primary-action" type="button" title="Apply to Project" aria-label="Apply to Project">套用到專案</button></div>
+          <div class="artifact-viewer-toolbar">
+            <div class="artifact-view-tabs" role="tablist" aria-label="執行產物分類"><button class="active" data-artifact-view="essential" type="button">重要</button><button data-artifact-view="validation" type="button">驗證</button><button data-artifact-view="report" type="button">報告</button><button data-artifact-view="diagnostic" type="button">診斷</button><button data-artifact-view="all" type="button">全部</button></div>
+            <input id="artifactSearch" class="artifact-search" placeholder="搜尋執行產物…" />
+            <span id="artifactStorageSummary" class="artifact-storage-summary">0 個 · 0 B</span>
+            <details class="artifact-maintenance-menu"><summary aria-label="更多執行產物操作">⋯</summary><button id="compactArtifacts" type="button">封存診斷產物</button></details>
+          </div>
+          <div class="artifact-viewer-layout">
+            <nav id="artifacts" class="artifacts" aria-label="執行產物清單"></nav>
+            <section class="artifact-preview-pane">
+              <header class="artifact-preview-head"><div><strong id="artifactDisplayName">選擇執行產物</strong><small id="artifactMeta">Category · Role · Size</small></div><div class="artifact-preview-actions"><button id="artifactOpenStep" class="mini-button" type="button" hidden>前往 Step</button><button id="artifactPreviewToggle" class="mini-button" type="button">預覽</button><button id="artifactLoadMore" class="mini-button" type="button" hidden>載入更多</button><button id="artifactCopy" class="mini-button" type="button">複製</button><button id="artifactDownload" class="mini-button" type="button">下載</button></div></header>
+              <div id="artifactRenderedContent" class="artifact-rendered-content" hidden></div>
+              <pre id="artifactContent" class="artifact-content">選擇左側產物查看內容。</pre>
+            </section>
+          </div>
         </section>
         <section id="diagnosticRepair" class="diagnostic-section" hidden><div id="diagnosticRepairContent" class="diagnostic-card">尚未載入。</div></section>
         <section id="diagnosticHealth" class="diagnostic-section" hidden><div id="diagnosticHealthContent" class="diagnostic-card">尚未載入。</div></section>
@@ -278,6 +342,6 @@
       </div>
     </div>
 
-    <script type="module" src="/static/js/main.js?v=20260711-ui-v12"></script>
+    <script type="module" src="/static/js/main.js?v=20260712-ui-v22"></script>
   </body>
 </html>

@@ -14,8 +14,6 @@ from fastapi.testclient import TestClient
 from app.main import app
 from app.runtime_modules.errors import ValidationError, WorkflowError
 from app.runtime_modules.files import (
-    apply_extracted_files,
-    extract_build_files,
     validate_build_files_are_not_tests,
     validate_generated_test_files,
 )
@@ -38,7 +36,6 @@ SYSTEM_STEP_ORDER = [
     "implementation_review",
     "run_external_validation",
     "final_review",
-    "final_gate",
 ]
 
 
@@ -120,6 +117,22 @@ class WorkflowDefinitionIntegrityTests(unittest.TestCase):
         self.assertIn("Add or update tests", prompt)
         self.assertIn("Do not return tool-call JSON, FILE blocks, code fences", prompt)
         self.assertIn("Prompt to type into Qwen/OpenCode", prompt)
+        self.assertIn("one coherent product and architecture", prompt)
+        self.assertIn("existing file that owns this behavior", prompt)
+
+    def test_system_development_workflows_keep_large_configurable_repair_budgets(self) -> None:
+        for workflow_id in ("general-auto-development", "adaptive-auto-workflow"):
+            workflow = workflow_config_service.read_workflow_file(Path(f"data/ai-workflow/workflows/{workflow_id}.workflow"))
+            for step in workflow["steps"]:
+                with self.subTest(workflow=workflow_id, step=step["key"]):
+                    self.assertEqual(step["maxRetries"], 99)
+                    self.assertTrue(step.get("recoverRepeatedFailure"))
+
+        general = workflow_config_service.read_workflow_file(Path("data/ai-workflow/workflows/general-auto-development.workflow"))
+        generate_tests = next(step for step in general["steps"] if step["key"] == "generate_tests")
+        implementation_review = next(step for step in general["steps"] if step["key"] == "implementation_review")
+        self.assertTrue(generate_tests["keepSameSession"])
+        self.assertFalse(implementation_review["keepSameSession"])
 
     def test_workflow_definition_integrity(self) -> None:
         self.assertTrue(self._workflow_files(), "expected workflow assets under data/ai-workflow/workflows")
@@ -146,7 +159,6 @@ class WorkflowDefinitionIntegrityTests(unittest.TestCase):
                         self.assertFalse(Path(template_path).is_absolute(), f"{key}.templatePath must be relative")
                         self.assertNotIn("..", Path(template_path).parts, f"{key}.templatePath cannot traverse")
                         if step.get("type") in {"ai", "review", "agent"} or step.get("key") in {
-                            "prepare_project",
                             "generate_spec",
                             "review_spec",
                             "generate_todo",
@@ -171,13 +183,11 @@ class WorkflowDefinitionIntegrityTests(unittest.TestCase):
                     if step.get("type") == "gate":
                         self.assertTrue(step.get("function") or step.get("filename") or step.get("outputFile"), f"{key} gate needs a function or artifact")
 
-    def test_system_controlled_qwen_has_expected_order_and_gates(self) -> None:
+    def test_system_controlled_qwen_has_expected_order_and_verifiers(self) -> None:
         workflow = workflow_config_service.system_workflow_with_folder()
         self.assertEqual([step["key"] for step in workflow["steps"]], SYSTEM_STEP_ORDER)
         gates = {step["key"]: step for step in workflow["steps"] if step.get("type") == "gate"}
-        self.assertEqual(set(gates), {"final_gate"})
-        self.assertEqual(gates["final_gate"].get("function"), "require_status_pass")
-        self.assertEqual(gates["final_gate"].get("retryFromStepKey"), "final_review")
+        self.assertEqual(gates, {})
         functions = {step["key"]: step.get("function") for step in workflow["steps"] if step.get("type") == "python"}
         self.assertEqual(functions["run_test"], "run_pytest")
         self.assertEqual(functions["run_external_validation"], "run_external_validation")
@@ -465,19 +475,6 @@ class PromptAndArtifactFunctionTests(unittest.TestCase):
             (output_dir / "review.md").write_text("Status: PASS\n", encoding="utf-8")
             service.require_status(output_dir / "review.md", "PASS")
 
-    def test_file_extractors_reject_invalid_test_and_build_outputs(self) -> None:
-        test_files = extract_build_files("FILE: app.py\nCONTENT:\nprint('bad')\nEND_FILE\n")
-        with self.assertRaisesRegex(WorkflowError, "generate_tests can only write"):
-            validate_generated_test_files(test_files)
-
-        build_files = extract_build_files("FILE: tests/test_bad.py\nCONTENT:\ndef test_bad(): pass\nEND_FILE\n")
-        with self.assertRaisesRegex(WorkflowError, "build must not create"):
-            validate_build_files_are_not_tests(build_files)
-
-        with tempfile.TemporaryDirectory() as tmp:
-            with self.assertRaisesRegex(WorkflowError, "unsafe file path"):
-                apply_extracted_files(Path(tmp), [("../escape.py", "print('x')\n")])
-            self.assertFalse((Path(tmp).parent / "escape.py").exists())
 
 
 class ApiWorkflowContractTests(unittest.TestCase):
@@ -614,14 +611,6 @@ class SecurityBoundaryUnitTests(unittest.TestCase):
             candidates = expected_file_candidates(run, "result.md")
             self.assertEqual(candidates[:3], [workspace / "output" / "result.md", workspace / "result.md", project / "result.md"])
 
-    def test_security_apply_extracted_files_blocks_absolute_qwen_outputs(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            project = Path(tmp) / "project"
-            project.mkdir()
-            absolute_target = Path(tmp) / "absolute.py"
-            with self.assertRaisesRegex(WorkflowError, "unsafe file path"):
-                apply_extracted_files(project, [(str(absolute_target), "print('bad')\n")])
-            self.assertFalse(absolute_target.exists())
 
 
 if __name__ == "__main__":

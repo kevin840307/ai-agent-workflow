@@ -28,6 +28,10 @@ CASES = {
     "BENCH-008": "Complete the task and verify checkpoint recovery after controller restart.",
     "BENCH-009": "Verify that only one write Run can own this Project Path.",
     "BENCH-010": "Create only the requested function and tests; report and remove unrelated scope expansion.",
+    "BENCH-011": "Repair the implementation after the required external validation fails, then make the final gate pass.",
+    "BENCH-012": "Recover from repeated no-file-change attempts by rotating to a fresh session without exceeding the recovery budget.",
+    "BENCH-013": "Make a focused change in a large legacy project using the incremental project index and finish with the full validation gate.",
+    "BENCH-014": "Detect and execute the appropriate build and test plan for a Java, .NET, Node, or Python project without hardcoded project commands.",
 }
 
 

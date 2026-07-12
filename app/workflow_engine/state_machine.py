@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from app.core.paths import utc_now
+from app.workflow_runtime.step_metadata import step_phase
 
 
 RUN_TRANSITIONS: dict[str, set[str]] = {
@@ -105,16 +106,9 @@ def phase_for_step(step: dict[str, Any] | None, run_status: str | None = None) -
         return status
     if status == "waiting_input":
         return "waiting_input"
-    key = str((step or {}).get("key") or "").lower()
-    if any(token in key for token in ("plan", "prompt")):
-        return "planning"
-    if any(token in key for token in ("test", "validation", "gate")):
-        return "validating"
-    if "review" in key:
-        return "reviewing"
     if status in {"queued", ""}:
         return "queued"
-    return "executing"
+    return step_phase(step, default="executing")
 
 
 def current_step(run: dict[str, Any]) -> dict[str, Any] | None:

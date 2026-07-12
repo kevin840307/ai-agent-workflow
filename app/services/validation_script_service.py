@@ -1,43 +1,72 @@
 from __future__ import annotations
 
-import re
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterable
 
 from fastapi import HTTPException
 
 from app.runtime_modules import api as runtime
 
 
-def generate_validation_script(requirement: str, expected_result: str | None = None, *, project_type: str = "python") -> str:
-    req = (requirement or "").strip()
-    exp = (expected_result or "").strip()
-    lowered = f"{req}\n{exp}".lower()
-    if not req:
+def _normalize_relative_paths(values: Iterable[str] | None, *, field: str) -> list[str]:
+    normalized: list[str] = []
+    for raw in values or []:
+        value = str(raw or "").strip().replace("\\", "/")
+        if not value:
+            continue
+        path = Path(value)
+        if path.is_absolute() or ".." in path.parts:
+            raise HTTPException(status_code=400, detail=f"{field} entries must stay inside the project: {value}")
+        if value not in normalized:
+            normalized.append(value)
+    return normalized
+
+
+def _normalize_symbols(values: Iterable[str] | None) -> list[str]:
+    normalized: list[str] = []
+    for raw in values or []:
+        value = str(raw or "").strip()
+        if not value:
+            continue
+        if not value.isidentifier():
+            raise HTTPException(status_code=400, detail=f"expectedSymbols entries must be Python identifiers: {value}")
+        if value not in normalized:
+            normalized.append(value)
+    return normalized
+
+
+def generate_validation_script(
+    requirement: str,
+    expected_result: str | None = None,
+    *,
+    project_type: str = "python",
+    expected_files: Iterable[str] | None = None,
+    expected_symbols: Iterable[str] | None = None,
+) -> str:
+    """Build a validator from explicit contracts only.
+
+    ``requirement`` and ``expected_result`` are retained as human-readable API
+    metadata, but are deliberately not parsed to infer filenames, symbols, task
+    intent, or expected behavior. Free-form text semantic routing belongs to the
+    selected agent/workflow contract, never controller keyword tables.
+    """
+    if not str(requirement or "").strip():
         raise HTTPException(status_code=400, detail="requirement is required")
+    if str(project_type or "python").strip().lower() != "python":
+        raise HTTPException(status_code=400, detail="Only explicit Python validation contracts are currently supported")
 
-    expected_files: list[str] = []
-    for match in re.finditer(r"([A-Za-z0-9_./-]+\.py)", f"{req}\n{exp}"):
-        expected_files.append(match.group(1).replace("\\", "/"))
-    expected_files = list(dict.fromkeys(expected_files))
-    if not expected_files and "sort" in lowered or "排序" in lowered:
-        expected_files = ["sorting_algorithms.py"]
-    if not expected_files:
-        expected_files = ["workflow_mock_feature.py"]
-
-    functions = []
-    function_markers = {
-        "bubble_sort": ["bubble", "氣泡"],
-        "selection_sort": ["selection", "選擇"],
-        "insertion_sort": ["insertion", "插入"],
-        "quick_sort": ["quick", "快速"],
-        "merge_sort": ["merge", "合併"],
-        "heap_sort": ["heap", "堆積"],
-        "shell_sort": ["shell", "希爾"],
-    }
-    for name, markers in function_markers.items():
-        if any(marker in lowered for marker in markers):
-            functions.append(name)
+    files = _normalize_relative_paths(expected_files, field="expectedFiles")
+    symbols = _normalize_symbols(expected_symbols)
+    if not files:
+        raise HTTPException(
+            status_code=400,
+            detail="expectedFiles is required; filenames are never inferred from requirement text",
+        )
+    if symbols and len(files) != 1:
+        raise HTTPException(
+            status_code=400,
+            detail="expectedSymbols requires exactly one expectedFiles entry so the module is unambiguous",
+        )
 
     lines = [
         "from pathlib import Path",
@@ -45,8 +74,8 @@ def generate_validation_script(requirement: str, expected_result: str | None = N
         "import sys",
         "",
         "PROJECT = Path.cwd()",
-        f"EXPECTED_FILES = {expected_files!r}",
-        f"EXPECTED_FUNCTIONS = {functions!r}",
+        f"EXPECTED_FILES = {files!r}",
+        f"EXPECTED_SYMBOLS = {symbols!r}",
         "",
         "def load_module(path: Path):",
         "    spec = importlib.util.spec_from_file_location(path.stem, path)",
@@ -60,14 +89,10 @@ def generate_validation_script(requirement: str, expected_result: str | None = N
         "    path = PROJECT / rel",
         "    assert path.exists(), f'expected file missing: {rel}'",
         "",
-        "if EXPECTED_FUNCTIONS:",
+        "if EXPECTED_SYMBOLS:",
         "    module = load_module(PROJECT / EXPECTED_FILES[0])",
-        "    sample = [5, 1, 3, 1, -2]",
-        "    expected = sorted(sample)",
-        "    for name in EXPECTED_FUNCTIONS:",
-        "        assert hasattr(module, name), f'expected function missing: {name}'",
-        "        result = getattr(module, name)(list(sample))",
-        "        assert result == expected, f'{name} returned {result}, expected {expected}'",
+        "    for name in EXPECTED_SYMBOLS:",
+        "        assert hasattr(module, name), f'expected symbol missing: {name}'",
         "",
         "print('validation ok')",
     ]

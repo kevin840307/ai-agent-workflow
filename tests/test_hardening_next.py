@@ -130,7 +130,7 @@ class BrowserUiSmokeTests(unittest.TestCase):
     def test_static_browser_ui_smoke_contract(self) -> None:
         result = run_browser_ui_smoke.static_smoke()
         self.assertTrue(result["ok"], result)
-        self.assertEqual(result["schema"], "aiwf.browser-ui-smoke.v1")
+        self.assertEqual(result["schema"], "aiwf.browser-ui-smoke.v22")
 
     def test_browser_smoke_can_be_run_from_test_matrix(self) -> None:
         report = run_tests.coverage_report()
@@ -178,5 +178,5 @@ class LifecycleStressTests(unittest.TestCase):
             self.assertFalse(cleanup_stale_project_lock(project_dir, {"runs": []})["removed"])
 
     def test_maintenance_route_exposes_retention_options(self) -> None:
-        routes = {getattr(route, "path", "") for route in app.routes}
+        routes = set(app.openapi().get("paths", {}))
         self.assertIn("/api/maintenance/cleanup", routes)

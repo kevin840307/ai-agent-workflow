@@ -84,6 +84,11 @@ def resolve_project_relative_write(project_root: str | Path, rel_path: str, *, r
     decoded = unquote(raw).replace("\\", "/")
     candidate = Path(decoded)
     win_candidate = PureWindowsPath(decoded)
+    project_win = PureWindowsPath(str(project_path))
+    if decoded.startswith("//") and not str(project_win).startswith("\\\\"):
+        # Resolving a UNC path can perform network I/O and fail before the
+        # workspace guard can return a controlled WorkflowError.
+        raise WorkflowError(f"{label} contains unsafe file path (UNC path outside Project Path): {rel_path}")
     if decoded.startswith("/") or candidate.is_absolute() or win_candidate.is_absolute() or win_candidate.drive or decoded.startswith("//"):
         target = canonical_path(decoded)
         if not is_within(project_path, target):

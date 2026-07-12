@@ -11,12 +11,12 @@ agent: qwen
 outputs:
 - test-plan.md
 function: ''
-retry: 2
+retry: 99
 failAction: same_step
 retryFromStepKey: generate_tests
-keepSameSession: false
+keepSameSession: true
 injectFailureFeedback: true
-stopAfterFailures: 2
+stopAfterFailures: 99
 allowInteraction: false
 thinking: false
 approvalRequired: false
@@ -36,3 +36,26 @@ compactPrompt: true
 repromptOnToolCallJson: true
 includeSkillContext: false
 compactRetryPromptWhenReusingSession: true
+recoverRepeatedFailure: true
+maxRetries: 99
+retryPolicy:
+  defaultRetryTo: generate_tests
+  maxRetries: 99
+  recoveryBudget:
+    maxRunFailures: 40
+    maxStepFailures: 24
+    maxTaskFailures: 12
+    maxFailureClass: 12
+    maxFingerprint: 9
+    wallClockMinutes: 60
+    freshSessionEvery: 3
+recoveryBudget:
+  maxRunFailures: 40
+  maxStepFailures: 24
+  maxTaskFailures: 12
+  maxFailureClass: 12
+  maxFingerprint: 9
+  wallClockMinutes: 60
+  freshSessionEvery: 3
+phase: executing
+sessionRole: build

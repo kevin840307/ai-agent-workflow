@@ -49,7 +49,6 @@ def main() -> int:
 
     import os
     os.environ["QWEN_MOCK"] = "1"
-    os.environ["QWEN_WORKFLOW_MOCK_FILE_BLOCK_NORMALIZATION"] = "1"
     os.environ.setdefault("QWEN_USE_SERVE", "0")
     os.environ["AIWF_STORE_FILE"] = str(output / "store.json")
     from app.main import app

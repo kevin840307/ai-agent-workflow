@@ -31,3 +31,5 @@ failKeywords: FAIL, BLOCKED
 aggregatorFunction: ''
 agentOptions: {}
 path: contracts/security-scan/generate_security_report.yaml
+phase: executing
+sessionRole: build

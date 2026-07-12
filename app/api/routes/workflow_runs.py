@@ -100,9 +100,19 @@ async def get_run_diff(run_id: str):
     return await workflow_service.get_run_diff(run_id)
 
 
+@router.get("/api/workflow-run-comparison")
+async def compare_workflow_runs(left: str = Query(...), right: str = Query(...)):
+    return await workflow_service.compare_workflow_runs(left, right)
+
+
 @router.get("/api/workflow-runs/{run_id}/patch")
 async def get_patch_preview(run_id: str):
     return await workflow_service.get_patch_preview(run_id)
+
+
+@router.post("/api/workflow-runs/{run_id}/patch/validate-selection")
+async def validate_patch_selection(run_id: str, body: schemas.PatchValidateRequest):
+    return await workflow_service.validate_patch_selection(run_id, body)
 
 
 @router.post("/api/workflow-runs/{run_id}/patch/apply")

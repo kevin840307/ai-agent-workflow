@@ -190,7 +190,6 @@ class WorkflowIntegrationTests(unittest.TestCase):
                             "implementation_review",
                             "run_external_validation",
                             "final_review",
-                            "final_gate",
                         ],
                     )
                     self.assertTrue(all(step["status"] == "passed" for step in run["steps"]))

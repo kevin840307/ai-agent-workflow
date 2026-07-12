@@ -1,0 +1,616 @@
+{
+  "schema": "aiwf.test-pipeline.v3",
+  "status": "PASS",
+  "mode": "isolated-all",
+  "elapsed_seconds": 380.13,
+  "coverage": {
+    "schema": "aiwf.test-pipeline-coverage.v1",
+    "discovered_count": 59,
+    "grouped_count": 59,
+    "missing": [],
+    "extra": [],
+    "duplicates": [],
+    "ok": true
+  },
+  "files_run": 59,
+  "failures": [],
+  "junit_totals": {
+    "tests": 728,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 10,
+    "passed": 718
+  },
+  "results": [
+    {
+      "name": "A_core_cli_api__test_agent_execution_service",
+      "return_code": 0,
+      "elapsed_seconds": 2.99,
+      "timed_out": false,
+      "log": "test-results/A_core_cli_api__test_agent_execution_service.log",
+      "files": [
+        "tests/test_agent_execution_service.py"
+      ]
+    },
+    {
+      "name": "A_core_cli_api__test_agent_runner",
+      "return_code": 0,
+      "elapsed_seconds": 3.1,
+      "timed_out": false,
+      "log": "test-results/A_core_cli_api__test_agent_runner.log",
+      "files": [
+        "tests/test_agent_runner.py"
+      ]
+    },
+    {
+      "name": "A_core_cli_api__test_ai_workflow_assets_ui",
+      "return_code": 0,
+      "elapsed_seconds": 4.0,
+      "timed_out": false,
+      "log": "test-results/A_core_cli_api__test_ai_workflow_assets_ui.log",
+      "files": [
+        "tests/test_ai_workflow_assets_ui.py"
+      ]
+    },
+    {
+      "name": "A_core_cli_api__test_aiwf_cli",
+      "return_code": 0,
+      "elapsed_seconds": 3.1,
+      "timed_out": false,
+      "log": "test-results/A_core_cli_api__test_aiwf_cli.log",
+      "files": [
+        "tests/test_aiwf_cli.py"
+      ]
+    },
+    {
+      "name": "A_core_cli_api__test_api_smoke",
+      "return_code": 0,
+      "elapsed_seconds": 4.3,
+      "timed_out": false,
+      "log": "test-results/A_core_cli_api__test_api_smoke.log",
+      "files": [
+        "tests/test_api_smoke.py"
+      ]
+    },
+    {
+      "name": "A_core_cli_api__test_auto_workflow_orchestrator",
+      "return_code": 0,
+      "elapsed_seconds": 2.19,
+      "timed_out": false,
+      "log": "test-results/A_core_cli_api__test_auto_workflow_orchestrator.log",
+      "files": [
+        "tests/test_auto_workflow_orchestrator.py"
+      ]
+    },
+    {
+      "name": "A_core_cli_api__test_controller_observability_and_manual_controls",
+      "return_code": 0,
+      "elapsed_seconds": 4.21,
+      "timed_out": false,
+      "log": "test-results/A_core_cli_api__test_controller_observability_and_manual_controls.log",
+      "files": [
+        "tests/test_controller_observability_and_manual_controls.py"
+      ]
+    },
+    {
+      "name": "A_core_cli_api__test_controller_productization",
+      "return_code": 0,
+      "elapsed_seconds": 9.39,
+      "timed_out": false,
+      "log": "test-results/A_core_cli_api__test_controller_productization.log",
+      "files": [
+        "tests/test_controller_productization.py"
+      ]
+    },
+    {
+      "name": "B_general_project_prompt__test_general_auto_development_workflow",
+      "return_code": 0,
+      "elapsed_seconds": 28.5,
+      "timed_out": false,
+      "log": "test-results/B_general_project_prompt__test_general_auto_development_workflow.log",
+      "files": [
+        "tests/test_general_auto_development_workflow.py"
+      ]
+    },
+    {
+      "name": "B_general_project_prompt__test_isolated_workspace",
+      "return_code": 0,
+      "elapsed_seconds": 2.2,
+      "timed_out": false,
+      "log": "test-results/B_general_project_prompt__test_isolated_workspace.log",
+      "files": [
+        "tests/test_isolated_workspace.py"
+      ]
+    },
+    {
+      "name": "B_general_project_prompt__test_large_project_fixture",
+      "return_code": 0,
+      "elapsed_seconds": 5.11,
+      "timed_out": false,
+      "log": "test-results/B_general_project_prompt__test_large_project_fixture.log",
+      "files": [
+        "tests/test_large_project_fixture.py"
+      ]
+    },
+    {
+      "name": "B_general_project_prompt__test_project_and_config_api",
+      "return_code": 0,
+      "elapsed_seconds": 4.19,
+      "timed_out": false,
+      "log": "test-results/B_general_project_prompt__test_project_and_config_api.log",
+      "files": [
+        "tests/test_project_and_config_api.py"
+      ]
+    },
+    {
+      "name": "B_general_project_prompt__test_prompt_builder",
+      "return_code": 0,
+      "elapsed_seconds": 3.19,
+      "timed_out": false,
+      "log": "test-results/B_general_project_prompt__test_prompt_builder.log",
+      "files": [
+        "tests/test_prompt_builder.py"
+      ]
+    },
+    {
+      "name": "B_general_project_prompt__test_python_functions_multi",
+      "return_code": 0,
+      "elapsed_seconds": 3.2,
+      "timed_out": false,
+      "log": "test-results/B_general_project_prompt__test_python_functions_multi.log",
+      "files": [
+        "tests/test_python_functions_multi.py"
+      ]
+    },
+    {
+      "name": "C_productization_features__test_next_round_features",
+      "return_code": 0,
+      "elapsed_seconds": 11.1,
+      "timed_out": false,
+      "log": "test-results/C_productization_features__test_next_round_features.log",
+      "files": [
+        "tests/test_next_round_features.py"
+      ]
+    },
+    {
+      "name": "C_productization_features__test_practical_platform_features",
+      "return_code": 0,
+      "elapsed_seconds": 15.69,
+      "timed_out": false,
+      "log": "test-results/C_productization_features__test_practical_platform_features.log",
+      "files": [
+        "tests/test_practical_platform_features.py"
+      ]
+    },
+    {
+      "name": "C_productization_features__test_test_pipeline_and_lifecycle",
+      "return_code": 0,
+      "elapsed_seconds": 3.61,
+      "timed_out": false,
+      "log": "test-results/C_productization_features__test_test_pipeline_and_lifecycle.log",
+      "files": [
+        "tests/test_test_pipeline_and_lifecycle.py"
+      ]
+    },
+    {
+      "name": "C_productization_features__test_productization_next_features",
+      "return_code": 0,
+      "elapsed_seconds": 13.3,
+      "timed_out": false,
+      "log": "test-results/C_productization_features__test_productization_next_features.log",
+      "files": [
+        "tests/test_productization_next_features.py"
+      ]
+    },
+    {
+      "name": "D_manual_run_state__test_real_qwen_workflow_manual",
+      "return_code": 0,
+      "elapsed_seconds": 3.7,
+      "timed_out": false,
+      "log": "test-results/D_manual_run_state__test_real_qwen_workflow_manual.log",
+      "files": [
+        "tests/test_real_qwen_workflow_manual.py"
+      ]
+    },
+    {
+      "name": "D_manual_run_state__test_release_and_ui_manual",
+      "return_code": 0,
+      "elapsed_seconds": 2.2,
+      "timed_out": false,
+      "log": "test-results/D_manual_run_state__test_release_and_ui_manual.log",
+      "files": [
+        "tests/test_release_and_ui_manual.py"
+      ]
+    },
+    {
+      "name": "D_manual_run_state__test_real_qwen_unattended_manual",
+      "return_code": 0,
+      "elapsed_seconds": 2.3,
+      "timed_out": false,
+      "log": "test-results/D_manual_run_state__test_real_qwen_unattended_manual.log",
+      "files": [
+        "tests/test_real_qwen_unattended_manual.py"
+      ]
+    },
+    {
+      "name": "D_manual_run_state__test_run_state",
+      "return_code": 0,
+      "elapsed_seconds": 3.0,
+      "timed_out": false,
+      "log": "test-results/D_manual_run_state__test_run_state.log",
+      "files": [
+        "tests/test_run_state.py"
+      ]
+    },
+    {
+      "name": "E_runtime_safety_contracts__test_runtime_files_and_qwen",
+      "return_code": 0,
+      "elapsed_seconds": 3.5,
+      "timed_out": false,
+      "log": "test-results/E_runtime_safety_contracts__test_runtime_files_and_qwen.log",
+      "files": [
+        "tests/test_runtime_files_and_qwen.py"
+      ]
+    },
+    {
+      "name": "E_runtime_safety_contracts__test_runtime_refactor_contract",
+      "return_code": 0,
+      "elapsed_seconds": 7.81,
+      "timed_out": false,
+      "log": "test-results/E_runtime_safety_contracts__test_runtime_refactor_contract.log",
+      "files": [
+        "tests/test_runtime_refactor_contract.py"
+      ]
+    },
+    {
+      "name": "E_runtime_safety_contracts__test_runtime_safety",
+      "return_code": 0,
+      "elapsed_seconds": 3.48,
+      "timed_out": false,
+      "log": "test-results/E_runtime_safety_contracts__test_runtime_safety.log",
+      "files": [
+        "tests/test_runtime_safety.py"
+      ]
+    },
+    {
+      "name": "E_runtime_safety_contracts__test_static_architecture_contract",
+      "return_code": 0,
+      "elapsed_seconds": 2.3,
+      "timed_out": false,
+      "log": "test-results/E_runtime_safety_contracts__test_static_architecture_contract.log",
+      "files": [
+        "tests/test_static_architecture_contract.py"
+      ]
+    },
+    {
+      "name": "E_runtime_safety_contracts__test_supervisor_patch_defaults_and_action_split",
+      "return_code": 0,
+      "elapsed_seconds": 7.2,
+      "timed_out": false,
+      "log": "test-results/E_runtime_safety_contracts__test_supervisor_patch_defaults_and_action_split.log",
+      "files": [
+        "tests/test_supervisor_patch_defaults_and_action_split.py"
+      ]
+    },
+    {
+      "name": "E_runtime_safety_contracts__test_hardening_next",
+      "return_code": 0,
+      "elapsed_seconds": 3.8,
+      "timed_out": false,
+      "log": "test-results/E_runtime_safety_contracts__test_hardening_next.log",
+      "files": [
+        "tests/test_hardening_next.py"
+      ]
+    },
+    {
+      "name": "E_runtime_safety_contracts__test_production_hardening_round2",
+      "return_code": 0,
+      "elapsed_seconds": 6.1,
+      "timed_out": false,
+      "log": "test-results/E_runtime_safety_contracts__test_production_hardening_round2.log",
+      "files": [
+        "tests/test_production_hardening_round2.py"
+      ]
+    },
+    {
+      "name": "E_runtime_safety_contracts__test_production_hardening_round3",
+      "return_code": 0,
+      "elapsed_seconds": 30.4,
+      "timed_out": false,
+      "log": "test-results/E_runtime_safety_contracts__test_production_hardening_round3.log",
+      "files": [
+        "tests/test_production_hardening_round3.py"
+      ]
+    },
+    {
+      "name": "E_runtime_safety_contracts__test_project_path_write_mode",
+      "return_code": 0,
+      "elapsed_seconds": 4.5,
+      "timed_out": false,
+      "log": "test-results/E_runtime_safety_contracts__test_project_path_write_mode.log",
+      "files": [
+        "tests/test_project_path_write_mode.py"
+      ]
+    },
+    {
+      "name": "E_runtime_safety_contracts__test_full_system_optimization_round4",
+      "return_code": 0,
+      "elapsed_seconds": 3.4,
+      "timed_out": false,
+      "log": "test-results/E_runtime_safety_contracts__test_full_system_optimization_round4.log",
+      "files": [
+        "tests/test_full_system_optimization_round4.py"
+      ]
+    },
+    {
+      "name": "E_runtime_safety_contracts__test_reliability_hardening_round5",
+      "return_code": 0,
+      "elapsed_seconds": 7.99,
+      "timed_out": false,
+      "log": "test-results/E_runtime_safety_contracts__test_reliability_hardening_round5.log",
+      "files": [
+        "tests/test_reliability_hardening_round5.py"
+      ]
+    },
+    {
+      "name": "E_runtime_safety_contracts__test_workflow_optimization_v6",
+      "return_code": 0,
+      "elapsed_seconds": 6.5,
+      "timed_out": false,
+      "log": "test-results/E_runtime_safety_contracts__test_workflow_optimization_v6.log",
+      "files": [
+        "tests/test_workflow_optimization_v6.py"
+      ]
+    },
+    {
+      "name": "E_runtime_safety_contracts__test_workflow_optimization_v7",
+      "return_code": 0,
+      "elapsed_seconds": 5.2,
+      "timed_out": false,
+      "log": "test-results/E_runtime_safety_contracts__test_workflow_optimization_v7.log",
+      "files": [
+        "tests/test_workflow_optimization_v7.py"
+      ]
+    },
+    {
+      "name": "E_runtime_safety_contracts__test_system_optimization_v8",
+      "return_code": 0,
+      "elapsed_seconds": 4.2,
+      "timed_out": false,
+      "log": "test-results/E_runtime_safety_contracts__test_system_optimization_v8.log",
+      "files": [
+        "tests/test_system_optimization_v8.py"
+      ]
+    },
+    {
+      "name": "E_runtime_safety_contracts__test_system_productization_v9",
+      "return_code": 0,
+      "elapsed_seconds": 7.99,
+      "timed_out": false,
+      "log": "test-results/E_runtime_safety_contracts__test_system_productization_v9.log",
+      "files": [
+        "tests/test_system_productization_v9.py"
+      ]
+    },
+    {
+      "name": "E_runtime_safety_contracts__test_production_readiness_v10",
+      "return_code": 0,
+      "elapsed_seconds": 3.51,
+      "timed_out": false,
+      "log": "test-results/E_runtime_safety_contracts__test_production_readiness_v10.log",
+      "files": [
+        "tests/test_production_readiness_v10.py"
+      ]
+    },
+    {
+      "name": "E_runtime_safety_contracts__test_stability_v11",
+      "return_code": 0,
+      "elapsed_seconds": 12.8,
+      "timed_out": false,
+      "log": "test-results/E_runtime_safety_contracts__test_stability_v11.log",
+      "files": [
+        "tests/test_stability_v11.py"
+      ]
+    },
+    {
+      "name": "E_runtime_safety_contracts__test_stability_completion_v15",
+      "return_code": 0,
+      "elapsed_seconds": 4.09,
+      "timed_out": false,
+      "log": "test-results/E_runtime_safety_contracts__test_stability_completion_v15.log",
+      "files": [
+        "tests/test_stability_completion_v15.py"
+      ]
+    },
+    {
+      "name": "E_runtime_safety_contracts__test_unattended_stability_v16",
+      "return_code": 0,
+      "elapsed_seconds": 5.5,
+      "timed_out": false,
+      "log": "test-results/E_runtime_safety_contracts__test_unattended_stability_v16.log",
+      "files": [
+        "tests/test_unattended_stability_v16.py"
+      ]
+    },
+    {
+      "name": "E_runtime_safety_contracts__test_v17_runtime_ui_regressions",
+      "return_code": 0,
+      "elapsed_seconds": 2.9,
+      "timed_out": false,
+      "log": "test-results/E_runtime_safety_contracts__test_v17_runtime_ui_regressions.log",
+      "files": [
+        "tests/test_v17_runtime_ui_regressions.py"
+      ]
+    },
+    {
+      "name": "E_runtime_safety_contracts__test_reliability_v18",
+      "return_code": 0,
+      "elapsed_seconds": 10.4,
+      "timed_out": false,
+      "log": "test-results/E_runtime_safety_contracts__test_reliability_v18.log",
+      "files": [
+        "tests/test_reliability_v18.py"
+      ]
+    },
+    {
+      "name": "E_runtime_safety_contracts__test_ui_and_local_qwen_v12",
+      "return_code": 0,
+      "elapsed_seconds": 5.3,
+      "timed_out": false,
+      "log": "test-results/E_runtime_safety_contracts__test_ui_and_local_qwen_v12.log",
+      "files": [
+        "tests/test_ui_and_local_qwen_v12.py"
+      ]
+    },
+    {
+      "name": "E_runtime_safety_contracts__test_unattended_v20",
+      "return_code": 0,
+      "elapsed_seconds": 3.11,
+      "timed_out": false,
+      "log": "test-results/E_runtime_safety_contracts__test_unattended_v20.log",
+      "files": [
+        "tests/test_unattended_v20.py"
+      ]
+    },
+    {
+      "name": "E_runtime_safety_contracts__test_v21_patch_review_artifacts",
+      "return_code": 0,
+      "elapsed_seconds": 3.0,
+      "timed_out": false,
+      "log": "test-results/E_runtime_safety_contracts__test_v21_patch_review_artifacts.log",
+      "files": [
+        "tests/test_v21_patch_review_artifacts.py"
+      ]
+    },
+    {
+      "name": "E_runtime_safety_contracts__test_real_qwen_unattended_e2e_contract",
+      "return_code": 0,
+      "elapsed_seconds": 2.09,
+      "timed_out": false,
+      "log": "test-results/E_runtime_safety_contracts__test_real_qwen_unattended_e2e_contract.log",
+      "files": [
+        "tests/test_real_qwen_unattended_e2e_contract.py"
+      ]
+    },
+    {
+      "name": "F_workflow_assets_stability__test_workflow_advanced_stability",
+      "return_code": 0,
+      "elapsed_seconds": 9.11,
+      "timed_out": false,
+      "log": "test-results/F_workflow_assets_stability__test_workflow_advanced_stability.log",
+      "files": [
+        "tests/test_workflow_advanced_stability.py"
+      ]
+    },
+    {
+      "name": "F_workflow_assets_stability__test_workflow_assets",
+      "return_code": 0,
+      "elapsed_seconds": 5.39,
+      "timed_out": false,
+      "log": "test-results/F_workflow_assets_stability__test_workflow_assets.log",
+      "files": [
+        "tests/test_workflow_assets.py"
+      ]
+    },
+    {
+      "name": "F_workflow_assets_stability__test_workflow_assets_functional_e2e",
+      "return_code": 0,
+      "elapsed_seconds": 3.71,
+      "timed_out": false,
+      "log": "test-results/F_workflow_assets_stability__test_workflow_assets_functional_e2e.log",
+      "files": [
+        "tests/test_workflow_assets_functional_e2e.py"
+      ]
+    },
+    {
+      "name": "F_workflow_assets_stability__test_workflow_config_service",
+      "return_code": 0,
+      "elapsed_seconds": 4.0,
+      "timed_out": false,
+      "log": "test-results/F_workflow_assets_stability__test_workflow_config_service.log",
+      "files": [
+        "tests/test_workflow_config_service.py"
+      ]
+    },
+    {
+      "name": "G_self_prompt_e2e__test_self_prompt_workflow_e2e",
+      "return_code": 0,
+      "elapsed_seconds": 30.49,
+      "timed_out": false,
+      "log": "test-results/G_self_prompt_e2e__test_self_prompt_workflow_e2e.log",
+      "files": [
+        "tests/test_self_prompt_workflow_e2e.py"
+      ]
+    },
+    {
+      "name": "H_workflow_core_contracts__test_workflow_core",
+      "return_code": 0,
+      "elapsed_seconds": 3.1,
+      "timed_out": false,
+      "log": "test-results/H_workflow_core_contracts__test_workflow_core.log",
+      "files": [
+        "tests/test_workflow_core.py"
+      ]
+    },
+    {
+      "name": "H_workflow_core_contracts__test_workflow_function_refactor_contract",
+      "return_code": 0,
+      "elapsed_seconds": 3.0,
+      "timed_out": false,
+      "log": "test-results/H_workflow_core_contracts__test_workflow_function_refactor_contract.log",
+      "files": [
+        "tests/test_workflow_function_refactor_contract.py"
+      ]
+    },
+    {
+      "name": "H_workflow_core_contracts__test_workflow_functions",
+      "return_code": 0,
+      "elapsed_seconds": 2.1,
+      "timed_out": false,
+      "log": "test-results/H_workflow_core_contracts__test_workflow_functions.log",
+      "files": [
+        "tests/test_workflow_functions.py"
+      ]
+    },
+    {
+      "name": "I_workflow_integration__test_workflow_integration",
+      "return_code": 0,
+      "elapsed_seconds": 8.71,
+      "timed_out": false,
+      "log": "test-results/I_workflow_integration__test_workflow_integration.log",
+      "files": [
+        "tests/test_workflow_integration.py"
+      ]
+    },
+    {
+      "name": "J_workflow_quality_resilience__test_workflow_non_e2e_contracts",
+      "return_code": 0,
+      "elapsed_seconds": 4.81,
+      "timed_out": false,
+      "log": "test-results/J_workflow_quality_resilience__test_workflow_non_e2e_contracts.log",
+      "files": [
+        "tests/test_workflow_non_e2e_contracts.py"
+      ]
+    },
+    {
+      "name": "J_workflow_quality_resilience__test_workflow_quality_contracts",
+      "return_code": 0,
+      "elapsed_seconds": 5.0,
+      "timed_out": false,
+      "log": "test-results/J_workflow_quality_resilience__test_workflow_quality_contracts.log",
+      "files": [
+        "tests/test_workflow_quality_contracts.py"
+      ]
+    },
+    {
+      "name": "J_workflow_quality_resilience__test_workflow_resilience_e2e",
+      "return_code": 0,
+      "elapsed_seconds": 9.02,
+      "timed_out": false,
+      "log": "test-results/J_workflow_quality_resilience__test_workflow_resilience_e2e.log",
+      "files": [
+        "tests/test_workflow_resilience_e2e.py"
+      ]
+    }
+  ]
+}

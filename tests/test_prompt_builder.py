@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 import tempfile
 import unittest
 from pathlib import Path
@@ -146,8 +148,12 @@ class PromptBuilderTests(unittest.TestCase):
             (workspace / "requirement.md").write_text("Build two functions", encoding="utf-8")
             (workspace / "output" / "todos" / "TASK-002.md").write_text("# TASK-002\n", encoding="utf-8")
             (workspace / "output" / "task-prompts" / "TASK-002.md").write_text("# Prompt TASK-002\n", encoding="utf-8")
-            (workspace / "output" / "tasks" / "TASK-001" / "build-result.md").write_text(
-                "FILE: sort.py\nCONTENT:\ndef bubble_sort(items):\n    return items\nEND_FILE\n",
+            (workspace / "output" / "tasks" / "TASK-001" / "build-state.json").write_text(
+                json.dumps({
+                    "task_id": "TASK-001",
+                    "phase": "build",
+                    "files": [{"path": "sort.py", "markers": ["bubble_sort"]}],
+                }),
                 encoding="utf-8",
             )
             (project / "architecture.md").write_text("# Architecture\n", encoding="utf-8")

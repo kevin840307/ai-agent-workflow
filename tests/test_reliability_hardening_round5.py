@@ -66,7 +66,9 @@ class ReliabilityRunConsistencyAndRepairTests(unittest.TestCase):
             self.assertTrue(any(item["issue"] == "state_status_mismatch" for item in issues))
 
     def test_artifact_repair_api_route_exists(self) -> None:
-        routes = {getattr(route, "path", "") for route in app.routes}
+        # FastAPI may keep included routers lazy; OpenAPI is the stable public
+        # route contract regardless of the internal router representation.
+        routes = set(app.openapi().get("paths", {}))
         self.assertIn("/api/workflow-runs/{run_id}/repair-artifacts", routes)
         self.assertIn("/api/workflow-runs/{run_id}/consistency", routes)
 

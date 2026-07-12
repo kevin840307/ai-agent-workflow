@@ -1,79 +1,54 @@
 from __future__ import annotations
 
-import asyncio
 import json
-import os
-import re
 from pathlib import Path
 from typing import Any
 
-from app.auto_workflow import orchestrator
+from app.core.paths import ROOT, read_text, write_text
 from app.runtime_modules.errors import UserInputRequired, ValidationError, WorkflowError
 from app.runtime_modules.files import (
-    apply_build_files,
-    failure_feedback_for_step,
-    apply_extracted_files,
-    extract_build_files,
+    is_pytest_file_name,
     project_content_snapshot,
     project_file_snapshot,
-    changed_snapshot_paths,
-    files_from_changed_snapshot,
-    render_file_blocks,
-    project_has_user_files,
-    project_overview,
-    project_profile,
-    render_project_index_markdown,
-    only_test_files,
-    non_test_files,
-    should_ask_for_spec_input,
-    snapshot_changed,
-    restore_project_content_snapshot,
-    spec_input_questions,
-    split_build_files,
     render_generic_spec_from_requirement,
     render_generic_todo_from_spec,
-    build_generic_python_import_smoke_test,
-    build_validation_script_pytest_wrapper,
-    existing_validation_scripts,
-    validate_build_files_do_not_overwrite_validation_scripts,
+    should_ask_for_spec_input,
+    snapshot_changed,
+    spec_input_questions,
     validate_build_files_are_not_tests,
+    validate_build_files_do_not_overwrite_validation_scripts,
     validate_generated_code_files_are_clean,
     validate_generated_test_files,
-    is_pytest_file_name,
-    validate_test_code_is_separate,
+    validation_script_protected_names,
 )
-from app.core.paths import ROOT, read_text, write_text
-from app.security.workspace_guard import resolve_project_relative_write
-from app.security.agent_project_config import ensure_agent_project_configs
-from app.workflow_runtime.builtin_functions.registry import PYTHON_FUNCTIONS
 from app.workflow_runtime.builtin_functions.base import WorkflowFunctionError
-from app.workflow_runtime.validators import execute_validator_plan, primary_validator
+from app.workflow_runtime.builtin_functions.registry import PYTHON_FUNCTIONS
+from app.workflow_runtime.run_diff import build_run_diff
+from app.workflow_runtime.validators import execute_validation_plan, primary_validator
 
-from .actions_registry import builtin_action_for_step
-from .action_helpers import (
-    config_for_step,
-    fresh_session_for_step,
-    is_adaptive_workflow,
-    is_auto_development_workflow,
-    is_general_auto_development_workflow,
-)
-from .agent_step_runner import AgentStepRunner
 from .complexity import classify_workflow_complexity
+from .step_utils import bool_config, normalize_artifact_name, step_config, step_review_mode
 from .task_checkpoints import create_task_checkpoint
-from .step_utils import (
-    bool_config,
-    normalize_artifact_name,
-    step_agent_name,
-    step_artifact_name,
-    step_config,
-    step_prompt_name,
-    step_review_mode,
-    step_function_name,
-    step_function_names,
-)
 
 
 class GeneralDevelopmentActionsMixin:
+    async def _validate_build_substance_or_external_evidence(
+        self,
+        run: dict[str, Any],
+        output_dir: Path,
+        direct_files: list[tuple[str, str]],
+    ) -> None:
+        try:
+            self._validate_build_direct_files_are_substantive(run, direct_files)
+        except WorkflowError:
+            if await self._external_validation_passes_now(run, output_dir):
+                await self.log(
+                    run,
+                    "build: accepted non-source deliverable because external validation passed",
+                )
+                return
+            raise
+
     async def validate_or_repair_spec(self, run: dict[str, Any], output_dir: Path) -> None:
         self.functions.validate_spec(output_dir)
 
@@ -239,13 +214,24 @@ class GeneralDevelopmentActionsMixin:
             raise WorkflowError("implementation_review: todo.md is missing or empty; Plan Tasks must be produced by AI first.")
         if "TASK-001" not in todo:
             raise WorkflowError("implementation_review: AI-authored todo.md must include at least TASK-001.")
-        manifest = self._render_task_manifest(todo)
+        manifest = read_text(output_dir / "task-manifest.md") or self._render_task_manifest(todo)
         write_text(output_dir / "task-manifest.md", manifest)
-        tasks = self._task_entries_from_manifest(manifest)
-        write_text(
-            output_dir / "task-manifest.json",
-            json.dumps({"source": "ai-authored todo.md", "tasks": tasks}, indent=2, ensure_ascii=False),
-        )
+        manifest_path = output_dir / "task-manifest.json"
+        tasks: list[dict[str, Any]] = []
+        if manifest_path.is_file():
+            try:
+                current_manifest = json.loads(read_text(manifest_path))
+                raw_tasks = current_manifest.get("tasks") if isinstance(current_manifest, dict) else []
+                if isinstance(raw_tasks, list):
+                    tasks = [task for task in raw_tasks if isinstance(task, dict)]
+            except json.JSONDecodeError:
+                tasks = []
+        if not tasks:
+            tasks = self._task_entries_from_manifest(manifest)
+            write_text(
+                manifest_path,
+                json.dumps({"schema_version": 2, "source": "ai-authored todo.md", "tasks": tasks}, indent=2, ensure_ascii=False),
+            )
         self._write_task_todo_files(output_dir, todo, manifest)
         await self.log(run, f"implementation_review: AI review passed; compiled {len(tasks)} task manifest entrie(s) from todo.md")
         await self.refresh_artifacts(run["id"])
@@ -264,81 +250,58 @@ class GeneralDevelopmentActionsMixin:
             raise
         await self.refresh_artifacts(run["id"])
 
-    async def prepare_project_step(self, run: dict[str, Any], prompt_name: str = "00_prepare.md", artifact: str = "architecture.md", *, agent_name: str | None = None) -> None:
-        project_dir = Path(run.get("project_path") or ROOT)
-        architecture_path = project_dir / "architecture.md"
-        artifact = normalize_artifact_name(artifact)
-        output_dir = Path(run["workspace"]) / "output"
-        project_index = render_project_index_markdown(project_dir)
-        write_text(output_dir / "project-index.md", project_index)
-        requirement = read_text(Path(run["workspace"]) / "requirement.md")
-        instructions = orchestrator.extract_user_instructions(requirement, project_dir)
-        architecture_contract = orchestrator.build_architecture_contract(project_dir, project_index, instructions)
-        write_text(output_dir / "architecture-contract.json", json.dumps(architecture_contract, indent=2, ensure_ascii=False))
-        await self._ensure_project_agent_configs(run, project_dir)
-
-        # Deprecated compatibility step.  Current controller workflows should not
-        # call this step: project understanding belongs to Qwen/OpenCode, while
-        # the platform only provides a small project index/profile as prompt
-        # context.  Keep a lightweight artifact for legacy workflows that still
-        # reference prepare_project, but do not write architecture.md into the
-        # user's project.
-        rendered = self.render_project_architecture_markdown(run, project_dir)
-        write_text(output_dir / artifact, rendered)
-        await self.refresh_artifacts(run["id"])
-        await self.log(run, "prepare_project: wrote legacy context artifact only; project files were not modified")
-
-    @staticmethod
-    def render_project_architecture_markdown(run: dict[str, Any], project_dir: Path) -> str:
-        requirement = read_text(Path(run["workspace"]) / "requirement.md").strip()
-        profile = project_profile(project_dir)
-        overview = project_overview(project_dir, limit=60)
-        qwen_settings = "present" if (project_dir / ".qwen" / "settings.json").is_file() else "missing"
-        opencode_settings = "present" if (project_dir / "opencode.json").is_file() else "missing"
-        return (
-            "# Architecture\n\n"
-            "## Project Summary\n"
-            "- Current purpose: Existing project inferred from current files.\n"
-            f"- User request: {requirement or 'Complete the requested workflow task.'}\n\n"
-            "## Runtime Agent Settings\n"
-            f"- Qwen project settings: {qwen_settings} at `.qwen/settings.json`\n"
-            f"- OpenCode project settings: {opencode_settings} at `opencode.json`\n"
-            "- Rule: agent read access may use project settings, but generated edits must remain inside the selected Project path.\n\n"
-            "## Detected Stack\n"
-            f"{profile}\n\n"
-            "## Current Structure\n"
-            f"{overview}\n\n"
-            "## Implementation Rules\n"
-            "- Follow the existing language and structure.\n"
-            "- Keep changes small and easy to review.\n"
-            "- Keep production code and tests separate.\n"
-            "- Do not edit files outside the selected Project path.\n"
-            "- Do not skip the external validation script.\n"
-        )
-
     async def run_tests(self, run: dict[str, Any]) -> None:
         project_dir = Path(run.get("project_path") or ROOT)
-        plan = primary_validator(project_dir)
+        primary = primary_validator(project_dir)
+        current_diff = build_run_diff(run, Path(run["workspace"]))
+        changed_files = current_diff.get("files") or []
+        run["file_changes"] = changed_files
         try:
-            if not plan or plan.get("id") == "python":
+            if primary and primary.get("id") == "python":
+                # Run likely impacted tests first for fast, task-local feedback.
+                # The existing deterministic full pytest gate still decides completion.
+                focused = await execute_validation_plan(
+                    project_dir,
+                    timeout_sec=900,
+                    categories={"focused_test"},
+                    fail_fast=True,
+                    changed_files=changed_files,
+                )
+                if focused.get("status") == "failed":
+                    raise WorkflowFunctionError("FOCUSED_TEST_FAILED: impacted tests failed before the full Python test gate.")
                 await PYTHON_FUNCTIONS["run_pytest"](self.functions.context(run))
-                return
-            result = await execute_validator_plan(project_dir, validator_id=str(plan.get("id")), timeout_sec=900)
+                result = await execute_validation_plan(
+                    project_dir,
+                    timeout_sec=900,
+                    exclude_categories={"test", "focused_test"},
+                    fail_fast=True,
+                    changed_files=changed_files,
+                )
+                result["focused_result"] = focused
+            else:
+                result = await execute_validation_plan(
+                    project_dir, timeout_sec=900, fail_fast=True, changed_files=changed_files
+                )
+
             output_dir = Path(run["workspace"]) / "output"
-            write_text(output_dir / "test-result.md", json.dumps(result, indent=2, ensure_ascii=False))
-            run.setdefault("validation_results", []).append(
-                {
-                    "key": plan.get("id"),
-                    "status": result.get("status"),
-                    "command": plan.get("command_text"),
-                    "exit_code": result.get("exit_code"),
-                    "summary": (result.get("stderr") or result.get("stdout") or result.get("reason") or "")[-1200:],
-                }
-            )
+            write_text(output_dir / "engineering-validation-result.json", json.dumps(result, indent=2, ensure_ascii=False))
+            for item in result.get("results", []):
+                run.setdefault("validation_results", []).append(
+                    {
+                        "key": item.get("id"),
+                        "status": item.get("status"),
+                        "category": item.get("category"),
+                        "command": item.get("command_text"),
+                        "exit_code": item.get("exit_code"),
+                        "summary": (item.get("stderr") or item.get("stdout") or item.get("reason") or "")[-1200:],
+                    }
+                )
             await self.refresh_artifacts(run["id"])
-            if result.get("status") not in {"passed", "skipped"}:
+            if result.get("status") == "failed":
+                failed = next((item for item in result.get("results", []) if item.get("required") and item.get("status") != "passed"), {})
                 raise WorkflowFunctionError(
-                    f"{str(plan.get('id')).upper()}_VALIDATION_FAILED: {result.get('reason') or result.get('stderr') or 'validator failed'}"
+                    f"ENGINEERING_VALIDATION_FAILED: {failed.get('title') or failed.get('id') or 'validation phase'}: "
+                    f"{failed.get('reason') or failed.get('stderr') or 'validator failed'}"
                 )
         except WorkflowFunctionError as exc:
             raise WorkflowError(str(exc)) from exc
@@ -387,22 +350,12 @@ class GeneralDevelopmentActionsMixin:
                 )
                 if rejected:
                     await self.log(run, "generate_tests: restored non-test file(s) written by the test phase: " + ", ".join(rejected))
-            if not direct_files:
-                direct_files = self._apply_file_blocks_for_direct_edit(
-                    project_dir,
-                    read_text(output_dir / artifact),
-                    run=run,
-                    step_key="generate_tests",
-                    validation_script=run.get("validation_script"),
-                    fallback_scripts=self._fallback_validation_scripts(run),
-                    output_label="agent generate_tests file block direct edit",
-                )
             if direct_files:
                 direct_files, rejected = self._enforce_phase_file_ownership(
                     project_dir, attempt_snapshot, direct_files, phase="generate_tests"
                 )
                 if rejected:
-                    await self.log(run, "generate_tests: restored non-test file(s) materialized from agent output: " + ", ".join(rejected))
+                    await self.log(run, "generate_tests: restored non-test file(s) written outside test-phase ownership: " + ", ".join(rejected))
             if not direct_files:
                 direct_files = self._existing_project_test_files(project_dir)
             if not direct_files:
@@ -468,6 +421,9 @@ class GeneralDevelopmentActionsMixin:
         before = project_file_snapshot(project_dir)
         build_config = self._config_for_step(run, "build")
         allow_test_files_in_task_loop = bool_config(build_config, "allowTestFilesInTaskLoop", False)
+        protected_validation_names = validation_script_protected_names(
+            run.get("validation_script"), self._fallback_validation_scripts(run)
+        )
 
         if self._is_auto_development_workflow(run) and bool_config(build_config, "enableTaskLoop", False):
             manifest_json_path = output_dir / "task-manifest.json"
@@ -477,7 +433,11 @@ class GeneralDevelopmentActionsMixin:
                     parsed = json.loads(read_text(manifest_json_path))
                     raw_tasks = parsed.get("tasks") if isinstance(parsed, dict) else []
                     if isinstance(raw_tasks, list):
-                        tasks = [task for task in raw_tasks if isinstance(task, dict)]
+                        tasks = [
+                            task
+                            for task in raw_tasks
+                            if isinstance(task, dict) and self._task_owner_from_entry(task) == "build"
+                        ]
                 except json.JSONDecodeError:
                     tasks = []
             if not tasks:
@@ -506,10 +466,7 @@ class GeneralDevelopmentActionsMixin:
                 if (
                     task_artifact_path.is_file()
                     and not task_has_feedback
-                    and (
-                        self._task_direct_state_is_satisfied(output_dir, project_dir, task_id, "build")
-                        or (self._file_blocks_allowed_as_direct_edits(run, "build") and self._task_artifact_is_satisfied(project_dir, task_artifact_path))
-                    )
+                    and self._task_direct_state_is_satisfied(output_dir, project_dir, task_id, "build")
                 ):
                     task_result = read_text(task_artifact_path)
                     task_artifacts.append((task_id, task_title, task_result))
@@ -537,26 +494,11 @@ class GeneralDevelopmentActionsMixin:
                     )
                     if direct_files and not allow_test_files_in_task_loop:
                         direct_files, rejected = self._enforce_phase_file_ownership(
-                            project_dir, attempt_snapshot, direct_files, phase="build"
+                            project_dir, attempt_snapshot, direct_files, phase="build",
+                            protected_names=protected_validation_names,
                         )
                         if rejected:
                             await self.log(run, f"build/{task_id}: restored test file(s) written by Build: " + ", ".join(rejected))
-                    if not direct_files:
-                        direct_files = self._apply_file_blocks_for_direct_edit(
-                            project_dir,
-                            read_text(task_artifact_path),
-                            run=run,
-                            step_key="build",
-                            validation_script=run.get("validation_script"),
-                            fallback_scripts=self._fallback_validation_scripts(run),
-                            output_label=f"agent build task {task_id} file block direct edit",
-                        )
-                    if direct_files and not allow_test_files_in_task_loop:
-                        direct_files, rejected = self._enforce_phase_file_ownership(
-                            project_dir, attempt_snapshot, direct_files, phase="build"
-                        )
-                        if rejected:
-                            await self.log(run, f"build/{task_id}: restored test file(s) materialized from agent output: " + ", ".join(rejected))
                     if not direct_files:
                         raise WorkflowError(
                             f"build task {task_id} did not directly create or modify project files under Project Path: {project_dir}. "
@@ -565,7 +507,7 @@ class GeneralDevelopmentActionsMixin:
 
                     if not allow_test_files_in_task_loop:
                         validate_build_files_are_not_tests(direct_files)
-                    self._validate_build_direct_files_are_substantive(run, direct_files)
+                    await self._validate_build_substance_or_external_evidence(run, output_dir, direct_files)
                     validate_build_files_do_not_overwrite_validation_scripts(
                         project_dir,
                         direct_files,
@@ -589,7 +531,8 @@ class GeneralDevelopmentActionsMixin:
                     )
                     if candidate_files and not allow_test_files_in_task_loop:
                         candidate_files, rejected = self._enforce_phase_file_ownership(
-                            project_dir, attempt_snapshot, candidate_files, phase="build"
+                            project_dir, attempt_snapshot, candidate_files, phase="build",
+                            protected_names=protected_validation_names,
                         )
                         if rejected:
                             await self.log(run, f"build/{task_id}: restored test file(s) written by Build after agent failure: " + ", ".join(rejected))
@@ -597,7 +540,7 @@ class GeneralDevelopmentActionsMixin:
                         direct_files = candidate_files
                         if not allow_test_files_in_task_loop:
                             validate_build_files_are_not_tests(direct_files)
-                        self._validate_build_direct_files_are_substantive(run, direct_files)
+                        await self._validate_build_substance_or_external_evidence(run, output_dir, direct_files)
                         validate_build_files_do_not_overwrite_validation_scripts(
                             project_dir,
                             direct_files,
@@ -622,6 +565,7 @@ class GeneralDevelopmentActionsMixin:
                         if isinstance(exc, UserInputRequired):
                             raise
                         raise WorkflowError(f"{task_id}: {exc}") from exc
+                self._validate_task_acceptance_files(task, direct_files)
                 task_result = self._render_direct_edit_summary("Build Direct Edit Result", task_id, task_title, direct_files)
                 write_text(task_artifact_path, task_result)
                 task_artifacts.append((task_id, task_title, task_result))
@@ -661,33 +605,18 @@ class GeneralDevelopmentActionsMixin:
             )
             if direct_files:
                 direct_files, rejected = self._enforce_phase_file_ownership(
-                    project_dir, attempt_snapshot, direct_files, phase="build"
+                    project_dir, attempt_snapshot, direct_files, phase="build",
+                    protected_names=protected_validation_names,
                 )
                 if rejected:
                     await self.log(run, "build: restored test file(s) written by Build: " + ", ".join(rejected))
-            if not direct_files:
-                direct_files = self._apply_file_blocks_for_direct_edit(
-                    project_dir,
-                    read_text(output_dir / artifact),
-                    run=run,
-                    step_key="build",
-                    validation_script=run.get("validation_script"),
-                    fallback_scripts=self._fallback_validation_scripts(run),
-                    output_label="agent build file block direct edit",
-                )
-            if direct_files:
-                direct_files, rejected = self._enforce_phase_file_ownership(
-                    project_dir, attempt_snapshot, direct_files, phase="build"
-                )
-                if rejected:
-                    await self.log(run, "build: restored test file(s) materialized from agent output: " + ", ".join(rejected))
             if not direct_files:
                 raise WorkflowError(
                     f"build did not directly create or modify project files under Project Path: {project_dir}. "
                     "Use Qwen/OpenCode file edit/write tools to directly modify files inside Project Path."
                 )
             validate_build_files_are_not_tests(direct_files)
-            self._validate_build_direct_files_are_substantive(run, direct_files)
+            await self._validate_build_substance_or_external_evidence(run, output_dir, direct_files)
             validate_build_files_do_not_overwrite_validation_scripts(
                 project_dir,
                 direct_files,
@@ -699,14 +628,15 @@ class GeneralDevelopmentActionsMixin:
             candidate_files = self._candidate_files_after_agent_failure(project_dir, before, exc)
             if candidate_files:
                 candidate_files, rejected = self._enforce_phase_file_ownership(
-                    project_dir, attempt_snapshot, candidate_files, phase="build"
+                    project_dir, attempt_snapshot, candidate_files, phase="build",
+                    protected_names=protected_validation_names,
                 )
                 if rejected:
                     await self.log(run, "build: restored test file(s) written by Build after agent failure: " + ", ".join(rejected))
             if candidate_files:
                 direct_files = candidate_files
                 validate_build_files_are_not_tests(direct_files)
-                self._validate_build_direct_files_are_substantive(run, direct_files)
+                await self._validate_build_substance_or_external_evidence(run, output_dir, direct_files)
                 validate_build_files_do_not_overwrite_validation_scripts(
                     project_dir, direct_files, validation_script=run.get("validation_script"),
                     fallback_scripts=self._fallback_validation_scripts(run),

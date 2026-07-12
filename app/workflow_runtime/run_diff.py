@@ -3,35 +3,33 @@ from __future__ import annotations
 import difflib
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterable
 
 from app.core.paths import read_text, write_text
+from app.security.isolated_workspace import DEFAULT_CHANGE_IGNORED_DIRS, change_ignored_dirs, is_change_path_ignored
 
 TEXT_SUFFIXES = {
     ".py", ".md", ".txt", ".json", ".yaml", ".yml", ".toml", ".ini", ".cfg", ".xml", ".html", ".css", ".js", ".ts", ".tsx", ".jsx", ".sql", ".csv"
 }
-IGNORE_DIRS = {".ai-workflow", ".qwen-workflow", ".qwen", ".git", "__pycache__", ".pytest_cache", "node_modules", ".venv", "venv"}
 MAX_FILE_CHARS = 80_000
 
 
-def _should_skip(path: Path, project_dir: Path) -> bool:
+def _should_skip(path: Path, project_dir: Path, *, ignored_dirs: Iterable[str]) -> bool:
     try:
         rel = path.relative_to(project_dir)
     except ValueError:
         return True
-    parts = set(rel.parts)
-    if parts & IGNORE_DIRS:
-        return True
-    return False
+    return is_change_path_ignored(rel, ignored_dirs=ignored_dirs)
 
 
-def snapshot_project_text(project_dir: Path) -> dict[str, str]:
+def snapshot_project_text(project_dir: Path, *, ignored_dirs: Iterable[str] | None = None) -> dict[str, str]:
     project_dir = project_dir.resolve()
+    ignored = set(ignored_dirs or change_ignored_dirs(project_dir) or DEFAULT_CHANGE_IGNORED_DIRS)
     snapshot: dict[str, str] = {}
     if not project_dir.exists():
         return snapshot
     for path in sorted(project_dir.rglob("*")):
-        if not path.is_file() or _should_skip(path, project_dir):
+        if not path.is_file() or _should_skip(path, project_dir, ignored_dirs=ignored):
             continue
         if path.suffix.lower() not in TEXT_SUFFIXES:
             continue
@@ -47,10 +45,13 @@ def snapshot_project_text(project_dir: Path) -> dict[str, str]:
 
 def write_baseline_snapshot(run: dict[str, Any], run_dir: Path) -> None:
     project = Path(run.get("project_path") or run_dir)
+    policy_root = Path(run.get("original_project_path") or project)
+    ignored = change_ignored_dirs(policy_root)
     payload = {
         "schema": "aiwf.project-text-snapshot.v1",
         "project_path": str(project),
-        "files": snapshot_project_text(project),
+        "ignored_dirs": sorted(ignored),
+        "files": snapshot_project_text(project, ignored_dirs=ignored),
     }
     write_text(run_dir / ".workflow" / "project-snapshot-before.json", json.dumps(payload, indent=2, ensure_ascii=False))
 
@@ -80,8 +81,11 @@ def _line_change_counts(old_lines: list[str], new_lines: list[str]) -> tuple[int
 
 
 def build_run_diff(run: dict[str, Any], run_dir: Path) -> dict[str, Any]:
-    before = _load_baseline(run_dir)
-    after = snapshot_project_text(Path(run.get("project_path") or run_dir))
+    project = Path(run.get("project_path") or run_dir)
+    policy_root = Path(run.get("original_project_path") or project)
+    ignored = change_ignored_dirs(policy_root)
+    before = {path: content for path, content in _load_baseline(run_dir).items() if not is_change_path_ignored(path, ignored_dirs=ignored)}
+    after = snapshot_project_text(project, ignored_dirs=ignored)
     paths = sorted(set(before) | set(after))
     files: list[dict[str, Any]] = []
     patch_chunks: list[str] = []
@@ -129,6 +133,7 @@ def build_run_diff(run: dict[str, Any], run_dir: Path) -> dict[str, Any]:
         "summary": {"files": len(files), "added": total_added, "removed": total_removed},
         "files": files,
         "patch": "\n".join(patch_chunks),
+        "ignored_dirs": sorted(ignored),
     }
 
 

@@ -38,6 +38,10 @@ def test_agent_session_manager_uses_distinct_roles_and_fresh_policy() -> None:
         "qwen_session_id": "shared",
         "agent_session_ids": {"qwen": "shared"},
         "role_session_ids": {"build": {"qwen": "build-session"}, "review": {"qwen": "review-session"}},
+        "steps": [
+            {"key": "build", "config": {"sessionRole": "build"}},
+            {"key": "ai_review", "config": {"sessionRole": "review"}},
+        ],
     }
     assert manager.resolve(run, step_key="build", agent="qwen").session_id == "build-session"
     assert manager.resolve(run, step_key="ai_review", agent="qwen").session_id == "review-session"
@@ -63,7 +67,7 @@ def test_sqlite_store_v2_projects_structured_run_data_and_backup(tmp_path: Path)
         "role_session_ids": {"build": {"qwen": "qwen-build"}},
         "events": [{"step_key": "build", "type": "passed", "message": "done", "at": "2026-07-11T00:00:00+00:00"}],
         "artifacts": [{"id": "final", "path": "reports/final-report.md", "role": "final-report", "visibility": "essential"}],
-        "validation_results": [{"key": "pytest", "status": "passed", "command": "pytest", "exit_code": 0}],
+        "validation_results": [{"key": "pytest", "status": "passed", "command": ["python", "-m", "pytest"], "exit_code": 0}],
         "file_changes": [{"path": "sort.py", "status": "added", "additions": 10, "deletions": 0}],
         "checkpoints": [{"id": "step-build-1", "step_key": "build", "status": "passed", "created_at": "2026-07-11T00:00:00+00:00"}],
         "project_lock": {"project_path": str(tmp_path), "run_id": "run-v8", "mode": "write", "created_at": "2026-07-11T00:00:00+00:00"},
@@ -75,6 +79,7 @@ def test_sqlite_store_v2_projects_structured_run_data_and_backup(tmp_path: Path)
     projection = store.query_run_projection("run-v8")
     assert projection["run"]["status"] == "running"
     assert projection["steps"][0]["step_key"] == "build"
+    assert projection["validations"][0]["command"] == "python -m pytest"
     backup = store.backup_sync()
     assert backup.is_file() and backup.stat().st_size > 0
     with sqlite3.connect(backup) as conn:
@@ -143,16 +148,26 @@ def test_run_center_hides_technical_details_until_diagnostics() -> None:
     html = (root / "static" / "index.html").read_text(encoding="utf-8")
     js = (root / "static" / "js" / "features" / "runs.js").read_text(encoding="utf-8")
     diagnostics = (root / "static" / "js" / "features" / "diagnostics.js").read_text(encoding="utf-8")
-    assert all(panel in html for panel in ("overviewPanel", "changesPanel", "validationPanel"))
+    assert all(panel in html for panel in ("overviewPanel", "validationPanel"))
+    assert "changesPanel" not in html
+    assert 'id="productFlow"' in html
+    assert all(stage in html for stage in ("requirement", "progress", "changes", "validation", "complete"))
+    assert "renderProductFlow" in js
     assert "技術診斷" in html
-    assert "執行時間線" in html and "Patch 審核" in html and "修復策略" in html
+    assert "執行時間線" in html and "執行產物" in html and "修復策略" in html
+    assert 'id="diagnosticPatch"' not in html
     assert "data-artifact-id" not in js[js.index("async openStepDetailModal"):js.index("ensureStepDetailModal")]
     assert "/debug-bundle" in diagnostics and "/export" not in diagnostics
     assert "AIWF_ARTIFACT_MODE" in (root / "app" / "workflow_runtime" / "run_artifacts.py").read_text(encoding="utf-8")
+    css = (root / "static" / "css" / "workflow-runner.css").read_text(encoding="utf-8")
+    responsive = (root / "static" / "css" / "responsive.css").read_text(encoding="utf-8")
+    assert "body.novice-mode #openDiagnostics" in css
+    assert "body.novice-mode #runTimelineCard" in css
+    assert "max-height: min(48vh, 405px)" in responsive
 
 
 def test_v8_routes_expose_setup_analytics_actions_and_compaction() -> None:
-    paths = {route.path for route in app.routes}
+    paths = set(app.openapi()["paths"])
     assert "/api/setup/status" in paths
     assert "/api/setup/smoke" in paths
     assert "/api/analytics/summary" in paths

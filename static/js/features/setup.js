@@ -1,7 +1,61 @@
-import { LocalStore, StorageKeys } from "../core/storage.js?v=20260711-ui-v12";
+import { LocalStore, StorageKeys } from "../core/storage.js?v=20260712-ui-v22";
 export function createSetup(ctx) {
-  const { api, ui } = ctx;
+  const { api, ui, state } = ctx;
   let lastStatus = null;
+  let connectivityTimer = null;
+  let connectivityInFlight = false;
+  let connectivityBound = false;
+
+  function activeProjectPath() {
+    return state.sessions.find((item) => item.id === state.activeSessionId)?.project_path || null;
+  }
+
+  function connectivityDelay(status) {
+    if (document.hidden) return 30000;
+    if (!status || status.state === "offline") return 2500;
+    if (["unknown", "unavailable"].includes(status.state)) return 6000;
+    return 15000;
+  }
+
+  function renderConnectivity(status, { announce = true } = {}) {
+    const button = ui.byKey("modelConnectivity");
+    if (!button) return;
+    const previous = state.providerConnectivity;
+    state.providerConnectivity = status;
+    const nextState = status?.state || "unknown";
+    const labels = {
+      online: "模型已連線",
+      offline: "模型離線，重試中",
+      unknown: "Agent 可用，模型待確認",
+      unavailable: "Agent 不可用",
+      checking: "檢查模型",
+    };
+    button.className = `model-connectivity state-${nextState}`;
+    const text = button.querySelector(".model-connectivity-text");
+    if (text) text.textContent = labels[nextState] || labels.unknown;
+    const endpoint = (status?.endpoints || []).find((item) => item.reachable) || (status?.endpoints || [])[0];
+    button.title = [
+      labels[nextState] || labels.unknown,
+      endpoint?.base_url || "未偵測到模型 Endpoint",
+      endpoint?.latency_ms != null ? `${endpoint.latency_ms} ms` : "",
+      status?.checked_at || "",
+      "點擊立即重新檢查",
+    ].filter(Boolean).join(" · ");
+
+    if (!announce || !previous || previous.state === nextState) return;
+    if (nextState === "online" && previous.state !== "online") {
+      ctx.features.console?.append("logs", "Model endpoint is online again. Workflow recovery can continue automatically.");
+      ctx.features.messages?.updateWorkflowActivity({ message: "Model connection restored. Continuing workflow recovery." });
+    } else if (nextState === "offline" && previous.state !== "offline") {
+      ctx.features.console?.append("logs", "Model endpoint is offline. The UI will keep checking and the workflow recovery policy will retry.");
+      ctx.features.messages?.updateWorkflowActivity({ message: "Model temporarily offline. Waiting for automatic reconnection." });
+    }
+  }
+
+  function scheduleConnectivity(status = state.providerConnectivity) {
+    if (connectivityTimer) window.clearTimeout(connectivityTimer);
+    connectivityTimer = window.setTimeout(() => setup.refreshConnectivity(), connectivityDelay(status));
+  }
 
   const setup = {
     async check(projectPath = null) {
@@ -25,6 +79,49 @@ export function createSetup(ctx) {
         if (ui.byKey("setupStatusText")) ui.byKey("setupStatusText").textContent = err.message;
         return null;
       }
+    },
+
+    async refreshConnectivity({ force = false } = {}) {
+      if (connectivityInFlight) return state.providerConnectivity;
+      connectivityInFlight = true;
+      const button = ui.byKey("modelConnectivity");
+      if (button && !state.providerConnectivity) button.className = "model-connectivity state-checking";
+      try {
+        const projectPath = activeProjectPath();
+        const params = new URLSearchParams();
+        if (projectPath) params.set("projectPath", projectPath);
+        if (state.defaultAgent && state.defaultAgent !== "agent") params.set("agent", state.defaultAgent);
+        const query = params.toString() ? `?${params.toString()}` : "";
+        const status = await api.request(`/api/setup/connectivity${query}`);
+        renderConnectivity(status);
+        scheduleConnectivity(status);
+        return status;
+      } catch (err) {
+        const status = { state: "offline", online: false, error: err.message, endpoints: [], checked_at: new Date().toISOString() };
+        renderConnectivity(status);
+        scheduleConnectivity(status);
+        return status;
+      } finally {
+        connectivityInFlight = false;
+      }
+    },
+
+    startConnectivityMonitor() {
+      if (!connectivityBound) {
+        connectivityBound = true;
+        ui.byKey("modelConnectivity")?.addEventListener("click", () => setup.refreshConnectivity({ force: true }));
+        document.addEventListener("visibilitychange", () => {
+          if (!document.hidden) setup.refreshConnectivity({ force: true });
+          else scheduleConnectivity();
+        });
+        window.addEventListener("online", () => setup.refreshConnectivity({ force: true }));
+      }
+      setup.refreshConnectivity({ force: true });
+    },
+
+    stopConnectivityMonitor() {
+      if (connectivityTimer) window.clearTimeout(connectivityTimer);
+      connectivityTimer = null;
     },
 
     dismissNotice() {

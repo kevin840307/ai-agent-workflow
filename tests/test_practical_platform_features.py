@@ -56,6 +56,8 @@ class PracticalPlatformFeatureTests(unittest.TestCase):
                     "requirement": "Create sorting_algorithms.py with bubble_sort",
                     "expectedResult": "bubble_sort should return a sorted list",
                     "projectPath": str(project),
+                    "expectedFiles": ["sorting_algorithms.py"],
+                    "expectedSymbols": ["bubble_sort"],
                     "write": True,
                 },
             )
@@ -88,9 +90,7 @@ class PracticalPlatformFeatureTests(unittest.TestCase):
 
     def test_rerun_diff_and_failure_api_endpoints_are_available(self) -> None:
         old_mock = os.environ.get("QWEN_MOCK")
-        old_norm = os.environ.get("QWEN_WORKFLOW_MOCK_FILE_BLOCK_NORMALIZATION")
         os.environ["QWEN_MOCK"] = "1"
-        os.environ["QWEN_WORKFLOW_MOCK_FILE_BLOCK_NORMALIZATION"] = "1"
         try:
             with TemporaryDirectory() as tmp, TestClient(app) as client:
                 project = Path(tmp) / "project"
@@ -127,10 +127,6 @@ class PracticalPlatformFeatureTests(unittest.TestCase):
                 os.environ.pop("QWEN_MOCK", None)
             else:
                 os.environ["QWEN_MOCK"] = old_mock
-            if old_norm is None:
-                os.environ.pop("QWEN_WORKFLOW_MOCK_FILE_BLOCK_NORMALIZATION", None)
-            else:
-                os.environ["QWEN_WORKFLOW_MOCK_FILE_BLOCK_NORMALIZATION"] = old_norm
 
     def test_debug_tools_ui_replaces_old_advanced_badge(self) -> None:
         root = Path(__file__).resolve().parents[1]
@@ -144,7 +140,8 @@ class PracticalPlatformFeatureTests(unittest.TestCase):
         self.assertIn("openRunConsole", runs)
         self.assertIn("openPatchPreview", runs)
         self.assertIn("openVersionMeta", runs)
-        self.assertIn("changesPanel", runs)
+        self.assertNotIn("changesPanel", runs)
+        self.assertIn("patchReview", runs)
         self.assertIn("/diff", runs)
 
 

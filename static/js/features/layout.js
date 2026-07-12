@@ -1,4 +1,4 @@
-import { LocalStore, StorageKeys } from "../core/storage.js";
+import { LocalStore, StorageKeys } from "../core/storage.js?v=20260712-ui-v22";
 
 function updateProjectsButton(ui, collapsed) {
   const button = ui.byKey("toggleProjects");
@@ -114,6 +114,8 @@ export function createLayout(ctx) {
       layout.setProjectsCollapsed(LocalStore.getBoolean(StorageKeys.projectsCollapsed, false), false);
       layout.setDetailsCollapsed(LocalStore.getBoolean(StorageKeys.detailsCollapsed, false), false);
       layout.setAdvancedMode(ctx.state.advancedMode, false);
+      const unattended = ui.byKey("unattendedMode");
+      if (unattended) unattended.checked = Boolean(ctx.state.unattendedMode);
     },
 
     applyRunStatus(status = "") {
@@ -153,6 +155,8 @@ export function createLayout(ctx) {
       layout.setDetailsCollapsed(!document.body.classList.contains("details-collapsed"));
     },
 
+
+
     setAdvancedMode(enabled, persist = true) {
       ctx.state.advancedMode = Boolean(enabled);
       document.body.classList.toggle("advanced-mode", ctx.state.advancedMode);
@@ -173,6 +177,7 @@ export function createLayout(ctx) {
         panel.classList.toggle("active", active);
         panel.hidden = !active;
       });
+      document.body.classList.remove("details-focus-mode");
     },
   };
 

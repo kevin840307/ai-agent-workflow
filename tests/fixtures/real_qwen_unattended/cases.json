@@ -1,0 +1,59 @@
+{
+  "schema": "aiwf.real-qwen-e2e-cases.v1",
+  "cases": [
+    {
+      "id": "bugfix-existing-python",
+      "workflow": "general-auto-development",
+      "requirement": "Fix the existing normalize_name function so surrounding whitespace is removed and words are lower-cased. Add or update automated tests and run them.",
+      "fixture": "bugfix",
+      "test_command": "python -m unittest discover -s tests",
+      "expected_files": [
+        "names.py",
+        "tests/test_names.py"
+      ],
+      "behavior_check": "python e2e_checks/check_names.py"
+    },
+    {
+      "id": "multi-file-feature",
+      "workflow": "general-auto-development",
+      "requirement": "Add a small JSON-backed task repository and a service that can add and list tasks. Keep persistence and business logic in separate modules. Add automated tests.",
+      "fixture": "multi_file",
+      "test_command": "python -m unittest discover -s tests",
+      "expected_files": [
+        "task_repository.py",
+        "task_service.py"
+      ],
+      "behavior_check": "python e2e_checks/check_task_service.py"
+    },
+    {
+      "id": "project-local-agent-context",
+      "workflow": "adaptive-auto-workflow",
+      "requirement": "Read the project-local agent instructions before editing. Implement the requested formatter and verify it with tests.",
+      "fixture": "project_context",
+      "test_command": "python -m unittest discover -s tests",
+      "expected_files": [
+        "formatter.py"
+      ],
+      "behavior_check": "python e2e_checks/check_formatter.py"
+    },
+    {
+      "id": "validation-repair-loop",
+      "workflow": "general-auto-development",
+      "requirement": "Implement parse_port(value) using the existing public contract. Add valid, invalid, and boundary automated tests. Treat the protected validation.py as the immutable acceptance oracle and continue repairing production code until all validation passes.",
+      "fixture": "repair_loop",
+      "test_command": "python -m unittest discover -s tests",
+      "validation_script": "validation.py",
+      "expected_files": [
+        "ports.py"
+      ],
+      "behavior_check": "python e2e_checks/check_ports.py"
+    }
+  ],
+  "concurrency_case": {
+    "id": "different-sessions-different-projects",
+    "workflow": "general-auto-development",
+    "parallel_runs": 2,
+    "assert_distinct_session_ids": true,
+    "assert_overlapping_execution": true
+  }
+}

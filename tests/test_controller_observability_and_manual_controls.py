@@ -53,7 +53,6 @@ class ControllerObservabilityAndManualControlTests(unittest.TestCase):
     def test_manual_step_control_endpoints_are_available(self) -> None:
         previous_mock = os.environ.get("QWEN_MOCK")
         os.environ["QWEN_MOCK"] = "1"
-        os.environ["QWEN_WORKFLOW_MOCK_FILE_BLOCK_NORMALIZATION"] = "1"
         try:
             ctx = TemporaryDirectory()
             tmp = ctx.__enter__()

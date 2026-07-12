@@ -1,23 +1,15 @@
-# Documentation Index
+# Local AI Engineering Workflow Platform — Documentation
 
-This directory contains the English documentation for Agent Workflow Web.
+This is the canonical English documentation set. Versioned migration notes and retired architecture documents were removed to avoid conflicting instructions.
 
-## Recommended reading order
+## Reading order
 
-1. `AGENT_INSTALLATION.md` - install Qwen Code / OpenCode and configure CLI paths.
-2. `AGENT_SLASH_COMMANDS.md` - install project `/wf` and `/wstep` commands for Qwen/OpenCode.
-3. `AGENT_PROJECT_GUARD.md` - understand project-local edit guards for Qwen/OpenCode.
-4. `ADAPTIVE_AUTO_WORKFLOW.md` - understand the simple auto-generation / review / validation loop.
-5. `WORKFLOW_METADATA.md` - understand `kind`, `protected`, and `deletable` behavior.
-6. `GENERAL_AUTO_DEVELOPMENT_WORKFLOW_USAGE.md` - use the fuller development workflow.
-7. `PYTHON_FUNCTION_ASSET_GUIDE.md` - write reusable Python function assets.
-8. `FRONTEND_STRUCTURE.md` - maintain the static frontend structure.
-9. `TESTING.md` - run daily checks and opt-in manual scenarios.
-- [`SYSTEM_PRODUCTIZATION_V9.md`](SYSTEM_PRODUCTIZATION_V9.md) — V9 reliability, risk/approval, checkpoints, validators, benchmarks, and non-blocking UI.
-10. `SYSTEM_OPTIMIZATION_V8.md` - review the unified state/session/evidence core, Run Center, compact artifacts, and execution recommendations.
-11. `WORKFLOW_OPTIMIZATION_V7.md` - review the latest phase ownership, deterministic layout repair, timeout-session, retry-budget, and validation hardening.
-12. `WORKFLOW_OPTIMIZATION_V6.md` - review the direct Project Path and filesystem-first execution foundation.
+1. [Quick Start](QUICKSTART.md) — install, configure, and run the first workflow.
+2. [User Guide](USER_GUIDE.md) — normal and advanced operating flows.
+3. [Validation](VALIDATION.md) — build/test/lint/type-check and immutable Validation Script examples.
+4. [Architecture](ARCHITECTURE.md) — workflow kernel, agents, sessions, checkpoints, security, and evidence.
+5. [Operations](OPERATIONS.md) — concurrency, recovery budgets, watchdogs, storage, backup, and diagnostics.
+6. [Workflow & Asset Development](EXTENDING.md) — contracts, prompts, functions, and safe customization.
+7. [Testing](TESTING.md) — deterministic, UI, E2E, and real-agent certification.
 
-Traditional Chinese docs are in `../zh-TW/`.
-
-See also: `doc/WORKFLOW_STABILITY_PLAN.md` for the stability score, failure-injection matrix, and isolated-workspace guard pattern.
+Traditional Chinese: [`../zh-TW/README.md`](../zh-TW/README.md)

@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any, Awaitable, Callable, Mapping, MutableMapping
 
 from app.runtime_modules.errors import WorkflowError
+from app.security.redaction import redact_text
 
 AgentOutputCallback = Callable[[str, str], Awaitable[None]]
 
@@ -34,6 +35,27 @@ class ProcessSupervisorOptions:
     timeout_sec: int | None = None
     run_id: str | None = None
     process_registry: MutableMapping[str, asyncio.subprocess.Process] | None = None
+    process_type: str = "agent"
+    stall_timeout_sec: int | None = None
+    heartbeat_interval_sec: int | None = None
+
+
+
+def _positive_int_env(name: str, default: int) -> int:
+    try:
+        return max(0, int(os.environ.get(name, str(default)) or default))
+    except (TypeError, ValueError):
+        return default
+
+
+def _safe_command_text(command: list[str]) -> str:
+    safe: list[str] = []
+    for index, part in enumerate(command):
+        value = redact_text(part)
+        if index > 0 and len(value) > 240:
+            value = f"<argument:{len(value)} chars>"
+        safe.append(value)
+    return " ".join(safe)
 
 
 def normalize_cwd(cwd: Path | str) -> Path:
@@ -152,9 +174,21 @@ async def run_supervised_process(options: ProcessSupervisorOptions) -> Supervise
         raise WorkflowError(f"Agent CLI not found: {command[0]}. Set the matching *_MOCK=1 env var for demo mode.") from exc
 
     if options.run_id and options.process_registry is not None:
-        options.process_registry[options.run_id] = proc
+        register = getattr(options.process_registry, "register", None)
+        if callable(register):
+            register(options.run_id, proc, process_type=options.process_type, command=command, cwd=str(cwd))
+        else:
+            options.process_registry[options.run_id] = proc
     stdout_chunks: list[str] = []
     stderr_chunks: list[str] = []
+    started_at = time.monotonic()
+    last_output_at = started_at
+    stall_timeout_sec = options.stall_timeout_sec
+    if stall_timeout_sec is None:
+        stall_timeout_sec = _positive_int_env("AIWF_AGENT_STALL_TIMEOUT_SEC", 300)
+    heartbeat_interval_sec = options.heartbeat_interval_sec
+    if heartbeat_interval_sec is None:
+        heartbeat_interval_sec = _positive_int_env("AIWF_AGENT_HEARTBEAT_SEC", 60)
 
     async def write_stdin() -> None:
         if options.input_text is None or proc.stdin is None:
@@ -164,16 +198,36 @@ async def run_supervised_process(options: ProcessSupervisorOptions) -> Supervise
         proc.stdin.close()
 
     async def drain(stream_name: str, stream: asyncio.StreamReader | None, chunks: list[str]) -> None:
+        nonlocal last_output_at
         if stream is None:
             return
         while True:
             data = await stream.readline()
             if not data:
                 break
-            text = data.decode(errors="replace")
+            last_output_at = time.monotonic()
+            text = redact_text(data.decode(errors="replace"))
             chunks.append(text)
             if options.on_output:
                 await options.on_output(stream_name, text)
+
+    async def monitor_liveness() -> None:
+        next_heartbeat = started_at + heartbeat_interval_sec if heartbeat_interval_sec else 0.0
+        while proc.returncode is None:
+            await asyncio.sleep(1.0)
+            current = time.monotonic()
+            idle_sec = current - last_output_at
+            if stall_timeout_sec and idle_sec >= stall_timeout_sec:
+                raise WorkflowError(
+                    f"Agent process stalled with no output for {int(idle_sec)} seconds: {_safe_command_text(command)}"
+                )
+            if heartbeat_interval_sec and current >= next_heartbeat:
+                if options.on_output:
+                    await options.on_output(
+                        "status",
+                        f"Agent process is still running; no output for {int(idle_sec)} seconds.",
+                    )
+                next_heartbeat = current + heartbeat_interval_sec
 
     try:
         await write_stdin()
@@ -182,18 +236,29 @@ async def run_supervised_process(options: ProcessSupervisorOptions) -> Supervise
                 drain("stdout", proc.stdout, stdout_chunks),
                 drain("stderr", proc.stderr, stderr_chunks),
                 proc.wait(),
+                monitor_liveness(),
             ),
             timeout=options.timeout_sec,
         )
     except asyncio.TimeoutError as exc:
         await _terminate_process_tree(proc)
-        raise WorkflowError(f"Agent process timed out after {options.timeout_sec} seconds: {' '.join(command)}") from exc
+        raise WorkflowError(f"Agent process timed out after {options.timeout_sec} seconds: {_safe_command_text(command)}") from exc
+    except asyncio.CancelledError:
+        await _terminate_process_tree(proc)
+        raise
+    except Exception:
+        await _terminate_process_tree(proc)
+        raise
     finally:
         if options.run_id and options.process_registry is not None and options.process_registry.get(options.run_id) is proc:
-            options.process_registry.pop(options.run_id, None)
+            unregister = getattr(options.process_registry, "unregister", None)
+            if callable(unregister):
+                unregister(options.run_id, proc)
+            else:
+                options.process_registry.pop(options.run_id, None)
 
-    stdout = "".join(stdout_chunks).strip()
-    stderr = "".join(stderr_chunks).strip()
+    stdout = redact_text("".join(stdout_chunks).strip())
+    stderr = redact_text("".join(stderr_chunks).strip())
     return SupervisedProcessResult(command=command, cwd=cwd, returncode=proc.returncode or 0, stdout=stdout, stderr=stderr)
 
 
@@ -218,10 +283,10 @@ async def _run_supervised_threaded(options: ProcessSupervisorOptions, cwd: Path)
     except FileNotFoundError as exc:
         raise WorkflowError(f"Agent CLI not found: {command[0]}. Set the matching *_MOCK=1 env var for demo mode.") from exc
     except subprocess.TimeoutExpired as exc:
-        raise WorkflowError(f"Agent process timed out after {exc.timeout} seconds: {' '.join(command)}") from exc
+        raise WorkflowError(f"Agent process timed out after {exc.timeout} seconds: {_safe_command_text(command)}") from exc
 
-    stdout = (proc.stdout or "").strip()
-    stderr = (proc.stderr or "").strip()
+    stdout = redact_text((proc.stdout or "").strip())
+    stderr = redact_text((proc.stderr or "").strip())
     if options.on_output:
         for line in stdout.splitlines():
             await options.on_output("stdout", line)
@@ -265,7 +330,7 @@ async def run_agent_command(
     )
     if result.returncode != 0:
         detail = result.stderr or result.stdout or "no stdout/stderr"
-        raise WorkflowError(f"Agent process failed with exit code {result.returncode}: {' '.join(result.command)}\n{detail}".strip())
+        raise WorkflowError(f"Agent process failed with exit code {result.returncode}: {_safe_command_text(result.command)}\n{redact_text(detail)}".strip())
     return result.stdout, result.stderr
 
 
@@ -295,9 +360,9 @@ def run_supervised_process_sync(options: ProcessSupervisorOptions) -> Supervised
     except FileNotFoundError as exc:
         raise WorkflowError(f"Agent CLI not found: {command[0]}. Set the matching *_MOCK=1 env var for demo mode.") from exc
     except subprocess.TimeoutExpired as exc:
-        raise WorkflowError(f"Agent process timed out after {exc.timeout} seconds: {' '.join(command)}") from exc
-    stdout = (proc.stdout or "").strip()
-    stderr = (proc.stderr or "").strip()
+        raise WorkflowError(f"Agent process timed out after {exc.timeout} seconds: {_safe_command_text(command)}") from exc
+    stdout = redact_text((proc.stdout or "").strip())
+    stderr = redact_text((proc.stderr or "").strip())
     return SupervisedProcessResult(command=command, cwd=cwd, returncode=proc.returncode, stdout=stdout, stderr=stderr)
 
 
@@ -320,7 +385,7 @@ def run_agent_command_sync(
     )
     if result.returncode != 0:
         detail = result.stderr or result.stdout or "no stdout/stderr"
-        raise WorkflowError(f"Agent process failed with exit code {result.returncode}: {' '.join(result.command)}\n{detail}".strip())
+        raise WorkflowError(f"Agent process failed with exit code {result.returncode}: {_safe_command_text(result.command)}\n{redact_text(detail)}".strip())
     return result.stdout, result.stderr
 
 
